@@ -1,5 +1,4 @@
 networks:
-  # --- Redes
   alexandria_net:
     driver: bridge
 
