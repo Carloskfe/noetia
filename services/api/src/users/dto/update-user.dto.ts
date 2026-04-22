@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsArray, IsEnum, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 import { UserType } from '../user.entity';
 
 export class UpdateUserDto {
@@ -13,4 +13,19 @@ export class UpdateUserDto {
   @IsOptional()
   @IsEnum(UserType)
   userType?: UserType;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  country?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  languages?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  interests?: string[];
 }

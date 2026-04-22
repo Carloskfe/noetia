@@ -45,6 +45,15 @@ export class User {
   @Column({ type: 'enum', enum: UserType, nullable: true })
   userType: UserType | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  country: string | null;
+
+  @Column({ type: 'simple-array', nullable: true })
+  languages: string[] | null;
+
+  @Column({ type: 'simple-array', nullable: true })
+  interests: string[] | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

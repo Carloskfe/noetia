@@ -43,7 +43,7 @@ export default function OnboardingPage() {
         body: JSON.stringify({ userType: selected }),
       });
       saveUserType(selected);
-      router.push('/library');
+      router.push(selected === 'personal' ? '/onboarding/preferences' : '/library');
     } catch (err: any) {
       setError(err.message ?? 'Something went wrong. Please try again.');
       setLoading(false);
