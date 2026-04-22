@@ -6,8 +6,45 @@ Alexandria is a multimodal reading + social sharing platform. For full product c
 
 ## Table of Contents
 
-1. [Tech Stack](#tech-stack)
-2. [Project Structure](#project-structure)
+1. [Git Workflow](#git-workflow)
+2. [Tech Stack](#tech-stack)
+3. [Project Structure](#project-structure)
+
+---
+
+## Git Workflow
+
+After completing any meaningful unit of work, commit and push to GitHub immediately so progress is never lost.
+
+**Commit after every:**
+- Completed task or group of tasks from a sprint
+- Bug fix or hotfix
+- Config or infrastructure change
+- Documentation update
+
+**Commit message format:**
+```
+<type>: <short description>
+
+Types: feat | fix | chore | docs | ci | refactor
+```
+
+**Examples:**
+```
+feat: add JWT auth endpoints to api service
+fix: add missing public/ dir for Next.js web service
+chore: bump actions/checkout to v5
+docs: update project structure in CLAUDE.md
+```
+
+**Push after every commit:**
+```bash
+git add <specific files>
+git commit -m "<type>: <description>"
+git push
+```
+
+Never batch multiple unrelated changes into a single commit. Small, focused commits make it easy to track progress and revert if needed.
 
 ---
 
