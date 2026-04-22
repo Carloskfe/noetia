@@ -12,7 +12,9 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { TokenService } from './token.service';
 
@@ -87,6 +89,22 @@ export class AuthController {
     }
     res.clearCookie('refresh_token', { path: '/auth' });
     return { message: 'Logged out' };
+  }
+
+  // ─── Forgot / Reset Password ──────────────────────────────────────────────
+
+  @Post('forgot-password')
+  @HttpCode(200)
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.authService.requestPasswordReset(dto.email);
+    return { message: 'If that email exists you will receive a reset link shortly.' };
+  }
+
+  @Post('reset-password')
+  @HttpCode(200)
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.authService.resetPassword(dto.token, dto.password);
+    return { message: 'Password updated successfully.' };
   }
 
   // ─── Google OAuth ──────────────────────────────────────────────────────────

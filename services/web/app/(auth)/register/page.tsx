@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch, saveToken } from '@/lib/api';
+import SocialAuthButtons from '@/components/SocialAuthButtons';
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -84,6 +85,8 @@ export default function RegisterPage() {
           {isSubmitting ? 'Creating account…' : 'Create account'}
         </button>
       </form>
+
+      <SocialAuthButtons />
 
       <p className="text-center text-sm mt-6 text-gray-500">
         Already have an account?{' '}

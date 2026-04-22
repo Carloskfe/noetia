@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { AuthProvider, User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
@@ -46,5 +46,21 @@ export class AuthService {
       user = (await this.usersService.findById(user.id))!;
     }
     return user;
+  }
+
+  async requestPasswordReset(email: string): Promise<void> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user || user.provider !== 'local') return; // silent — don't reveal account existence
+    const token = await this.tokenService.generatePasswordResetToken(user.id);
+    const webUrl = process.env.WEB_URL ?? 'http://localhost:3000';
+    // In production replace this log with an email via your mail provider
+    console.log(`[DEV] Password reset link: ${webUrl}/reset-password?token=${token}`);
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const userId = await this.tokenService.consumePasswordResetToken(token);
+    if (!userId) throw new BadRequestException('Invalid or expired reset token');
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.usersService.update(userId, { passwordHash });
   }
 }

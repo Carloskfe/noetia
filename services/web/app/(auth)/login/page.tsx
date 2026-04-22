@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch, saveToken } from '@/lib/api';
+import SocialAuthButtons from '@/components/SocialAuthButtons';
 
 const schema = z.object({
   email: z.string().email('Invalid email'),
@@ -36,8 +37,6 @@ export default function LoginPage() {
     }
   }
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
-
   return (
     <>
       <h1 className="text-2xl font-bold mb-6 text-center">Sign in to Alexandria</h1>
@@ -63,6 +62,12 @@ export default function LoginPage() {
           {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>}
         </div>
 
+        <div className="text-right">
+          <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+            Forgot password?
+          </Link>
+        </div>
+
         {errors.root && (
           <p className="text-red-500 text-sm">{errors.root.message}</p>
         )}
@@ -76,32 +81,7 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <div className="my-4 flex items-center gap-2 text-gray-400 text-sm">
-        <span className="flex-1 h-px bg-gray-200" />
-        or
-        <span className="flex-1 h-px bg-gray-200" />
-      </div>
-
-      <div className="space-y-2">
-        <a
-          href={`${API_URL}/auth/google`}
-          className="flex items-center justify-center gap-2 w-full border rounded-lg py-2 hover:bg-gray-50 transition text-sm"
-        >
-          Continue with Google
-        </a>
-        <a
-          href={`${API_URL}/auth/facebook`}
-          className="flex items-center justify-center gap-2 w-full border rounded-lg py-2 hover:bg-gray-50 transition text-sm"
-        >
-          Continue with Facebook
-        </a>
-        <a
-          href={`${API_URL}/auth/apple`}
-          className="flex items-center justify-center gap-2 w-full border rounded-lg py-2 hover:bg-gray-50 transition text-sm"
-        >
-          Continue with Apple
-        </a>
-      </div>
+      <SocialAuthButtons />
 
       <p className="text-center text-sm mt-6 text-gray-500">
         Don&apos;t have an account?{' '}
