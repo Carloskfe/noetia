@@ -54,6 +54,9 @@ export class User {
   @Column({ type: 'simple-array', nullable: true })
   interests: string[] | null;
 
+  @Column({ type: 'boolean', default: false })
+  isAdmin: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

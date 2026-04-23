@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HealthModule } from './health/health.module';
+import { StorageModule } from './storage/storage.module';
 import { AuthModule } from './auth/auth.module';
 import { BooksModule } from './books/books.module';
 import { FragmentsModule } from './fragments/fragments.module';
@@ -28,6 +29,7 @@ import { UsersModule } from './users/users.module';
       }),
     }),
     HealthModule,
+    StorageModule,
     AuthModule,
     BooksModule,
     FragmentsModule,
