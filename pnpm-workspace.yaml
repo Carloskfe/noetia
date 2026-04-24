@@ -2,3 +2,4 @@ packages:
   - "services/api"
   - "services/web"
   - "services/worker"
+  - "services/mobile"
