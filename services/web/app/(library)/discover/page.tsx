@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
-import { BookGrid } from '../library/page';
+import { BookGrid } from '@/components/BookGrid';
 
 type Book = {
   id: string;
