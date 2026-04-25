@@ -11,9 +11,10 @@ type Props = {
   onDelete: (id: string) => void;
   onCombine: (ids: string[]) => void;
   onNoteUpdate: (id: string, note: string) => void;
+  dark?: boolean;
 };
 
-export default function FragmentSheet({ fragments, onClose, onDelete, onCombine, onNoteUpdate }: Props) {
+export default function FragmentSheet({ fragments, onClose, onDelete, onCombine, onNoteUpdate, dark = false }: Props) {
   const [multiSelect, setMultiSelect] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -59,10 +60,10 @@ export default function FragmentSheet({ fragments, onClose, onDelete, onCombine,
       />
 
       {/* Drawer */}
-      <aside className="fixed top-0 right-0 h-full w-80 bg-white shadow-xl z-50 flex flex-col">
+      <aside className={['fixed top-0 right-0 h-full w-80 shadow-xl z-50 flex flex-col', dark ? 'bg-gray-900 text-gray-100' : 'bg-white'].join(' ')}>
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Fragmentos</h2>
+        <div className={['flex items-center justify-between px-5 py-4 border-b', dark ? 'border-gray-700' : 'border-gray-100'].join(' ')}>
+          <h2 className={['text-base font-semibold', dark ? 'text-gray-100' : 'text-gray-900'].join(' ')}>Fragmentos</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
@@ -72,7 +73,9 @@ export default function FragmentSheet({ fragments, onClose, onDelete, onCombine,
               className={[
                 'text-xs px-2.5 py-1 rounded-full border transition',
                 multiSelect
-                  ? 'border-blue-600 text-blue-600 bg-blue-50'
+                  ? 'border-blue-500 text-blue-400 bg-blue-950'
+                  : dark
+                  ? 'border-gray-600 text-gray-300 hover:bg-gray-800'
                   : 'border-gray-200 text-gray-600 hover:bg-gray-50',
               ].join(' ')}
             >
@@ -87,14 +90,14 @@ export default function FragmentSheet({ fragments, onClose, onDelete, onCombine,
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
           {fragments.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center mt-8">
+            <p className={['text-sm text-center mt-8', dark ? 'text-gray-500' : 'text-gray-400'].join(' ')}>
               No hay fragmentos guardados para este libro.
             </p>
           ) : (
             fragments.map((f) => (
               <div
                 key={f.id}
-                className="border border-gray-100 rounded-xl p-3 bg-gray-50 space-y-2"
+                className={['border rounded-xl p-3 space-y-2', dark ? 'border-gray-700 bg-gray-800' : 'border-gray-100 bg-gray-50'].join(' ')}
               >
                 <div className="flex items-start gap-2">
                   {multiSelect && (
@@ -105,7 +108,7 @@ export default function FragmentSheet({ fragments, onClose, onDelete, onCombine,
                       className="mt-1 accent-blue-600"
                     />
                   )}
-                  <p className="flex-1 text-sm text-gray-800 leading-snug line-clamp-3">{f.text}</p>
+                  <p className={['flex-1 text-sm leading-snug line-clamp-3', dark ? 'text-gray-200' : 'text-gray-800'].join(' ')}>{f.text}</p>
                   {!multiSelect && (
                     <div className="flex flex-col gap-1 flex-shrink-0">
                       <button
@@ -154,7 +157,7 @@ export default function FragmentSheet({ fragments, onClose, onDelete, onCombine,
                 ) : (
                   <button
                     onClick={() => startEditNote(f)}
-                    className="text-xs text-gray-400 hover:text-blue-500 transition text-left"
+                    className={['text-xs transition text-left', dark ? 'text-gray-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-500'].join(' ')}
                   >
                     {f.note ? f.note : '+ Añadir nota'}
                   </button>
@@ -166,7 +169,7 @@ export default function FragmentSheet({ fragments, onClose, onDelete, onCombine,
 
         {/* Combine button */}
         {multiSelect && selected.size >= 2 && (
-          <div className="px-4 py-3 border-t border-gray-100">
+          <div className={['px-4 py-3 border-t', dark ? 'border-gray-700' : 'border-gray-100'].join(' ')}>
             <button
               onClick={handleCombine}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2.5 rounded-xl transition"

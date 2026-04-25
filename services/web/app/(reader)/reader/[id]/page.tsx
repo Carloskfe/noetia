@@ -13,8 +13,16 @@ import {
   EMPTY_SELECTION,
   SelectionState,
 } from '@/lib/fragment-selection';
+import { loadPreferences, savePreferences, FontSize, FONT_SIZES } from '@/lib/reader-preferences';
 import FragmentPopover from '@/components/FragmentPopover';
 import FragmentSheet from '@/components/FragmentSheet';
+import ReaderTopBar from '@/components/ReaderTopBar';
+
+const FONT_SIZE_CLASSES: Record<FontSize, string> = {
+  sm: 'text-base',
+  md: 'text-lg',
+  lg: 'text-xl',
+};
 
 type Book = {
   id: string;
@@ -51,6 +59,10 @@ export default function ReaderPage() {
   const [duration, setDuration] = useState(0);
   const [speed, setSpeed] = useState(1);
 
+  // Reading preferences
+  const [fontSize, setFontSize] = useState<FontSize>('md');
+  const [darkMode, setDarkMode] = useState(false);
+
   // Fragment state
   const [fragments, setFragments] = useState<Fragment[]>([]);
   const [selection, setSelection] = useState<SelectionState>(EMPTY_SELECTION);
@@ -62,6 +74,18 @@ export default function ReaderPage() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const phraseRefs = useRef<(HTMLSpanElement | null)[]>([]);
+
+  // ── Reading preferences ───────────────────────────────────────────────────
+
+  useEffect(() => {
+    const prefs = loadPreferences();
+    setFontSize(prefs.fontSize);
+    setDarkMode(prefs.darkMode);
+  }, []);
+
+  useEffect(() => {
+    savePreferences({ fontSize, darkMode });
+  }, [fontSize, darkMode]);
 
   // ── Data fetching ─────────────────────────────────────────────────────────
 
@@ -273,21 +297,41 @@ export default function ReaderPage() {
   const hasSync = phrases.length > 0;
   const selectedCount = range !== null ? range.end - range.start + 1 : 0;
 
+  const fontSizeClass = FONT_SIZE_CLASSES[fontSize];
+
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-white">
+    <div className={['flex flex-col md:flex-row min-h-screen', darkMode ? 'bg-gray-950 text-gray-100' : 'bg-white text-gray-800'].join(' ')}>
+      {/* ── Top bar ─────────────────────────────────────────────────────── */}
+      <ReaderTopBar
+        title={book.title}
+        dark={darkMode}
+        fontSize={fontSize}
+        onFontDecrease={() => {
+          const idx = FONT_SIZES.indexOf(fontSize);
+          if (idx > 0) setFontSize(FONT_SIZES[idx - 1]);
+        }}
+        onFontIncrease={() => {
+          const idx = FONT_SIZES.indexOf(fontSize);
+          if (idx < FONT_SIZES.length - 1) setFontSize(FONT_SIZES[idx + 1]);
+        }}
+        onDarkToggle={() => setDarkMode((d) => !d)}
+        onFragmentsToggle={() => setShowDrawer((v) => !v)}
+        fragmentCount={fragments.length}
+      />
+
       {/* Hidden audio element */}
       {book.audioFileUrl && (
         <audio ref={audioRef} src={book.audioFileUrl} preload="metadata" />
       )}
 
       {/* ── Text column ─────────────────────────────────────────────────── */}
-      <main className="flex-1 max-w-2xl mx-auto px-6 py-10 md:py-16">
+      <main className="flex-1 max-w-2xl mx-auto px-6 pt-14 pb-10 md:pb-16 md:pt-16">
         <header className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">{book.title}</h1>
           <p className="text-gray-500 text-sm mt-1">{book.author}</p>
         </header>
 
-        <div className="text-gray-800 text-lg leading-relaxed">
+        <div className={`leading-relaxed ${fontSizeClass}`}>
           {hasSync ? (
             phrases.map((phrase, i) => (
               <span
@@ -380,35 +424,17 @@ export default function ReaderPage() {
             </div>
           </aside>
 
-          {/* Top controls */}
-          <div className="fixed top-4 right-4 z-40 flex items-center gap-2">
-            {/* Fragments button */}
-            <button
-              onClick={() => setShowDrawer((v) => !v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white border border-gray-200 shadow-sm hover:bg-gray-50 transition"
-              aria-label="Fragmentos"
-            >
-              <BookmarkIcon />
-              Fragmentos
-              {fragments.length > 0 && (
-                <span className="ml-1 bg-blue-600 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-                  {fragments.length}
-                </span>
-              )}
-            </button>
-
-            {/* Mode toggle */}
-            <button
-              onClick={() => setMode((m) => m === 'reading' ? 'listening' : 'reading')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white border border-gray-200 shadow-sm hover:bg-gray-50 transition"
-            >
-              {mode === 'reading' ? (
-                <><HeadphonesIcon />Modo escucha</>
-              ) : (
-                <><BookIcon />Modo lectura</>
-              )}
-            </button>
-          </div>
+          {/* Mode toggle — kept as floating button since audio sidebar is only shown with audio */}
+          <button
+            onClick={() => setMode((m) => m === 'reading' ? 'listening' : 'reading')}
+            className="fixed bottom-20 right-6 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white border border-gray-200 shadow-sm hover:bg-gray-50 transition"
+          >
+            {mode === 'reading' ? (
+              <><HeadphonesIcon />Modo escucha</>
+            ) : (
+              <><BookIcon />Modo lectura</>
+            )}
+          </button>
         </>
       )}
 
@@ -418,6 +444,7 @@ export default function ReaderPage() {
           phraseCount={selectedCount}
           onSave={handleSaveFragment}
           onCancel={handleCancelPopover}
+          dark={darkMode}
         />
       )}
 
@@ -429,6 +456,7 @@ export default function ReaderPage() {
           onDelete={handleDeleteFragment}
           onCombine={handleCombineFragments}
           onNoteUpdate={handleNoteUpdate}
+          dark={darkMode}
         />
       )}
     </div>
@@ -488,10 +516,3 @@ function BookIcon() {
   );
 }
 
-function BookmarkIcon() {
-  return (
-    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-    </svg>
-  );
-}
