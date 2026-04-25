@@ -37,4 +37,4 @@
 - [x] 6.6 Reload page — confirm font size is restored from localStorage
 - [x] 6.7 Tap moon icon — confirm background turns dark, text turns light, overlays match; tap sun — confirm return to light mode
 - [x] 6.8 Reload page — confirm dark mode is restored from localStorage
-- [ ] 6.9 Commit and push all changes to GitHub
+- [x] 6.9 Commit and push all changes to GitHub
