@@ -27,7 +27,7 @@ export default function SharePicker({ fragmentId, onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-60 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center" onClick={onClose}>
       <div
         className="bg-white rounded-2xl shadow-2xl p-6 w-72 space-y-4"
         onClick={(e) => e.stopPropagation()}

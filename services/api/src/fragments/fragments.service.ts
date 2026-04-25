@@ -20,8 +20,6 @@ export class FragmentsService {
     const fragment = this.repo.create({
       userId,
       bookId: dto.bookId,
-      startPhraseIndex: dto.startPhraseIndex,
-      endPhraseIndex: dto.endPhraseIndex,
       text: dto.text,
     });
     return this.repo.save(fragment);
@@ -30,7 +28,7 @@ export class FragmentsService {
   findByUserAndBook(userId: string, bookId: string): Promise<Fragment[]> {
     return this.repo.find({
       where: { userId, bookId },
-      order: { startPhraseIndex: 'ASC' },
+      order: { createdAt: 'ASC' },
     });
   }
 
@@ -68,22 +66,10 @@ export class FragmentsService {
       throw new UnprocessableEntityException('All fragments must belong to the same book');
     }
 
-    const sorted = [...validFragments].sort((a, b) => a.startPhraseIndex - b.startPhraseIndex);
-
-    const parts: string[] = [];
-    for (let i = 0; i < sorted.length; i++) {
-      if (i > 0 && sorted[i].startPhraseIndex > sorted[i - 1].endPhraseIndex + 1) {
-        parts.push(' … ');
-      }
-      parts.push(sorted[i].text);
-    }
-
     const combined = this.repo.create({
       userId,
-      bookId: sorted[0].bookId,
-      startPhraseIndex: sorted[0].startPhraseIndex,
-      endPhraseIndex: sorted[sorted.length - 1].endPhraseIndex,
-      text: parts.join(''),
+      bookId: validFragments[0].bookId,
+      text: validFragments.map((f) => f.text).join(' … '),
     });
 
     const saved = await this.repo.save(combined);

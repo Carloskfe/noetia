@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
-import { phraseAt, seekToPhrase, buildSavedPhraseSet, Phrase, Fragment } from '@/lib/reader-utils';
+import { phraseAt, seekToPhrase, Phrase, Fragment } from '@/lib/reader-utils';
 import {
-  applyPhraseClick,
-  selectionRange,
+  applyTextSelection,
   addFragment,
   removeFragment,
   replaceFragments,
@@ -67,9 +66,6 @@ export default function ReaderPage() {
   const [fragments, setFragments] = useState<Fragment[]>([]);
   const [selection, setSelection] = useState<SelectionState>(EMPTY_SELECTION);
   const [showDrawer, setShowDrawer] = useState(false);
-
-  const savedPhraseSet = useMemo(() => buildSavedPhraseSet(fragments), [fragments]);
-  const range = useMemo(() => selectionRange(selection), [selection]);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -221,14 +217,21 @@ export default function ReaderPage() {
     audio.currentTime = seekToPhrase(phrases, idx);
   }, [phrases]);
 
-  // ── Phrase click handler with selection logic ─────────────────────────────
+  // ── Text selection handler ────────────────────────────────────────────────
 
-  const handlePhraseClick = useCallback((idx: number) => {
-    setSelection((prev) => applyPhraseClick(prev, idx));
+  const handleTextMouseUp = useCallback((e: React.MouseEvent) => {
+    if (e.button === 2) return;
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
+    const text = sel.toString();
+    setSelection(applyTextSelection(text));
   }, []);
 
+  const handlePhraseClick = useCallback((idx: number) => {
+    seekToIndex(idx);
+  }, [seekToIndex]);
+
   const handleStartSelection = useCallback((idx: number, e: React.MouseEvent) => {
-    // Right-click still seeks audio (listening mode behaviour)
     e.preventDefault();
     seekToIndex(idx);
   }, [seekToIndex]);
@@ -236,20 +239,21 @@ export default function ReaderPage() {
   // ── Fragment CRUD callbacks ───────────────────────────────────────────────
 
   const handleSaveFragment = useCallback(async () => {
-    if (!range || !bookId) return;
-    const text = phrases.slice(range.start, range.end + 1).map((p) => p.text).join(' ');
+    if (!selection.text || !bookId) return;
     try {
       const created = await apiFetch('/fragments', {
         method: 'POST',
-        body: JSON.stringify({ bookId, startPhraseIndex: range.start, endPhraseIndex: range.end, text }),
+        body: JSON.stringify({ bookId, text: selection.text }),
       });
       setFragments((prev) => addFragment(prev, created));
     } catch {}
     setSelection(EMPTY_SELECTION);
-  }, [range, bookId, phrases]);
+    window.getSelection()?.removeAllRanges();
+  }, [selection.text, bookId]);
 
   const handleCancelPopover = useCallback(() => {
     setSelection(EMPTY_SELECTION);
+    window.getSelection()?.removeAllRanges();
   }, []);
 
   const handleDeleteFragment = useCallback(async (id: string) => {
@@ -282,12 +286,9 @@ export default function ReaderPage() {
   // ── Span CSS helper ───────────────────────────────────────────────────────
 
   const getSpanClass = useCallback((i: number) => {
-    const inSelection = range !== null && i >= range.start && i <= range.end;
     if (activePhraseIndex === i) return 'bg-yellow-200 text-gray-900';
-    if (inSelection) return 'bg-indigo-200';
-    if (savedPhraseSet.has(i)) return 'bg-blue-100';
-    return 'hover:bg-gray-100';
-  }, [activePhraseIndex, range, savedPhraseSet]);
+    return '';
+  }, [activePhraseIndex]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -295,8 +296,6 @@ export default function ReaderPage() {
   if (error || !book) return <ErrorScreen message={error || 'Book not found'} />;
 
   const hasSync = phrases.length > 0;
-  const selectedCount = range !== null ? range.end - range.start + 1 : 0;
-
   const fontSizeClass = FONT_SIZE_CLASSES[fontSize];
 
   return (
@@ -331,7 +330,7 @@ export default function ReaderPage() {
           <p className="text-gray-500 text-sm mt-1">{book.author}</p>
         </header>
 
-        <div className={`leading-relaxed ${fontSizeClass}`}>
+        <div className={`leading-relaxed ${fontSizeClass}`} onMouseUp={handleTextMouseUp}>
           {hasSync ? (
             phrases.map((phrase, i) => (
               <span
@@ -341,7 +340,7 @@ export default function ReaderPage() {
                 onClick={() => handlePhraseClick(i)}
                 onContextMenu={(e) => handleStartSelection(i, e)}
                 className={[
-                  'cursor-pointer rounded px-0.5 transition-colors',
+                  'rounded px-0.5 transition-colors',
                   getSpanClass(i),
                 ].join(' ')}
               >
@@ -439,9 +438,9 @@ export default function ReaderPage() {
       )}
 
       {/* ── Fragment Popover ─────────────────────────────────────────────── */}
-      {selection.showPopover && selectedCount > 0 && (
+      {selection.showPopover && selection.text && (
         <FragmentPopover
-          phraseCount={selectedCount}
+          text={selection.text}
           onSave={handleSaveFragment}
           onCancel={handleCancelPopover}
           dark={darkMode}

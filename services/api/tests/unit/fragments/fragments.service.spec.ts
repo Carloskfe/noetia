@@ -17,8 +17,8 @@ const makeFragment = (overrides: Partial<Fragment> = {}): Fragment =>
     id: 'frag-1',
     userId: 'user-1',
     bookId: 'book-1',
-    startPhraseIndex: 0,
-    endPhraseIndex: 3,
+    startPhraseIndex: null,
+    endPhraseIndex: null,
     text: 'hello world',
     note: null,
     createdAt: new Date(),
@@ -45,41 +45,49 @@ describe('FragmentsService', () => {
   // ── create ─────────────────────────────────────────────────────────────────
 
   describe('create', () => {
-    it('creates and saves a fragment', async () => {
+    it('creates and saves a fragment with bookId and text only', async () => {
       const fragment = makeFragment();
       repo.create.mockReturnValue(fragment);
       repo.save.mockResolvedValue(fragment);
 
       const result = await service.create('user-1', {
         bookId: 'book-1',
-        startPhraseIndex: 0,
-        endPhraseIndex: 3,
         text: 'hello world',
       });
 
       expect(repo.create).toHaveBeenCalledWith({
         userId: 'user-1',
         bookId: 'book-1',
-        startPhraseIndex: 0,
-        endPhraseIndex: 3,
         text: 'hello world',
       });
       expect(result).toEqual(fragment);
+    });
+
+    it('does not pass phrase indices to the repository', async () => {
+      const fragment = makeFragment();
+      repo.create.mockReturnValue(fragment);
+      repo.save.mockResolvedValue(fragment);
+
+      await service.create('user-1', { bookId: 'book-1', text: 'some text' });
+
+      expect(repo.create).not.toHaveBeenCalledWith(
+        expect.objectContaining({ startPhraseIndex: expect.anything() }),
+      );
     });
   });
 
   // ── findByUserAndBook ──────────────────────────────────────────────────────
 
   describe('findByUserAndBook', () => {
-    it('returns fragments ordered by startPhraseIndex', async () => {
-      const fragments = [makeFragment({ startPhraseIndex: 0 }), makeFragment({ startPhraseIndex: 5, id: 'frag-2' })];
+    it('returns fragments ordered by createdAt ASC', async () => {
+      const fragments = [makeFragment(), makeFragment({ id: 'frag-2' })];
       repo.find.mockResolvedValue(fragments);
 
       const result = await service.findByUserAndBook('user-1', 'book-1');
 
       expect(repo.find).toHaveBeenCalledWith({
         where: { userId: 'user-1', bookId: 'book-1' },
-        order: { startPhraseIndex: 'ASC' },
+        order: { createdAt: 'ASC' },
       });
       expect(result).toEqual(fragments);
     });
@@ -151,10 +159,10 @@ describe('FragmentsService', () => {
   // ── combine ────────────────────────────────────────────────────────────────
 
   describe('combine', () => {
-    it('combines two adjacent fragments', async () => {
-      const frag1 = makeFragment({ id: 'f1', startPhraseIndex: 0, endPhraseIndex: 2, text: 'hello' });
-      const frag2 = makeFragment({ id: 'f2', startPhraseIndex: 3, endPhraseIndex: 5, text: 'world' });
-      const combined = makeFragment({ id: 'f3', startPhraseIndex: 0, endPhraseIndex: 5, text: 'helloworld' });
+    it('combines two fragments by joining their texts with " … "', async () => {
+      const frag1 = makeFragment({ id: 'f1', text: 'hello' });
+      const frag2 = makeFragment({ id: 'f2', text: 'world' });
+      const combined = makeFragment({ id: 'f3', text: 'hello … world' });
 
       repo.findOneBy.mockResolvedValueOnce(frag1).mockResolvedValueOnce(frag2);
       repo.create.mockReturnValue(combined);
@@ -164,16 +172,37 @@ describe('FragmentsService', () => {
       const result = await service.combine('user-1', ['f1', 'f2']);
 
       expect(repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ startPhraseIndex: 0, endPhraseIndex: 5 }),
+        expect.objectContaining({ text: 'hello … world' }),
       );
       expect(repo.remove).toHaveBeenCalledWith([frag1, frag2]);
       expect(result).toEqual(combined);
     });
 
-    it('joins non-adjacent fragments with " … " separator', async () => {
-      const frag1 = makeFragment({ id: 'f1', startPhraseIndex: 0, endPhraseIndex: 2, text: 'first' });
-      const frag2 = makeFragment({ id: 'f2', startPhraseIndex: 5, endPhraseIndex: 7, text: 'second' });
-      const combined = makeFragment({ id: 'f3', startPhraseIndex: 0, endPhraseIndex: 7, text: 'first … second' });
+    it('combines three fragments in order with " … " separators', async () => {
+      const frag1 = makeFragment({ id: 'f1', text: 'first' });
+      const frag2 = makeFragment({ id: 'f2', text: 'second' });
+      const frag3 = makeFragment({ id: 'f3', text: 'third' });
+      const combined = makeFragment({ id: 'f4', text: 'first … second … third' });
+
+      repo.findOneBy
+        .mockResolvedValueOnce(frag1)
+        .mockResolvedValueOnce(frag2)
+        .mockResolvedValueOnce(frag3);
+      repo.create.mockReturnValue(combined);
+      repo.save.mockResolvedValue(combined);
+      repo.remove.mockResolvedValue(undefined);
+
+      await service.combine('user-1', ['f1', 'f2', 'f3']);
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ text: 'first … second … third' }),
+      );
+    });
+
+    it('does not include phrase indices in the combined fragment', async () => {
+      const frag1 = makeFragment({ id: 'f1', text: 'hello' });
+      const frag2 = makeFragment({ id: 'f2', text: 'world' });
+      const combined = makeFragment({ id: 'f3', text: 'hello … world' });
 
       repo.findOneBy.mockResolvedValueOnce(frag1).mockResolvedValueOnce(frag2);
       repo.create.mockReturnValue(combined);
@@ -182,8 +211,8 @@ describe('FragmentsService', () => {
 
       await service.combine('user-1', ['f1', 'f2']);
 
-      expect(repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ text: 'first … second' }),
+      expect(repo.create).not.toHaveBeenCalledWith(
+        expect.objectContaining({ startPhraseIndex: expect.anything() }),
       );
     });
 

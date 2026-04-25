@@ -29,11 +29,11 @@ export class Fragment {
   @JoinColumn({ name: 'bookId' })
   book: Book;
 
-  @Column({ type: 'int' })
-  startPhraseIndex: number;
+  @Column({ type: 'int', nullable: true })
+  startPhraseIndex: number | null;
 
-  @Column({ type: 'int' })
-  endPhraseIndex: number;
+  @Column({ type: 'int', nullable: true })
+  endPhraseIndex: number | null;
 
   @Column({ type: 'text' })
   text: string;

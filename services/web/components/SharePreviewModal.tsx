@@ -18,7 +18,7 @@ export default function SharePreviewModal({ url, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={onClose}>
       <div
         className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-lg w-full"
         onClick={(e) => e.stopPropagation()}
