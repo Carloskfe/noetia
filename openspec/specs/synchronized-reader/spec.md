@@ -1,82 +1,47 @@
-## ADDED Requirements
-
-### Requirement: Reader loads book content and sync data on mount
-The reader page SHALL accept a `?bookId=` query parameter and on mount fetch: book detail (title, author, `audioFileUrl`, `textFileUrl`), the book's sync map, and the user's saved progress. It SHALL restore the reading position to the saved phrase index.
-
-#### Scenario: All data loads successfully
-- **WHEN** a user navigates to `/reader?bookId=<id>` and all three fetches succeed
-- **THEN** the page renders the book title, phrase-span text, and audio player; the view scrolls to the saved phrase
-
-#### Scenario: Book not found
-- **WHEN** the bookId does not exist or the API returns 404
-- **THEN** the page displays an error message and no audio player
-
-#### Scenario: No sync map available
-- **WHEN** the book exists but has no sync map
-- **THEN** the page renders the raw book text without phrase spans and disables click-to-seek
-
-### Requirement: Book text is rendered as phrase spans
-The reader SHALL render each phrase from the sync map as a `<span data-phrase-index="n">` element. Phrases SHALL be displayed inline, preserving natural reading flow.
-
-#### Scenario: Sync map has phrases
-- **WHEN** the sync map contains N phrases
-- **THEN** the text column renders exactly N `<span>` elements each with the correct `data-phrase-index`
-
-#### Scenario: No sync map
-- **WHEN** no sync map is available
-- **THEN** the text is rendered as a single unsegmented block
-
-### Requirement: Audio player provides full playback controls
-The reader SHALL render an audio player with: play/pause toggle, scrub bar (range input showing current time / duration), playback speed selector (0.75×, 1×, 1.25×, 1.5×, 2×), and a current time / total duration display.
-
-#### Scenario: User plays audio
-- **WHEN** the user clicks the play button
-- **THEN** audio begins playing and the button changes to a pause icon
-
-#### Scenario: User scrubs to a position
-- **WHEN** the user drags the scrub bar to a new position
-- **THEN** audio seeks to that time and continues playing from the new position
-
-#### Scenario: User changes playback speed
-- **WHEN** the user selects 1.5× from the speed selector
-- **THEN** audio plays at 1.5× speed
-
-### Requirement: Active phrase is highlighted as audio plays
-The reader SHALL listen to the audio `timeupdate` event and highlight the phrase whose `startTime ≤ currentTime < endTime`. The active phrase SHALL scroll into view if it is outside the visible area.
-
-#### Scenario: Audio advances through phrases
-- **WHEN** the audio currentTime enters a new phrase's time range
-- **THEN** the previous phrase loses its highlight and the new phrase gains the active CSS class and scrolls into view
-
-#### Scenario: Audio time is before all phrases
-- **WHEN** currentTime is before the first phrase's startTime
-- **THEN** no phrase is highlighted
+## MODIFIED Requirements
 
 ### Requirement: Clicking a phrase seeks audio to that phrase's start time
-The reader SHALL register a click handler on each phrase span. Clicking a phrase SHALL set the audio `currentTime` to that phrase's `startTime`.
+The reader SHALL register a click handler on each phrase span that operates in two modes depending on selection state. When no selection is in progress, clicking a phrase SHALL set the audio `currentTime` to that phrase's `startTime`. When a selection is in progress (a `selectionStart` phrase has already been clicked), clicking a second phrase SHALL complete the selection and show the "Save as Fragment" popover — it SHALL NOT seek the audio.
 
-#### Scenario: User clicks a phrase
-- **WHEN** the user clicks a phrase span with `data-phrase-index="n"`
+#### Scenario: User clicks a phrase (no selection in progress)
+- **WHEN** the user clicks a phrase span with `data-phrase-index="n"` and no selection is in progress
 - **THEN** the audio currentTime is set to phrases[n].startTime and playback continues
 
-### Requirement: Reading and Listening mode toggle
-The reader SHALL provide a mode toggle. In **Reading Mode**, audio controls are hidden except a minimal floating play button. In **Listening Mode**, the full audio sidebar is shown and the view auto-scrolls to the active phrase on each phrase change.
+#### Scenario: User starts a selection by clicking a phrase
+- **WHEN** the user clicks a phrase span while holding Shift, or clicks a phrase that is different from the current audio position in selection mode
+- **THEN** the phrase is marked as selectionStart and the reader enters selection mode
 
-#### Scenario: User switches to Listening Mode
-- **WHEN** the user clicks the Listening Mode toggle
-- **THEN** the full audio controls panel appears and auto-scroll activates
+#### Scenario: User completes a selection
+- **WHEN** the user clicks a second phrase span while a selectionStart is set
+- **THEN** all phrase spans between selectionStart and the clicked index are highlighted in selection color and the "Save as Fragment" popover appears
 
-#### Scenario: User switches to Reading Mode
-- **WHEN** the user clicks the Reading Mode toggle
-- **THEN** the full audio controls panel hides and only the floating play button remains
+## ADDED Requirements
 
-### Requirement: Reading progress is persisted automatically
-The reader SHALL save the user's current phrase index to the API whenever the active phrase changes, debounced by 2 seconds. Progress is only saved if the user is authenticated.
+### Requirement: Phrase spans indicate saved fragment membership
+The reader SHALL fetch the user's Fragment Sheet for the current book on mount (authenticated only). Phrase spans whose index falls within any saved fragment's `startPhraseIndex`–`endPhraseIndex` range SHALL render with a distinct saved-highlight CSS class (blue tint), visually distinguishing them from unsaved and active phrases.
 
-#### Scenario: Authenticated user advances to a new phrase
-- **WHEN** the active phrase index changes and 2 seconds elapse without another change
-- **THEN** `POST /books/:id/progress` is called with the current phraseIndex
+#### Scenario: Phrases covered by a saved fragment
+- **WHEN** the reader loads and the user has a saved fragment covering phrases 3–7
+- **THEN** spans 3, 4, 5, 6, and 7 render with the saved-highlight CSS class
 
-#### Scenario: Unauthenticated user reads
-- **WHEN** an unauthenticated user reads the book
-- **THEN** no progress API call is made
+#### Scenario: No saved fragments
+- **WHEN** the user has no fragments for the book
+- **THEN** no phrase spans receive the saved-highlight class
+
+### Requirement: Save as Fragment popover
+After a phrase selection is completed, the reader SHALL display a small popover anchored near the selected text with a "Save as Fragment" action button and a "Cancel" button. Clicking "Save as Fragment" SHALL call `POST /fragments` with the selection range and concatenated phrase texts, add the new fragment to the local fragment list (updating highlighted spans), and dismiss the popover. Clicking "Cancel" SHALL dismiss the popover and clear the selection.
+
+#### Scenario: User saves a selection as a fragment
+- **WHEN** the user completes a phrase selection and clicks "Save as Fragment"
+- **THEN** the system posts the fragment, the selected spans gain the saved-highlight class, and the popover closes
+
+#### Scenario: User cancels the selection
+- **WHEN** the user clicks "Cancel" in the popover
+- **THEN** the selection highlight clears and the popover closes without creating a fragment
+
+### Requirement: Fragment Sheet drawer is accessible from the reader
+The reader page SHALL display a "Fragments" icon button in the top controls. Clicking it SHALL open the Fragment Sheet drawer (see fragment-sheet spec). The drawer SHALL be closable by clicking outside it or a close button.
+
+#### Scenario: User opens the Fragment Sheet from the reader
+- **WHEN** the user clicks the Fragments button
+- **THEN** the Fragment Sheet drawer slides in over the reader without navigating away
