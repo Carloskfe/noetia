@@ -69,13 +69,13 @@
 
 ## 10. Verification
 
-- [ ] 10.1 `POST /auth/register` with valid data returns 201 and access token
-- [ ] 10.2 `POST /auth/login` with valid credentials returns 200 and access token
-- [ ] 10.3 `POST /auth/login` with wrong password returns 401
-- [ ] 10.4 `GET /users/me` with valid JWT returns user profile
-- [ ] 10.5 `GET /users/me` without JWT returns 401
-- [ ] 10.6 `POST /auth/refresh` with valid cookie returns new access token
-- [ ] 10.7 `POST /auth/logout` clears cookie and invalidates refresh token
-- [ ] 10.8 Login page loads at `http://localhost:3000/login` without errors
-- [ ] 10.9 Register page loads at `http://localhost:3000/register` without errors
-- [ ] 10.10 Commit and push all changes to GitHub
+- [x] 10.1 `POST /auth/register` with valid data returns 201 and access token
+- [x] 10.2 `POST /auth/login` with valid credentials returns 200 and access token
+- [x] 10.3 `POST /auth/login` with wrong password returns 401
+- [x] 10.4 `GET /users/me` with valid JWT returns user profile
+- [x] 10.5 `GET /users/me` without JWT returns 401
+- [x] 10.6 `POST /auth/refresh` with valid cookie returns new access token
+- [x] 10.7 `POST /auth/logout` clears cookie and invalidates refresh token
+- [x] 10.8 Login page loads at `http://localhost:3000/login` without errors
+- [x] 10.9 Register page loads at `http://localhost:3000/register` without errors
+- [x] 10.10 Commit and push all changes to GitHub
