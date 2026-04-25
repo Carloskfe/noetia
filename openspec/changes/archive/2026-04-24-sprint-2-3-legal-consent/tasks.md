@@ -49,10 +49,10 @@
 
 ## 10. Verification
 
-- [ ] 10.1 Open web app — verify cookie banner appears on first visit, disappears after accepting, does not reappear on reload
-- [ ] 10.2 Navigate to `/legal/cookies`, `/legal/privacy`, `/legal/terms` — verify bilingual content renders correctly on desktop and mobile viewport
-- [ ] 10.3 Verify footer links to all three legal pages appear on the home/library page
-- [ ] 10.4 Bump `CONSENT_VERSION` to `"1.1"` temporarily — verify banner reappears; revert to `"1.0"`
+- [x] 10.1 Open web app — verify cookie banner appears on first visit, disappears after accepting, does not reappear on reload
+- [x] 10.2 Navigate to `/legal/cookies`, `/legal/privacy`, `/legal/terms` — verify bilingual content renders correctly on desktop and mobile viewport
+- [x] 10.3 Verify footer links to all three legal pages appear on the home/library page
+- [x] 10.4 Bump `CONSENT_VERSION` to `"1.1"` temporarily — verify banner reappears; revert to `"1.0"`
 - [ ] 10.5 Run mobile app on simulator — verify consent screen appears on first launch, "Acepto" navigates forward, decline shows alert
-- [ ] 10.6 All web and mobile tests pass
-- [ ] 10.7 Commit and push all changes to GitHub
+- [x] 10.6 All web and mobile tests pass
+- [x] 10.7 Commit and push all changes to GitHub
