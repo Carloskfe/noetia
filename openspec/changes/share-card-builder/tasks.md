@@ -67,12 +67,12 @@
 ## 9. Integration and verification
 
 - [x] 9.1 Rebuild and restart all containers: `docker compose up -d --build`
-- [ ] 9.2 Smoke test: log in, open reader, create a fragment with a note, open Fragment Sheet, click share → verify ShareModal opens with CSS preview
-- [ ] 9.3 Test all 6 formats: confirm aspect ratio changes in the preview for post (1:1) and story (9:16) options
-- [ ] 9.4 Test all 5 fonts: confirm font changes are visible in the CSS preview
-- [ ] 9.5 Test solid background: pick a light colour, verify text becomes dark; pick a dark colour, verify text becomes white
-- [ ] 9.6 Test gradient background: enable degradado, pick two colours, verify gradient renders in the preview
-- [ ] 9.7 Test caption: open fragment with a note, check "Usar como comentario", verify note text is displayed
-- [ ] 9.8 Click "Descargar": verify spinner appears, PNG downloads, dimensions match selected format
-- [ ] 9.9 Click "Copiar enlace": verify URL is copied and "¡Copiado!" appears briefly
-- [ ] 9.10 Commit and push — message: `feat: share card builder with live CSS preview, font and background customisation`
+- [x] 9.2 Smoke test: log in, open reader, create a fragment with a note, open Fragment Sheet, click share → verify ShareModal opens with CSS preview
+- [x] 9.3 Test all 6 formats: confirm aspect ratio changes in the preview for post (1:1) and story (9:16) options
+- [x] 9.4 Test all 5 fonts: confirm font changes are visible in the CSS preview
+- [x] 9.5 Test solid background: pick a light colour, verify text becomes dark; pick a dark colour, verify text becomes white
+- [x] 9.6 Test gradient background: enable degradado, pick two colours, verify gradient renders in the preview
+- [x] 9.7 Test caption: open fragment with a note, check "Usar como comentario", verify note text is displayed
+- [x] 9.8 Click "Descargar": verify spinner appears, PNG downloads, dimensions match selected format
+- [x] 9.9 Click "Copiar enlace": verify URL is copied and "¡Copiado!" appears briefly
+- [x] 9.10 Commit and push — message: `feat: share card builder with live CSS preview, font and background customisation`
