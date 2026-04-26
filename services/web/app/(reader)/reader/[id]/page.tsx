@@ -450,6 +450,8 @@ export default function ReaderPage() {
       {showDrawer && (
         <FragmentSheet
           fragments={fragments}
+          bookAuthor={book.author}
+          bookTitle={book.title}
           onClose={() => setShowDrawer(false)}
           onDelete={handleDeleteFragment}
           onCombine={handleCombineFragments}

@@ -52,7 +52,7 @@ describe('SharingService', () => {
       expect(result).toBe(expectedUrl);
     });
 
-    it('sends correct payload to image-gen including style', async () => {
+    it('sends platform and required fields in payload', async () => {
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: true,
         json: async () => ({ url: 'http://example.com/img.png' }),
@@ -62,7 +62,6 @@ describe('SharingService', () => {
         mockFragment() as Fragment,
         mockBook() as Book,
         'instagram',
-        'warm',
       );
 
       const [url, options] = (global.fetch as jest.Mock).mock.calls[0];
@@ -73,11 +72,31 @@ describe('SharingService', () => {
         author: 'Francis Bacon',
         title: 'Meditationes Sacrae',
         platform: 'instagram',
-        style: 'warm',
       });
     });
 
-    it('defaults style to classic when not provided', async () => {
+    it('includes all share options in payload when provided', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ url: 'http://example.com/img.png' }),
+      } as Response);
+
+      await service.generateShareUrl(
+        mockFragment() as Fragment,
+        mockBook() as Book,
+        'instagram',
+        { format: 'story', font: 'playfair', bgType: 'gradient', bgColors: ['#0D1B2A', '#1A4A4A'] },
+      );
+
+      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
+      const body = JSON.parse(options.body);
+      expect(body.format).toBe('story');
+      expect(body.font).toBe('playfair');
+      expect(body.bgType).toBe('gradient');
+      expect(body.bgColors).toEqual(['#0D1B2A', '#1A4A4A']);
+    });
+
+    it('omits optional fields from payload when not provided', async () => {
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: true,
         json: async () => ({ url: 'http://example.com/img.png' }),
@@ -91,7 +110,10 @@ describe('SharingService', () => {
 
       const [, options] = (global.fetch as jest.Mock).mock.calls[0];
       const body = JSON.parse(options.body);
-      expect(body.style).toBe('classic');
+      expect(body).not.toHaveProperty('format');
+      expect(body).not.toHaveProperty('font');
+      expect(body).not.toHaveProperty('bgType');
+      expect(body).not.toHaveProperty('bgColors');
     });
 
     it('throws BadGatewayException when image-gen returns non-200', async () => {
@@ -106,7 +128,7 @@ describe('SharingService', () => {
       ).rejects.toThrow(BadGatewayException);
     });
 
-    it('throws BadGatewayException when fetch rejects', async () => {
+    it('throws when fetch rejects', async () => {
       global.fetch = jest.fn().mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
       await expect(

@@ -2,18 +2,19 @@ from flask import Flask, jsonify, request
 
 from storage import MinioClient
 from templates import facebook, instagram, linkedin, whatsapp
-from templates.base import VALID_STYLES
+from templates.base import VALID_FONTS, VALID_BG_TYPES
 
 app = Flask(__name__)
 
 _RENDERERS = {
-    "linkedin": linkedin.render,
+    "linkedin":  linkedin.render,
     "instagram": instagram.render,
-    "facebook": facebook.render,
-    "whatsapp": whatsapp.render,
+    "facebook":  facebook.render,
+    "whatsapp":  whatsapp.render,
 }
 
 _REQUIRED_FIELDS = ("text", "author", "title", "platform")
+_VALID_FORMATS = {"post", "story"}
 
 
 @app.get("/health")
@@ -34,18 +35,31 @@ def generate():
     if renderer is None:
         return jsonify({"error": "unsupported platform"}), 400
 
-    style = (body.get("style") or "classic").lower()
-    if style not in VALID_STYLES:
-        return jsonify({"error": f"unsupported style: {style}"}), 400
+    fmt = (body.get("format") or "post").lower()
+    if fmt not in _VALID_FORMATS:
+        return jsonify({"error": f"unsupported format: {fmt}"}), 400
+
+    font = (body.get("font") or "lato").lower()
+    if font not in VALID_FONTS:
+        return jsonify({"error": f"unsupported font: {font}"}), 400
+
+    bg_type = (body.get("bgType") or "solid").lower()
+    if bg_type not in VALID_BG_TYPES:
+        return jsonify({"error": f"unsupported bgType: {bg_type}"}), 400
+
+    bg_colors = body.get("bgColors") or ["#0D1B2A"]
+    if not isinstance(bg_colors, list) or not bg_colors:
+        return jsonify({"error": "bgColors must be a non-empty array"}), 400
 
     fragment = {
-        "text": body["text"],
+        "text":   body["text"],
         "author": body["author"],
-        "title": body["title"],
+        "title":  body["title"],
     }
 
     try:
-        png_bytes = renderer(fragment, style)
+        png_bytes = renderer(fragment, format=fmt, font=font,
+                             bg_type=bg_type, bg_colors=bg_colors)
         client = MinioClient()
         url = client.upload(png_bytes)
     except Exception:

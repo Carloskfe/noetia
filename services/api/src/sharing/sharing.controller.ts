@@ -29,7 +29,10 @@ export class SharingController {
   async share(
     @Param('id') id: string,
     @Body('platform') platform: string,
-    @Body('style') style: string | undefined,
+    @Body('format') format: string | undefined,
+    @Body('font') font: string | undefined,
+    @Body('bgType') bgType: string | undefined,
+    @Body('bgColors') bgColors: string[] | undefined,
     @Request() req: { user: { id: string } },
   ) {
     const fragment = await this.fragmentRepo.findOneBy({ id });
@@ -38,7 +41,9 @@ export class SharingController {
     const book = await this.bookRepo.findOneBy({ id: fragment.bookId });
     if (!book) throw new NotFoundException();
 
-    const url = await this.sharingService.generateShareUrl(fragment, book, platform, style);
+    const url = await this.sharingService.generateShareUrl(fragment, book, platform, {
+      format, font, bgType, bgColors,
+    });
     return { url };
   }
 }

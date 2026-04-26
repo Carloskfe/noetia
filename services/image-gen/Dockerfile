@@ -12,6 +12,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Bundle open-source TTF fonts (Lato, Playfair Display, Merriweather, Dancing Script, Montserrat)
+COPY fonts/ /app/fonts/
+
 COPY . .
 EXPOSE 5000
 CMD ["python", "app.py"]

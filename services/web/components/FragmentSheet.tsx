@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { Fragment } from '@/lib/reader-utils';
-import SharePicker from './SharePicker';
-import SharePreviewModal from './SharePreviewModal';
+import ShareModal from './ShareModal';
 
 type Props = {
   fragments: Fragment[];
+  bookAuthor: string;
+  bookTitle: string;
   onClose: () => void;
   onDelete: (id: string) => void;
   onCombine: (ids: string[]) => void;
@@ -14,13 +15,12 @@ type Props = {
   dark?: boolean;
 };
 
-export default function FragmentSheet({ fragments, onClose, onDelete, onCombine, onNoteUpdate, dark = false }: Props) {
+export default function FragmentSheet({ fragments, bookAuthor, bookTitle, onClose, onDelete, onCombine, onNoteUpdate, dark = false }: Props) {
   const [multiSelect, setMultiSelect] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteValue, setNoteValue] = useState('');
-  const [sharingFragment, setSharingFragment] = useState<{ id: string; note: string | null } | null>(null);
-  const [shareResult, setShareResult] = useState<{ url: string; note: string | null } | null>(null);
+  const [sharingFragment, setSharingFragment] = useState<{ id: string; text: string; note: string | null } | null>(null);
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -112,7 +112,7 @@ export default function FragmentSheet({ fragments, onClose, onDelete, onCombine,
                   {!multiSelect && (
                     <div className="flex flex-col gap-1 flex-shrink-0">
                       <button
-                        onClick={() => setSharingFragment({ id: f.id, note: f.note })}
+                        onClick={() => setSharingFragment({ id: f.id, text: f.text, note: f.note })}
                         className="text-gray-300 hover:text-blue-500 transition"
                         aria-label="Compartir fragmento"
                       >
@@ -181,22 +181,13 @@ export default function FragmentSheet({ fragments, onClose, onDelete, onCombine,
       </aside>
 
       {sharingFragment && (
-        <SharePicker
+        <ShareModal
           fragmentId={sharingFragment.id}
+          fragmentText={sharingFragment.text}
+          author={bookAuthor}
+          bookTitle={bookTitle}
           note={sharingFragment.note}
           onClose={() => setSharingFragment(null)}
-          onSuccess={(url, note) => {
-            setSharingFragment(null);
-            setShareResult({ url, note });
-          }}
-        />
-      )}
-
-      {shareResult && (
-        <SharePreviewModal
-          url={shareResult.url}
-          note={shareResult.note}
-          onClose={() => setShareResult(null)}
         />
       )}
     </>

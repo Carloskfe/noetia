@@ -1,29 +1,107 @@
 import io
+import os
 import textwrap
 
 from PIL import Image, ImageDraw, ImageFont
 
-# Palette: (bg, text, rule, attr)
-_PALETTES = {
-    'classic': ((13, 27, 42),    (255, 255, 255), (201, 168, 76),  (176, 186, 197)),  # navy / white / gold
-    'light':   ((255, 255, 255), (13, 27, 42),    (59, 130, 246),  (107, 114, 128)),  # white / navy / blue
-    'dark':    ((0, 0, 0),       (255, 255, 255), (255, 255, 255), (156, 163, 175)),  # black / white / white
-    'warm':    ((245, 230, 200), (123, 75, 26),   (180, 100, 40),  (120, 80, 40)),    # cream / amber / rust
-    'bold':    ((26, 74, 74),    (240, 230, 208), (240, 230, 208), (200, 220, 210)),  # teal / cream / cream
+# ── Font registry ─────────────────────────────────────────────────────────────
+
+_FONT_DIR = os.path.join(os.path.dirname(__file__), '..', 'fonts')
+
+VALID_FONTS = {
+    'playfair':    os.path.join(_FONT_DIR, 'playfair.ttf'),
+    'lato':        os.path.join(_FONT_DIR, 'lato.ttf'),
+    'merriweather': os.path.join(_FONT_DIR, 'merriweather.ttf'),
+    'dancing':     os.path.join(_FONT_DIR, 'dancing.ttf'),
+    'montserrat':  os.path.join(_FONT_DIR, 'montserrat.ttf'),
 }
 
-VALID_STYLES = set(_PALETTES.keys())
+VALID_BG_TYPES = {'solid', 'gradient'}
+
+_DARK_NAVY = (13, 27, 42)
+_WHITE = (255, 255, 255)
 
 
-def render_card(fragment: dict, width: int, height: int, style: str = 'classic') -> bytes:
-    palette = _PALETTES.get(style, _PALETTES['classic'])
-    bg_color, text_color, rule_color, attr_color = palette
+# ── Colour helpers ────────────────────────────────────────────────────────────
 
-    text = fragment.get("text", "")
+def parse_hex_color(hex_str: str) -> tuple:
+    """Convert '#RRGGBB' or 'RRGGBB' to (R, G, B) tuple."""
+    h = hex_str.lstrip('#')
+    if len(h) != 6:
+        raise ValueError(f"Invalid hex colour: {hex_str!r}")
+    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+
+
+def _linearise(c: float) -> float:
+    c = c / 255.0
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def relative_luminance(r: int, g: int, b: int) -> float:
+    """WCAG 2.1 relative luminance, range [0, 1]."""
+    return 0.2126 * _linearise(r) + 0.7152 * _linearise(g) + 0.0722 * _linearise(b)
+
+
+def text_color_for_bg(bg_colors: list) -> tuple:
+    """Return white or dark navy based on average background luminance."""
+    rgbs = [parse_hex_color(c) for c in bg_colors]
+    avg_r = sum(c[0] for c in rgbs) // len(rgbs)
+    avg_g = sum(c[1] for c in rgbs) // len(rgbs)
+    avg_b = sum(c[2] for c in rgbs) // len(rgbs)
+    lum = relative_luminance(avg_r, avg_g, avg_b)
+    return _WHITE if lum <= 0.179 else _DARK_NAVY
+
+
+# ── Background rendering ──────────────────────────────────────────────────────
+
+def _render_solid(img: Image.Image, color: tuple) -> None:
+    img.paste(color, [0, 0, img.width, img.height])
+
+
+def _render_gradient(img: Image.Image, color1: tuple, color2: tuple) -> None:
+    """Vertical top-to-bottom two-stop linear gradient."""
+    w, h = img.width, img.height
+    pixels = img.load()
+    for y in range(h):
+        t = y / max(h - 1, 1)
+        r = int(color1[0] + (color2[0] - color1[0]) * t)
+        g = int(color1[1] + (color2[1] - color1[1]) * t)
+        b = int(color1[2] + (color2[2] - color1[2]) * t)
+        for x in range(w):
+            pixels[x, y] = (r, g, b)
+
+
+# ── Card renderer ─────────────────────────────────────────────────────────────
+
+def render_card(
+    fragment: dict,
+    width: int,
+    height: int,
+    font: str = 'lato',
+    bg_type: str = 'solid',
+    bg_colors: list | None = None,
+) -> bytes:
+    if bg_colors is None:
+        bg_colors = ['#0D1B2A']
+
+    font_path = VALID_FONTS.get(font, VALID_FONTS['lato'])
+    text_color = text_color_for_bg(bg_colors)
+    attr_color = tuple(min(255, c + 60) for c in text_color) if text_color == _DARK_NAVY \
+        else (176, 186, 197)
+    rule_color = attr_color
+
+    quote_text = fragment.get("text", "")
     author = fragment.get("author", "")
     title = fragment.get("title", "")
 
-    img = Image.new("RGB", (width, height), color=bg_color)
+    img = Image.new("RGB", (width, height), color=(0, 0, 0))
+
+    # Background
+    if bg_type == 'gradient' and len(bg_colors) >= 2:
+        _render_gradient(img, parse_hex_color(bg_colors[0]), parse_hex_color(bg_colors[1]))
+    else:
+        _render_solid(img, parse_hex_color(bg_colors[0]))
+
     draw = ImageDraw.Draw(img)
 
     margin = int(width * 0.08)
@@ -33,13 +111,17 @@ def render_card(fragment: dict, width: int, height: int, style: str = 'classic')
     attr_size = max(12, int(width * 0.018))
     wm_size = max(10, int(width * 0.015))
 
-    font_quote = ImageFont.load_default(size=quote_size)
-    font_attr = ImageFont.load_default(size=attr_size)
-    font_wm = ImageFont.load_default(size=wm_size)
+    try:
+        font_quote = ImageFont.truetype(font_path, size=quote_size)
+        font_attr = ImageFont.truetype(font_path, size=attr_size)
+        font_wm = ImageFont.truetype(font_path, size=wm_size)
+    except (OSError, IOError):
+        font_quote = ImageFont.load_default(size=quote_size)
+        font_attr = ImageFont.load_default(size=attr_size)
+        font_wm = ImageFont.load_default(size=wm_size)
 
-    # Approximate characters per line from font size and available width
     chars_per_line = max(20, int(text_area_w / (quote_size * 0.58)))
-    lines = textwrap.wrap(text, width=chars_per_line) if text else [""]
+    lines = textwrap.wrap(quote_text, width=chars_per_line) if quote_text else [""]
 
     line_h = quote_size * 1.6
     block_h = len(lines) * line_h
