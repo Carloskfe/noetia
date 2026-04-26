@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../../../src/auth/jwt-auth.guard';
 import { LinkedInPublisher } from '../../../src/social/publishers/linkedin.publisher';
 import { FacebookPublisher } from '../../../src/social/publishers/facebook.publisher';
 import { InstagramPublisher } from '../../../src/social/publishers/instagram.publisher';
+import { PinterestPublisher } from '../../../src/social/publishers/pinterest.publisher';
 
 const mockTokenService = () => ({
   store: jest.fn(),
@@ -71,6 +72,14 @@ describe('SocialController', () => {
       await controller.connect('facebook', mockUser as any, res);
       expect(res.redirect).toHaveBeenCalledWith(
         expect.stringContaining('facebook.com'),
+      );
+    });
+
+    it('redirects to Pinterest OAuth URL', async () => {
+      const res = mockRes();
+      await controller.connect('pinterest', mockUser as any, res);
+      expect(res.redirect).toHaveBeenCalledWith(
+        expect.stringContaining('pinterest.com'),
       );
     });
 
@@ -153,6 +162,14 @@ describe('SocialController', () => {
       await expect(
         controller.publish('linkedin', FAKE_IMG_URL, undefined, mockUser as any),
       ).rejects.toThrow(BadGatewayException);
+    });
+
+    it('returns postUrl on successful Pinterest publish', async () => {
+      tokenService.getToken.mockResolvedValue({ accessToken: 'tok', expiresAt: Date.now() + 3600000 });
+      jest.spyOn(PinterestPublisher, 'publish').mockResolvedValue('https://www.pinterest.com/pin/123');
+
+      const result = await controller.publish('pinterest', FAKE_IMG_URL, 'caption', mockUser as any);
+      expect(result).toEqual({ postUrl: 'https://www.pinterest.com/pin/123' });
     });
 
     it('returns 503 for Instagram when INSTAGRAM_PUBLISH_ENABLED=false', async () => {

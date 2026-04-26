@@ -216,7 +216,7 @@ describe('shareFragment', () => {
     expect(body.format).toBe('reel');
   });
 
-  it('sends twitter-card format and platform=twitter for twitter-card', async () => {
+  it('sends twitter-card format routed through linkedin renderer', async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
       json: async () => ({ url: 'http://example.com/card.png' }),
@@ -226,7 +226,7 @@ describe('shareFragment', () => {
 
     const [, init] = (global.fetch as jest.Mock).mock.calls[0];
     const body = JSON.parse(init.body);
-    expect(body.platform).toBe('twitter');
+    expect(body.platform).toBe('linkedin');
     expect(body.format).toBe('twitter-card');
   });
 

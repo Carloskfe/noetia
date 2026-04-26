@@ -1,6 +1,6 @@
 import { apiFetch } from './api';
 
-export type SharePlatform = 'linkedin' | 'instagram' | 'facebook' | 'whatsapp' | 'twitter';
+export type SharePlatform = 'linkedin' | 'instagram' | 'facebook' | 'whatsapp';
 export type ShareFormat =
   | 'ig-post' | 'ig-story'
   | 'fb-post' | 'fb-story'
@@ -18,7 +18,7 @@ export const FORMAT_PLATFORM_MAP: Record<ShareFormat, { platform: SharePlatform;
   'wa-pic':       { platform: 'whatsapp',  format: 'wa-pic' },
   'wa-story':     { platform: 'whatsapp',  format: 'wa-story' },
   'reel':         { platform: 'instagram', format: 'reel' },
-  'twitter-card': { platform: 'twitter',   format: 'twitter-card' },
+  'twitter-card': { platform: 'linkedin',  format: 'twitter-card' },
 };
 
 export const SHARE_FORMAT_LABELS: Record<ShareFormat, string> = {

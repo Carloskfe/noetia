@@ -88,7 +88,7 @@ export default function ShareModal({
   };
 
   useEffect(() => {
-    const platforms = ['linkedin', 'facebook', 'instagram'];
+    const platforms = ['linkedin', 'facebook', 'instagram', 'pinterest'];
     Promise.all(
       platforms.map((p) =>
         fetch(`/api/social/${p}/status`, { credentials: 'include' })
@@ -386,7 +386,7 @@ export default function ShareModal({
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Publicar</p>
               <div className="space-y-2">
-                {(['linkedin', 'facebook', 'instagram'] as const).map((platform) => {
+                {(['linkedin', 'facebook', 'instagram', 'pinterest'] as const).map((platform) => {
                   const connected = connectedPlatforms.has(platform);
                   const isPublishing = publishingPlatform === platform;
                   const igDisabled = platform === 'instagram' && process.env.NEXT_PUBLIC_INSTAGRAM_PUBLISH_ENABLED !== 'true';

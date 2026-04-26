@@ -23,8 +23,9 @@ import { SocialTokenService, SocialTokens } from './social-token.service';
 import { LinkedInPublisher } from './publishers/linkedin.publisher';
 import { FacebookPublisher } from './publishers/facebook.publisher';
 import { InstagramPublisher } from './publishers/instagram.publisher';
+import { PinterestPublisher } from './publishers/pinterest.publisher';
 
-const VALID_PLATFORMS = new Set(['linkedin', 'facebook', 'instagram']);
+const VALID_PLATFORMS = new Set(['linkedin', 'facebook', 'instagram', 'pinterest']);
 
 const OAUTH_CONFIG: Record<string, {
   authUrl: string;
@@ -53,6 +54,13 @@ const OAUTH_CONFIG: Record<string, {
     clientIdEnv: 'INSTAGRAM_APP_ID',
     clientSecretEnv: 'INSTAGRAM_APP_SECRET',
     scope: 'instagram_content_publish,instagram_basic',
+  },
+  pinterest: {
+    authUrl: 'https://www.pinterest.com/oauth/',
+    tokenUrl: 'https://api.pinterest.com/v5/oauth/token',
+    clientIdEnv: 'PINTEREST_APP_ID',
+    clientSecretEnv: 'PINTEREST_APP_SECRET',
+    scope: 'boards:read pins:write',
   },
 };
 
@@ -204,6 +212,9 @@ export class SocialController {
           postUrl = await InstagramPublisher.publish(token.accessToken, imageBuffer, caption, enabled);
           break;
         }
+        case 'pinterest':
+          postUrl = await PinterestPublisher.publish(token.accessToken, imageUrl, caption);
+          break;
         default:
           throw new BadRequestException(`unsupported platform: ${platform}`);
       }
