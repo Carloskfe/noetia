@@ -33,6 +33,7 @@ export class SharingController {
     @Body('font') font: string | undefined,
     @Body('bgType') bgType: string | undefined,
     @Body('bgColors') bgColors: string[] | undefined,
+    @Body('textColor') textColor: string | undefined,
     @Request() req: { user: { id: string } },
   ) {
     const fragment = await this.fragmentRepo.findOneBy({ id });
@@ -42,7 +43,7 @@ export class SharingController {
     if (!book) throw new NotFoundException();
 
     const url = await this.sharingService.generateShareUrl(fragment, book, platform, {
-      format, font, bgType, bgColors,
+      format, font, bgType, bgColors, textColor,
     });
     return { url };
   }

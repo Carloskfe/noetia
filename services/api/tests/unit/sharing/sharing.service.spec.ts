@@ -116,6 +116,41 @@ describe('SharingService', () => {
       expect(body).not.toHaveProperty('bgColors');
     });
 
+    it('includes textColor in payload when provided', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ url: 'http://example.com/img.png' }),
+      } as Response);
+
+      await service.generateShareUrl(
+        mockFragment() as Fragment,
+        mockBook() as Book,
+        'linkedin',
+        { textColor: '#FF0000' },
+      );
+
+      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
+      const body = JSON.parse(options.body);
+      expect(body.textColor).toBe('#FF0000');
+    });
+
+    it('omits textColor from payload when not provided', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ url: 'http://example.com/img.png' }),
+      } as Response);
+
+      await service.generateShareUrl(
+        mockFragment() as Fragment,
+        mockBook() as Book,
+        'linkedin',
+      );
+
+      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
+      const body = JSON.parse(options.body);
+      expect(body).not.toHaveProperty('textColor');
+    });
+
     it('throws BadGatewayException when image-gen returns non-200', async () => {
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: false,

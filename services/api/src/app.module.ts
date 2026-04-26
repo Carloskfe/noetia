@@ -9,6 +9,7 @@ import { FragmentsModule } from './fragments/fragments.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { AuthorsModule } from './authors/authors.module';
 import { SharingModule } from './sharing/sharing.module';
+import { SocialModule } from './social/social.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -36,6 +37,7 @@ import { UsersModule } from './users/users.module';
     SubscriptionsModule,
     AuthorsModule,
     SharingModule,
+    SocialModule,
     UsersModule,
   ],
 })

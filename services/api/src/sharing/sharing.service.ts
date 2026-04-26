@@ -7,6 +7,7 @@ export interface ShareOptions {
   font?: string;
   bgType?: string;
   bgColors?: string[];
+  textColor?: string;
 }
 
 @Injectable()
@@ -27,10 +28,11 @@ export class SharingService {
         author: book.author,
         title: book.title,
         platform,
-        ...(options.format   && { format:   options.format }),
-        ...(options.font     && { font:     options.font }),
-        ...(options.bgType   && { bgType:   options.bgType }),
-        ...(options.bgColors && { bgColors: options.bgColors }),
+        ...(options.format     && { format:     options.format }),
+        ...(options.font       && { font:       options.font }),
+        ...(options.bgType     && { bgType:     options.bgType }),
+        ...(options.bgColors   && { bgColors:   options.bgColors }),
+        ...(options.textColor  && { textColor:  options.textColor }),
       }),
     });
 
