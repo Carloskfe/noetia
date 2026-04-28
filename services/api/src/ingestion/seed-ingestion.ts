@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Book } from '../books/book.entity';
 import { SyncMap } from '../books/sync-map.entity';
 import { ReadingProgress } from '../books/reading-progress.entity';
+import { User } from '../users/user.entity';
 import { IngestionModule } from './ingestion.module';
 import { IngestionService } from './ingestion.service';
 
@@ -21,7 +22,7 @@ import { IngestionService } from './ingestion.service';
         database: config.get('DB_NAME', 'alexandria'),
         username: config.get('DB_USER', 'alexandria'),
         password: config.get('DB_PASS', 'changeme'),
-        entities: [Book, SyncMap, ReadingProgress],
+        entities: [Book, SyncMap, ReadingProgress, User],
         synchronize: false,
       }),
     }),
