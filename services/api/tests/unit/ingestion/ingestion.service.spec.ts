@@ -22,7 +22,7 @@ const mockGutenbergFetcher = { fetch: jest.fn() };
 const mockWikisourceFetcher = { fetch: jest.fn() };
 const mockPhraseSplitter = { split: jest.fn() };
 const mockMinioUploader = { upload: jest.fn() };
-const mockLibrivoxApi = { getZipUrl: jest.fn() };
+const mockLibrivoxApi = { getZipUrl: jest.fn(), getM4bUrl: jest.fn() };
 const mockAudioDownloader = { downloadAndStore: jest.fn() };
 
 const gutenbergEntry: CatalogueEntry = {
@@ -210,6 +210,84 @@ describe('IngestionService', () => {
       mockLibrivoxApi.getZipUrl.mockRejectedValue(new Error('API down'));
 
       await expect(service.ingestAudio(gutenbergEntry, book)).rejects.toThrow('API down');
+    });
+  });
+
+  // ── ingestAudioStream ─────────────────────────────────────────────────────
+
+  describe('ingestAudioStream', () => {
+    it('scrapes the M4B URL from the LibriVox page and stores it as audioStreamKey', async () => {
+      const book = { id: 'bk-s1', audioStreamKey: null } as Book;
+      mockLibrivoxApi.getM4bUrl = jest.fn().mockResolvedValue('https://archive.org/download/x/x.m4b');
+      mockBookRepo.save.mockResolvedValue(book);
+
+      await service.ingestAudioStream(gutenbergEntry, book);
+
+      expect(mockLibrivoxApi.getM4bUrl).toHaveBeenCalledWith('https://librivox.org/test-book/');
+      expect(book.audioStreamKey).toBe('https://archive.org/download/x/x.m4b');
+      expect(mockBookRepo.save).toHaveBeenCalledWith(book);
+    });
+
+    it('propagates errors from LibriVox page scraping', async () => {
+      const book = { id: 'bk-s2' } as Book;
+      mockLibrivoxApi.getM4bUrl = jest.fn().mockRejectedValue(new Error('no M4B found'));
+
+      await expect(service.ingestAudioStream(gutenbergEntry, book)).rejects.toThrow('no M4B found');
+    });
+  });
+
+  // ── ingestAllAudioStream ──────────────────────────────────────────────────
+
+  describe('ingestAllAudioStream', () => {
+    it('calls ingestAudioStream for books missing audioStreamKey', async () => {
+      const books = [
+        { id: 'b1', title: 'Lazarillo de Tormes', author: 'Anónimo', audioStreamKey: null },
+      ] as Book[];
+      mockBookRepo.find.mockResolvedValue(books);
+      const spy = jest.spyOn(service, 'ingestAudioStream').mockResolvedValue(undefined);
+
+      await service.ingestAllAudioStream();
+
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips books that already have audioStreamKey set', async () => {
+      const books = [
+        { id: 'b1', title: 'Lazarillo de Tormes', author: 'Anónimo', audioStreamKey: 'https://archive.org/x.m4b' },
+      ] as Book[];
+      mockBookRepo.find.mockResolvedValue(books);
+      const spy = jest.spyOn(service, 'ingestAudioStream').mockResolvedValue(undefined);
+
+      await service.ingestAllAudioStream();
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('skips books without a matching catalogue entry', async () => {
+      const books = [
+        { id: 'b1', title: 'Unknown', author: 'Unknown', audioStreamKey: null },
+      ] as Book[];
+      mockBookRepo.find.mockResolvedValue(books);
+      const spy = jest.spyOn(service, 'ingestAudioStream').mockResolvedValue(undefined);
+
+      await service.ingestAllAudioStream();
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('continues to the next book when one fails', async () => {
+      const books = [
+        { id: 'b1', title: 'Lazarillo de Tormes', author: 'Anónimo', audioStreamKey: null },
+        { id: 'b2', title: 'Leyendas', author: 'Gustavo Adolfo Bécquer', audioStreamKey: null },
+      ] as Book[];
+      mockBookRepo.find.mockResolvedValue(books);
+      const spy = jest
+        .spyOn(service, 'ingestAudioStream')
+        .mockRejectedValueOnce(new Error('scrape error'))
+        .mockResolvedValueOnce(undefined);
+
+      await expect(service.ingestAllAudioStream()).resolves.toBeUndefined();
+      expect(spy).toHaveBeenCalledTimes(2);
     });
   });
 

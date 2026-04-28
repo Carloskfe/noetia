@@ -45,6 +45,9 @@ export class Book {
   @Column({ type: 'varchar', nullable: true })
   audioFileKey: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  audioStreamKey: string | null;
+
   @Column({ type: 'boolean', default: false })
   isFree: boolean;
 

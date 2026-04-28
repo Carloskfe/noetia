@@ -118,4 +118,38 @@ export class IngestionService {
     book.audioFileKey = audioKey;
     await this.bookRepo.save(book);
   }
+
+  // ── Audio stream URL ingestion (M4B, browser-playable) ────────────────────
+
+  async ingestAllAudioStream(): Promise<void> {
+    const books = await this.bookRepo.find({ where: { isFree: true } });
+    for (const book of books) {
+      if (book.audioStreamKey) {
+        this.logger.log(`Stream key already set: ${book.title}`);
+        continue;
+      }
+      const entry = CATALOGUE.find(
+        (e) => e.title === book.title && e.author === book.author,
+      );
+      if (!entry) {
+        this.logger.warn(`No catalogue entry for: ${book.title}`);
+        continue;
+      }
+      try {
+        await this.ingestAudioStream(entry, book);
+        this.logger.log(`Stream URL stored: ${book.title}`);
+      } catch (err: unknown) {
+        this.logger.error(
+          `Stream URL failed: ${book.title}`,
+          err instanceof Error ? err.stack : String(err),
+        );
+      }
+    }
+  }
+
+  async ingestAudioStream(entry: CatalogueEntry, book: Book): Promise<void> {
+    const m4bUrl = await this.librivoxApi.getM4bUrl(entry.librivoxAudioUrl);
+    book.audioStreamKey = m4bUrl;
+    await this.bookRepo.save(book);
+  }
 }

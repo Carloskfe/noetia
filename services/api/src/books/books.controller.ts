@@ -61,7 +61,12 @@ export class BooksController {
         ? book.audioFileKey
         : await this.storageService.presign('audio', book.audioFileKey, PRESIGN_TTL)
       : null;
-    return { ...book, textFileUrl, audioFileUrl };
+    const audioStreamUrl = book.audioStreamKey
+      ? book.audioStreamKey.startsWith('http')
+        ? book.audioStreamKey
+        : await this.storageService.presign('audio', book.audioStreamKey, PRESIGN_TTL)
+      : null;
+    return { ...book, textFileUrl, audioFileUrl, audioStreamUrl };
   }
 
   @Post()
