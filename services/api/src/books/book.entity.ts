@@ -10,6 +10,7 @@ export enum BookCategory {
   LEADERSHIP = 'leadership',
   PERSONAL_DEVELOPMENT = 'personal-development',
   BUSINESS = 'business',
+  CLASSIC = 'classic',
 }
 
 @Entity('books')
@@ -43,6 +44,9 @@ export class Book {
 
   @Column({ type: 'varchar', nullable: true })
   audioFileKey: string | null;
+
+  @Column({ type: 'boolean', default: false })
+  isFree: boolean;
 
   @Column({ type: 'boolean', default: false })
   isPublished: boolean;
