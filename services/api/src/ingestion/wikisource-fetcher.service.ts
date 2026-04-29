@@ -54,7 +54,19 @@ export class WikisourceFetcherService {
     return (data.parse?.links ?? [])
       .filter((l) => typeof l.title === 'string' && l.title.startsWith(`${pageTitle}/`))
       .map((l) => l.title as string)
-      .sort();
+      .sort((a, b) => {
+        const segA = a.split('/').pop() ?? '';
+        const segB = b.split('/').pop() ?? '';
+        // If both segments end with a number (e.g. "Capítulo 10" or "10"), sort numerically
+        const mA = /(\d+)\s*$/.exec(segA);
+        const mB = /(\d+)\s*$/.exec(segB);
+        if (mA && mB) {
+          const prefA = segA.slice(0, segA.length - mA[0].length);
+          const prefB = segB.slice(0, segB.length - mB[0].length);
+          if (prefA === prefB) return parseInt(mA[1], 10) - parseInt(mB[1], 10);
+        }
+        return a.localeCompare(b, 'es');
+      });
   }
 
   private async fetchPageHtml(pageTitle: string): Promise<string> {

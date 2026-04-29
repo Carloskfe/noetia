@@ -174,4 +174,12 @@ export const CATALOGUE: CatalogueEntry[] = [
     librivoxAudioUrl: 'https://librivox.org/orgullo-y-prejuicio1-by-jane-austen/',
     librivoxSearchTitle: 'Orgullo Prejuicio',
   },
+  {
+    title: 'Génesis',
+    author: 'Anónimo',
+    description: 'El primer libro del Antiguo Testamento: la creación del mundo, Adán y Eva, Noé, Abraham, Isaac, Jacob y José. Versión Reina-Valera 1909.',
+    source: 'wikisource',
+    wikisourceTitle: 'Biblia Reina-Valera 1909/Génesis',
+    librivoxAudioUrl: 'https://librivox.org/genesis-reina-valera-version/',
+  },
 ];

@@ -104,7 +104,7 @@ describe('WikisourceFetcherService', () => {
       expect(result).toContain('Capítulo II');  // II appears in both II. and II repeated text
     });
 
-    it('sorts subpages before fetching so chapters arrive in order', async () => {
+    it('sorts Roman-numeral subpages before fetching so chapters arrive in order', async () => {
       const fetchOrder: string[] = [];
       mockFetch.mockImplementation(async (url: string) => {
         if (url.includes('prop=links')) {
@@ -120,6 +120,43 @@ describe('WikisourceFetcherService', () => {
       expect(fetchOrder[0]).toContain('%2FI&');
       expect(fetchOrder[1]).toContain('%2FII&');
       expect(fetchOrder[2]).toContain('%2FIII&');
+    });
+
+    it('sorts numeric subpages in numeric order (1, 2, 10 not 1, 10, 2)', async () => {
+      const fetchOrder: string[] = [];
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.includes('prop=links')) {
+          return LINKS_RESPONSE(TITLE, [`${TITLE}/10`, `${TITLE}/2`, `${TITLE}/1`]);
+        }
+        fetchOrder.push(url as string);
+        return HTML_RESPONSE('<p>' + 'A'.repeat(200) + '.</p>');
+      });
+
+      await service.fetch(TITLE);
+
+      expect(fetchOrder[0]).toContain('%2F1&');
+      expect(fetchOrder[1]).toContain('%2F2&');
+      expect(fetchOrder[2]).toContain('%2F10&');
+    });
+
+    it('sorts "Capítulo N" subpages numerically (Capítulo 2 before Capítulo 10)', async () => {
+      const fetchOrder: string[] = [];
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.includes('prop=links')) {
+          return LINKS_RESPONSE(TITLE, [
+            `${TITLE}/Cap%C3%ADtulo 10`,
+            `${TITLE}/Cap%C3%ADtulo 2`,
+            `${TITLE}/Cap%C3%ADtulo 1`,
+          ]);
+        }
+        fetchOrder.push(url as string);
+        return HTML_RESPONSE('<p>' + 'B'.repeat(200) + '.</p>');
+      });
+
+      await service.fetch(TITLE);
+
+      expect(fetchOrder[0]).toContain('1');
+      expect(fetchOrder[2]).toContain('10');
     });
 
     it('skips subpages with near-empty text without failing', async () => {

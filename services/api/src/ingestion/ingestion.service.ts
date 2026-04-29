@@ -153,6 +153,36 @@ export class IngestionService {
     await this.bookRepo.save(book);
   }
 
+  // ── SyncMap resync (fixes wrong chapter order without re-ingesting) ─────────
+
+  async resyncWikisourceSyncMaps(): Promise<void> {
+    const wikisourceEntries = CATALOGUE.filter((e) => e.source === 'wikisource');
+    for (const entry of wikisourceEntries) {
+      const book = await this.bookRepo.findOneBy({ title: entry.title, author: entry.author });
+      if (!book) {
+        this.logger.log(`Not yet ingested, skipping resync: ${entry.title}`);
+        continue;
+      }
+      try {
+        await this.resyncSyncMap(entry, book);
+        this.logger.log(`Re-synced: ${entry.title}`);
+      } catch (err: unknown) {
+        this.logger.error(
+          `Resync failed: ${entry.title}`,
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    }
+  }
+
+  async resyncSyncMap(entry: CatalogueEntry, book: Book): Promise<void> {
+    const text = await this.wikisourceFetcher.fetch(entry.wikisourceTitle!);
+    const phrases = this.phraseSplitter.split(text);
+    await this.syncMapRepo.delete({ bookId: book.id });
+    const syncMap = this.syncMapRepo.create({ bookId: book.id, phrases });
+    await this.syncMapRepo.save(syncMap);
+  }
+
   // ── Cover image ingestion (Open Library CDN) ──────────────────────────────
 
   async ingestAllCovers(): Promise<void> {

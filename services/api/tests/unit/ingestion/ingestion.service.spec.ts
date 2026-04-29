@@ -18,7 +18,7 @@ const mockBookRepo = {
   save: jest.fn(),
   update: jest.fn(),
 };
-const mockSyncMapRepo = { create: jest.fn(), save: jest.fn() };
+const mockSyncMapRepo = { create: jest.fn(), save: jest.fn(), delete: jest.fn() };
 const mockGutenbergFetcher = { fetch: jest.fn() };
 const mockWikisourceFetcher = { fetch: jest.fn() };
 const mockPhraseSplitter = { split: jest.fn() };
@@ -289,6 +289,67 @@ describe('IngestionService', () => {
 
       await expect(service.ingestAllAudioStream()).resolves.toBeUndefined();
       expect(spy).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // ── resyncSyncMap + resyncWikisourceSyncMaps ──────────────────────────────
+
+  describe('resyncSyncMap', () => {
+    it('deletes the existing SyncMap and creates a new one with re-fetched phrases', async () => {
+      const book = { id: 'ws-1' } as Book;
+      mockWikisourceFetcher.fetch.mockResolvedValue('Capítulo I. Texto del capítulo uno.');
+      mockPhraseSplitter.split.mockReturnValue([
+        { index: 0, text: 'Capítulo I.', type: 'heading', startTime: 0, endTime: 0 },
+      ]);
+      mockSyncMapRepo.delete.mockResolvedValue({ affected: 1 });
+      mockSyncMapRepo.create.mockReturnValue({ bookId: 'ws-1', phrases: [] });
+      mockSyncMapRepo.save.mockResolvedValue({});
+
+      await service.resyncSyncMap(wikisourceEntry, book);
+
+      expect(mockWikisourceFetcher.fetch).toHaveBeenCalledWith('Wikisource Book');
+      expect(mockSyncMapRepo.delete).toHaveBeenCalledWith({ bookId: 'ws-1' });
+      expect(mockSyncMapRepo.save).toHaveBeenCalled();
+    });
+
+    it('propagates errors from the Wikisource fetcher', async () => {
+      const book = { id: 'ws-2' } as Book;
+      mockWikisourceFetcher.fetch.mockRejectedValue(new Error('rate limited'));
+
+      await expect(service.resyncSyncMap(wikisourceEntry, book)).rejects.toThrow('rate limited');
+    });
+  });
+
+  describe('resyncWikisourceSyncMaps', () => {
+    it('re-syncs all Wikisource books that exist in the DB', async () => {
+      const book = { id: 'ws-1', title: 'Wikisource Book', author: 'Wikisource Author' } as Book;
+      mockBookRepo.findOneBy.mockResolvedValue(book);
+      const spy = jest.spyOn(service, 'resyncSyncMap').mockResolvedValue(undefined);
+
+      // Only wikisource entries from CATALOGUE — we spy rather than run the real method
+      await service.resyncWikisourceSyncMaps();
+
+      // At minimum, should have attempted findOneBy for each Wikisource entry
+      expect(mockBookRepo.findOneBy).toHaveBeenCalled();
+    });
+
+    it('skips books that are not yet ingested (not found in DB)', async () => {
+      mockBookRepo.findOneBy.mockResolvedValue(null);
+      const spy = jest.spyOn(service, 'resyncSyncMap').mockResolvedValue(undefined);
+
+      await service.resyncWikisourceSyncMaps();
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('continues to the next book when one resync fails', async () => {
+      const book = { id: 'ws-x', title: 'X', author: 'Y' } as Book;
+      mockBookRepo.findOneBy.mockResolvedValue(book);
+      const spy = jest.spyOn(service, 'resyncSyncMap')
+        .mockRejectedValueOnce(new Error('network error'))
+        .mockResolvedValue(undefined);
+
+      await expect(service.resyncWikisourceSyncMaps()).resolves.toBeUndefined();
     });
   });
 
