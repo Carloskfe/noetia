@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FORMAT_PLATFORM_MAP,
+  FONTS,
+  FontId,
+  GOOGLE_FONTS_URL,
   SHARE_FORMAT_LABELS,
   ShareFormat,
   ShareParams,
@@ -10,18 +13,6 @@ import {
   getTextColor,
   shareFragment,
 } from '@/lib/share-utils';
-
-// ── Font definitions ──────────────────────────────────────────────────────────
-
-const FONTS = [
-  { id: 'lato',        label: 'Lato',         css: "'Lato', sans-serif" },
-  { id: 'playfair',    label: 'Playfair',      css: "'Playfair Display', serif" },
-  { id: 'merriweather',label: 'Merriweather',  css: "'Merriweather', serif" },
-  { id: 'dancing',     label: 'Dancing',       css: "'Dancing Script', cursive" },
-  { id: 'montserrat',  label: 'Montserrat',    css: "'Montserrat', sans-serif" },
-] as const;
-
-type FontId = typeof FONTS[number]['id'];
 
 // ── Format aspect ratios ──────────────────────────────────────────────────────
 
@@ -183,7 +174,7 @@ export default function ShareModal({
   return (
     <>
       {/* Google Fonts */}
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Lato&family=Playfair+Display&family=Merriweather&family=Dancing+Script&family=Montserrat&display=swap');`}</style>
+      <style>{`@import url('${GOOGLE_FONTS_URL}');`}</style>
 
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={onClose}>
@@ -249,27 +240,27 @@ export default function ShareModal({
             {/* ── Font picker ───────────────────────────────────────────── */}
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Fuente</p>
-              <div className="flex gap-2 flex-wrap">
+              <div className="space-y-1">
                 {FONTS.map((f) => (
                   <button
                     key={f.id}
-                    onClick={() => setSelectedFont(f.id)}
-                    title={f.label}
+                    onClick={() => setSelectedFont(f.id as FontId)}
                     className={[
-                      'w-16 h-10 rounded-lg border overflow-hidden transition',
+                      'w-full text-left px-3 py-2 rounded-xl border transition',
                       selectedFont === f.id
-                        ? 'border-blue-500 ring-1 ring-blue-400'
-                        : 'border-gray-200 hover:border-blue-200',
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50',
                     ].join(' ')}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`/presets/${f.id}.png`} alt={f.label} className="w-full h-full object-cover" />
+                    <p style={{ fontFamily: f.css }} className="text-sm font-medium text-gray-900 leading-snug">
+                      {f.label}
+                    </p>
+                    <p style={{ fontFamily: f.css }} className="text-xs text-gray-400 leading-snug">
+                      El inicio de algo grande
+                    </p>
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-gray-400 mt-1">
-                {FONTS.find((f) => f.id === selectedFont)?.label}
-              </p>
             </div>
 
             {/* ── Background ───────────────────────────────────────────── */}

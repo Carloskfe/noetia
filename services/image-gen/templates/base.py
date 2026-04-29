@@ -9,11 +9,13 @@ from PIL import Image, ImageDraw, ImageFont
 _FONT_DIR = os.path.join(os.path.dirname(__file__), '..', 'fonts')
 
 VALID_FONTS = {
-    'playfair':    os.path.join(_FONT_DIR, 'playfair.ttf'),
-    'lato':        os.path.join(_FONT_DIR, 'lato.ttf'),
+    'playfair':     os.path.join(_FONT_DIR, 'playfair.ttf'),
+    'lato':         os.path.join(_FONT_DIR, 'lato.ttf'),
+    'lora':         os.path.join(_FONT_DIR, 'lora.ttf'),
     'merriweather': os.path.join(_FONT_DIR, 'merriweather.ttf'),
-    'dancing':     os.path.join(_FONT_DIR, 'dancing.ttf'),
-    'montserrat':  os.path.join(_FONT_DIR, 'montserrat.ttf'),
+    'dancing':      os.path.join(_FONT_DIR, 'dancing.ttf'),
+    'montserrat':   os.path.join(_FONT_DIR, 'montserrat.ttf'),
+    'raleway':      os.path.join(_FONT_DIR, 'raleway.ttf'),
 }
 
 VALID_BG_TYPES = {'solid', 'gradient'}

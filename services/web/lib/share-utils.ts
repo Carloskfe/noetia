@@ -1,5 +1,30 @@
 import { apiFetch } from './api';
 
+// ── Font registry (shared with image-gen VALID_FONTS) ─────────────────────────
+
+export interface FontDef {
+  id: string;
+  label: string;
+  css: string;
+}
+
+export const FONTS: readonly FontDef[] = [
+  { id: 'lato',          label: 'Lato',            css: "'Lato', sans-serif" },
+  { id: 'playfair',      label: 'Playfair Display', css: "'Playfair Display', serif" },
+  { id: 'lora',          label: 'Lora',             css: "'Lora', serif" },
+  { id: 'merriweather',  label: 'Merriweather',     css: "'Merriweather', serif" },
+  { id: 'dancing',       label: 'Dancing Script',   css: "'Dancing Script', cursive" },
+  { id: 'montserrat',    label: 'Montserrat',       css: "'Montserrat', sans-serif" },
+  { id: 'raleway',       label: 'Raleway',          css: "'Raleway', sans-serif" },
+] as const;
+
+export type FontId = (typeof FONTS)[number]['id'];
+
+export const GOOGLE_FONTS_URL =
+  'https://fonts.googleapis.com/css2?family=Lato&family=Playfair+Display&family=Lora&family=Merriweather&family=Dancing+Script&family=Montserrat&family=Raleway&display=swap';
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export type SharePlatform = 'linkedin' | 'instagram' | 'facebook' | 'whatsapp';
 export type ShareFormat =
   | 'ig-post' | 'ig-story'

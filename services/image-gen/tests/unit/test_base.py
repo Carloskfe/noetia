@@ -99,12 +99,14 @@ def test_text_color_two_dark_stops_returns_white():
 
 # ── VALID_FONTS ───────────────────────────────────────────────────────────────
 
-def test_valid_fonts_has_five_entries():
-    assert len(VALID_FONTS) == 5
+def test_valid_fonts_has_seven_entries():
+    assert len(VALID_FONTS) == 7
 
 
 def test_valid_fonts_contains_expected_keys():
-    assert set(VALID_FONTS.keys()) == {'playfair', 'lato', 'merriweather', 'dancing', 'montserrat'}
+    assert set(VALID_FONTS.keys()) == {
+        'playfair', 'lato', 'lora', 'merriweather', 'dancing', 'montserrat', 'raleway',
+    }
 
 
 def test_valid_fonts_paths_end_with_ttf():
@@ -153,7 +155,7 @@ def test_render_card_empty_fragment():
 
 
 def test_render_card_all_fonts_produce_valid_png():
-    for font_id in ('playfair', 'lato', 'merriweather', 'dancing', 'montserrat'):
+    for font_id in ('playfair', 'lato', 'lora', 'merriweather', 'dancing', 'montserrat', 'raleway'):
         result = render_card(_FRAGMENT, 800, 800, font=font_id)
         assert result[:8] == b'\x89PNG\r\n\x1a\n', f"Font {font_id} did not produce valid PNG"
 

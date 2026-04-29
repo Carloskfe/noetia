@@ -6,6 +6,8 @@
  */
 import {
   FORMAT_PLATFORM_MAP,
+  FONTS,
+  GOOGLE_FONTS_URL,
   SHARE_FORMAT_LABELS,
   getLuminance,
   getTextColor,
@@ -22,6 +24,44 @@ const sessionStorageMock = {
 beforeEach(() => {
   jest.clearAllMocks();
   Object.defineProperty(global, 'sessionStorage', { value: sessionStorageMock, writable: true });
+});
+
+// ── FONTS registry ────────────────────────────────────────────────────────────
+
+describe('FONTS registry', () => {
+  const REQUIRED_FONT_IDS = ['lato', 'playfair', 'lora', 'merriweather', 'dancing', 'montserrat', 'raleway'];
+
+  it('contains all 7 required fonts', () => {
+    const ids = FONTS.map((f) => f.id);
+    REQUIRED_FONT_IDS.forEach((id) => expect(ids).toContain(id));
+  });
+
+  it('has exactly 7 entries', () => {
+    expect(FONTS).toHaveLength(7);
+  });
+
+  it('every font has a non-empty id, label, and css', () => {
+    FONTS.forEach((f) => {
+      expect(f.id).toBeTruthy();
+      expect(f.label).toBeTruthy();
+      expect(f.css).toBeTruthy();
+    });
+  });
+
+  it('lora and raleway are in the registry', () => {
+    const ids = FONTS.map((f) => f.id);
+    expect(ids).toContain('lora');
+    expect(ids).toContain('raleway');
+  });
+
+  it('GOOGLE_FONTS_URL includes all font family names', () => {
+    expect(GOOGLE_FONTS_URL).toContain('Lora');
+    expect(GOOGLE_FONTS_URL).toContain('Raleway');
+    expect(GOOGLE_FONTS_URL).toContain('Playfair');
+    expect(GOOGLE_FONTS_URL).toContain('Merriweather');
+    expect(GOOGLE_FONTS_URL).toContain('Dancing');
+    expect(GOOGLE_FONTS_URL).toContain('Montserrat');
+  });
 });
 
 // ── Format aspect ratio coverage (via FORMAT_PLATFORM_MAP) ───────────────────
