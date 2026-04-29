@@ -28,10 +28,13 @@ type Book = {
   title: string;
   author: string;
   audioFileUrl: string | null;
+  audioStreamUrl: string | null;
   textFileUrl: string | null;
 };
 
 type Mode = 'reading' | 'listening';
+
+type AudioBookmark = { phraseIndex: number };
 
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 
@@ -66,6 +69,10 @@ export default function ReaderPage() {
   const [fragments, setFragments] = useState<Fragment[]>([]);
   const [selection, setSelection] = useState<SelectionState>(EMPTY_SELECTION);
   const [showDrawer, setShowDrawer] = useState(false);
+
+  // Audio bookmark — set when user taps "Citar" in listening mode
+  const [audioBookmark, setAudioBookmark] = useState<AudioBookmark | null>(null);
+  const [showQuoteChoice, setShowQuoteChoice] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -216,6 +223,40 @@ export default function ReaderPage() {
     audio.currentTime = seekToPhrase(phrases, idx);
   }, [phrases]);
 
+  const handleModeToggle = useCallback(() => {
+    setMode((m) => m === 'reading' ? 'listening' : 'reading');
+  }, []);
+
+  // ── Quote from audio ──────────────────────────────────────────────────────
+
+  const handleQuoteFromAudio = useCallback(() => {
+    audioRef.current?.pause();
+    setAudioBookmark({ phraseIndex: activePhraseIndex >= 0 ? activePhraseIndex : 0 });
+    setShowQuoteChoice(true);
+  }, [activePhraseIndex]);
+
+  const handleOpenInReading = useCallback(() => {
+    setShowQuoteChoice(false);
+    setMode('reading');
+    const idx = audioBookmark?.phraseIndex ?? 0;
+    setTimeout(() => {
+      phraseRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }, [audioBookmark]);
+
+  const handleBookmarkAndContinue = useCallback(() => {
+    setShowQuoteChoice(false);
+    audioRef.current?.play();
+  }, []);
+
+  const handleResumeAudio = useCallback(() => {
+    if (!audioBookmark) return;
+    seekToIndex(audioBookmark.phraseIndex);
+    setMode('listening');
+    setAudioBookmark(null);
+    audioRef.current?.play();
+  }, [audioBookmark, seekToIndex]);
+
   // ── Text selection handler ────────────────────────────────────────────────
 
   const handleTextMouseUp = useCallback((e: React.MouseEvent) => {
@@ -294,6 +335,8 @@ export default function ReaderPage() {
   if (loading) return <LoadingScreen />;
   if (error || !book) return <ErrorScreen message={error || 'Book not found'} />;
 
+  const audioUrl = book.audioStreamUrl ?? book.audioFileUrl;
+  const hasAudio = Boolean(audioUrl);
   const hasSync = phrases.length > 0;
   const fontSizeClass = FONT_SIZE_CLASSES[fontSize];
 
@@ -315,11 +358,14 @@ export default function ReaderPage() {
         onDarkToggle={() => setDarkMode((d) => !d)}
         onFragmentsToggle={() => setShowDrawer((v) => !v)}
         fragmentCount={fragments.length}
+        hasAudio={hasAudio}
+        mode={mode}
+        onModeToggle={handleModeToggle}
       />
 
-      {/* Hidden audio element */}
-      {book.audioFileUrl && (
-        <audio ref={audioRef} src={book.audioFileUrl} preload="metadata" />
+      {/* Hidden audio element — uses M4B stream URL for browser-native playback */}
+      {audioUrl && (
+        <audio ref={audioRef} src={audioUrl} preload="metadata" />
       )}
 
       {/* ── Text column ─────────────────────────────────────────────────── */}
@@ -354,30 +400,30 @@ export default function ReaderPage() {
         </div>
       </main>
 
-      {/* ── Audio sidebar / bottom bar ───────────────────────────────────── */}
-      {book.audioFileUrl && (
+      {/* ── Audio sidebar ────────────────────────────────────────────────── */}
+      {hasAudio && (
         <>
-          {/* Floating play button */}
+          {/* Floating play button — visible when no sidebar shown */}
           <button
             onClick={togglePlay}
             className={[
-              'fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center z-50 transition',
-              mode === 'listening' ? 'bg-blue-600 text-white md:hidden' : 'bg-blue-600 text-white',
+              'fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center z-50 transition bg-blue-600 text-white',
+              mode === 'listening' ? 'md:hidden' : '',
             ].join(' ')}
-            aria-label={playing ? 'Pause' : 'Play'}
+            aria-label={playing ? 'Pausar' : 'Reproducir'}
           >
             {playing ? <PauseIcon /> : <PlayIcon />}
           </button>
 
-          {/* Full controls panel */}
+          {/* Full controls sidebar */}
           <aside
             className={[
               'border-t md:border-t-0 md:border-l border-gray-200 bg-gray-50',
               'md:w-72 md:flex-shrink-0',
-              mode === 'listening' ? 'block' : 'hidden md:hidden',
+              mode === 'listening' ? 'block' : 'hidden',
             ].join(' ')}
           >
-            <div className="p-6 sticky top-0">
+            <div className="p-6 sticky top-12">
               <div className="mb-4">
                 <p className="text-sm font-semibold text-gray-900 truncate">{book.title}</p>
                 <p className="text-xs text-gray-500 truncate">{book.author}</p>
@@ -391,7 +437,7 @@ export default function ReaderPage() {
                 {playing ? 'Pausar' : 'Reproducir'}
               </button>
 
-              <div className="mb-2">
+              <div className="mb-4">
                 <input
                   type="range"
                   min={0}
@@ -407,7 +453,7 @@ export default function ReaderPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 mt-4">
+              <div className="flex items-center gap-2 mb-6">
                 <span className="text-xs text-gray-500">Velocidad</span>
                 <select
                   value={speed}
@@ -419,21 +465,76 @@ export default function ReaderPage() {
                   ))}
                 </select>
               </div>
+
+              {/* Quote button */}
+              <button
+                onClick={handleQuoteFromAudio}
+                className="w-full flex items-center justify-center gap-2 border border-gray-300 hover:border-blue-400 hover:text-blue-600 text-gray-700 py-2.5 rounded-xl text-sm font-medium transition"
+              >
+                <QuoteIcon />
+                Crear cita
+              </button>
             </div>
           </aside>
-
-          {/* Mode toggle — kept as floating button since audio sidebar is only shown with audio */}
-          <button
-            onClick={() => setMode((m) => m === 'reading' ? 'listening' : 'reading')}
-            className="fixed bottom-20 right-6 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white border border-gray-200 shadow-sm hover:bg-gray-50 transition"
-          >
-            {mode === 'reading' ? (
-              <><HeadphonesIcon />Modo escucha</>
-            ) : (
-              <><BookIcon />Modo lectura</>
-            )}
-          </button>
         </>
+      )}
+
+      {/* ── Audio bookmark banner ────────────────────────────────────────── */}
+      {audioBookmark && mode === 'reading' && !showQuoteChoice && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-blue-600 text-white px-4 py-3 flex items-center justify-between shadow-lg">
+          <span className="text-sm font-medium">
+            ▶ Audio pausado en la frase {audioBookmark.phraseIndex + 1}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setAudioBookmark(null)}
+              className="text-blue-200 hover:text-white text-xs underline"
+            >
+              Descartar
+            </button>
+            <button
+              onClick={handleResumeAudio}
+              className="bg-white text-blue-600 text-sm font-semibold px-3 py-1 rounded-lg hover:bg-blue-50 transition"
+            >
+              Reanudar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Quote choice modal ───────────────────────────────────────────── */}
+      {showQuoteChoice && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm p-6 shadow-2xl">
+            <h3 className="text-base font-semibold text-gray-900 mb-1">Crear cita</h3>
+            <p className="text-sm text-gray-500 mb-5">
+              El audio está pausado. ¿Qué quieres hacer?
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleOpenInReading}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium transition text-sm"
+              >
+                Abrir en modo lectura
+              </button>
+              <button
+                onClick={handleBookmarkAndContinue}
+                className="w-full border border-gray-300 hover:border-gray-400 text-gray-700 py-3 rounded-xl font-medium transition text-sm"
+              >
+                Marcar posición y continuar
+              </button>
+              <button
+                onClick={() => {
+                  setShowQuoteChoice(false);
+                  audioRef.current?.play();
+                }}
+                className="w-full text-gray-400 hover:text-gray-600 py-2 text-sm transition"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Fragment Popover ─────────────────────────────────────────────── */}
@@ -497,22 +598,10 @@ function PauseIcon() {
   );
 }
 
-function HeadphonesIcon() {
+function QuoteIcon() {
   return (
     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path d="M3 18v-6a9 9 0 0118 0v6" />
-      <path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3z" />
-      <path d="M3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
     </svg>
   );
 }
-
-function BookIcon() {
-  return (
-    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
-    </svg>
-  );
-}
-

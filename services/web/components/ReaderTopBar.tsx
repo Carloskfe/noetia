@@ -12,6 +12,9 @@ type Props = {
   onDarkToggle: () => void;
   onFragmentsToggle: () => void;
   fragmentCount: number;
+  hasAudio?: boolean;
+  mode?: 'reading' | 'listening';
+  onModeToggle?: () => void;
 };
 
 export default function ReaderTopBar({
@@ -23,6 +26,9 @@ export default function ReaderTopBar({
   onDarkToggle,
   onFragmentsToggle,
   fragmentCount,
+  hasAudio,
+  mode,
+  onModeToggle,
 }: Props) {
   const atMin = fontSize === FONT_SIZES[0];
   const atMax = fontSize === FONT_SIZES[FONT_SIZES.length - 1];
@@ -87,6 +93,21 @@ export default function ReaderTopBar({
         <MagnifierIcon />
       </Link>
 
+      {/* Audio mode toggle */}
+      {hasAudio && onModeToggle && (
+        <button
+          onClick={onModeToggle}
+          aria-label={mode === 'listening' ? 'Cambiar a modo lectura' : 'Cambiar a modo escucha'}
+          title={mode === 'listening' ? 'Modo lectura' : 'Modo escucha'}
+          className={[
+            'flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition',
+            mode === 'listening' ? 'bg-blue-600 text-white' : btn,
+          ].join(' ')}
+        >
+          {mode === 'listening' ? <BookIcon /> : <HeadphonesIcon />}
+        </button>
+      )}
+
       {/* Fragments drawer */}
       <button
         onClick={onFragmentsToggle}
@@ -141,6 +162,25 @@ function BookmarkIcon() {
   return (
     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+    </svg>
+  );
+}
+
+function HeadphonesIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path d="M3 18v-6a9 9 0 0118 0v6" />
+      <path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3z" />
+      <path d="M3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z" />
+    </svg>
+  );
+}
+
+function BookIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
     </svg>
   );
 }
