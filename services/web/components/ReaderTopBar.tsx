@@ -15,6 +15,8 @@ type Props = {
   hasAudio?: boolean;
   mode?: 'reading' | 'listening';
   onModeToggle?: () => void;
+  hasChapters?: boolean;
+  onChaptersToggle?: () => void;
 };
 
 export default function ReaderTopBar({
@@ -29,6 +31,8 @@ export default function ReaderTopBar({
   hasAudio,
   mode,
   onModeToggle,
+  hasChapters,
+  onChaptersToggle,
 }: Props) {
   const atMin = fontSize === FONT_SIZES[0];
   const atMax = fontSize === FONT_SIZES[FONT_SIZES.length - 1];
@@ -109,6 +113,17 @@ export default function ReaderTopBar({
         </button>
       )}
 
+      {/* Chapter list */}
+      {hasChapters && onChaptersToggle && (
+        <button
+          onClick={onChaptersToggle}
+          aria-label="Capítulos"
+          className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition ${btn}`}
+        >
+          <ListIcon />
+        </button>
+      )}
+
       {/* Fragments drawer */}
       <button
         onClick={onFragmentsToggle}
@@ -182,6 +197,19 @@ function BookIcon() {
     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+    </svg>
+  );
+}
+
+function ListIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" />
+      <line x1="3" y1="12" x2="3.01" y2="12" />
+      <line x1="3" y1="18" x2="3.01" y2="18" />
     </svg>
   );
 }

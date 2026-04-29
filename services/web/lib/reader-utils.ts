@@ -16,6 +16,17 @@ export interface Fragment {
   updatedAt: string;
 }
 
+export interface Chapter {
+  index: number;
+  title: string;
+}
+
+export function extractChapters(phrases: Phrase[]): Chapter[] {
+  return phrases
+    .filter((p) => p.type === 'heading' && p.text.trim())
+    .map((p) => ({ index: p.index, title: p.text }));
+}
+
 export function phraseAt(phrases: Phrase[], currentTime: number): number {
   if (!phrases.length) return -1;
 

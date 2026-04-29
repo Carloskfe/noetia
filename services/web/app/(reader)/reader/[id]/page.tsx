@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
-import { phraseAt, seekToPhrase, Phrase, Fragment } from '@/lib/reader-utils';
+import { phraseAt, seekToPhrase, Phrase, Fragment, extractChapters } from '@/lib/reader-utils';
 import {
   applyTextSelection,
   addFragment,
@@ -15,6 +15,7 @@ import {
 import { loadPreferences, savePreferences, FontSize, FONT_SIZES } from '@/lib/reader-preferences';
 import FragmentPopover from '@/components/FragmentPopover';
 import FragmentSheet from '@/components/FragmentSheet';
+import ChapterSheet from '@/components/ChapterSheet';
 import ReaderTopBar from '@/components/ReaderTopBar';
 
 const FONT_SIZE_CLASSES: Record<FontSize, string> = {
@@ -69,6 +70,7 @@ export default function ReaderPage() {
   const [fragments, setFragments] = useState<Fragment[]>([]);
   const [selection, setSelection] = useState<SelectionState>(EMPTY_SELECTION);
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showChapterDrawer, setShowChapterDrawer] = useState(false);
 
   // Audio bookmark — set when user taps "Citar" in listening mode
   const [audioBookmark, setAudioBookmark] = useState<AudioBookmark | null>(null);
@@ -350,6 +352,14 @@ export default function ReaderPage() {
     } catch {}
   }, []);
 
+  // ── Chapters ──────────────────────────────────────────────────────────────
+
+  const chapters = useMemo(() => extractChapters(phrases), [phrases]);
+
+  const handleChapterSelect = useCallback((phraseIndex: number) => {
+    phraseRefs.current[phraseIndex]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
   // ── Span CSS helper ───────────────────────────────────────────────────────
 
   const getSpanClass = useCallback((i: number) => {
@@ -388,6 +398,8 @@ export default function ReaderPage() {
         hasAudio={hasAudio}
         mode={mode}
         onModeToggle={handleModeToggle}
+        hasChapters={chapters.length > 0}
+        onChaptersToggle={() => setShowChapterDrawer((v) => !v)}
       />
 
       {/* Hidden audio element — uses M4B stream URL for browser-native playback */}
@@ -640,6 +652,16 @@ export default function ReaderPage() {
           onDelete={handleDeleteFragment}
           onCombine={handleCombineFragments}
           onNoteUpdate={handleNoteUpdate}
+          dark={darkMode}
+        />
+      )}
+
+      {/* ── Chapter Sheet Drawer ─────────────────────────────────────────── */}
+      {showChapterDrawer && (
+        <ChapterSheet
+          chapters={chapters}
+          onChapterSelect={handleChapterSelect}
+          onClose={() => setShowChapterDrawer(false)}
           dark={darkMode}
         />
       )}
