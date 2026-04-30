@@ -4,7 +4,10 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { User } from '../users/user.entity';
 
 export enum BookCategory {
   LEADERSHIP = 'leadership',
@@ -53,6 +56,13 @@ export class Book {
 
   @Column({ type: 'boolean', default: false })
   isPublished: boolean;
+
+  @Column({ type: 'uuid', nullable: true })
+  uploadedById: string | null;
+
+  @ManyToOne(() => User, { nullable: true, eager: false, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'uploadedById' })
+  uploadedBy: User | null;
 
   @CreateDateColumn()
   createdAt: Date;

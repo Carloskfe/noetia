@@ -21,13 +21,39 @@ export class BooksService {
     return book;
   }
 
-  create(dto: CreateBookDto, textFileKey?: string, audioFileKey?: string): Promise<Book> {
+  findPending(): Promise<Book[]> {
+    return this.repo.find({
+      where: { isPublished: false },
+      relations: ['uploadedBy'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async publish(id: string): Promise<Book> {
+    const book = await this.findById(id);
+    book.isPublished = true;
+    return this.repo.save(book);
+  }
+
+  async remove(id: string): Promise<void> {
+    const book = await this.findById(id);
+    await this.repo.remove(book);
+  }
+
+  create(
+    dto: CreateBookDto,
+    textFileKey?: string,
+    audioFileKey?: string,
+    uploadedById?: string,
+    isPublished = false,
+  ): Promise<Book> {
     const book = this.repo.create({
       ...dto,
       language: dto.language ?? 'es',
       textFileKey: textFileKey ?? null,
       audioFileKey: audioFileKey ?? null,
-      isPublished: false,
+      uploadedById: uploadedById ?? null,
+      isPublished,
     });
     return this.repo.save(book);
   }

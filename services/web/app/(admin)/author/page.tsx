@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const CATEGORIES = [
@@ -23,43 +23,39 @@ type Book = {
   category: string;
   isPublished: boolean;
   createdAt: string;
-  uploadedBy?: { id: string; name: string | null; email: string | null } | null;
 };
 
-export default function AdminPage() {
+export default function AuthorPage() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
-  const [pending, setPending] = useState<Book[]>([]);
-  const [loadingPending, setLoadingPending] = useState(true);
-  const [actionError, setActionError] = useState('');
-
-  const getToken = () =>
-    typeof window !== 'undefined' ? sessionStorage.getItem('access_token') ?? '' : '';
-
-  const fetchPending = useCallback(async () => {
-    setLoadingPending(true);
-    try {
-      const res = await fetch('/api/books/pending', {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-      if (res.ok) setPending(await res.json());
-    } catch {
-      // ignore
-    } finally {
-      setLoadingPending(false);
-    }
-  }, []);
+  const [myBooks, setMyBooks] = useState<Book[]>([]);
+  const [loadingBooks, setLoadingBooks] = useState(true);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && !sessionStorage.getItem('access_token')) {
+    const token = typeof window !== 'undefined' ? sessionStorage.getItem('access_token') : null;
+    if (!token) {
       router.replace('/login');
       return;
     }
-    fetchPending();
-  }, [router, fetchPending]);
+    fetchMyBooks(token);
+  }, [router]);
+
+  async function fetchMyBooks(token: string) {
+    setLoadingBooks(true);
+    try {
+      const res = await fetch('/api/authors/me/books', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setMyBooks(await res.json());
+    } catch {
+      // ignore
+    } finally {
+      setLoadingBooks(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -69,50 +65,23 @@ export default function AdminPage() {
 
     const form = e.currentTarget;
     const formData = new FormData(form);
+    const token = sessionStorage.getItem('access_token') ?? '';
 
     try {
       const res = await fetch('/api/books', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${getToken()}` },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message ?? `Upload failed (${res.status})`);
-      setSuccess(`Libro "${data.title}" creado con ID ${data.id}`);
+      if (!res.ok) throw new Error(data.message ?? `Error (${res.status})`);
+      setSuccess(`"${data.title}" enviado para revisión. Te notificaremos cuando sea publicado.`);
       formRef.current?.reset();
-      fetchPending();
+      fetchMyBooks(token);
     } catch (err: any) {
-      setError(err.message ?? 'Upload failed');
+      setError(err.message ?? 'Error al enviar');
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handlePublish(id: string) {
-    setActionError('');
-    try {
-      const res = await fetch(`/api/books/${id}/publish`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-      if (!res.ok) throw new Error(`Error ${res.status}`);
-      fetchPending();
-    } catch (err: any) {
-      setActionError(err.message ?? 'Error al publicar');
-    }
-  }
-
-  async function handleReject(id: string) {
-    setActionError('');
-    try {
-      const res = await fetch(`/api/books/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-      if (!res.ok && res.status !== 204) throw new Error(`Error ${res.status}`);
-      setPending((prev) => prev.filter((b) => b.id !== id));
-    } catch (err: any) {
-      setActionError(err.message ?? 'Error al rechazar');
     }
   }
 
@@ -120,57 +89,12 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-2xl mx-auto space-y-10">
 
-        {/* Pending submissions */}
+        {/* Submit form */}
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">Envíos pendientes</h2>
-          <p className="text-gray-500 text-sm mb-4">Libros enviados por autores que esperan revisión.</p>
-          {actionError && <p className="text-red-500 text-sm mb-3">{actionError}</p>}
-          {loadingPending ? (
-            <p className="text-gray-400 text-sm">Cargando…</p>
-          ) : pending.length === 0 ? (
-            <p className="text-gray-400 text-sm">No hay envíos pendientes.</p>
-          ) : (
-            <div className="space-y-3">
-              {pending.map((book) => (
-                <div key={book.id} className="bg-white rounded-xl px-4 py-3 shadow-sm">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-900 text-sm truncate">{book.title}</p>
-                      <p className="text-xs text-gray-500">
-                        {book.author} · {book.category}
-                        {book.uploadedBy && (
-                          <> · por {book.uploadedBy.name ?? book.uploadedBy.email}</>
-                        )}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {new Date(book.createdAt).toLocaleDateString('es-ES')}
-                      </p>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                      <button
-                        onClick={() => handlePublish(book.id)}
-                        className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition"
-                      >
-                        Publicar
-                      </button>
-                      <button
-                        onClick={() => handleReject(book.id)}
-                        className="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition"
-                      >
-                        Rechazar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Upload form */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Subir libro</h1>
-          <p className="text-gray-500 text-sm mb-6">Agrega un nuevo libro al catálogo (publicado inmediatamente).</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Portal de autores</h1>
+          <p className="text-gray-500 text-sm mb-6">
+            Sube tu libro. El equipo de Alexandria lo revisará antes de publicarlo.
+          </p>
 
           <form ref={formRef} onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
             <div>
@@ -214,6 +138,11 @@ export default function AdminPage() {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">URL de portada</label>
+              <input name="coverUrl" type="url" placeholder="https://…" className="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Archivo de texto (epub / pdf)</label>
               <input name="textFile" type="file" accept=".epub,.pdf" className="w-full text-sm text-gray-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
             </div>
@@ -231,9 +160,37 @@ export default function AdminPage() {
               disabled={loading}
               className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-40 transition"
             >
-              {loading ? 'Subiendo…' : 'Subir libro'}
+              {loading ? 'Enviando…' : 'Enviar para revisión'}
             </button>
           </form>
+        </div>
+
+        {/* My books */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Mis libros</h2>
+          {loadingBooks ? (
+            <p className="text-gray-400 text-sm">Cargando…</p>
+          ) : myBooks.length === 0 ? (
+            <p className="text-gray-400 text-sm">Aún no has enviado ningún libro.</p>
+          ) : (
+            <div className="space-y-3">
+              {myBooks.map((book) => (
+                <div key={book.id} className="bg-white rounded-xl px-4 py-3 shadow-sm flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-gray-900 text-sm">{book.title}</p>
+                    <p className="text-xs text-gray-500">{book.author} · {book.category}</p>
+                  </div>
+                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                    book.isPublished
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {book.isPublished ? 'Publicado' : 'En revisión'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>

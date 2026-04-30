@@ -1,11 +1,13 @@
 import {
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   HttpCode,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Query,
   Request,
@@ -19,6 +21,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SubscriptionGuard } from '../subscriptions/subscription.guard';
 import { StorageService } from '../storage/storage.service';
+import { UserType } from '../users/user.entity';
 import { BookCategory } from './book.entity';
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
@@ -47,6 +50,14 @@ export class BooksController {
     const isFreeFilter =
       isFree === 'true' ? true : isFree === 'false' ? false : undefined;
     return this.booksService.findAll(category, isFreeFilter);
+  }
+
+  // Must come before /:id to avoid "pending" being matched as an id
+  @Get('pending')
+  @UseGuards(JwtAuthGuard)
+  async getPending(@Request() req: any) {
+    if (!req.user.isAdmin) throw new ForbiddenException();
+    return this.booksService.findPending();
   }
 
   @Get(':id')
@@ -87,7 +98,12 @@ export class BooksController {
     @UploadedFiles()
     files: { textFile?: Express.Multer.File[]; audioFile?: Express.Multer.File[] },
   ) {
-    if (!req.user.isAdmin) throw new ForbiddenException();
+    const { isAdmin, userType } = req.user;
+    const canUpload =
+      isAdmin ||
+      userType === UserType.AUTHOR ||
+      userType === UserType.EDITORIAL;
+    if (!canUpload) throw new ForbiddenException();
 
     let textFileKey: string | undefined;
     let audioFileKey: string | undefined;
@@ -104,7 +120,23 @@ export class BooksController {
       await this.storageService.upload('audio', audioFileKey, f.buffer, f.mimetype);
     }
 
-    return this.booksService.create(dto, textFileKey, audioFileKey);
+    // Admin uploads go live immediately; author/editorial submissions need review
+    return this.booksService.create(dto, textFileKey, audioFileKey, req.user.id, isAdmin);
+  }
+
+  @Patch(':id/publish')
+  @UseGuards(JwtAuthGuard)
+  async publish(@Param('id') id: string, @Request() req: any) {
+    if (!req.user.isAdmin) throw new ForbiddenException();
+    return this.booksService.publish(id);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @UseGuards(JwtAuthGuard)
+  async remove(@Param('id') id: string, @Request() req: any) {
+    if (!req.user.isAdmin) throw new ForbiddenException();
+    return this.booksService.remove(id);
   }
 
   // ── Fragments ─────────────────────────────────────────────────────────────

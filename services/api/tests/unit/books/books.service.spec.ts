@@ -10,6 +10,7 @@ const mockRepo = {
   findOneBy: jest.fn(),
   create: jest.fn(),
   save: jest.fn(),
+  remove: jest.fn(),
 };
 
 describe('BooksService', () => {
@@ -105,6 +106,64 @@ describe('BooksService', () => {
     });
   });
 
+  describe('findPending', () => {
+    it('returns books where isPublished is false with uploadedBy relation', async () => {
+      const pending = [{ id: 'b-1', isPublished: false, uploadedBy: { id: 'u-1' } }];
+      mockRepo.find.mockResolvedValue(pending);
+
+      const result = await service.findPending();
+
+      expect(mockRepo.find).toHaveBeenCalledWith({
+        where: { isPublished: false },
+        relations: ['uploadedBy'],
+        order: { createdAt: 'DESC' },
+      });
+      expect(result).toEqual(pending);
+    });
+
+    it('returns empty array when there are no pending books', async () => {
+      mockRepo.find.mockResolvedValue([]);
+      expect(await service.findPending()).toEqual([]);
+    });
+  });
+
+  describe('publish', () => {
+    it('sets isPublished to true and saves the book', async () => {
+      const book = { id: 'b-1', isPublished: false };
+      const saved = { ...book, isPublished: true };
+      mockRepo.findOneBy.mockResolvedValue(book);
+      mockRepo.save.mockResolvedValue(saved);
+
+      const result = await service.publish('b-1');
+
+      expect(book.isPublished).toBe(true);
+      expect(mockRepo.save).toHaveBeenCalledWith(book);
+      expect(result).toEqual(saved);
+    });
+
+    it('throws NotFoundException when book does not exist', async () => {
+      mockRepo.findOneBy.mockResolvedValue(null);
+      await expect(service.publish('missing')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('remove', () => {
+    it('removes the book from the repository', async () => {
+      const book = { id: 'b-1', title: 'To Delete' };
+      mockRepo.findOneBy.mockResolvedValue(book);
+      mockRepo.remove.mockResolvedValue(undefined);
+
+      await service.remove('b-1');
+
+      expect(mockRepo.remove).toHaveBeenCalledWith(book);
+    });
+
+    it('throws NotFoundException when book does not exist', async () => {
+      mockRepo.findOneBy.mockResolvedValue(null);
+      await expect(service.remove('missing')).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('create', () => {
     const baseDto: CreateBookDto = {
       title: 'Mi Libro',
@@ -135,7 +194,7 @@ describe('BooksService', () => {
       expect(mockRepo.create).toHaveBeenCalledWith(expect.objectContaining({ language: 'en' }));
     });
 
-    it('always creates with isPublished set to false', async () => {
+    it('defaults isPublished to false', async () => {
       mockRepo.create.mockReturnValue({});
       mockRepo.save.mockResolvedValue({ id: '3' });
 
@@ -144,9 +203,40 @@ describe('BooksService', () => {
       expect(mockRepo.create).toHaveBeenCalledWith(expect.objectContaining({ isPublished: false }));
     });
 
+    it('creates with isPublished=true when passed', async () => {
+      mockRepo.create.mockReturnValue({});
+      mockRepo.save.mockResolvedValue({ id: '4', isPublished: true });
+
+      await service.create(baseDto, undefined, undefined, undefined, true);
+
+      expect(mockRepo.create).toHaveBeenCalledWith(expect.objectContaining({ isPublished: true }));
+    });
+
+    it('stores uploadedById when provided', async () => {
+      mockRepo.create.mockReturnValue({});
+      mockRepo.save.mockResolvedValue({ id: '5' });
+
+      await service.create(baseDto, undefined, undefined, 'user-99');
+
+      expect(mockRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ uploadedById: 'user-99' }),
+      );
+    });
+
+    it('sets uploadedById to null when not provided', async () => {
+      mockRepo.create.mockReturnValue({});
+      mockRepo.save.mockResolvedValue({ id: '6' });
+
+      await service.create(baseDto);
+
+      expect(mockRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ uploadedById: null }),
+      );
+    });
+
     it('stores textFileKey when provided', async () => {
       mockRepo.create.mockReturnValue({});
-      mockRepo.save.mockResolvedValue({ id: '4' });
+      mockRepo.save.mockResolvedValue({ id: '7' });
 
       await service.create(baseDto, 'books/text.html');
 
@@ -157,7 +247,7 @@ describe('BooksService', () => {
 
     it('stores audioFileKey when provided', async () => {
       mockRepo.create.mockReturnValue({});
-      mockRepo.save.mockResolvedValue({ id: '5' });
+      mockRepo.save.mockResolvedValue({ id: '8' });
 
       await service.create(baseDto, undefined, 'audio/file.mp3');
 
@@ -168,7 +258,7 @@ describe('BooksService', () => {
 
     it('sets both file keys to null when not provided', async () => {
       mockRepo.create.mockReturnValue({});
-      mockRepo.save.mockResolvedValue({ id: '6' });
+      mockRepo.save.mockResolvedValue({ id: '9' });
 
       await service.create(baseDto);
 
