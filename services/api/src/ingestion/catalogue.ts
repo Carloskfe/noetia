@@ -10,6 +10,8 @@ export interface CatalogueEntry {
   librivoxAudioUrl: string;
   /** Override search string passed to LibriVox API when the full title doesn't match */
   librivoxSearchTitle?: string;
+  /** Hardcoded cover image URL — skips Open Library search when present */
+  coverUrl?: string;
 }
 
 export const CATALOGUE: CatalogueEntry[] = [
@@ -181,5 +183,6 @@ export const CATALOGUE: CatalogueEntry[] = [
     source: 'wikisource',
     wikisourceTitle: 'Biblia Reina-Valera 1909/Génesis',
     librivoxAudioUrl: 'https://librivox.org/genesis-reina-valera-version/',
+    coverUrl: 'https://covers.openlibrary.org/b/id/12324628-L.jpg',
   },
 ];

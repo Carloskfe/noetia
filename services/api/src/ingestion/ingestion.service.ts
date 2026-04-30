@@ -192,8 +192,9 @@ export class IngestionService {
         this.logger.log(`Cover already set: ${book.title}`);
         continue;
       }
+      const entry = CATALOGUE.find((e) => e.title === book.title && e.author === book.author);
       try {
-        const url = await this.fetchOpenLibraryCover(book.title, book.author);
+        const url = entry?.coverUrl ?? await this.fetchOpenLibraryCover(book.title, book.author);
         if (url) {
           book.coverUrl = url;
           await this.bookRepo.save(book);

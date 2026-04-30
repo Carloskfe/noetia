@@ -433,6 +433,19 @@ describe('IngestionService', () => {
 
       expect(book.coverUrl).toBeNull();
     });
+
+    it('uses hardcoded coverUrl from catalogue without calling Open Library', async () => {
+      const book = { id: 'b1', title: 'Génesis', author: 'Anónimo', coverUrl: null } as Book;
+      mockBookRepo.find.mockResolvedValue([book]);
+      global.fetch = jest.fn();
+      mockBookRepo.save.mockResolvedValue(book);
+
+      await service.ingestAllCovers();
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(book.coverUrl).toBe('https://covers.openlibrary.org/b/id/12324628-L.jpg');
+      expect(mockBookRepo.save).toHaveBeenCalledWith(book);
+    });
   });
 
   // ── fetchOpenLibraryCover ─────────────────────────────────────────────────
