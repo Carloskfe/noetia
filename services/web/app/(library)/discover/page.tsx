@@ -15,6 +15,15 @@ type Book = {
   isFree: boolean;
 };
 
+type CollectionSummary = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  coverUrl: string | null;
+  bookCount: number;
+};
+
 const TABS = [
   { label: 'Todo', value: 'all' },
   { label: 'Gratis', value: 'free' },
@@ -34,6 +43,7 @@ export default function DiscoverPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [freeBooks, setFreeBooks] = useState<Book[]>([]);
+  const [collections, setCollections] = useState<CollectionSummary[]>([]);
   const [libraryIds, setLibraryIds] = useState<Set<string>>(new Set());
   const [searchHits, setSearchHits] = useState<Book[] | null>(null);
   const [query, setQuery] = useState('');
@@ -50,6 +60,10 @@ export default function DiscoverPage() {
 
     apiFetch('/library/ids')
       .then((ids: string[]) => setLibraryIds(new Set(ids)))
+      .catch(() => {});
+
+    apiFetch('/collections')
+      .then((data: CollectionSummary[]) => setCollections(data))
       .catch(() => {});
   }, []);
 
@@ -178,6 +192,11 @@ export default function DiscoverPage() {
         <p className="text-center text-red-500 text-sm mt-16">{error}</p>
       ) : (
         <>
+          {/* Collections row — shown on "Todo" tab */}
+          {activeTab === 'all' && !query.trim() && collections.length > 0 && (
+            <CollectionsRow collections={collections} />
+          )}
+
           {/* Free library hero — shown on "Todo" tab */}
           {showHero && <FreeLibraryHero books={freeBooks} />}
 
@@ -231,6 +250,38 @@ function FreeLibraryHero({ books }: { books: Book[] }) {
         </div>
       </div>
     </Link>
+  );
+}
+
+function CollectionsRow({ collections }: { collections: CollectionSummary[] }) {
+  return (
+    <div className="mb-8">
+      <h2 className="text-base font-semibold text-gray-900 mb-3">Colecciones</h2>
+      <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+        {collections.map((col) => (
+          <Link
+            key={col.slug}
+            href={`/discover/collection/${col.slug}`}
+            className="flex-shrink-0 w-40 group"
+          >
+            <div className="aspect-[2/3] rounded-xl overflow-hidden mb-2 shadow-sm group-hover:shadow-md transition relative bg-gray-200">
+              {col.coverUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={col.coverUrl} alt={col.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="absolute inset-0 bg-indigo-700 flex items-end p-3">
+                  <span className="text-white text-xs font-semibold leading-tight line-clamp-2">{col.name}</span>
+                </div>
+              )}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                <span className="text-white text-[10px] font-medium">{col.bookCount} libros</span>
+              </div>
+            </div>
+            <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-tight">{col.name}</p>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }
 
