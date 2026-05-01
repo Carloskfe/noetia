@@ -8,7 +8,7 @@ For local development, generate a self-signed certificate:
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -keyout ./nginx/ssl/privkey.pem \
   -out ./nginx/ssl/fullchain.pem \
-  -subj "/C=US/ST=Local/L=Local/O=Alexandria/CN=localhost"
+  -subj "/C=US/ST=Local/L=Local/O=Noetia/CN=localhost"
 ```
 
 For production, use certificates from Let's Encrypt (Certbot) or your provider.

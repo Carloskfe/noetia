@@ -30,7 +30,7 @@ Tapping "No acepto / I decline" SHALL show a brief explanation that the app cann
 
 #### Scenario: User declines and app exits
 - **WHEN** the user taps "No acepto / I decline"
-- **THEN** a message is shown ("Alexandria no puede usarse sin aceptar los términos / Alexandria cannot be used without accepting the terms") and the app closes
+- **THEN** a message is shown ("Noetia no puede usarse sin aceptar los términos / Noetia cannot be used without accepting the terms") and the app closes
 
 ### Requirement: Consent version bump triggers re-consent on next launch
 When `CONSENT_VERSION` changes, the stored consent version SHALL not match and the consent screen SHALL be shown again on the next app launch.

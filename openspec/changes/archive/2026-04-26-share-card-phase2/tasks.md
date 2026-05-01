@@ -16,7 +16,7 @@
 
 ## 3. image-gen: preset thumbnails
 
-- [x] 3.1 Create `services/image-gen/scripts/generate_presets.py`: for each of the 5 font IDs, call `render_card` with a fixed sample quote (e.g. "La lectura es un viaje"), author "Alexandria", dimensions 240×80, dark navy solid bg, save to `services/web/public/presets/{font-id}.png`
+- [x] 3.1 Create `services/image-gen/scripts/generate_presets.py`: for each of the 5 font IDs, call `render_card` with a fixed sample quote (e.g. "La lectura es un viaje"), author "Noetia", dimensions 240×80, dark navy solid bg, save to `services/web/public/presets/{font-id}.png`
 - [x] 3.2 Run `python services/image-gen/scripts/generate_presets.py` locally and commit the 5 PNG files to `services/web/public/presets/`
 - [x] 3.3 Write unit test `tests/unit/scripts/test_generate_presets.py`: each preset PNG is valid (can be opened with PIL) and has correct dimensions 240×80
 

@@ -54,8 +54,8 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-lg">
-        <h1 className="text-2xl font-bold text-center mb-2">Welcome to Alexandria</h1>
-        <p className="text-gray-500 text-center mb-8">How will you use Alexandria?</p>
+        <h1 className="text-2xl font-bold text-center mb-2">Bienvenido a Noetia</h1>
+        <p className="text-gray-500 text-center mb-8">¿Cómo usarás Noetia?</p>
 
         <div className="space-y-3 mb-8">
           {TYPES.map((type) => (

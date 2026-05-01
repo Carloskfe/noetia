@@ -62,7 +62,7 @@
 
 ## 9. Verification
 
-- [x] 9.1 Run migration in dev DB: `docker exec alexandria-api-1 node /app/node_modules/typeorm/cli.js migration:run -d /app/dist/data-source.js` — confirm `fragments` table exists
+- [x] 9.1 Run migration in dev DB: `docker exec noetia-api-1 node /app/node_modules/typeorm/cli.js migration:run -d /app/dist/data-source.js` — confirm `fragments` table exists
 - [x] 9.2 `POST /fragments` with JWT and valid body → returns 201 fragment record
 - [x] 9.3 `GET /books/:id/fragments` with JWT → returns array of user's fragments ordered by startPhraseIndex
 - [x] 9.4 `PATCH /fragments/:id` with note → returns 200 with updated note

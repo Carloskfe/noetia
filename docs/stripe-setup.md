@@ -7,7 +7,7 @@ This document describes how to register the Stripe webhook endpoint and configur
 ## 1. Prerequisites
 
 - A Stripe account (test mode for development, live mode for production)
-- The Alexandria API running and publicly reachable (use [ngrok](https://ngrok.com) for local development)
+- The Noetia API running and publicly reachable (use [ngrok](https://ngrok.com) for local development)
 - The Stripe CLI installed: `brew install stripe/stripe-cli/stripe`
 
 ---
@@ -72,7 +72,7 @@ For a shared staging environment:
 
 1. Switch to **Live mode** in the Stripe Dashboard (toggle top-left).
 2. Go to **Developers → Webhooks → Add endpoint**.
-3. Set the endpoint URL to `https://api.alexandria.app/webhooks/stripe` (replace with your production domain).
+3. Set the endpoint URL to `https://api.noetia.app/webhooks/stripe` (replace with your production domain).
 4. Select the same five events as above.
 5. Copy the **Signing secret** into the production `STRIPE_WEBHOOK_SECRET` environment variable.
 6. Replace `STRIPE_SECRET_KEY` with your live secret key (`sk_live_...`).

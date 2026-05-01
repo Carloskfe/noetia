@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Alexandria",
-    "slug": "alexandria",
+    "name": "Noetia",
+    "slug": "noetia",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,14 +12,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.alexandria.app"
+      "bundleIdentifier": "com.noetia.app"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
       },
-      "package": "com.alexandria.app"
+      "package": "com.noetia.app"
     },
-    "scheme": "alexandria"
+    "scheme": "noetia"
   }
 }

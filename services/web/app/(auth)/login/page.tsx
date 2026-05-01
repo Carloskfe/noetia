@@ -40,7 +40,7 @@ export default function LoginPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-bold mb-6 text-center">Sign in to Alexandria</h1>
+      <h1 className="text-2xl font-bold mb-6 text-center">Inicia sesión en Noetia</h1>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         <div>

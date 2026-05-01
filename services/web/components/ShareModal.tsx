@@ -159,7 +159,7 @@ export default function ShareModal({
     if (!url) return;
     const a = downloadRef.current!;
     a.href = url;
-    a.download = `alexandria-${selectedFormat}.png`;
+    a.download = `noetia-\${selectedFormat}.png`;
     a.click();
   }, [generate, selectedFormat]);
 

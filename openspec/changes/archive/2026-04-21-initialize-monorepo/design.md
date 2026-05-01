@@ -1,6 +1,6 @@
 ## Context
 
-Alexandria has no working codebase — only documentation and design artifacts exist. All services are defined in `CLAUDE.md` and `docs/PRD.md`. This change creates the entire project scaffold from scratch: a Docker-based monorepo with 6 services (api, web, mobile, image-gen, worker, proxy), shared infrastructure (PostgreSQL, Redis, MinIO), and CI/CD pipelines. Every subsequent sprint depends on this scaffold being runnable.
+Noetia has no working codebase — only documentation and design artifacts exist. All services are defined in `CLAUDE.md` and `docs/PRD.md`. This change creates the entire project scaffold from scratch: a Docker-based monorepo with 6 services (api, web, mobile, image-gen, worker, proxy), shared infrastructure (PostgreSQL, Redis, MinIO), and CI/CD pipelines. Every subsequent sprint depends on this scaffold being runnable.
 
 ## Goals / Non-Goals
 
@@ -41,7 +41,7 @@ The `image-gen` service has one job: receive a fragment payload, render an image
 **Alternative considered:** FastAPI — rejected; async not needed for CPU-bound image rendering.
 
 ### Docker Compose networking: single shared network
-All services share one Docker bridge network (`alexandria_net`). Services reference each other by container name (e.g., `api` calls `db:5432`). This keeps the `docker-compose.yml` readable and avoids inter-network routing complexity.
+All services share one Docker bridge network (`noetia_net`). Services reference each other by container name (e.g., `api` calls `db:5432`). This keeps the `docker-compose.yml` readable and avoids inter-network routing complexity.
 
 ### CI/CD: GitHub Actions over CircleCI / GitLab CI
 Project is hosted on GitHub. Native Actions integration avoids external credentials and has generous free tier. Separate workflow files for CI (on PR) and CD (on push to main) keep concerns separated.

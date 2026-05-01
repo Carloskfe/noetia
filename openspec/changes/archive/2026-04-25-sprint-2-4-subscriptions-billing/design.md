@@ -1,6 +1,6 @@
 ## Context
 
-Alexandria currently has no billing layer. All API routes are publicly accessible to authenticated users regardless of subscription status. The platform uses Stripe as its payment processor (already identified in the PRD and legal documents). This sprint wires Stripe into the NestJS API, adds subscription state to the database, and surfaces billing UI on web and mobile.
+Noetia currently has no billing layer. All API routes are publicly accessible to authenticated users regardless of subscription status. The platform uses Stripe as its payment processor (already identified in the PRD and legal documents). This sprint wires Stripe into the NestJS API, adds subscription state to the database, and surfaces billing UI on web and mobile.
 
 The API runs on NestJS. Payments are handled entirely by Stripe — we never store card data. The web app is Next.js 14. The mobile app is React Native (Expo). PostgreSQL 16 is the database.
 

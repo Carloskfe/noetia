@@ -1,5 +1,5 @@
 {
-  "name": "@alexandria/mobile",
+  "name": "@noetia/mobile",
   "version": "0.0.1",
   "private": true,
   "main": "expo-router/entry",

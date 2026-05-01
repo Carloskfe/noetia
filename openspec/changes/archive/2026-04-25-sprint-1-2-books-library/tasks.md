@@ -24,7 +24,7 @@
 
 ## 4. Database Migration
 
-- [x] 4.1 Run migration against the dev database: `pnpm --filter @alexandria/api migration:run`
+- [x] 4.1 Run migration against the dev database: `pnpm --filter @noetia/api migration:run`
 - [x] 4.2 Verify `books` table exists and `users.isAdmin` column is present in the DB
 
 ## 5. Web — Library Page

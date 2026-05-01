@@ -54,7 +54,7 @@
 
 ## 9. Mobile — Paywall Screen
 
-- [x] 9.1 Create `services/mobile/src/screens/PaywallScreen.tsx` — React Native screen; displays plan summary (Individual $9.99/mo, Dual Reader $14.99/mo) and feature list; "Subscribe now" button calls `Linking.openURL('https://alexandria.app/pricing')`
+- [x] 9.1 Create `services/mobile/src/screens/PaywallScreen.tsx` — React Native screen; displays plan summary (Individual $9.99/mo, Dual Reader $14.99/mo) and feature list; "Subscribe now" button calls `Linking.openURL('https://noetia.app/pricing')`
 - [x] 9.2 Update root navigator (`services/mobile/src/screens/`) — on app start, call `GET /api/subscriptions/me`; if `status` is `none` or `canceled`, render `PaywallScreen`; if `active` or `trialing`, render main stack
 - [x] 9.3 Create `services/mobile/src/screens/PaywallScreen.tsx` subscription status hook — `useSubscriptionStatus()` returning `{ status, isLoading }`; caches result in memory for the session
 

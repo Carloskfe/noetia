@@ -1,6 +1,6 @@
 ## Context
 
-The Alexandria API has no auth layer. All endpoints are currently open. This sprint adds the complete authentication system: email/password and three OAuth providers (Google, Facebook, Apple), JWT access/refresh token lifecycle, user persistence in PostgreSQL, and refresh token storage in Redis. The NestJS module stubs for `auth/` and `users/` exist but are empty.
+The Noetia API has no auth layer. All endpoints are currently open. This sprint adds the complete authentication system: email/password and three OAuth providers (Google, Facebook, Apple), JWT access/refresh token lifecycle, user persistence in PostgreSQL, and refresh token storage in Redis. The NestJS module stubs for `auth/` and `users/` exist but are empty.
 
 ## Goals / Non-Goals
 
@@ -24,7 +24,7 @@ The Alexandria API has no auth layer. All endpoints are currently open. This spr
 ### Token strategy: JWT access + Redis refresh tokens
 Short-lived JWTs (15min) for stateless auth on each request. Refresh tokens (7d) stored in Redis as `refresh:<userId>:<tokenId>` with TTL. On logout, the Redis key is deleted — no token blacklist needed. On refresh, old token is deleted and a new one is issued (rotation).
 
-**Alternative considered:** Session cookies — rejected; Alexandria targets mobile + web clients where stateless JWT is simpler.
+**Alternative considered:** Session cookies — rejected; Noetia targets mobile + web clients where stateless JWT is simpler.
 
 ### OAuth library: Passport.js with NestJS guards
 `@nestjs/passport` integrates cleanly with NestJS guards and decorators. Each provider gets its own strategy file. The `validate()` method upserts the user record on each OAuth login.

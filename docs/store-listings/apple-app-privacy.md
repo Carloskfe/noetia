@@ -1,6 +1,6 @@
 # Apple App Store — App Privacy
 
-**Privacy Policy URL:** https://alexandria.app/legal/privacy
+**Privacy Policy URL:** https://noetia.app/legal/privacy
 
 > Copy the answers below into App Store Connect → Your App → App Privacy.
 > Complete the privacy questionnaire for each data type listed.
@@ -39,7 +39,7 @@ The following data types are collected but **not linked to the user's identity**
 
 ## Is any of the collected data used to track users across other companies' apps or websites?
 
-**No** — Alexandria does not use any data to track users across third-party apps or websites. We do not participate in advertising networks or cross-app tracking.
+**No** — Noetia does not use any data to track users across third-party apps or websites. We do not participate in advertising networks or cross-app tracking.
 
 ---
 
@@ -47,7 +47,7 @@ The following data types are collected but **not linked to the user's identity**
 
 | SDK / Service | Data collected | Purpose |
 |---------------|----------------|---------|
-| Stripe iOS SDK | Payment card data (handled on-device, not stored by Alexandria) | Payment processing |
+| Stripe iOS SDK | Payment card data (handled on-device, not stored by Noetia) | Payment processing |
 | Google Sign-In SDK | Google account email | Authentication |
 | Facebook Login SDK | Facebook account email | Authentication |
 | Apple Sign In | Apple ID email (may be relayed) | Authentication |
@@ -56,7 +56,7 @@ The following data types are collected but **not linked to the user's identity**
 
 ## Data Retention
 
-Users may request deletion of all their data by contacting **legal@alexandria.app**.
+Users may request deletion of all their data by contacting **legal@noetia.app**.
 Account and reading data is retained until deletion is requested.
 Payment records are retained for 7 years as required by tax regulations.
 

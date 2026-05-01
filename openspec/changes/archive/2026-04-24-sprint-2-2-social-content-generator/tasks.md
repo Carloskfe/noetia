@@ -5,7 +5,7 @@
 
 ## 2. image-gen — Quote Card Templates
 
-- [x] 2.1 Implement `services/image-gen/templates/linkedin.py` — `render(fragment: dict) -> bytes`: 1200×627 px, dark navy background (`#0D1B2A`), wrapped white quote text (centered, max ~60 chars/line), gold horizontal rule, attribution line (`author · title`), bottom-right "Alexandria" watermark
+- [x] 2.1 Implement `services/image-gen/templates/linkedin.py` — `render(fragment: dict) -> bytes`: 1200×627 px, dark navy background (`#0D1B2A`), wrapped white quote text (centered, max ~60 chars/line), gold horizontal rule, attribution line (`author · title`), bottom-right "Noetia" watermark
 - [x] 2.2 Implement `services/image-gen/templates/instagram.py` — `render(fragment: dict) -> bytes`: 1080×1080 px, same design system as LinkedIn
 - [x] 2.3 Implement `services/image-gen/templates/facebook.py` — `render(fragment: dict) -> bytes`: 1200×630 px, same design system
 - [x] 2.4 Implement `services/image-gen/templates/whatsapp.py` — `render(fragment: dict) -> bytes`: 800×800 px, same design system

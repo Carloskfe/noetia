@@ -5,7 +5,7 @@ export default function Footer() {
     <footer className="border-t border-gray-100 bg-white mt-auto">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <p className="text-xs text-gray-400">
-          © {new Date().getFullYear()} Alexandria. Read. Listen. Capture. Share.
+          © {new Date().getFullYear()} Noetia — Where ideas become visible
         </p>
         <nav className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
           <Link href="/legal/privacy" className="hover:text-gray-800 transition">
@@ -17,8 +17,8 @@ export default function Footer() {
           <Link href="/legal/cookies" className="hover:text-gray-800 transition">
             Cookies
           </Link>
-          <a href="mailto:legal@alexandria.app" className="hover:text-gray-800 transition">
-            legal@alexandria.app
+          <a href="mailto:legal@noetia.app" className="hover:text-gray-800 transition">
+            legal@noetia.app
           </a>
         </nav>
       </div>

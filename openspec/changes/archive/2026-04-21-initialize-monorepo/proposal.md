@@ -1,6 +1,6 @@
 ## Why
 
-The Alexandria project exists as documentation and design artifacts only — there is no working codebase yet. To begin feature development, the full monorepo scaffold must be initialized: all services, Docker configuration, shared tooling, and CI/CD pipelines need to be in place so every subsequent sprint can build on a consistent, runnable foundation.
+The Noetia project exists as documentation and design artifacts only — there is no working codebase yet. To begin feature development, the full monorepo scaffold must be initialized: all services, Docker configuration, shared tooling, and CI/CD pipelines need to be in place so every subsequent sprint can build on a consistent, runnable foundation.
 
 ## What Changes
 

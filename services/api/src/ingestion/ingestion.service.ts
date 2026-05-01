@@ -216,7 +216,7 @@ export class IngestionService {
     const q = encodeURIComponent(`${title} ${author}`);
     const url = `https://openlibrary.org/search.json?q=${q}&limit=1&fields=cover_i`;
     const res = await globalThis.fetch(url, {
-      headers: { 'User-Agent': 'Alexandria-Ingestion/1.0 (https://github.com/Carloskfe/alexandria)' },
+      headers: { 'User-Agent': 'Noetia-Ingestion/1.0 (https://github.com/Carloskfe/noetia)' },
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { docs?: Array<{ cover_i?: number }> };

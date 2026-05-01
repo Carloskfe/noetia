@@ -1,5 +1,5 @@
 export const CONSENT_VERSION = '1.0';
-const STORAGE_KEY = 'alexandria_consent';
+const STORAGE_KEY = 'noetia_consent';
 
 export type ConsentRecord = {
   version: string;

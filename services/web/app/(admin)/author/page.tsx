@@ -93,7 +93,7 @@ export default function AuthorPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Portal de autores</h1>
           <p className="text-gray-500 text-sm mb-6">
-            Sube tu libro. El equipo de Alexandria lo revisará antes de publicarlo.
+            Sube tu libro. El equipo de Noetia lo revisará antes de publicarlo.
           </p>
 
           <form ref={formRef} onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 shadow-sm space-y-4">

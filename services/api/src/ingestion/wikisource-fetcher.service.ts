@@ -36,7 +36,7 @@ export class WikisourceFetcherService {
   }
 
   private readonly headers = {
-    'User-Agent': 'Alexandria-Ingestion/1.0 (https://github.com/Carloskfe/alexandria)',
+    'User-Agent': 'Noetia-Ingestion/1.0 (https://github.com/Carloskfe/noetia)',
   };
 
   private sleep(ms: number): Promise<void> {

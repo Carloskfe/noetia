@@ -36,13 +36,13 @@ describe('loadConsent', () => {
   });
 
   it('returns parsed record when one exists', () => {
-    mockStorage['alexandria_consent'] = JSON.stringify(validRecord());
+    mockStorage['noetia_consent'] = JSON.stringify(validRecord());
     const result = loadConsent();
     expect(result).toMatchObject({ version: CONSENT_VERSION, analytics: true, marketing: false });
   });
 
   it('returns null when stored value is invalid JSON', () => {
-    mockStorage['alexandria_consent'] = 'not-json';
+    mockStorage['noetia_consent'] = 'not-json';
     expect(loadConsent()).toBeNull();
   });
 });
@@ -51,16 +51,16 @@ describe('saveConsent', () => {
   it('writes the record to localStorage as JSON', () => {
     saveConsent(validRecord());
     expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      'alexandria_consent',
+      'noetia_consent',
       JSON.stringify(validRecord()),
     );
   });
 
   it('overwrites an existing record', () => {
-    mockStorage['alexandria_consent'] = JSON.stringify(validRecord());
+    mockStorage['noetia_consent'] = JSON.stringify(validRecord());
     const updated = { ...validRecord(), analytics: false };
     saveConsent(updated);
-    expect(JSON.parse(mockStorage['alexandria_consent']).analytics).toBe(false);
+    expect(JSON.parse(mockStorage['noetia_consent']).analytics).toBe(false);
   });
 });
 
@@ -70,12 +70,12 @@ describe('needsConsent', () => {
   });
 
   it('returns true when stored version does not match current version', () => {
-    mockStorage['alexandria_consent'] = JSON.stringify({ ...validRecord(), version: '0.9' });
+    mockStorage['noetia_consent'] = JSON.stringify({ ...validRecord(), version: '0.9' });
     expect(needsConsent()).toBe(true);
   });
 
   it('returns false when stored version matches current version', () => {
-    mockStorage['alexandria_consent'] = JSON.stringify(validRecord());
+    mockStorage['noetia_consent'] = JSON.stringify(validRecord());
     expect(needsConsent()).toBe(false);
   });
 });
@@ -86,12 +86,12 @@ describe('hasAnalyticsConsent', () => {
   });
 
   it('returns true when analytics is true in the stored record', () => {
-    mockStorage['alexandria_consent'] = JSON.stringify(validRecord());
+    mockStorage['noetia_consent'] = JSON.stringify(validRecord());
     expect(hasAnalyticsConsent()).toBe(true);
   });
 
   it('returns false when analytics is false in the stored record', () => {
-    mockStorage['alexandria_consent'] = JSON.stringify({ ...validRecord(), analytics: false });
+    mockStorage['noetia_consent'] = JSON.stringify({ ...validRecord(), analytics: false });
     expect(hasAnalyticsConsent()).toBe(false);
   });
 });
@@ -102,12 +102,12 @@ describe('hasMarketingConsent', () => {
   });
 
   it('returns true when marketing is true in the stored record', () => {
-    mockStorage['alexandria_consent'] = JSON.stringify({ ...validRecord(), marketing: true });
+    mockStorage['noetia_consent'] = JSON.stringify({ ...validRecord(), marketing: true });
     expect(hasMarketingConsent()).toBe(true);
   });
 
   it('returns false when marketing is false in the stored record', () => {
-    mockStorage['alexandria_consent'] = JSON.stringify(validRecord());
+    mockStorage['noetia_consent'] = JSON.stringify(validRecord());
     expect(hasMarketingConsent()).toBe(false);
   });
 });

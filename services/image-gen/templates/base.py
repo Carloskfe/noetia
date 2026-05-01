@@ -150,7 +150,7 @@ def render_card(
         bb = draw.textbbox((0, 0), attr_text, font=font_attr)
         draw.text(((width - (bb[2] - bb[0])) / 2, attr_y), attr_text, font=font_attr, fill=attr_color)
 
-    wm = "Alexandria"
+    wm = "Noetia"
     bb = draw.textbbox((0, 0), wm, font=font_wm)
     draw.text(
         (width - margin - (bb[2] - bb[0]), height - margin - (bb[3] - bb[1])),

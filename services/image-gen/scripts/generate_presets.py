@@ -16,7 +16,7 @@ FONTS = ['playfair', 'lato', 'merriweather', 'dancing', 'montserrat']
 
 SAMPLE = {
     "text":   "La lectura es un viaje",
-    "author": "Alexandria",
+    "author": "Noetia",
     "title":  "",
 }
 

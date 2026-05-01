@@ -1,6 +1,6 @@
 ## Why
 
-Sprints 1.1 and 1.2 delivered auth and a book catalog, but there is still no reading experience — the reader page is a stub. The synchronized reading engine is Alexandria's core differentiator: users can read and listen at the same time, with the active phrase highlighted in the text as audio plays. Without it, the platform has no value.
+Sprints 1.1 and 1.2 delivered auth and a book catalog, but there is still no reading experience — the reader page is a stub. The synchronized reading engine is Noetia's core differentiator: users can read and listen at the same time, with the active phrase highlighted in the text as audio plays. Without it, the platform has no value.
 
 ## What Changes
 

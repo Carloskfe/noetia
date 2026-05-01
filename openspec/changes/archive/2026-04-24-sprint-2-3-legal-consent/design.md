@@ -1,6 +1,6 @@
 ## Context
 
-Alexandria currently has no legal layer. The platform collects user email, processes Stripe payments, stores user-generated fragments in PostgreSQL, and serves DRM-protected book content — all without a cookie consent mechanism, privacy policy, or terms of service. The App Store and Google Play both require a privacy policy URL before an app can be published. GDPR-adjacent laws in Spain, Mexico, and Argentina require affirmative consent before non-essential cookies or tracking are set.
+Noetia currently has no legal layer. The platform collects user email, processes Stripe payments, stores user-generated fragments in PostgreSQL, and serves DRM-protected book content — all without a cookie consent mechanism, privacy policy, or terms of service. The App Store and Google Play both require a privacy policy URL before an app can be published. GDPR-adjacent laws in Spain, Mexico, and Argentina require affirmative consent before non-essential cookies or tracking are set.
 
 The legal documents are bilingual (ES/EN) because the primary market is Spanish-speaking, but international users and App Store reviewers expect English.
 
@@ -24,7 +24,7 @@ The legal documents are bilingual (ES/EN) because the primary market is Spanish-
 ## Decisions
 
 **D1 — localStorage for web consent, AsyncStorage for mobile consent**
-No third-party consent SDK is introduced. The consent preference (`{ version, analytics, marketing, timestamp }`) is stored as a JSON string under the key `alexandria_consent`. Version mismatch triggers re-prompt. This is sufficient for MVP; a dedicated CMP can replace it without API changes.
+No third-party consent SDK is introduced. The consent preference (`{ version, analytics, marketing, timestamp }`) is stored as a JSON string under the key `noetia_consent`. Version mismatch triggers re-prompt. This is sufficient for MVP; a dedicated CMP can replace it without API changes.
 
 **D2 — Policy version as a constant in `lib/consent-utils.ts` and `src/offline/consent-storage.ts`**
 Bumping `CONSENT_VERSION` (e.g., `"1.0"` → `"1.1"`) automatically triggers re-consent on next load/launch without a database migration or backend call. This keeps the consent mechanism entirely client-side.

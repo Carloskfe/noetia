@@ -1,4 +1,4 @@
-# Alexandria — Project Stages, Sprints & Tasks
+# Noetia — Project Stages, Sprints & Tasks
 
 **Estimation key:** Each task is estimated in days (1 dev). Sprints are 2 weeks (10 working days).
 **Legend:** `[ ]` pending · `[x]` done · `[~]` in progress
@@ -172,7 +172,7 @@
 - [ ] Design WhatsApp quote card template (800×800px) — 0.5d
 - [ ] Render endpoint: accept fragment + platform → return image — 1d
 - [ ] Upload generated image to MinIO `images/` bucket — 0.5d
-- [ ] Alexandria watermark overlay — 0.5d
+- [ ] Noetia watermark overlay — 0.5d
 - [ ] Font rendering for Spanish characters — 0.5d
 - [ ] Unit tests: `test_linkedin.py`, `test_instagram.py`, `test_facebook.py`, `test_whatsapp.py` (mock MinIO, no network) — 1d
 

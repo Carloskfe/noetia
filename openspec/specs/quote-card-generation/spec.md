@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Platform templates render styled quote cards
-The image-gen service SHALL render a PNG quote card for each supported platform and format. The card SHALL include: quote text wrapped to fit the card width, author + book attribution line, and an "Alexandria" watermark. The background SHALL be either a solid colour or a two-stop vertical gradient. The text colour SHALL be determined as follows: if `textColor` is provided, use it directly; otherwise apply auto-luminance (white when background luminance ≤ 0.179, dark navy `#0D1B2A` otherwise). The font SHALL be selected from 5 bundled TTF typefaces.
+The image-gen service SHALL render a PNG quote card for each supported platform and format. The card SHALL include: quote text wrapped to fit the card width, author + book attribution line, and an "Noetia" watermark. The background SHALL be either a solid colour or a two-stop vertical gradient. The text colour SHALL be determined as follows: if `textColor` is provided, use it directly; otherwise apply auto-luminance (white when background luminance ≤ 0.179, dark navy `#0D1B2A` otherwise). The font SHALL be selected from 5 bundled TTF typefaces.
 
 #### Scenario: LinkedIn post card renders at correct dimensions
 - **WHEN** `render(fragment, style='post')` is called on the LinkedIn template with valid fragment data

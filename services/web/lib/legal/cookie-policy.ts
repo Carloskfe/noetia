@@ -10,7 +10,7 @@ export const COOKIE_POLICY_ES = `
 
 Las cookies son pequeños archivos de texto que los sitios web almacenan en tu dispositivo cuando los visitas. Sirven para que el sitio funcione correctamente, recuerde tus preferencias y, en algunos casos, recopile información de uso.
 
-## ¿Qué cookies utiliza Alexandria?
+## ¿Qué cookies utiliza Noetia?
 
 ### Cookies esenciales
 Estas cookies son necesarias para el funcionamiento básico de la plataforma y no pueden desactivarse.
@@ -19,17 +19,17 @@ Estas cookies son necesarias para el funcionamiento básico de la plataforma y n
 |--------|-----------|----------|
 | \`access_token\` | Mantiene tu sesión iniciada | Sesión |
 | \`user_type\` | Recuerda tu tipo de cuenta (lector, autor) | Sesión |
-| \`alexandria_consent\` | Guarda tus preferencias de cookies | 1 año |
+| \`noetia_consent\` | Guarda tus preferencias de cookies | 1 año |
 
 ### Cookies analíticas (opcionales)
-Nos ayudan a entender cómo los usuarios interactúan con Alexandria para mejorar la experiencia de lectura. Solo se activan si das tu consentimiento.
+Nos ayudan a entender cómo los usuarios interactúan con Noetia para mejorar la experiencia de lectura. Solo se activan si das tu consentimiento.
 
 | Cookie | Propósito | Duración |
 |--------|-----------|----------|
 | Analíticas de uso | Páginas visitadas, tiempo de lectura, fragmentos creados | 30 días |
 
 ### Cookies de marketing (opcionales)
-En esta versión MVP, Alexandria no utiliza cookies de marketing de terceros. Esta categoría se reserva para uso futuro.
+En esta versión MVP, Noetia no utiliza cookies de marketing de terceros. Esta categoría se reserva para uso futuro.
 
 ## ¿Cómo gestionar tus preferencias?
 
@@ -39,7 +39,7 @@ Puedes cambiar tus preferencias de cookies en cualquier momento haciendo clic en
 
 Para saber cómo tratamos tus datos personales en general, consulta nuestra [Política de Privacidad](/legal/privacy).
 
-Si tienes preguntas sobre el uso de cookies, contáctanos en: **legal@alexandria.app**
+Si tienes preguntas sobre el uso de cookies, contáctanos en: **legal@noetia.app**
 `.trim();
 
 export const COOKIE_POLICY_EN = `
@@ -52,7 +52,7 @@ Last updated: ${LAST_UPDATED}
 
 Cookies are small text files that websites store on your device when you visit them. They help the site function correctly, remember your preferences, and, in some cases, collect usage information.
 
-## What cookies does Alexandria use?
+## What cookies does Noetia use?
 
 ### Essential cookies
 These cookies are required for the basic operation of the platform and cannot be disabled.
@@ -61,17 +61,17 @@ These cookies are required for the basic operation of the platform and cannot be
 |--------|---------|----------|
 | \`access_token\` | Keeps you logged in | Session |
 | \`user_type\` | Remembers your account type (reader, author) | Session |
-| \`alexandria_consent\` | Stores your cookie preferences | 1 year |
+| \`noetia_consent\` | Stores your cookie preferences | 1 year |
 
 ### Analytics cookies (optional)
-These help us understand how users interact with Alexandria so we can improve the reading experience. They are only activated with your consent.
+These help us understand how users interact with Noetia so we can improve the reading experience. They are only activated with your consent.
 
 | Cookie | Purpose | Duration |
 |--------|---------|----------|
 | Usage analytics | Pages visited, reading time, fragments created | 30 days |
 
 ### Marketing cookies (optional)
-In this MVP version, Alexandria does not use third-party marketing cookies. This category is reserved for future use.
+In this MVP version, Noetia does not use third-party marketing cookies. This category is reserved for future use.
 
 ## How to manage your preferences
 
@@ -81,5 +81,5 @@ You can change your cookie preferences at any time by clicking "Manage cookies" 
 
 To learn how we handle your personal data in general, please read our [Privacy Policy](/legal/privacy).
 
-If you have questions about our use of cookies, contact us at: **legal@alexandria.app**
+If you have questions about our use of cookies, contact us at: **legal@noetia.app**
 `.trim();

@@ -1,14 +1,14 @@
 ## ADDED Requirements
 
 ### Requirement: Consent banner appears on first web visit
-The web app SHALL display a cookie consent banner at the bottom of the screen on first visit if no consent record exists in `localStorage` under the key `alexandria_consent`. The banner SHALL be visible across all pages and SHALL NOT block page interaction.
+The web app SHALL display a cookie consent banner at the bottom of the screen on first visit if no consent record exists in `localStorage` under the key `noetia_consent`. The banner SHALL be visible across all pages and SHALL NOT block page interaction.
 
 #### Scenario: First-time visitor sees banner
-- **WHEN** a user visits any page and `localStorage.getItem('alexandria_consent')` returns null
+- **WHEN** a user visits any page and `localStorage.getItem('noetia_consent')` returns null
 - **THEN** the `CookieBanner` component is rendered at the bottom of the viewport
 
 #### Scenario: Returning visitor with stored consent does not see banner
-- **WHEN** a user visits any page and `localStorage.getItem('alexandria_consent')` returns a valid JSON object with a matching version
+- **WHEN** a user visits any page and `localStorage.getItem('noetia_consent')` returns a valid JSON object with a matching version
 - **THEN** the `CookieBanner` component is NOT rendered
 
 ### Requirement: Banner offers three consent actions
@@ -45,7 +45,7 @@ The system SHALL re-display the banner if the stored consent version does not ma
 - **THEN** `needsConsent()` returns false
 
 ### Requirement: Cookie Policy page is accessible at /legal/cookies
-The web app SHALL serve a bilingual (ES/EN) Cookie Policy page at `/legal/cookies` explaining what cookies Alexandria uses, their purpose, retention period, and how to withdraw consent.
+The web app SHALL serve a bilingual (ES/EN) Cookie Policy page at `/legal/cookies` explaining what cookies Noetia uses, their purpose, retention period, and how to withdraw consent.
 
 #### Scenario: Cookie policy page renders
 - **WHEN** a user navigates to `/legal/cookies`

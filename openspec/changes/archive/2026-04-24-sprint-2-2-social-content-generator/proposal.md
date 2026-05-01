@@ -1,10 +1,10 @@
 ## Why
 
-Fragments exist but have no outlet — users can save highlights yet cannot turn them into anything shareable. The Social Content Generator closes the loop by converting any saved fragment into a branded visual quote card, making sharing the natural next action after reading and activating Alexandria's core growth mechanic.
+Fragments exist but have no outlet — users can save highlights yet cannot turn them into anything shareable. The Social Content Generator closes the loop by converting any saved fragment into a branded visual quote card, making sharing the natural next action after reading and activating Noetia's core growth mechanic.
 
 ## What Changes
 
-- Implement the four platform-specific quote card templates in `image-gen` (LinkedIn, Instagram, Facebook, WhatsApp) using Pillow: styled background, wrapped quote text, author + book title attribution, Alexandria watermark.
+- Implement the four platform-specific quote card templates in `image-gen` (LinkedIn, Instagram, Facebook, WhatsApp) using Pillow: styled background, wrapped quote text, author + book title attribution, Noetia watermark.
 - Add a `POST /generate` endpoint to the image-gen Flask service that accepts `{ text, author, title, platform }`, renders the card, uploads the PNG to MinIO (`images/` bucket), and returns a pre-signed URL.
 - Add `POST /fragments/:id/share` to the NestJS API: looks up the fragment + book metadata, calls image-gen, and returns the pre-signed URL.
 - Add a **Share** button to each card in the Fragment Sheet drawer: clicking opens a platform picker (LinkedIn / Instagram / Facebook / WhatsApp); selecting a platform triggers generation, then shows a preview modal with download and copy-link actions.

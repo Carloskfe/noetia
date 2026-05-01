@@ -58,7 +58,7 @@
 
 ## 8. Verification
 
-- [x] 8.1 Run `pnpm --filter @alexandria/api migration:run` against the dev database — confirm `sync_maps` and `reading_progress` tables exist
+- [x] 8.1 Run `pnpm --filter @noetia/api migration:run` against the dev database — confirm `sync_maps` and `reading_progress` tables exist
 - [ ] 8.2 Seed one book's sync map via `POST /books/:id/sync-map` with admin JWT and a sample phrases array
 - [ ] 8.3 Open `http://localhost:3000/reader?bookId=<id>` — confirm phrases render, audio plays, active phrase highlights
 - [ ] 8.4 Click a phrase — confirm audio seeks to that timestamp

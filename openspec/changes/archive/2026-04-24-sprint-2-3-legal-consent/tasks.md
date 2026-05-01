@@ -1,8 +1,8 @@
 ## 1. Legal Content — Bilingual Text Constants
 
 - [x] 1.1 Create `services/web/lib/legal/cookie-policy.ts` — export `COOKIE_POLICY_ES` and `COOKIE_POLICY_EN` as multiline string constants covering: what cookies are used (essential: session auth; analytics: reading behaviour; marketing: future), retention periods, how to withdraw consent, and a link to `/legal/privacy`
-- [x] 1.2 Create `services/web/lib/legal/privacy-policy.ts` — export `PRIVACY_POLICY_ES` and `PRIVACY_POLICY_EN` covering: data controller (Alexandria / Carloskfe), categories of data collected (email, name, payment info via Stripe, reading progress, fragments), legal basis, retention (account data: until deletion; payment: 7 years per tax law), third-party processors (Stripe, MinIO, Google/Facebook/Apple OAuth), user rights (access, rectification, erasure, portability — contact legal@alexandria.app), governing law (Spain / RGPD), CCPA addendum for California users
-- [x] 1.3 Create `services/web/lib/legal/terms-of-service.ts` — export `TERMS_ES` and `TERMS_EN` covering: service description, minimum age (18), subscription plans (Individual $9.99/mo or $89/yr; Dual Reader $14.99/mo or $135/yr), free trial conditions, cancellation/refund policy, DRM and content restrictions (no download, no redistribution), fragment sharing (user retains ownership of own text; Alexandria gets a licence to render quote cards), intellectual property, disclaimer of warranties, limitation of liability, governing law (Spain), contact
+- [x] 1.2 Create `services/web/lib/legal/privacy-policy.ts` — export `PRIVACY_POLICY_ES` and `PRIVACY_POLICY_EN` covering: data controller (Noetia / Carloskfe), categories of data collected (email, name, payment info via Stripe, reading progress, fragments), legal basis, retention (account data: until deletion; payment: 7 years per tax law), third-party processors (Stripe, MinIO, Google/Facebook/Apple OAuth), user rights (access, rectification, erasure, portability — contact legal@noetia.app), governing law (Spain / RGPD), CCPA addendum for California users
+- [x] 1.3 Create `services/web/lib/legal/terms-of-service.ts` — export `TERMS_ES` and `TERMS_EN` covering: service description, minimum age (18), subscription plans (Individual $9.99/mo or $89/yr; Dual Reader $14.99/mo or $135/yr), free trial conditions, cancellation/refund policy, DRM and content restrictions (no download, no redistribution), fragment sharing (user retains ownership of own text; Noetia gets a licence to render quote cards), intellectual property, disclaimer of warranties, limitation of liability, governing law (Spain), contact
 
 ## 2. Web — Consent Utility
 
@@ -28,13 +28,13 @@
 
 ## 6. Mobile — Consent Storage Utility
 
-- [x] 6.1 Create `services/mobile/src/offline/consent-storage.ts` — export: `CONSENT_VERSION = "1.0"`, type `MobileConsentRecord { version, accepted, timestamp }`, `saveConsent(record): Promise<void>` (writes JSON to AsyncStorage key `"alexandria_consent"`), `loadConsent(): Promise<MobileConsentRecord | null>`, `consentIsCurrent(): Promise<boolean>` (true if stored version matches `CONSENT_VERSION` and `accepted` is true)
+- [x] 6.1 Create `services/mobile/src/offline/consent-storage.ts` — export: `CONSENT_VERSION = "1.0"`, type `MobileConsentRecord { version, accepted, timestamp }`, `saveConsent(record): Promise<void>` (writes JSON to AsyncStorage key `"noetia_consent"`), `loadConsent(): Promise<MobileConsentRecord | null>`, `consentIsCurrent(): Promise<boolean>` (true if stored version matches `CONSENT_VERSION` and `accepted` is true)
 
 ## 7. Mobile — Consent Screen
 
-- [x] 7.1 Create `services/mobile/src/screens/ConsentScreen.tsx` — React Native screen with: ScrollView containing bilingual Privacy Policy summary (2–3 paragraphs ES then EN) and Terms of Service summary; tappable links to `https://alexandria.app/legal/privacy` and `https://alexandria.app/legal/terms` (open with `Linking.openURL`); sticky bottom bar with "Acepto / I agree" button (primary style) and "No acepto / I decline" button (text style)
+- [x] 7.1 Create `services/mobile/src/screens/ConsentScreen.tsx` — React Native screen with: ScrollView containing bilingual Privacy Policy summary (2–3 paragraphs ES then EN) and Terms of Service summary; tappable links to `https://noetia.app/legal/privacy` and `https://noetia.app/legal/terms` (open with `Linking.openURL`); sticky bottom bar with "Acepto / I agree" button (primary style) and "No acepto / I decline" button (text style)
 - [x] 7.2 Wire "Acepto / I agree": calls `saveConsent({ version: CONSENT_VERSION, accepted: true, timestamp: Date.now() })` then navigates to next screen
-- [x] 7.3 Wire "No acepto / I decline": shows `Alert.alert` with message "Alexandria no puede usarse sin aceptar los términos. / Alexandria cannot be used without accepting the terms." and OK button that calls `BackHandler.exitApp()` (Android) / does nothing gracefully on iOS (cannot force-quit)
+- [x] 7.3 Wire "No acepto / I decline": shows `Alert.alert` with message "Noetia no puede usarse sin aceptar los términos. / Noetia cannot be used without accepting the terms." and OK button that calls `BackHandler.exitApp()` (Android) / does nothing gracefully on iOS (cannot force-quit)
 - [x] 7.4 Add navigation guard in the root navigator (`services/mobile/src/screens/` or equivalent entry): on app start, call `consentIsCurrent()`; if false, render `ConsentScreen` first; if true, render the auth/main stack
 
 ## 8. Mobile — Unit Tests
@@ -44,8 +44,8 @@
 
 ## 9. Store Listing Static Artifacts
 
-- [x] 9.1 Create `docs/store-listings/google-play-data-safety.md` — filled-in answers for Google Play Data Safety questionnaire: data types collected (Personal info: name/email; Financial info: purchase history via Stripe; App activity: reading progress, fragments created, books opened), data sharing (Stripe for payments, Google/Facebook/Apple for OAuth), all data encrypted in transit (TLS 1.2+), users can request deletion via legal@alexandria.app, no data sold to third parties
-- [x] 9.2 Create `docs/store-listings/apple-app-privacy.md` — Apple App Store Connect App Privacy answers: table with columns (Data Type, Purpose, Linked to Identity, Tracking); rows for Email Address (account), Name (account), Purchase History (analytics/payments), Reading Activity (product personalisation), Crash Data (analytics, not linked); privacy policy URL: `https://alexandria.app/legal/privacy`
+- [x] 9.1 Create `docs/store-listings/google-play-data-safety.md` — filled-in answers for Google Play Data Safety questionnaire: data types collected (Personal info: name/email; Financial info: purchase history via Stripe; App activity: reading progress, fragments created, books opened), data sharing (Stripe for payments, Google/Facebook/Apple for OAuth), all data encrypted in transit (TLS 1.2+), users can request deletion via legal@noetia.app, no data sold to third parties
+- [x] 9.2 Create `docs/store-listings/apple-app-privacy.md` — Apple App Store Connect App Privacy answers: table with columns (Data Type, Purpose, Linked to Identity, Tracking); rows for Email Address (account), Name (account), Purchase History (analytics/payments), Reading Activity (product personalisation), Crash Data (analytics, not linked); privacy policy URL: `https://noetia.app/legal/privacy`
 
 ## 10. Verification
 

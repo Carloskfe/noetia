@@ -28,7 +28,7 @@ The image-gen service uploads directly to MinIO and returns a pre-signed URL rat
 MinIO's own Python SDK has a smaller footprint than boto3 and first-class support for the MinIO-specific pre-sign API. The `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, and `MINIO_SECRET_KEY` env vars are already set in docker-compose.
 
 **D4 — One fixed design system per platform**
-Each template uses: dark navy background (`#0D1B2A`), white quote text (wrapped, centered), gold accent rule, smaller attribution line, bottom-right watermark ("Alexandria"). Fonts fall back to Pillow's built-in default to avoid font file bundling complexity in MVP.
+Each template uses: dark navy background (`#0D1B2A`), white quote text (wrapped, centered), gold accent rule, smaller attribution line, bottom-right watermark ("Noetia"). Fonts fall back to Pillow's built-in default to avoid font file bundling complexity in MVP.
 
 **D5 — NestJS `SharingModule` as the orchestration layer**
 A dedicated `sharing/` module in the API keeps fragment-to-image-gen orchestration isolated from `FragmentsModule`. `FragmentsController` delegates to `SharingService` for the share endpoint, which calls image-gen via `HttpModule` and returns the URL.

@@ -1,6 +1,6 @@
 # Google Play — Data Safety Section
 
-**Privacy Policy URL:** https://alexandria.app/legal/privacy
+**Privacy Policy URL:** https://noetia.app/legal/privacy
 
 > Copy the answers below into the Data Safety form in Google Play Console.
 > Section: Store presence → Data safety
@@ -21,7 +21,7 @@
 
 ## Do you provide a way for users to request that their data is deleted?
 
-**Yes** — Users can request data deletion by emailing legal@alexandria.app with the subject "Delete my account". We will process the request within 30 days.
+**Yes** — Users can request data deletion by emailing legal@noetia.app with the subject "Delete my account". We will process the request within 30 days.
 
 ---
 
@@ -40,7 +40,7 @@
 |-----------|-----------|--------|----------------------|------------|
 | Purchase history | Yes | Yes — shared with Stripe (payment processor) | Required | Analytics, Account management |
 
-*Note: Alexandria does not handle or store raw payment card data. Payment processing is delegated entirely to Stripe.*
+*Note: Noetia does not handle or store raw payment card data. Payment processing is delegated entirely to Stripe.*
 
 ### App activity
 

@@ -37,7 +37,7 @@ describe('saveConsent', () => {
   it('calls AsyncStorage.setItem with correct key and JSON', async () => {
     const record = { version: CONSENT_VERSION, accepted: true, timestamp: 1714000000000 };
     await saveConsent(record);
-    expect(mockSet).toHaveBeenCalledWith('alexandria_consent', JSON.stringify(record));
+    expect(mockSet).toHaveBeenCalledWith('noetia_consent', JSON.stringify(record));
   });
 });
 

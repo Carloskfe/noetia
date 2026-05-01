@@ -1,6 +1,6 @@
 ## Why
 
-Alexandria collects personal data, processes payments, and distributes protected content — all of which require legally compliant disclosures and user consent before the app can be published on the App Store or Google Play. Without a cookie consent layer, privacy policy, and terms of service in place, the platform exposes both users and the company to regulatory risk under GDPR-adjacent laws (Spain, Mexico, Argentina) and CCPA.
+Noetia collects personal data, processes payments, and distributes protected content — all of which require legally compliant disclosures and user consent before the app can be published on the App Store or Google Play. Without a cookie consent layer, privacy policy, and terms of service in place, the platform exposes both users and the company to regulatory risk under GDPR-adjacent laws (Spain, Mexico, Argentina) and CCPA.
 
 ## What Changes
 

@@ -29,5 +29,5 @@ The `services/web` directory SHALL include a `tailwind.config.ts` with content p
 The `services/web/Dockerfile` SHALL produce a runnable Next.js production image using a multi-stage build with the standalone output mode.
 
 #### Scenario: Docker image starts the Next.js server
-- **WHEN** `docker build -t alexandria-web .` is run inside `services/web`
+- **WHEN** `docker build -t noetia-web .` is run inside `services/web`
 - **THEN** the image starts and serves the application on port 3000

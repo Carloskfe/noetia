@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { fetchSubscriptionStatus, requiresPaywall, SubscriptionStatus } from '../api/subscriptions';
 
-const PRICING_URL = 'https://alexandria.app/pricing';
+const PRICING_URL = 'https://noetia.app/pricing';
 
 let sessionCache: SubscriptionStatus | null = null;
 
@@ -40,7 +40,7 @@ const PLANS = [
 export function PaywallScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Alexandria Premium</Text>
+      <Text style={styles.title}>Noetia Premium</Text>
       <Text style={styles.subtitle}>Choose a plan to start reading</Text>
 
       {PLANS.map((plan) => (

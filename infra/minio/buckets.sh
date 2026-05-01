@@ -1,5 +1,5 @@
 #!/bin/sh
-# Alexandria — MinIO bucket initialization
+# Noetia — MinIO bucket initialization
 # Creates required buckets with correct access policies.
 # Idempotent: safe to run multiple times.
 

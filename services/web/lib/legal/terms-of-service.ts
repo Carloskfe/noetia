@@ -8,11 +8,11 @@ export const TERMS_ES = `
 
 ## 1. Descripción del servicio
 
-Alexandria es una plataforma de lectura multimodal que sincroniza texto y audio a nivel de frase, permitiendo a los usuarios leer, escuchar, guardar fragmentos y crear tarjetas visuales compartibles. El servicio está disponible en web (alexandria.app) y en aplicaciones móviles para iOS y Android.
+Noetia es una plataforma de lectura multimodal que sincroniza texto y audio a nivel de frase, permitiendo a los usuarios leer, escuchar, guardar fragmentos y crear tarjetas visuales compartibles. El servicio está disponible en web (noetia.app) y en aplicaciones móviles para iOS y Android.
 
 ## 2. Elegibilidad
 
-Debes tener al menos **18 años** para crear una cuenta y utilizar Alexandria. Al registrarte, declaras que cumples este requisito.
+Debes tener al menos **18 años** para crear una cuenta y utilizar Noetia. Al registrarte, declaras que cumples este requisito.
 
 ## 3. Planes de suscripción y facturación
 
@@ -25,11 +25,11 @@ Debes tener al menos **18 años** para crear una cuenta y utilizar Alexandria. A
 - La suscripción se renueva automáticamente al final de cada período, salvo que la canceles antes.
 - **Prueba gratuita**: cuando esté disponible, se especificará en el momento de la suscripción.
 - **Cancelación**: puedes cancelar en cualquier momento desde tu configuración de cuenta. La cancelación surte efecto al final del período de facturación en curso; no se aplican reembolsos parciales.
-- **Reembolsos**: se considerarán reembolsos en caso de fallo técnico demostrado imputable a Alexandria. Para solicitudes, escribe a **legal@alexandria.app**.
+- **Reembolsos**: se considerarán reembolsos en caso de fallo técnico demostrado imputable a Noetia. Para solicitudes, escribe a **legal@noetia.app**.
 
 ## 4. Restricciones de contenido (DRM)
 
-Todo el contenido disponible en Alexandria (libros, audios) está protegido por derechos de autor. Queda expresamente prohibido:
+Todo el contenido disponible en Noetia (libros, audios) está protegido por derechos de autor. Queda expresamente prohibido:
 
 - Descargar, copiar o redistribuir el contenido.
 - Eludir las medidas de protección técnica (DRM).
@@ -43,14 +43,14 @@ El incumplimiento puede resultar en la suspensión inmediata de la cuenta sin re
 Los fragmentos (highlights) que guardas son extraídos de obras protegidas. Al usar la función de compartir:
 
 - **Tú conservas** la autoría de las notas y anotaciones que añades.
-- **Concedes a Alexandria** una licencia no exclusiva, mundial y sin royalties para renderizar tus fragmentos como tarjetas visuales y mostrártelas a ti y a las personas con quienes elijas compartirlas.
+- **Concedes a Noetia** una licencia no exclusiva, mundial y sin royalties para renderizar tus fragmentos como tarjetas visuales y mostrártelas a ti y a las personas con quienes elijas compartirlas.
 - Eres responsable de que el uso compartido sea personal y no comercial.
 
 ## 6. Propiedad intelectual
 
-La plataforma Alexandria, su diseño, código, marca y materiales propios son propiedad exclusiva de Carloskfe / Alexandria. Queda prohibida su reproducción sin autorización expresa.
+La plataforma Noetia, su diseño, código, marca y materiales propios son propiedad exclusiva de Carloskfe / Noetia. Queda prohibida su reproducción sin autorización expresa.
 
-Los libros y audios disponibles pertenecen a sus respectivos autores y editoriales, que han licenciado su contenido a Alexandria.
+Los libros y audios disponibles pertenecen a sus respectivos autores y editoriales, que han licenciado su contenido a Noetia.
 
 ## 7. Exención de garantías
 
@@ -66,7 +66,7 @@ Estos términos se rigen por la ley española. Cualquier disputa se someterá a 
 
 ## 10. Contacto
 
-Para cualquier consulta sobre estos términos: **legal@alexandria.app**
+Para cualquier consulta sobre estos términos: **legal@noetia.app**
 `.trim();
 
 export const TERMS_EN = `
@@ -77,11 +77,11 @@ Last updated: ${LAST_UPDATED}
 
 ## 1. Service Description
 
-Alexandria is a multimodal reading platform that synchronises text and audio at the phrase level, allowing users to read, listen, save highlights ("fragments"), and create shareable visual quote cards. The service is available on the web (alexandria.app) and as mobile apps for iOS and Android.
+Noetia is a multimodal reading platform that synchronises text and audio at the phrase level, allowing users to read, listen, save highlights ("fragments"), and create shareable visual quote cards. The service is available on the web (noetia.app) and as mobile apps for iOS and Android.
 
 ## 2. Eligibility
 
-You must be at least **18 years old** to create an account and use Alexandria. By registering, you confirm that you meet this requirement.
+You must be at least **18 years old** to create an account and use Noetia. By registering, you confirm that you meet this requirement.
 
 ## 3. Subscription Plans and Billing
 
@@ -94,11 +94,11 @@ You must be at least **18 years old** to create an account and use Alexandria. B
 - Subscriptions renew automatically at the end of each period unless you cancel beforehand.
 - **Free trial**: when available, terms will be specified at the time of subscription.
 - **Cancellation**: you may cancel at any time from your account settings. Cancellation takes effect at the end of the current billing period; partial refunds are not issued.
-- **Refunds**: refunds will be considered in the event of a proven technical failure attributable to Alexandria. Submit requests to **legal@alexandria.app**.
+- **Refunds**: refunds will be considered in the event of a proven technical failure attributable to Noetia. Submit requests to **legal@noetia.app**.
 
 ## 4. Content Restrictions (DRM)
 
-All content available on Alexandria (books, audio) is protected by copyright. The following are expressly prohibited:
+All content available on Noetia (books, audio) is protected by copyright. The following are expressly prohibited:
 
 - Downloading, copying, or redistributing content.
 - Circumventing technical protection measures (DRM).
@@ -112,14 +112,14 @@ Violations may result in immediate account suspension without refund.
 The fragments (highlights) you save are extracted from protected works. When using the sharing feature:
 
 - **You retain** authorship of the notes and annotations you add.
-- **You grant Alexandria** a non-exclusive, worldwide, royalty-free licence to render your fragments as visual quote cards and display them to you and the people you choose to share them with.
+- **You grant Noetia** a non-exclusive, worldwide, royalty-free licence to render your fragments as visual quote cards and display them to you and the people you choose to share them with.
 - You are responsible for ensuring that sharing is personal and non-commercial.
 
 ## 6. Intellectual Property
 
-The Alexandria platform, its design, code, brand, and original materials are the exclusive property of Carloskfe / Alexandria. Reproduction without express authorisation is prohibited.
+The Noetia platform, its design, code, brand, and original materials are the exclusive property of Carloskfe / Noetia. Reproduction without express authorisation is prohibited.
 
-Books and audio available on the platform belong to their respective authors and publishers, who have licensed their content to Alexandria.
+Books and audio available on the platform belong to their respective authors and publishers, who have licensed their content to Noetia.
 
 ## 7. Disclaimer of Warranties
 
@@ -135,5 +135,5 @@ These terms are governed by Spanish law. Any dispute shall be submitted to the c
 
 ## 10. Contact
 
-For any questions regarding these terms: **legal@alexandria.app**
+For any questions regarding these terms: **legal@noetia.app**
 `.trim();

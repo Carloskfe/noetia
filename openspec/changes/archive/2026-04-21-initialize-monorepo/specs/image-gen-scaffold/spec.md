@@ -25,5 +25,5 @@ The `services/image-gen/requirements.txt` SHALL list all Python dependencies inc
 The `services/image-gen/Dockerfile` SHALL produce an image based on `python:3.11-slim` that installs system dependencies for Cairo (libcairo2), installs Python requirements, and starts the Flask app.
 
 #### Scenario: Docker image builds
-- **WHEN** `docker build -t alexandria-image-gen .` is run inside `services/image-gen`
+- **WHEN** `docker build -t noetia-image-gen .` is run inside `services/image-gen`
 - **THEN** the build completes without errors and the container responds to `/health`

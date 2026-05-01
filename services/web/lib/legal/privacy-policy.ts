@@ -8,9 +8,9 @@ export const PRIVACY_POLICY_ES = `
 
 ## 1. Responsable del tratamiento
 
-**Alexandria** es operada por Carloskfe.
-Correo de contacto: **legal@alexandria.app**
-URL de la política de privacidad: **https://alexandria.app/legal/privacy**
+**Noetia** es operada por Carloskfe.
+Correo de contacto: **legal@noetia.app**
+URL de la política de privacidad: **https://noetia.app/legal/privacy**
 
 ## 2. Datos que recopilamos
 
@@ -59,7 +59,7 @@ Tienes derecho a:
 - **Portabilidad**: recibir tus datos en formato estructurado.
 - **Oposición**: oponerte al tratamiento basado en interés legítimo.
 
-Para ejercer cualquiera de estos derechos, envía un correo a **legal@alexandria.app** con el asunto "Derechos RGPD".
+Para ejercer cualquiera de estos derechos, envía un correo a **legal@noetia.app** con el asunto "Derechos RGPD".
 
 ## 7. Ley aplicable
 
@@ -72,7 +72,7 @@ Si resides en California (EE. UU.), tienes derechos adicionales bajo la Ley de P
 - Derecho a eliminar tus datos personales.
 - Derecho a no discriminación por ejercer tus derechos de privacidad.
 
-Para solicitudes de privacidad CCPA, escríbenos a **legal@alexandria.app**.
+Para solicitudes de privacidad CCPA, escríbenos a **legal@noetia.app**.
 
 ## 9. Cambios en esta política
 
@@ -87,9 +87,9 @@ Last updated: ${LAST_UPDATED}
 
 ## 1. Data Controller
 
-**Alexandria** is operated by Carloskfe.
-Contact email: **legal@alexandria.app**
-Privacy policy URL: **https://alexandria.app/legal/privacy**
+**Noetia** is operated by Carloskfe.
+Contact email: **legal@noetia.app**
+Privacy policy URL: **https://noetia.app/legal/privacy**
 
 ## 2. Data We Collect
 
@@ -138,7 +138,7 @@ You have the right to:
 - **Portability**: receive your data in a structured format.
 - **Objection**: object to processing based on legitimate interest.
 
-To exercise any of these rights, send an email to **legal@alexandria.app** with the subject "GDPR Rights".
+To exercise any of these rights, send an email to **legal@noetia.app** with the subject "GDPR Rights".
 
 ## 7. Governing Law
 
@@ -151,7 +151,7 @@ If you reside in California, USA, you have additional rights under the Californi
 - Right to delete your personal data.
 - Right to non-discrimination for exercising your privacy rights.
 
-For CCPA privacy requests, contact us at **legal@alexandria.app**.
+For CCPA privacy requests, contact us at **legal@noetia.app**.
 
 ## 9. Changes to This Policy
 

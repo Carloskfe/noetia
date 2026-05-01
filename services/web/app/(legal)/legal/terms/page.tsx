@@ -2,7 +2,7 @@ import LegalPage from '../LegalPage';
 import { TERMS_ES, TERMS_EN } from '@/lib/legal/terms-of-service';
 
 export const metadata = {
-  title: 'Términos de Servicio / Terms of Service — Alexandria',
+  title: 'Términos de Servicio / Terms of Service — Noetia',
 };
 
 export default function TermsPage() {

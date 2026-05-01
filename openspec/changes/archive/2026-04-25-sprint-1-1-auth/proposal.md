@@ -1,6 +1,6 @@
 ## Why
 
-No user can currently access Alexandria — there is no authentication system. This sprint delivers the full auth layer so users can register, log in via email or social providers, and receive JWT tokens that gate all future API endpoints.
+No user can currently access Noetia — there is no authentication system. This sprint delivers the full auth layer so users can register, log in via email or social providers, and receive JWT tokens that gate all future API endpoints.
 
 ## What Changes
 

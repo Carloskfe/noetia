@@ -11,7 +11,7 @@
 ## 2. Docker Compose
 
 - [x] 2.1 Write `docker-compose.yml` with services: api, web, image-gen, worker, db, cache, storage, proxy, search, monitor
-- [x] 2.2 Define `alexandria_net` bridge network and attach all services
+- [x] 2.2 Define `noetia_net` bridge network and attach all services
 - [x] 2.3 Configure volume mounts for hot-reload: api and web source directories
 - [x] 2.4 Add health checks for db (pg_isready), cache (redis-cli ping), storage (MinIO /minio/health/live)
 - [x] 2.5 Write `docker-compose.prod.yml` with production overrides (no source mounts, `NODE_ENV=production`)

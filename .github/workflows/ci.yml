@@ -36,10 +36,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm --filter @alexandria/${{ matrix.service }} lint
+        run: pnpm --filter @noetia/${{ matrix.service }} lint
 
       - name: Typecheck
-        run: pnpm --filter @alexandria/${{ matrix.service }} typecheck
+        run: pnpm --filter @noetia/${{ matrix.service }} typecheck
 
       - name: Build
-        run: pnpm --filter @alexandria/${{ matrix.service }} build
+        run: pnpm --filter @noetia/${{ matrix.service }} build

@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Plans seeded in database
-The system SHALL seed a `plans` table with the four Alexandria subscription plans on first deploy: Individual Monthly ($9.99), Individual Annual ($89), Dual Reader Monthly ($14.99), Dual Reader Annual ($135). Each plan record SHALL include `id`, `name`, `stripe_price_id`, `interval` (month/year), `amount_cents`, and `max_profiles`.
+The system SHALL seed a `plans` table with the four Noetia subscription plans on first deploy: Individual Monthly ($9.99), Individual Annual ($89), Dual Reader Monthly ($14.99), Dual Reader Annual ($135). Each plan record SHALL include `id`, `name`, `stripe_price_id`, `interval` (month/year), `amount_cents`, and `max_profiles`.
 
 #### Scenario: Plans available on first boot
 - **WHEN** the API starts with a fresh database

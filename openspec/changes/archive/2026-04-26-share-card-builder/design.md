@@ -1,6 +1,6 @@
 ## Context
 
-Alexandria's image-gen service already generates PNGs programmatically using Pillow — no AI involved. The current share flow has two separate modal components (`SharePicker`, `SharePreviewModal`) with a fixed 5-palette colour system and a single format per platform. Users cannot customise fonts or background colours, and they see no preview until after the image is generated. The web client and image-gen service are already connected through `POST /fragments/:id/share` → `POST /generate`.
+Noetia's image-gen service already generates PNGs programmatically using Pillow — no AI involved. The current share flow has two separate modal components (`SharePicker`, `SharePreviewModal`) with a fixed 5-palette colour system and a single format per platform. Users cannot customise fonts or background colours, and they see no preview until after the image is generated. The web client and image-gen service are already connected through `POST /fragments/:id/share` → `POST /generate`.
 
 ## Goals / Non-Goals
 

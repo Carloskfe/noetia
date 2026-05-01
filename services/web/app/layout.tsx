@@ -4,8 +4,8 @@ import CookieBanner from '@/components/CookieBanner';
 import Footer from '@/components/Footer';
 
 export const metadata: Metadata = {
-  title: 'Alexandria',
-  description: 'Read. Listen. Capture. Share.',
+  title: 'Noetia',
+  description: 'Where ideas become visible',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

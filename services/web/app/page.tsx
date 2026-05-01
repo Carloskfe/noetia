@@ -3,8 +3,8 @@ import Link from 'next/link';
 export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24 gap-6">
-      <h1 className="text-4xl font-bold">Alexandria</h1>
-      <p className="text-lg text-gray-500">Read. Listen. Capture. Share.</p>
+      <h1 className="text-4xl font-bold">Noetia</h1>
+      <p className="text-lg text-gray-500">Where ideas become visible</p>
       <div className="flex gap-4 mt-4">
         <Link
           href="/login"

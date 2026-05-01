@@ -12,7 +12,7 @@ The repository SHALL contain a root `pnpm-workspace.yaml` that declares all Node
 - **THEN** compiler options (strict, target, moduleResolution) are applied without repetition
 
 ### Requirement: Docker Compose orchestrates all services
-The repository SHALL contain a `docker-compose.yml` that defines and connects all services (api, web, mobile is excluded from compose, image-gen, worker, db, cache, storage, proxy, search, monitor) on a shared `alexandria_net` bridge network.
+The repository SHALL contain a `docker-compose.yml` that defines and connects all services (api, web, mobile is excluded from compose, image-gen, worker, db, cache, storage, proxy, search, monitor) on a shared `noetia_net` bridge network.
 
 #### Scenario: Full stack starts from scratch
 - **WHEN** a developer runs `docker-compose up --build`

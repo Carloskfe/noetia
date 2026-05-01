@@ -1,4 +1,4 @@
--- Alexandria — PostgreSQL initialization
+-- Noetia — PostgreSQL initialization
 -- Extensions only. Application tables are managed by TypeORM migrations.
 -- Tables: users, books, sync_maps, reading_progress, fragments,
 --         plans, subscriptions (see services/api/src/migrations/)

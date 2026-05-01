@@ -12,11 +12,11 @@ The system SHALL display a `PaywallScreen` in the React Native app when a non-su
 - **THEN** the content screen renders normally without the paywall
 
 ### Requirement: Paywall screen links to web checkout
-The system SHALL render a "Subscribe now" button on `PaywallScreen` that opens the web pricing page (`https://alexandria.app/pricing`) via `Linking.openURL`.
+The system SHALL render a "Subscribe now" button on `PaywallScreen` that opens the web pricing page (`https://noetia.app/pricing`) via `Linking.openURL`.
 
 #### Scenario: User taps "Subscribe now"
 - **WHEN** a user taps "Subscribe now" on the paywall screen
-- **THEN** `Linking.openURL('https://alexandria.app/pricing')` is called, opening the browser
+- **THEN** `Linking.openURL('https://noetia.app/pricing')` is called, opening the browser
 
 ### Requirement: Paywall screen displays plan summary
 The system SHALL display a brief summary of available plans (Individual and Dual Reader with prices) and a feature list on `PaywallScreen`.

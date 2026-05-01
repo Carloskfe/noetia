@@ -1,6 +1,6 @@
-# Alexandria — Developer Guide
+# Noetia — Developer Guide
 
-Alexandria is a multimodal reading + social sharing platform. For full product context see [`docs/PRD.md`](docs/PRD.md).
+Noetia is a multimodal reading + social sharing platform. For full product context see [`docs/PRD.md`](docs/PRD.md).
 
 ---
 
@@ -72,7 +72,7 @@ Never batch multiple unrelated changes into a single commit. Small, focused comm
 ## Project Structure
 
 ```
-alexandria/
+noetia/
 ├── docker-compose.yml
 ├── docker-compose.prod.yml
 ├── .env.example

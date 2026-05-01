@@ -1,8 +1,8 @@
-# Alexandria — Product Requirements Document
+# Noetia — Product Requirements Document
 
 > Read. Listen. Capture. Share.
 
-Alexandria is a multimodal reading platform that synchronizes text and audio at a phrase-by-phrase level, allowing users to seamlessly switch between reading and listening. It transforms reading into social expression by letting users extract highlights ("fragments") and convert them into shareable, branded visual content.
+Noetia is a multimodal reading platform that synchronizes text and audio at a phrase-by-phrase level, allowing users to seamlessly switch between reading and listening. It transforms reading into social expression by letting users extract highlights ("fragments") and convert them into shareable, branded visual content.
 
 ---
 
@@ -79,7 +79,7 @@ To become the leading platform where knowledge is not only consumed but expresse
 ### 5. Social Content Generator _(Core Differentiator)_
 - Transform fragments into shareable visual quote cards
 - Platform-specific formats: LinkedIn, Instagram, Facebook, WhatsApp, TikTok (future), Snapchat
-- Each card includes: quote text, author name, book title, Alexandria watermark
+- Each card includes: quote text, author name, book title, Noetia watermark
 - Template-based design (MVP); server-side rendering
 
 ### 6. Sharing Engine
@@ -123,7 +123,7 @@ To become the leading platform where knowledge is not only consumed but expresse
 
 ## Engineering Quality
 
-Every backend service shipped as part of Alexandria must meet the following non-negotiable quality gates before it is considered production-ready:
+Every backend service shipped as part of Noetia must meet the following non-negotiable quality gates before it is considered production-ready:
 
 - **Unit test coverage ≥ 80%** per service, verified by CI on every pull request.
 - **No real I/O in unit tests** — all external dependencies (database, MinIO, Stripe, Meilisearch, image-gen HTTP) must be mocked.

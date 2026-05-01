@@ -1,6 +1,6 @@
 ## Why
 
-Alexandria has authentication, reading, fragments, and legal groundwork in place — but no way to monetise. Without a billing layer, users can access all content for free and the platform cannot sustain itself. Stripe integration is the prerequisite for every paid feature downstream.
+Noetia has authentication, reading, fragments, and legal groundwork in place — but no way to monetise. Without a billing layer, users can access all content for free and the platform cannot sustain itself. Stripe integration is the prerequisite for every paid feature downstream.
 
 ## What Changes
 

@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Platform templates render styled quote cards
-The image-gen service SHALL render a PNG quote card for each supported platform using the fragment text, author name, and book title. Each card SHALL include a dark navy background, wrapped white quote text, gold accent rule, author + book attribution, and an "Alexandria" watermark.
+The image-gen service SHALL render a PNG quote card for each supported platform using the fragment text, author name, and book title. Each card SHALL include a dark navy background, wrapped white quote text, gold accent rule, author + book attribution, and an "Noetia" watermark.
 
 #### Scenario: LinkedIn card renders at correct dimensions
 - **WHEN** `render(fragment)` is called on the LinkedIn template with valid fragment data

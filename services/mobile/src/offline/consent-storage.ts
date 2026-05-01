@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const CONSENT_VERSION = '1.0';
-const STORAGE_KEY = 'alexandria_consent';
+const STORAGE_KEY = 'noetia_consent';
 
 export type MobileConsentRecord = {
   version: string;

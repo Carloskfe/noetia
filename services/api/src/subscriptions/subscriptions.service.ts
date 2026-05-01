@@ -40,7 +40,7 @@ export class SubscriptionsService {
 
     const customer = await this.stripe.customers.create({
       email: user.email ?? undefined,
-      metadata: { alexandriaUserId: userId },
+      metadata: { noetiaUserId: userId },
     });
 
     await this.userRepo.update(userId, { stripeCustomerId: customer.id });

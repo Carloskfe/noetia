@@ -22,5 +22,5 @@ The `services/worker/src/jobs` directory SHALL contain stub handler files for ea
 The `services/worker/Dockerfile` SHALL produce a runnable image using a multi-stage build (build stage with dev deps for TypeScript compilation, production stage with only `dist/` and production `node_modules`).
 
 #### Scenario: Docker image builds and worker starts
-- **WHEN** `docker build -t alexandria-worker .` is run inside `services/worker`
+- **WHEN** `docker build -t noetia-worker .` is run inside `services/worker`
 - **THEN** the build completes and the container starts the worker process without errors

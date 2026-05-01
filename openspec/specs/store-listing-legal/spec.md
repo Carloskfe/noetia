@@ -12,10 +12,10 @@ A static Markdown file SHALL exist at `docs/store-listings/apple-app-privacy.md`
 
 #### Scenario: Apple privacy label file exists
 - **WHEN** the file `docs/store-listings/apple-app-privacy.md` is read
-- **THEN** it contains a filled-in table covering all data types collected by Alexandria in English
+- **THEN** it contains a filled-in table covering all data types collected by Noetia in English
 
 ### Requirement: Store listing privacy policy URL placeholder is documented
-The static files SHALL include the intended public URL for the hosted Privacy Policy (e.g., `https://alexandria.app/legal/privacy`) so it can be pasted into both store submission forms.
+The static files SHALL include the intended public URL for the hosted Privacy Policy (e.g., `https://noetia.app/legal/privacy`) so it can be pasted into both store submission forms.
 
 #### Scenario: Privacy policy URL is present in both store listing files
 - **WHEN** either store listing file is read

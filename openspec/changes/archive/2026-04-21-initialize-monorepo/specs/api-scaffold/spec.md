@@ -33,5 +33,5 @@ The `services/api/src` directory SHALL contain empty module folders for each dom
 The `services/api/Dockerfile` SHALL produce a runnable image using a multi-stage build (build stage with dev deps, production stage with only `dist/` and production `node_modules`).
 
 #### Scenario: Docker image builds
-- **WHEN** `docker build -t alexandria-api .` is run inside `services/api`
+- **WHEN** `docker build -t noetia-api .` is run inside `services/api`
 - **THEN** the build completes without errors and the resulting image starts the NestJS app

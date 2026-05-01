@@ -29,7 +29,7 @@ export function ConsentScreen({ onConsent }: Props) {
   function handleDecline() {
     Alert.alert(
       'Acceso requerido / Access required',
-      'Alexandria no puede usarse sin aceptar los términos.\nAlexandria cannot be used without accepting the terms.',
+      'Noetia no puede usarse sin aceptar los términos.\nNoetia cannot be used without accepting the terms.',
       [
         {
           text: 'OK',
@@ -47,28 +47,28 @@ export function ConsentScreen({ onConsent }: Props) {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Alexandria</Text>
+        <Text style={styles.title}>Noetia</Text>
         <Text style={styles.subtitle}>Privacidad y Términos · Privacy & Terms</Text>
 
         {/* Spanish summary */}
         <Text style={styles.sectionHeader}>🇪🇸 Español</Text>
         <Text style={styles.sectionTitle}>Política de Privacidad</Text>
         <Text style={styles.body}>
-          Alexandria recopila tu correo electrónico, nombre e información de suscripción (procesada por Stripe) para prestarte el servicio. También guardamos tu progreso de lectura y los fragmentos que crees. No vendemos tus datos a terceros.
+          Noetia recopila tu correo electrónico, nombre e información de suscripción (procesada por Stripe) para prestarte el servicio. También guardamos tu progreso de lectura y los fragmentos que crees. No vendemos tus datos a terceros.
         </Text>
         <Text style={styles.body}>
           Tienes derecho a acceder, rectificar y eliminar tus datos en cualquier momento. Para más información, consulta nuestra política completa:
         </Text>
-        <TouchableOpacity onPress={() => Linking.openURL('https://alexandria.app/legal/privacy')}>
-          <Text style={styles.link}>alexandria.app/legal/privacy</Text>
+        <TouchableOpacity onPress={() => Linking.openURL('https://noetia.app/legal/privacy')}>
+          <Text style={styles.link}>noetia.app/legal/privacy</Text>
         </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Términos de Servicio</Text>
         <Text style={styles.body}>
-          Al usar Alexandria aceptas que el contenido está protegido por derechos de autor y no puede descargarse ni redistribuirse. La suscripción se renueva automáticamente; puedes cancelarla en cualquier momento. Debes tener al menos 18 años.
+          Al usar Noetia aceptas que el contenido está protegido por derechos de autor y no puede descargarse ni redistribuirse. La suscripción se renueva automáticamente; puedes cancelarla en cualquier momento. Debes tener al menos 18 años.
         </Text>
-        <TouchableOpacity onPress={() => Linking.openURL('https://alexandria.app/legal/terms')}>
-          <Text style={styles.link}>alexandria.app/legal/terms</Text>
+        <TouchableOpacity onPress={() => Linking.openURL('https://noetia.app/legal/terms')}>
+          <Text style={styles.link}>noetia.app/legal/terms</Text>
         </TouchableOpacity>
 
         <View style={styles.divider} />
@@ -77,21 +77,21 @@ export function ConsentScreen({ onConsent }: Props) {
         <Text style={styles.sectionHeader}>🇺🇸 English</Text>
         <Text style={styles.sectionTitle}>Privacy Policy</Text>
         <Text style={styles.body}>
-          Alexandria collects your email, name, and subscription information (processed by Stripe) to provide the service. We also store your reading progress and the fragments you create. We do not sell your data to third parties.
+          Noetia collects your email, name, and subscription information (processed by Stripe) to provide the service. We also store your reading progress and the fragments you create. We do not sell your data to third parties.
         </Text>
         <Text style={styles.body}>
           You have the right to access, correct, and delete your data at any time. For full details, see our privacy policy:
         </Text>
-        <TouchableOpacity onPress={() => Linking.openURL('https://alexandria.app/legal/privacy')}>
-          <Text style={styles.link}>alexandria.app/legal/privacy</Text>
+        <TouchableOpacity onPress={() => Linking.openURL('https://noetia.app/legal/privacy')}>
+          <Text style={styles.link}>noetia.app/legal/privacy</Text>
         </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Terms of Service</Text>
         <Text style={styles.body}>
-          By using Alexandria you agree that content is copyright-protected and may not be downloaded or redistributed. Subscriptions renew automatically; you may cancel at any time. You must be at least 18 years old.
+          By using Noetia you agree that content is copyright-protected and may not be downloaded or redistributed. Subscriptions renew automatically; you may cancel at any time. You must be at least 18 years old.
         </Text>
-        <TouchableOpacity onPress={() => Linking.openURL('https://alexandria.app/legal/terms')}>
-          <Text style={styles.link}>alexandria.app/legal/terms</Text>
+        <TouchableOpacity onPress={() => Linking.openURL('https://noetia.app/legal/terms')}>
+          <Text style={styles.link}>noetia.app/legal/terms</Text>
         </TouchableOpacity>
 
         <View style={styles.bottomPad} />
