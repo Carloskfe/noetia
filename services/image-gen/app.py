@@ -1,3 +1,6 @@
+import json
+import subprocess
+
 from flask import Flask, jsonify, request
 
 from storage import MinioClient
@@ -20,6 +23,43 @@ _VALID_FORMATS = {"post", "story", "wa-pic", "wa-story", "reel", "twitter-card"}
 @app.get("/health")
 def health():
     return jsonify({"status": "ok"})
+
+
+@app.get("/align/chapters")
+def align_chapters():
+    url = request.args.get("url", "").strip()
+    if not url:
+        return jsonify({"error": "url parameter required"}), 400
+
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-print_format", "json",
+                "-show_chapters",
+                "-loglevel", "quiet",
+                url,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode != 0:
+            return jsonify({"error": "ffprobe failed", "detail": result.stderr[:500]}), 500
+
+        data = json.loads(result.stdout or "{}")
+        chapters = []
+        for ch in data.get("chapters", []):
+            chapters.append({
+                "title": ch.get("tags", {}).get("title", ""),
+                "startMs": int(float(ch["start_time"]) * 1000),
+                "endMs": int(float(ch["end_time"]) * 1000),
+            })
+        return jsonify({"chapters": chapters})
+    except subprocess.TimeoutExpired:
+        return jsonify({"error": "ffprobe timed out"}), 504
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 @app.post("/generate")

@@ -9,6 +9,7 @@ import { MinioUploaderService } from './minio-uploader.service';
 import { LibrivoxApiService } from './librivox-api.service';
 import { AudioDownloaderService } from './audio-downloader.service';
 import { IngestionService } from './ingestion.service';
+import { AlignmentService } from './alignment.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Book, SyncMap])],
@@ -20,7 +21,8 @@ import { IngestionService } from './ingestion.service';
     LibrivoxApiService,
     AudioDownloaderService,
     IngestionService,
+    AlignmentService,
   ],
-  exports: [IngestionService],
+  exports: [IngestionService, AlignmentService],
 })
 export class IngestionModule {}
