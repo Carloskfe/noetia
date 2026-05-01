@@ -130,8 +130,14 @@
 - [ ] Seamless switch: Reading → Listening (preserve position) — 0.5d
 - [ ] Seamless switch: Listening → Reading (scroll to active phrase) — 0.5d
 - [ ] Persist and restore reading progress — 0.5d
+- [ ] **Hybrid mode**: new reader mode — audio plays + full text visible + active phrase highlighted — 1d
+  - Add `'hybrid'` to the mode state machine alongside `'reading'` and `'listening'`
+  - Disable text selection (`user-select: none` + `onMouseDown` guard) while in hybrid mode
+  - Display a "Hybrid" badge in the top bar with a one-tap exit button
+  - Resume seamlessly: exiting hybrid mode pauses audio and enables selection at the current phrase
+  - Unit tests: mode transition guards and selection-disabled behavior — 0.5d
 
-**Sprint 1.3 total: 10.5d** _(0.5d added for sync/progress unit tests)_
+**Sprint 1.3 total: 13d** _(hybrid mode adds 1.5d; 0.5d for sync/progress unit tests)_
 
 ---
 
@@ -217,24 +223,31 @@
 
 ### Sprint 3.1 — Subscription & Payments (Weeks 15–16)
 
+> Payment model: Audible-style hybrid. Users can buy titles individually (pay-per-title) or subscribe monthly to receive credits (1 credit = 1 book of any price). Individual plan = 1 credit/month; Reader plan = 2 credits/month. Credits expire at cycle end.
+
 **Backend (api)**
-- [ ] Create `subscriptions` and `plans` tables — 0.5d
+- [ ] Create `plans` table: Individual ($9.99/mo, 1 credit) and Reader ($14.99/mo, 2 credits) with annual variants — 0.5d
+- [ ] Create `subscriptions` table (userId, planId, status, creditBalance, currentPeriodEnd, trialEnd) — 0.5d
+- [ ] Create `book_purchases` table: record per-title purchases and credit redemptions — 0.5d
 - [ ] Stripe integration: create customer on sign-up — 0.5d
-- [ ] Stripe Checkout: Individual and Dual Reader plans — 1d
-- [ ] Stripe webhooks: activate/cancel subscription on events — 1d
+- [ ] Stripe Checkout: redirect for subscription plans — 1d
+- [ ] Stripe Checkout: redirect for pay-per-title purchases — 0.5d
+- [ ] Stripe webhooks: activate/cancel subscription; issue credits on `invoice.paid` — 1d
+- [ ] Credit redemption endpoint `POST /api/library/redeem`: deduct 1 credit, record book_purchase — 0.5d
 - [ ] Free trial logic (14-day gate) — 0.5d
-- [ ] Feature gate middleware: block premium content for free users — 1d
-- [ ] Subscription status endpoint — 0.5d
-- [ ] Unit tests: `subscriptions.service`, `feature-gate.middleware` (mock Stripe SDK, mock DB) — 1d
+- [ ] Content access guard: allow if book_purchase record exists OR active subscription with content access — 1d
+- [ ] Subscription status endpoint `GET /api/subscriptions/me` (status, creditBalance, plan) — 0.5d
+- [ ] Unit tests: `subscriptions.service`, `purchases.service`, `access-guard` (mock Stripe SDK, mock DB) — 1d
 
 **Frontend (web)**
-- [ ] Pricing page: plan comparison table — 1d
-- [ ] Checkout flow (redirect to Stripe Checkout) — 0.5d
-- [ ] Subscription status in user account page — 0.5d
-- [ ] Paywall prompt for locked content — 0.5d
+- [ ] Pricing page: plan comparison table (pay-per-title + subscription plans side by side) — 1d
+- [ ] Book detail page: show list price + "Buy" button; "Use a Credit" button for subscribers — 0.5d
+- [ ] Credit balance indicator in user account page — 0.5d
+- [ ] Checkout flow for both subscription and per-title purchase — 0.5d
+- [ ] Paywall prompt: offer subscribe or buy-now for locked content — 0.5d
 - [ ] Post-payment success/cancel pages — 0.5d
 
-**Sprint 3.1 total: 9.5d** _(1d added for subscription/gate unit tests)_
+**Sprint 3.1 total: 11.5d** _(1d added for unit tests; +2d for credit + per-title purchase mechanics)_
 
 ---
 
@@ -356,11 +369,11 @@
 | Stage | Name                        | Sprints | Estimated Weeks | Testing overhead |
 |-------|-----------------------------|---------|-----------------|------------------|
 | 0     | Foundation                  | 1       | 2               | +1.5d (setup)    |
-| 1     | Core Platform               | 3       | 6               | +2.5d            |
+| 1     | Core Platform               | 3       | 6               | +4d (incl. hybrid mode) |
 | 2     | Social Layer                | 3       | 6               | +2.5d            |
 | 3     | Monetization & Publishers   | 2       | 4               | +1.5d            |
 | 4     | Mobile & Offline            | 3       | 6               | included inline  |
 | 5     | Launch & QA                 | 2       | 4               | —                |
-| **—** | **Total**                   | **14**  | **~30 weeks**   | **+8d total**    |
+| **—** | **Total**                   | **14**  | **~30 weeks**   | **+9.5d total**  |
 
 > Estimates assume 1 senior full-stack developer. Unit tests are baked into each backend service task (see Definition of Done above). With a team of 2–3, total calendar time reduces to ~13–17 weeks depending on parallel workstreams.

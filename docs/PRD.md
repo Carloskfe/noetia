@@ -68,7 +68,14 @@ To become the leading platform where knowledge is not only consumed but expresse
 - Phrase-by-phrase synchronization between text and audio
 - Visual highlight of active phrase
 - Controls: Play/Pause, speed adjustment
-- Seamless switching: Reading ↔ Listening
+- Seamless switching: Reading ↔ Listening ↔ Hybrid
+
+#### Hybrid Reading Mode
+- Combines visible text with live audio playback
+- Active phrase is highlighted in real-time as audio plays
+- Text selection is **disabled** in this mode — user must exit to create fragments
+- Clear mode indicator in the top bar with a single-tap exit action
+- Designed for immersive listen-while-reading without accidental selection
 
 ### 4. Highlight & Fragment System
 - Select text while reading to save as "fragments"
@@ -93,15 +100,29 @@ To become the leading platform where knowledge is not only consumed but expresse
 - Store fragments offline
 - Sync progress when back online
 
-### 8. Subscription Model
+### 8. Subscription & Monetization Model
 
-| Plan        | Monthly | Annual |
-|-------------|---------|--------|
-| Individual  | $9.99   | $89    |
-| Dual Reader | $14.99  | $135   |
+Noetia follows a hybrid model inspired by Audible: users can purchase titles individually or subscribe monthly to receive credits that permanently unlock books.
 
-- Free trial included
-- Up to 2 simultaneous streams
+#### Pay-per-Title
+- Every book has a fixed price set by the publisher
+- One-time purchase — permanently unlocks reading + listening for that title
+
+#### Monthly Subscription Plans
+
+| Plan         | Monthly | Annual | Credits/month | Max books unlocked/month |
+|--------------|---------|--------|---------------|--------------------------|
+| Individual   | $9.99   | $89    | 1 credit      | 1 book                   |
+| Reader       | $14.99  | $135   | 2 credits     | 2 books                  |
+
+#### Credit Mechanics
+- 1 credit = 1 book of any list price (like Audible's credit system)
+- Credits are issued at the start of each billing cycle
+- Credits expire at end of billing cycle and do not roll over (MVP)
+- Redeeming a credit permanently unlocks the title in the user's library
+- Subscribers can also buy additional titles at list price without using a credit
+
+- Free trial: 14 days
 
 ### 9. Author / Publisher Module
 - Upload books (text + audio + metadata)
