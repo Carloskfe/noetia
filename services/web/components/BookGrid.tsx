@@ -9,23 +9,56 @@ type Book = {
   language: string;
 };
 
-export function BookGrid({ books }: { books: Book[] }) {
+type Props = {
+  books: Book[];
+  libraryBookIds?: Set<string>;
+  onAdd?: (bookId: string) => void;
+};
+
+export function BookGrid({ books, libraryBookIds, onAdd }: Props) {
   return (
     <div className="grid grid-cols-2 gap-4 pb-6">
-      {books.map((book) => (
-        <Link key={book.id} href={`/reader/${book.id}`} className="group">
-          <div className="aspect-[2/3] rounded-xl overflow-hidden mb-2 shadow-sm group-hover:shadow-md transition relative bg-gray-200">
-            {book.coverUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
-            ) : (
-              <BookCoverPlaceholder title={book.title} author={book.author} />
+      {books.map((book) => {
+        const inLibrary = libraryBookIds?.has(book.id) ?? false;
+        return (
+          <div key={book.id} className="relative group">
+            <Link href={`/reader/${book.id}`} className="block">
+              <div className="aspect-[2/3] rounded-xl overflow-hidden mb-2 shadow-sm group-hover:shadow-md transition relative bg-gray-200">
+                {book.coverUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
+                ) : (
+                  <BookCoverPlaceholder title={book.title} author={book.author} />
+                )}
+              </div>
+              <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-tight">{book.title}</p>
+              <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{book.author}</p>
+            </Link>
+
+            {onAdd && (
+              <button
+                onClick={(e) => { e.preventDefault(); if (!inLibrary) onAdd(book.id); }}
+                aria-label={inLibrary ? 'En tu biblioteca' : 'Agregar a tu biblioteca'}
+                className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow transition ${
+                  inLibrary
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white/90 text-gray-600 hover:bg-blue-600 hover:text-white'
+                }`}
+              >
+                {inLibrary ? (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                )}
+              </button>
             )}
           </div>
-          <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-tight">{book.title}</p>
-          <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{book.author}</p>
-        </Link>
-      ))}
+        );
+      })}
     </div>
   );
 }

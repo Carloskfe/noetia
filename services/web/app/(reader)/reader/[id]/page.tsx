@@ -31,6 +31,7 @@ type Book = {
   audioFileUrl: string | null;
   audioStreamUrl: string | null;
   textFileUrl: string | null;
+  isFree: boolean;
 };
 
 type Mode = 'reading' | 'listening';
@@ -110,6 +111,9 @@ export default function ReaderPage() {
     ])
       .then(([bookData, syncMapData, progressData, fragmentsData]) => {
         setBook(bookData);
+        if (bookData.isFree) {
+          apiFetch(`/library/${bookId}`, { method: 'POST' }).catch(() => {});
+        }
         if (syncMapData?.phrases) setPhrases(syncMapData.phrases);
         const saved = progressData?.phraseIndex ?? 0;
         setSavedPhraseIndex(saved);

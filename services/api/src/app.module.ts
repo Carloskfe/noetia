@@ -11,6 +11,7 @@ import { AuthorsModule } from './authors/authors.module';
 import { SharingModule } from './sharing/sharing.module';
 import { SocialModule } from './social/social.module';
 import { UsersModule } from './users/users.module';
+import { LibraryModule } from './library/library.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { UsersModule } from './users/users.module';
     SharingModule,
     SocialModule,
     UsersModule,
+    LibraryModule,
   ],
 })
 export class AppModule {}

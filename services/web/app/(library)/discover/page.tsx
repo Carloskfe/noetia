@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { BookGrid } from '@/components/BookGrid';
@@ -34,6 +34,7 @@ export default function DiscoverPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [freeBooks, setFreeBooks] = useState<Book[]>([]);
+  const [libraryIds, setLibraryIds] = useState<Set<string>>(new Set());
   const [searchHits, setSearchHits] = useState<Book[] | null>(null);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -41,16 +42,20 @@ export default function DiscoverPage() {
   const [error, setError] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Prefetch free books for the hero banner
+  // Prefetch free books for the hero banner and user's library IDs
   useEffect(() => {
     apiFetch('/books?isFree=true')
       .then((data) => setFreeBooks(data))
+      .catch(() => {});
+
+    apiFetch('/library/ids')
+      .then((ids: string[]) => setLibraryIds(new Set(ids)))
       .catch(() => {});
   }, []);
 
   // Load books when tab changes
   useEffect(() => {
-    if (query.trim()) return; // search results override tab
+    if (query.trim()) return;
     setLoading(true);
     setError('');
     apiFetch(buildUrl(activeTab))
@@ -86,6 +91,19 @@ export default function DiscoverPage() {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [query]);
+
+  const handleAdd = useCallback(async (bookId: string) => {
+    setLibraryIds((prev) => new Set([...prev, bookId]));
+    try {
+      await apiFetch(`/library/${bookId}`, { method: 'POST' });
+    } catch {
+      setLibraryIds((prev) => {
+        const next = new Set(prev);
+        next.delete(bookId);
+        return next;
+      });
+    }
+  }, []);
 
   const displayed = searchHits ?? allBooks;
   const showHero = activeTab === 'all' && !query.trim() && freeBooks.length > 0;
@@ -148,7 +166,7 @@ export default function DiscoverPage() {
         ) : (
           <>
             <p className="text-xs text-gray-400 mb-4">{searchHits?.length ?? 0} resultados para &ldquo;{query}&rdquo;</p>
-            <BookGrid books={displayed} />
+            <BookGrid books={displayed} libraryBookIds={libraryIds} onAdd={handleAdd} />
           </>
         )
       ) : loading ? (
@@ -168,7 +186,7 @@ export default function DiscoverPage() {
               No hay libros en esta categoría todavía.
             </p>
           ) : (
-            <BookGrid books={displayed} />
+            <BookGrid books={displayed} libraryBookIds={libraryIds} onAdd={handleAdd} />
           )}
         </>
       )}
