@@ -48,6 +48,7 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(true);
   const [hasPreferences, setHasPreferences] = useState(true);
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+  const [buyingPackageId, setBuyingPackageId] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -78,6 +79,29 @@ export default function PricingPage() {
       window.location.href = url;
     } catch {
       setError('No pudimos iniciar el pago. Intenta de nuevo.');
+    }
+  }
+
+  async function buyTokenPackage(packageId: string) {
+    setError(null);
+    setBuyingPackageId(packageId);
+    try {
+      const res = await fetch('/api/subscriptions/tokens/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ packageId }),
+      });
+      if (res.status === 401) {
+        window.location.href = `/login?returnUrl=${encodeURIComponent('/pricing')}`;
+        return;
+      }
+      if (!res.ok) throw new Error();
+      const { url } = await res.json();
+      window.location.href = url;
+    } catch {
+      setError('No pudimos iniciar el pago. Intenta de nuevo.');
+    } finally {
+      setBuyingPackageId(null);
     }
   }
 
@@ -194,8 +218,12 @@ export default function PricingPage() {
                 <p className="text-xs text-gray-400 mb-3">{pkg.tokenCount === 1 ? 'token' : 'tokens'}</p>
                 <p className="text-base font-bold text-gray-800 mb-1">{formatPrice(pkg.amountCents)}</p>
                 <p className="text-xs text-gray-400 mb-4">{formatPrice(Math.round(pkg.amountCents / pkg.tokenCount))} c/u</p>
-                <button className="w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition">
-                  Comprar
+                <button
+                  onClick={() => buyTokenPackage(pkg.id)}
+                  disabled={buyingPackageId === pkg.id}
+                  className="w-full py-2 bg-gray-900 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50"
+                >
+                  {buyingPackageId === pkg.id ? 'Redirigiendo…' : 'Comprar'}
                 </button>
               </div>
             ))}
