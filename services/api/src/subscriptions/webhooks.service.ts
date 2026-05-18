@@ -1,11 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { GiftsService } from '../gifts/gifts.service';
 import { SubscriptionsService } from './subscriptions.service';
 
 @Injectable()
 export class WebhooksService {
   private readonly logger = new Logger(WebhooksService.name);
 
-  constructor(private readonly subscriptionsService: SubscriptionsService) {}
+  constructor(
+    private readonly subscriptionsService: SubscriptionsService,
+    private readonly giftsService: GiftsService,
+  ) {}
 
   async handleEvent(event: any): Promise<void> {
     switch (event.type) {
@@ -35,7 +39,13 @@ export class WebhooksService {
 
   private async handlePaymentCompleted(event: any): Promise<void> {
     const session = event.data.object;
-    const { bookId, tokenPackageId, userId } = session.metadata ?? {};
+    const { type, bookId, tokenPackageId, userId } = session.metadata ?? {};
+
+    if (type === 'gift') {
+      await this.giftsService.fulfillGift(session);
+      return;
+    }
+
     if (!userId) return;
 
     if (tokenPackageId) {

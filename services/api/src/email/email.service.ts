@@ -57,6 +57,30 @@ export class EmailService {
     });
   }
 
+  async sendGiftCard(
+    to: string,
+    buyerName: string,
+    tokenCount: number,
+    message: string | null,
+    occasionLabel: string | null,
+    claimToken: string,
+  ): Promise<void> {
+    const link = `${this.webUrl}/gift/claim?token=${claimToken}`;
+    await this.send({
+      to,
+      subject: `${this.escape(buyerName)} te regala ${tokenCount} ${tokenCount === 1 ? 'token' : 'tokens'} en Noetia`,
+      html: this.giftCardTemplate(buyerName, tokenCount, message, occasionLabel, link),
+    });
+  }
+
+  async sendGiftConfirmation(to: string, buyerName: string, recipientEmail: string, tokenCount: number): Promise<void> {
+    await this.send({
+      to,
+      subject: `Tu regalo de Noetia fue enviado a ${recipientEmail}`,
+      html: this.giftConfirmationTemplate(buyerName, recipientEmail, tokenCount),
+    });
+  }
+
   async sendPlanInvite(to: string, inviterName: string, planName: string, token: string): Promise<void> {
     const link = `${this.webUrl}/join?token=${token}`;
     await this.send({
@@ -259,6 +283,82 @@ export class EmailService {
           <p style="margin:0;color:#94A3B8;font-size:13px;">
             Gracias por haber sido parte de la comunidad Noetia. Esperamos verte de nuevo.
           </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© ${new Date().getFullYear()} Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  }
+
+  private giftCardTemplate(buyerName: string, tokenCount: number, message: string | null, occasionLabel: string | null, link: string): string {
+    return `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          ${occasionLabel ? `<p style="margin:0 0 4px;font-size:24px;text-align:center;">${this.escape(occasionLabel)}</p>` : ''}
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>${this.escape(buyerName)}</strong> te envía un regalo
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">${tokenCount}</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">${tokenCount === 1 ? 'Token Noetia' : 'Tokens Noetia'}</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Cada token desbloquea un libro de tu elección</p>
+          </div>
+          ${message ? `
+          <div style="border-left:3px solid #0D1B2A;padding:12px 16px;margin:0 0 24px;background:#F8FAFC;border-radius:0 8px 8px 0;">
+            <p style="margin:0;color:#475569;font-size:15px;font-style:italic;">"${this.escape(message)}"</p>
+          </div>` : ''}
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="${link}" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reclamar mi regalo →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">Si el botón no funciona, copia este enlace:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">${link}</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">Este regalo es válido por 1 año.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© ${new Date().getFullYear()} Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  }
+
+  private giftConfirmationTemplate(buyerName: string, recipientEmail: string, tokenCount: number): string {
+    return `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Tu regalo fue enviado! 🎁</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Hola ${this.escape(buyerName)}, enviamos <strong>${tokenCount} ${tokenCount === 1 ? 'token' : 'tokens'} Noetia</strong> a <strong>${this.escape(recipientEmail)}</strong>.
+            Cuando los reclamen podrán desbloquear libros de su elección.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">¿Tienes preguntas? Escríbenos a hola@noetia.app</p>
         </td></tr>
         <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
           <p style="margin:0;color:#94A3B8;font-size:12px;">© ${new Date().getFullYear()} Noetia. Todos los derechos reservados.</p>

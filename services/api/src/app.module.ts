@@ -17,6 +17,7 @@ import { LibraryModule } from './library/library.module';
 import { CodesModule } from './codes/codes.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
 import { CausesModule } from './causes/causes.module';
+import { GiftsModule } from './gifts/gifts.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { CausesModule } from './causes/causes.module';
     CodesModule,
     WaitlistModule,
     CausesModule,
+    GiftsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

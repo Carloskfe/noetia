@@ -229,6 +229,11 @@ export default function PricingPage() {
             ))}
           </div>
           <p className="text-xs text-center text-gray-400 mt-4">Los tokens adicionales expiran a los 90 días de la compra.</p>
+          <div className="mt-6 text-center">
+            <Link href="/gift" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-full px-4 py-2 hover:border-gray-400 transition">
+              🎁 Regalar tokens a alguien
+            </Link>
+          </div>
         </div>
       )}
 
