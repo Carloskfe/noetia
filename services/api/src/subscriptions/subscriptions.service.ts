@@ -7,15 +7,20 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
+import { randomBytes } from 'crypto';
 import Stripe from 'stripe';
-import { LessThan, MoreThan, Repository } from 'typeorm';
+import { In, LessThan, MoreThan, Repository } from 'typeorm';
+import { EmailService } from '../email/email.service';
 import { Book } from '../books/book.entity';
 import { UserBook } from '../library/user-book.entity';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { PlansService } from './plans.service';
 import { Subscription, SubscriptionStatus } from './subscription.entity';
+import { SubscriptionInvite } from './subscription-invite.entity';
 import { TokenLedger } from './token-ledger.entity';
+
+const ACTIVE_STATUSES = ['active', 'trialing', 'canceling'];
 
 const TOKEN_EXPIRY_DAYS = 90;
 const PROMOTIONAL_EXPIRY_DAYS = 30;
@@ -31,6 +36,7 @@ export class SubscriptionsService {
     private readonly config: ConfigService,
     private readonly usersService: UsersService,
     private readonly plansService: PlansService,
+    private readonly emailService: EmailService,
     @InjectRepository(Subscription)
     private readonly subRepo: Repository<Subscription>,
     @InjectRepository(User)
@@ -41,6 +47,8 @@ export class SubscriptionsService {
     private readonly userBookRepo: Repository<UserBook>,
     @InjectRepository(TokenLedger)
     private readonly tokenRepo: Repository<TokenLedger>,
+    @InjectRepository(SubscriptionInvite)
+    private readonly inviteRepo: Repository<SubscriptionInvite>,
   ) {
     const stripeKey = this.config.get<string>('STRIPE_SECRET_KEY');
     this.stripe = stripeKey ? new Stripe(stripeKey) : null;
@@ -97,24 +105,38 @@ export class SubscriptionsService {
     const book = await this.bookRepo.findOneBy({ id: bookId, isPublished: true });
     if (!book) throw new NotFoundException('Book not found');
 
+    const alreadyOwned = await this.userBookRepo.existsBy({ userId, bookId });
+    if (alreadyOwned) throw new BadRequestException({ error: 'already_owned' });
+
     await this.expireStaleTokens(userId);
 
-    // Find the oldest active token (FIFO)
-    const token = await this.tokenRepo.findOne({
+    // Try the user's own token pool first; fall back to linked plan owner's pool
+    let tokenOwnerId = userId;
+    let token = await this.tokenRepo.findOne({
       where: { userId, status: 'active', expiresAt: MoreThan(new Date()) },
       order: { issuedAt: 'ASC' },
     });
 
+    if (!token) {
+      const ownerSub = await this.subRepo
+        .createQueryBuilder('sub')
+        .where(':userId = ANY(sub."linkedUserIds")', { userId })
+        .andWhere('sub.status IN (:...statuses)', { statuses: ACTIVE_STATUSES })
+        .getOne();
+
+      if (ownerSub) {
+        tokenOwnerId = ownerSub.userId;
+        await this.expireStaleTokens(tokenOwnerId);
+        token = await this.tokenRepo.findOne({
+          where: { userId: tokenOwnerId, status: 'active', expiresAt: MoreThan(new Date()) },
+          order: { issuedAt: 'ASC' },
+        });
+      }
+    }
+
     if (!token) throw new ForbiddenException({ error: 'no_tokens_remaining' });
 
-    const alreadyOwned = await this.userBookRepo.existsBy({ userId, bookId });
-    if (alreadyOwned) throw new BadRequestException({ error: 'already_owned' });
-
-    await this.tokenRepo.update(token.id, {
-      status: 'redeemed',
-      redeemedAt: new Date(),
-      bookId,
-    });
+    await this.tokenRepo.update(token.id, { status: 'redeemed', redeemedAt: new Date(), bookId });
     await this.userBookRepo.insert({ userId, bookId, purchaseType: 'token' });
   }
 
@@ -266,16 +288,164 @@ export class SubscriptionsService {
 
   async getSubscriptionStatus(userId: string) {
     const sub = await this.subRepo.findOne({ where: { userId }, relations: ['plan'] });
-    if (!sub) return { status: 'none' as const };
+    if (!sub) {
+      // Check if user is a linked member on someone else's plan
+      const ownerSub = await this.subRepo
+        .createQueryBuilder('sub')
+        .leftJoinAndSelect('sub.plan', 'plan')
+        .where(':userId = ANY(sub."linkedUserIds")', { userId })
+        .andWhere('sub.status IN (:...statuses)', { statuses: ACTIVE_STATUSES })
+        .getOne();
+      if (ownerSub) {
+        const tokenBalance = await this.getActiveTokenCount(ownerSub.userId);
+        return {
+          status: ownerSub.status,
+          planId: ownerSub.planId,
+          planName: ownerSub.plan?.name ?? null,
+          maxProfiles: ownerSub.plan?.maxProfiles ?? 1,
+          currentPeriodEnd: ownerSub.currentPeriodEnd,
+          trialEnd: ownerSub.trialEnd,
+          tokenBalance,
+          isLinkedMember: true,
+        };
+      }
+      return { status: 'none' as const };
+    }
     const tokenBalance = await this.getActiveTokenCount(userId);
     return {
       status: sub.status,
       planId: sub.planId,
       planName: sub.plan?.name ?? null,
+      maxProfiles: sub.plan?.maxProfiles ?? 1,
       currentPeriodEnd: sub.currentPeriodEnd,
       trialEnd: sub.trialEnd,
       tokenBalance,
+      isLinkedMember: false,
     };
+  }
+
+  // ── Invite flow ─────────────────────────────────────────────────────────────
+
+  async inviteUser(ownerId: string, email: string): Promise<{ id: string; email: string; expiresAt: Date }> {
+    const sub = await this.subRepo.findOne({ where: { userId: ownerId }, relations: ['plan'] });
+    if (!sub || !ACTIVE_STATUSES.includes(sub.status)) {
+      throw new ForbiddenException({ error: 'subscription_required' });
+    }
+    const maxProfiles = sub.plan?.maxProfiles ?? 1;
+    if (maxProfiles <= 1) {
+      throw new BadRequestException({ error: 'plan_does_not_support_sharing' });
+    }
+    if (sub.linkedUserIds.length >= maxProfiles - 1) {
+      throw new BadRequestException({ error: 'plan_full' });
+    }
+
+    // Prevent duplicate pending invites for the same email
+    const existing = await this.inviteRepo.findOne({
+      where: { subscriptionId: sub.id, invitedEmail: email, status: 'pending' },
+    });
+    if (existing && existing.expiresAt > new Date()) {
+      return { id: existing.id, email: existing.invitedEmail, expiresAt: existing.expiresAt };
+    }
+
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    const invite = this.inviteRepo.create({ subscriptionId: sub.id, invitedEmail: email, token, expiresAt });
+    await this.inviteRepo.save(invite);
+
+    const owner = await this.usersService.findById(ownerId);
+    await this.emailService.sendPlanInvite(
+      email,
+      owner?.name ?? 'Un usuario',
+      sub.plan?.name ?? 'Noetia',
+      token,
+    );
+
+    return { id: invite.id, email: invite.invitedEmail, expiresAt };
+  }
+
+  async acceptInvite(token: string, userId: string): Promise<void> {
+    const invite = await this.inviteRepo.findOne({ where: { token }, relations: ['subscription', 'subscription.plan'] });
+    if (!invite || invite.status !== 'pending' || invite.expiresAt < new Date()) {
+      throw new BadRequestException({ error: 'invite_invalid_or_expired' });
+    }
+
+    const sub = invite.subscription;
+    if (!ACTIVE_STATUSES.includes(sub.status)) {
+      throw new BadRequestException({ error: 'subscription_no_longer_active' });
+    }
+
+    const maxProfiles = sub.plan?.maxProfiles ?? 1;
+    if (sub.linkedUserIds.length >= maxProfiles - 1) {
+      throw new BadRequestException({ error: 'plan_full' });
+    }
+    if (sub.userId === userId) {
+      throw new BadRequestException({ error: 'cannot_join_own_plan' });
+    }
+    if (sub.linkedUserIds.includes(userId)) {
+      throw new BadRequestException({ error: 'already_linked' });
+    }
+
+    await this.subRepo.update(sub.id, { linkedUserIds: [...sub.linkedUserIds, userId] });
+    await this.inviteRepo.update(invite.id, { status: 'accepted' });
+  }
+
+  async getLinkedUsers(userId: string) {
+    // Works for both the owner and linked members
+    const sub = await this.subRepo.findOne({
+      where: { userId },
+      relations: ['plan'],
+    });
+
+    let ownerSub = sub;
+    let isOwner = true;
+
+    if (!sub) {
+      ownerSub = await this.subRepo
+        .createQueryBuilder('sub')
+        .leftJoinAndSelect('sub.plan', 'plan')
+        .where(':userId = ANY(sub."linkedUserIds")', { userId })
+        .getOne();
+      isOwner = false;
+    }
+
+    if (!ownerSub) return { linkedUsers: [], pendingInvites: [], maxProfiles: 1, isOwner: false };
+
+    const linkedUsers = ownerSub.linkedUserIds.length > 0
+      ? await this.userRepo.findBy({ id: In(ownerSub.linkedUserIds) })
+      : [];
+
+    const pendingInvites = isOwner
+      ? await this.inviteRepo.find({
+          where: { subscriptionId: ownerSub.id, status: 'pending' },
+          order: { createdAt: 'DESC' },
+        })
+      : [];
+
+    return {
+      linkedUsers: linkedUsers.map(u => ({ id: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl })),
+      pendingInvites: pendingInvites.map(i => ({ id: i.id, email: i.invitedEmail, expiresAt: i.expiresAt })),
+      maxProfiles: ownerSub.plan?.maxProfiles ?? 1,
+      isOwner,
+    };
+  }
+
+  async removeLinkedUser(ownerId: string, targetUserId: string): Promise<void> {
+    const sub = await this.subRepo.findOneBy({ userId: ownerId });
+    if (!sub) throw new NotFoundException({ error: 'subscription_not_found' });
+    if (!sub.linkedUserIds.includes(targetUserId)) {
+      throw new BadRequestException({ error: 'user_not_linked' });
+    }
+    await this.subRepo.update(sub.id, {
+      linkedUserIds: sub.linkedUserIds.filter(id => id !== targetUserId),
+    });
+  }
+
+  async revokeInvite(ownerId: string, inviteId: string): Promise<void> {
+    const sub = await this.subRepo.findOneBy({ userId: ownerId });
+    if (!sub) throw new NotFoundException({ error: 'subscription_not_found' });
+    const invite = await this.inviteRepo.findOneBy({ id: inviteId, subscriptionId: sub.id });
+    if (!invite) throw new NotFoundException({ error: 'invite_not_found' });
+    await this.inviteRepo.update(invite.id, { status: 'revoked' });
   }
 
   async cancelSubscription(userId: string) {

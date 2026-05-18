@@ -5,9 +5,11 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Book } from '../../../src/books/book.entity';
 import { UserBook } from '../../../src/library/user-book.entity';
 import { User } from '../../../src/users/user.entity';
+import { EmailService } from '../../../src/email/email.service';
 import { UsersService } from '../../../src/users/users.service';
 import { PlansService } from '../../../src/subscriptions/plans.service';
 import { Subscription } from '../../../src/subscriptions/subscription.entity';
+import { SubscriptionInvite } from '../../../src/subscriptions/subscription-invite.entity';
 import { SubscriptionsService } from '../../../src/subscriptions/subscriptions.service';
 import { TokenLedger } from '../../../src/subscriptions/token-ledger.entity';
 
@@ -30,12 +32,14 @@ const mockUserRepo = {
   findOneBy: jest.fn(),
 };
 
+const mockQb = { where: jest.fn().mockReturnThis(), andWhere: jest.fn().mockReturnThis(), leftJoinAndSelect: jest.fn().mockReturnThis(), getOne: jest.fn() };
 const mockSubRepo = {
   findOne: jest.fn(),
   findOneBy: jest.fn(),
   update: jest.fn(),
   upsert: jest.fn(),
   decrement: jest.fn(),
+  createQueryBuilder: jest.fn(() => mockQb),
 };
 
 const mockBookRepo = { findOneBy: jest.fn() };
@@ -52,6 +56,18 @@ const mockTokenRepo = {
   count: jest.fn(),
   update: jest.fn(),
   find: jest.fn(),
+};
+
+const mockInviteRepo = {
+  create: jest.fn(),
+  save: jest.fn(),
+  findOne: jest.fn(),
+  find: jest.fn(),
+  update: jest.fn(),
+};
+
+const mockEmailService = {
+  sendPlanInvite: jest.fn(),
 };
 
 const mockUsersService = {
@@ -80,17 +96,20 @@ describe('SubscriptionsService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockQb.getOne.mockResolvedValue(null);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SubscriptionsService,
         { provide: ConfigService, useValue: mockConfig },
         { provide: UsersService, useValue: mockUsersService },
         { provide: PlansService, useValue: mockPlansService },
+        { provide: EmailService, useValue: mockEmailService },
         { provide: getRepositoryToken(Subscription), useValue: mockSubRepo },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
         { provide: getRepositoryToken(Book), useValue: mockBookRepo },
         { provide: getRepositoryToken(UserBook), useValue: mockUserBookRepo },
         { provide: getRepositoryToken(TokenLedger), useValue: mockTokenRepo },
+        { provide: getRepositoryToken(SubscriptionInvite), useValue: mockInviteRepo },
       ],
     }).compile();
 
@@ -600,6 +619,118 @@ describe('SubscriptionsService', () => {
     it('throws NotFoundException when book does not exist', async () => {
       mockBookRepo.findOneBy.mockResolvedValue(null);
       await expect(service.redeemToken('u1', 'b1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('uses owner token pool when linked user has no own tokens', async () => {
+      mockBookRepo.findOneBy.mockResolvedValue({ id: 'b1', isPublished: true });
+      mockUserBookRepo.existsBy.mockResolvedValue(false);
+      mockTokenRepo.update.mockResolvedValue({});
+      mockTokenRepo.findOne
+        .mockResolvedValueOnce(null) // linked user has no tokens
+        .mockResolvedValueOnce({ id: 'owner-tok', status: 'active' }); // owner has tokens
+      mockQb.getOne.mockResolvedValue({ id: 'owner-sub', userId: 'owner1', status: 'active' });
+      mockUserBookRepo.insert.mockResolvedValue({});
+
+      await service.redeemToken('linked-user', 'b1');
+      expect(mockTokenRepo.update).toHaveBeenCalledWith('owner-tok', expect.objectContaining({ status: 'redeemed' }));
+    });
+  });
+
+  describe('inviteUser', () => {
+    it('creates invite and sends email for Duo plan with room', async () => {
+      mockSubRepo.findOne.mockResolvedValue({
+        id: 'sub1', userId: 'owner1', status: 'active',
+        plan: { name: 'Duo', maxProfiles: 2 },
+        linkedUserIds: [],
+      });
+      mockInviteRepo.findOne.mockResolvedValue(null);
+      mockInviteRepo.create.mockImplementation((d: any) => d);
+      mockInviteRepo.save.mockResolvedValue({ id: 'inv1', invitedEmail: 'guest@test.com', expiresAt: new Date() });
+      mockUsersService.findById.mockResolvedValue({ name: 'Owner' });
+      mockEmailService.sendPlanInvite.mockResolvedValue(undefined);
+
+      const result = await service.inviteUser('owner1', 'guest@test.com');
+      expect(mockEmailService.sendPlanInvite).toHaveBeenCalledWith('guest@test.com', 'Owner', 'Duo', expect.any(String));
+      expect(result).toHaveProperty('email', 'guest@test.com');
+    });
+
+    it('throws BadRequestException when plan does not support sharing (Individual)', async () => {
+      mockSubRepo.findOne.mockResolvedValue({
+        id: 'sub1', userId: 'owner1', status: 'active',
+        plan: { name: 'Individual', maxProfiles: 1 },
+        linkedUserIds: [],
+      });
+      await expect(service.inviteUser('owner1', 'x@y.com')).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when plan is full', async () => {
+      mockSubRepo.findOne.mockResolvedValue({
+        id: 'sub1', userId: 'owner1', status: 'active',
+        plan: { name: 'Duo', maxProfiles: 2 },
+        linkedUserIds: ['already-linked'],
+      });
+      await expect(service.inviteUser('owner1', 'x@y.com')).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws ForbiddenException when user has no active subscription', async () => {
+      mockSubRepo.findOne.mockResolvedValue(null);
+      await expect(service.inviteUser('owner1', 'x@y.com')).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('acceptInvite', () => {
+    it('adds userId to linkedUserIds and marks invite accepted', async () => {
+      mockInviteRepo.findOne.mockResolvedValue({
+        id: 'inv1',
+        token: 'tok123',
+        status: 'pending',
+        expiresAt: new Date(Date.now() + 86400000),
+        subscription: {
+          id: 'sub1', userId: 'owner1', status: 'active',
+          plan: { maxProfiles: 2 },
+          linkedUserIds: [],
+        },
+      });
+      mockSubRepo.update.mockResolvedValue({});
+      mockInviteRepo.update.mockResolvedValue({});
+
+      await service.acceptInvite('tok123', 'guest1');
+      expect(mockSubRepo.update).toHaveBeenCalledWith('sub1', { linkedUserIds: ['guest1'] });
+      expect(mockInviteRepo.update).toHaveBeenCalledWith('inv1', { status: 'accepted' });
+    });
+
+    it('throws BadRequestException for expired or invalid token', async () => {
+      mockInviteRepo.findOne.mockResolvedValue(null);
+      await expect(service.acceptInvite('bad-token', 'u1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when owner tries to accept their own invite', async () => {
+      mockInviteRepo.findOne.mockResolvedValue({
+        id: 'inv1', token: 't', status: 'pending',
+        expiresAt: new Date(Date.now() + 86400000),
+        subscription: { id: 'sub1', userId: 'owner1', status: 'active', plan: { maxProfiles: 2 }, linkedUserIds: [] },
+      });
+      await expect(service.acceptInvite('t', 'owner1')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('removeLinkedUser', () => {
+    it('removes the target user from linkedUserIds', async () => {
+      mockSubRepo.findOneBy.mockResolvedValue({ id: 'sub1', userId: 'owner1', linkedUserIds: ['linked1', 'linked2'] });
+      mockSubRepo.update.mockResolvedValue({});
+
+      await service.removeLinkedUser('owner1', 'linked1');
+      expect(mockSubRepo.update).toHaveBeenCalledWith('sub1', { linkedUserIds: ['linked2'] });
+    });
+
+    it('throws BadRequestException when target is not linked', async () => {
+      mockSubRepo.findOneBy.mockResolvedValue({ id: 'sub1', userId: 'owner1', linkedUserIds: [] });
+      await expect(service.removeLinkedUser('owner1', 'ghost')).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws NotFoundException when owner has no subscription', async () => {
+      mockSubRepo.findOneBy.mockResolvedValue(null);
+      await expect(service.removeLinkedUser('owner1', 'u1')).rejects.toThrow(NotFoundException);
     });
   });
 });

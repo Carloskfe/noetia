@@ -6,7 +6,8 @@ import { UserBook } from '../../../src/library/user-book.entity';
 import { Subscription } from '../../../src/subscriptions/subscription.entity';
 import { SubscriptionGuard } from '../../../src/subscriptions/subscription.guard';
 
-const mockSubRepo = { findOneBy: jest.fn() };
+const mockQb = { where: jest.fn().mockReturnThis(), andWhere: jest.fn().mockReturnThis(), getOne: jest.fn() };
+const mockSubRepo = { findOneBy: jest.fn(), createQueryBuilder: jest.fn(() => mockQb) };
 const mockBookRepo = { findOneBy: jest.fn() };
 const mockUserBookRepo = { existsBy: jest.fn() };
 
@@ -26,6 +27,7 @@ describe('SubscriptionGuard', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     mockUserBookRepo.existsBy.mockResolvedValue(false);
+    mockQb.getOne.mockResolvedValue(null); // no linked subscription by default
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SubscriptionGuard,
@@ -123,6 +125,25 @@ describe('SubscriptionGuard', () => {
     it('throws 403 for unauthenticated request (no user on req)', async () => {
       mockSubRepo.findOneBy.mockResolvedValue(null);
       await expect(guard.canActivate(makeContext(undefined, 'book-id'))).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('linked user access', () => {
+    beforeEach(() => {
+      mockBookRepo.findOneBy.mockResolvedValue({ isFree: false });
+      mockSubRepo.findOneBy.mockResolvedValue(null);
+    });
+
+    it('allows a linked member on an active owner subscription', async () => {
+      mockQb.getOne.mockResolvedValue({ id: 'owner-sub', status: 'active' });
+      await expect(guard.canActivate(makeContext('linked-user', 'book-id'))).resolves.toBe(true);
+    });
+
+    it('throws subscription_required when user is not linked to any active plan', async () => {
+      mockQb.getOne.mockResolvedValue(null);
+      await expect(guard.canActivate(makeContext('u1', 'book-id'))).rejects.toMatchObject({
+        response: { error: 'subscription_required' },
+      });
     });
   });
 });

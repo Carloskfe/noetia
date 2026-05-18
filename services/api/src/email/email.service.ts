@@ -57,6 +57,15 @@ export class EmailService {
     });
   }
 
+  async sendPlanInvite(to: string, inviterName: string, planName: string, token: string): Promise<void> {
+    const link = `${this.webUrl}/join?token=${token}`;
+    await this.send({
+      to,
+      subject: `${this.escape(inviterName)} te invita a Noetia ${this.escape(planName)}`,
+      html: this.planInviteTemplate(inviterName, planName, link),
+    });
+  }
+
   async sendWaitlistInvite(to: string, name: string): Promise<void> {
     const link = `${this.webUrl}/register?email=${encodeURIComponent(to)}`;
     await this.send({
@@ -249,6 +258,48 @@ export class EmailService {
           </p>
           <p style="margin:0;color:#94A3B8;font-size:13px;">
             Gracias por haber sido parte de la comunidad Noetia. Esperamos verte de nuevo.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© ${new Date().getFullYear()} Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  }
+
+  private planInviteTemplate(inviterName: string, planName: string, link: string): string {
+    return `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Te han invitado a leer juntos</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            <strong>${this.escape(inviterName)}</strong> te está invitando a unirte a su plan <strong>${this.escape(planName)}</strong> en Noetia.
+            Con este plan comparten tokens para desbloquear libros, cada uno con su biblioteca personal.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="${link}" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Aceptar invitación →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">${link}</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 48 horas. Si no esperabas esta invitación, puedes ignorar este mensaje.
           </p>
         </td></tr>
         <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -91,5 +92,39 @@ export class SubscriptionsController {
   @UseGuards(JwtAuthGuard, EmailConfirmedGuard)
   redeemBook(@Request() req: any, @Param('bookId') bookId: string) {
     return this.subscriptionsService.redeemToken(req.user.id, bookId);
+  }
+
+  @Post('invite')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, EmailConfirmedGuard)
+  inviteUser(@Request() req: any, @Body() dto: { email: string }) {
+    return this.subscriptionsService.inviteUser(req.user.id, dto.email);
+  }
+
+  @Post('invite/accept')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  acceptInvite(@Request() req: any, @Body() dto: { token: string }) {
+    return this.subscriptionsService.acceptInvite(dto.token, req.user.id);
+  }
+
+  @Get('linked-users')
+  @UseGuards(JwtAuthGuard)
+  getLinkedUsers(@Request() req: any) {
+    return this.subscriptionsService.getLinkedUsers(req.user.id);
+  }
+
+  @Delete('linked-users/:userId')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  removeLinkedUser(@Request() req: any, @Param('userId') targetUserId: string) {
+    return this.subscriptionsService.removeLinkedUser(req.user.id, targetUserId);
+  }
+
+  @Delete('invite/:inviteId')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  revokeInvite(@Request() req: any, @Param('inviteId') inviteId: string) {
+    return this.subscriptionsService.revokeInvite(req.user.id, inviteId);
   }
 }

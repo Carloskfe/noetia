@@ -45,6 +45,15 @@ export class SubscriptionGuard implements CanActivate {
     }
 
     if (!sub || !ACTIVE_STATUSES.includes(sub.status)) {
+      // Check if user is a linked member on someone else's active subscription
+      if (userId) {
+        const ownerSub = await this.subRepo
+          .createQueryBuilder('sub')
+          .where(':userId = ANY(sub."linkedUserIds")', { userId })
+          .andWhere('sub.status IN (:...statuses)', { statuses: ACTIVE_STATUSES })
+          .getOne();
+        if (ownerSub) return true;
+      }
       throw new ForbiddenException({ error: 'subscription_required' });
     }
 
