@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, Modal, StyleSheet,
-  ActivityIndicator, SafeAreaView,
+  ActivityIndicator, FlatList, Modal, SafeAreaView,
+  StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../api/client';
+import { AudioPlayerBar } from '../../components/AudioPlayerBar';
+import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import { saveFragment } from '../../offline/fragment-storage';
 import { saveProgress } from '../../offline/progress-storage';
 import type { LibraryStackParamList } from '../../navigation/types';
@@ -27,6 +29,11 @@ interface ApiFragment {
   endPhraseIndex: number;
 }
 
+interface BookData {
+  textFileUrl?: string;
+  audioStreamKey?: string;
+}
+
 const PROGRESS_DEBOUNCE = 3000;
 
 export function ReaderScreen() {
@@ -36,6 +43,8 @@ export function ReaderScreen() {
 
   const [phrases, setPhrases] = useState<SyncPhrase[]>([]);
   const [rawParagraphs, setRawParagraphs] = useState<string[]>([]);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioMode, setAudioMode] = useState(false);
   const [savedIndex, setSavedIndex] = useState(0);
   const [selectedPhrase, setSelectedPhrase] = useState<SyncPhrase | null>(null);
   const [savingFragment, setSavingFragment] = useState(false);
@@ -45,18 +54,32 @@ export function ReaderScreen() {
   const listRef = useRef<FlatList>(null);
   const progressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedPhraseIds = useRef<Set<number>>(new Set());
+  const lastScrolledIndex = useRef(-1);
+
+  const audio = useAudioPlayer(audioMode ? audioUrl : null, phrases);
+
+  // Auto-scroll to active phrase when audio is playing
+  useEffect(() => {
+    if (!audioMode || !audio.isPlaying) return;
+    if (audio.activePhraseIndex === lastScrolledIndex.current) return;
+    if (audio.activePhraseIndex < 0 || audio.activePhraseIndex >= phrases.length) return;
+    lastScrolledIndex.current = audio.activePhraseIndex;
+    listRef.current?.scrollToIndex({ index: audio.activePhraseIndex, animated: true, viewPosition: 0.4 });
+  }, [audioMode, audio.isPlaying, audio.activePhraseIndex, phrases.length]);
 
   useEffect(() => {
     navigation.setOptions({ title: bookTitle });
 
     Promise.all([
-      apiClient.get<{ textFileUrl?: string }>(`/books/${bookId}`),
+      apiClient.get<BookData>(`/books/${bookId}`),
       apiClient.get<{ phrases?: SyncPhrase[] }>(`/books/${bookId}/sync-map`).catch(() => null),
       apiClient.get<{ phraseIndex?: number }>(`/books/${bookId}/progress`).catch(() => null),
       apiClient.get<ApiFragment[]>(`/books/${bookId}/fragments`).catch(() => []),
     ]).then(([book, syncMap, progress, frags]) => {
       setSavedIndex(progress?.phraseIndex ?? 0);
       savedPhraseIds.current = new Set((frags ?? []).map((f) => f.startPhraseIndex));
+
+      if (book?.audioStreamKey) setAudioUrl(book.audioStreamKey);
 
       if (syncMap?.phrases?.length) {
         setPhrases(syncMap.phrases);
@@ -72,11 +95,11 @@ export function ReaderScreen() {
   }, [bookId, bookTitle, navigation]);
 
   useEffect(() => {
-    if (savedIndex > 0 && phrases.length > 0) {
+    if (savedIndex > 0 && phrases.length > 0 && !audioMode) {
       const idx = Math.min(savedIndex, phrases.length - 1);
       setTimeout(() => listRef.current?.scrollToIndex({ index: idx, animated: true }), 600);
     }
-  }, [savedIndex, phrases]);
+  }, [savedIndex, phrases, audioMode]);
 
   const trackProgress = useCallback((phraseIndex: number) => {
     if (progressTimer.current) clearTimeout(progressTimer.current);
@@ -107,23 +130,38 @@ export function ReaderScreen() {
     }
   }, [bookId, selectedPhrase]);
 
+  const handlePhrasePress = useCallback((item: SyncPhrase) => {
+    if (audioMode && audio.isLoaded) {
+      audio.seekToPhrase(item);
+      trackProgress(item.index);
+    } else {
+      trackProgress(item.index);
+    }
+  }, [audioMode, audio, trackProgress]);
+
   const renderPhrase = useCallback(({ item }: { item: SyncPhrase }) => {
     if (item.type === 'paragraph-break') return <View style={styles.gap} />;
     const isHeading = item.type === 'heading';
     const isSaved = savedPhraseIds.current.has(item.index);
+    const isActive = audioMode && audio.activePhraseIndex === item.index;
     return (
       <TouchableOpacity
         activeOpacity={0.7}
-        onPress={() => trackProgress(item.index)}
+        onPress={() => handlePhrasePress(item)}
         onLongPress={() => { if (!isHeading) setSelectedPhrase(item); }}
         delayLongPress={400}
       >
-        <Text style={[styles.phrase, isHeading && styles.heading, isSaved && styles.saved]}>
+        <Text style={[
+          styles.phrase,
+          isHeading && styles.heading,
+          isSaved && styles.saved,
+          isActive && styles.active,
+        ]}>
           {item.text}
         </Text>
       </TouchableOpacity>
     );
-  }, [trackProgress]);
+  }, [audioMode, audio.activePhraseIndex, audio.isLoaded, handlePhrasePress]);
 
   const renderParagraph = useCallback(({ item, index }: { item: string; index: number }) => (
     <TouchableOpacity
@@ -156,7 +194,7 @@ export function ReaderScreen() {
           data={phrases}
           keyExtractor={(item) => String(item.index)}
           renderItem={renderPhrase}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, audioMode && styles.contentWithPlayer]}
           onScrollToIndexFailed={() => {}}
         />
       ) : (
@@ -164,10 +202,45 @@ export function ReaderScreen() {
           data={rawParagraphs}
           keyExtractor={(_, i) => String(i)}
           renderItem={renderParagraph}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, audioMode && styles.contentWithPlayer]}
         />
       )}
 
+      {/* Audio mode FAB — only shown when audio is available */}
+      {audioUrl && !audioMode && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => setAudioMode(true)}
+          accessibilityLabel="Modo escucha activa"
+        >
+          <Text style={styles.fabText}>🎧</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Audio player bar */}
+      {audioMode && (
+        <AudioPlayerBar
+          isLoaded={audio.isLoaded}
+          isLoading={audio.isLoading}
+          isPlaying={audio.isPlaying}
+          position={audio.position}
+          duration={audio.duration}
+          speed={audio.speed}
+          error={audio.error}
+          onPlay={audio.play}
+          onPause={audio.pause}
+          onSkipBack={audio.skipBack}
+          onSkipForward={audio.skipForward}
+          onSeek={audio.seekTo}
+          onSetSpeed={audio.setSpeed}
+          onClose={() => {
+            audio.pause();
+            setAudioMode(false);
+          }}
+        />
+      )}
+
+      {/* Fragment save modal */}
       <Modal
         visible={selectedPhrase !== null}
         transparent
@@ -198,23 +271,27 @@ export function ReaderScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  content: { padding: 20, paddingBottom: 60 },
-  phrase: { fontSize: 17, lineHeight: 28, color: '#1F2937', marginBottom: 2 },
-  heading: { fontSize: 20, fontWeight: '700', color: '#0D1B2A', marginTop: 20, marginBottom: 4 },
-  saved: { backgroundColor: '#EDE9FE' },
-  gap: { marginBottom: 16 },
-  errorText: { fontSize: 15, color: '#EF4444', textAlign: 'center', marginBottom: 16 },
-  backBtn: { paddingHorizontal: 20, paddingVertical: 10 },
-  backBtnText: { color: '#4F46E5', fontSize: 16, fontWeight: '600' },
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
-  handle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  sheetExcerpt: { fontSize: 14, color: '#374151', lineHeight: 22, marginBottom: 20, fontStyle: 'italic' },
-  saveBtn: { backgroundColor: '#4F46E5', borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginBottom: 10 },
-  saveBtnOff: { opacity: 0.6 },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  cancelBtn: { paddingVertical: 12, alignItems: 'center' },
-  cancelBtnText: { color: '#6B7280', fontSize: 15 },
+  container:         { flex: 1, backgroundColor: '#fff' },
+  center:            { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  content:           { padding: 20, paddingBottom: 60 },
+  contentWithPlayer: { paddingBottom: 120 },
+  phrase:            { fontSize: 17, lineHeight: 28, color: '#1F2937', marginBottom: 2 },
+  heading:           { fontSize: 20, fontWeight: '700', color: '#0D1B2A', marginTop: 20, marginBottom: 4 },
+  saved:             { backgroundColor: '#EDE9FE' },
+  active:            { backgroundColor: '#DBEAFE', borderRadius: 4 },
+  gap:               { marginBottom: 16 },
+  errorText:         { fontSize: 15, color: '#EF4444', textAlign: 'center', marginBottom: 16 },
+  backBtn:           { paddingHorizontal: 20, paddingVertical: 10 },
+  backBtnText:       { color: '#4F46E5', fontSize: 16, fontWeight: '600' },
+  fab:               { position: 'absolute', bottom: 24, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: '#0D1B2A', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
+  fabText:           { fontSize: 24 },
+  overlay:           { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  sheet:             { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
+  handle:            { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  sheetExcerpt:      { fontSize: 14, color: '#374151', lineHeight: 22, marginBottom: 20, fontStyle: 'italic' },
+  saveBtn:           { backgroundColor: '#4F46E5', borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginBottom: 10 },
+  saveBtnOff:        { opacity: 0.6 },
+  saveBtnText:       { color: '#fff', fontSize: 16, fontWeight: '600' },
+  cancelBtn:         { paddingVertical: 12, alignItems: 'center' },
+  cancelBtnText:     { color: '#6B7280', fontSize: 15 },
 });

@@ -10,6 +10,7 @@ module.exports = {
     '@react-native-async-storage/async-storage':
       '<rootDir>/tests/__mocks__/@react-native-async-storage/async-storage.ts',
     '^react-native$': '<rootDir>/tests/__mocks__/react-native.ts',
+    '^expo-av$': '<rootDir>/tests/__mocks__/expo-av.ts',
   },
   collectCoverageFrom: ['src/**/*.ts', 'src/**/*.tsx', '!src/navigation/**'],
   coverageDirectory: 'coverage',
