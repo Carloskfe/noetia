@@ -26,8 +26,12 @@ jobs:
             echo "── Pulling latest code ──────────────────────────"
             git pull origin main
 
+            echo "── Stopping and removing existing containers ────"
+            docker compose --env-file .env.production -f docker-compose.server.yml down --remove-orphans 2>/dev/null || true
+            docker rm -f noetia-api-1 noetia-web-1 noetia-worker-1 noetia-image-gen-1 noetia-db-1 noetia-cache-1 noetia-storage-1 noetia-search-1 noetia-monitor-1 2>/dev/null || true
+            docker network rm noetia_noetia_net 2>/dev/null || true
+
             echo "── Building and starting containers ─────────────"
-            docker compose --env-file .env.production -f docker-compose.server.yml down --remove-orphans
             docker compose --env-file .env.production -f docker-compose.server.yml up -d --build
 
             echo "── Running migrations ───────────────────────────"
