@@ -1,0 +1,11 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: Email Noetia
+    receivers:
+      - uid: noetia-email
+        type: email
+        settings:
+          addresses: carloskfe@gmail.com
+          singleEmail: false

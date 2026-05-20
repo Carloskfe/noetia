@@ -1,0 +1,111 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: noetia-production
+    folder: Noetia
+    interval: 1m
+    rules:
+
+      # ── Alert 1: API 5xx error rate > 5% for 5 minutes ───────────────────────
+      - uid: noetia-api-error-rate
+        title: High API Error Rate
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus-noetia
+            model:
+              expr: >-
+                sum(rate(http_requests_total{status=~"5.."}[5m]))
+                / (sum(rate(http_requests_total[5m])) + 0.001) * 100
+              instant: true
+              range: false
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: B
+              conditions:
+                - evaluator: { params: [5], type: gt }
+                  operator: { type: and }
+                  query: { params: [A] }
+                  reducer: { params: [], type: last }
+                  type: query
+        for: 5m
+        annotations:
+          summary: API 5xx error rate above 5%
+          description: Check API container logs immediately — docker logs noetia-api-1 --tail 50
+        labels:
+          severity: critical
+
+      # ── Alert 2: Disk usage > 80% ─────────────────────────────────────────────
+      - uid: noetia-disk-usage
+        title: High Disk Usage
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus-noetia
+            model:
+              expr: >-
+                (1 - node_filesystem_avail_bytes{mountpoint="/", fstype!="tmpfs"}
+                / node_filesystem_size_bytes{mountpoint="/", fstype!="tmpfs"}) * 100
+              instant: true
+              range: false
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: B
+              conditions:
+                - evaluator: { params: [80], type: gt }
+                  operator: { type: and }
+                  query: { params: [A] }
+                  reducer: { params: [], type: last }
+                  type: query
+        for: 5m
+        annotations:
+          summary: Disk usage above 80%
+          description: Server disk is getting full. Run docker system prune or expand storage.
+        labels:
+          severity: warning
+
+      # ── Alert 3: Container restarted in the last 10 minutes ──────────────────
+      - uid: noetia-container-restart
+        title: Container Restarted
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus-noetia
+            model:
+              expr: >-
+                count(
+                  (time() - container_start_time_seconds{
+                    name=~"noetia-(api|web|worker|image-gen)-.*",
+                    name!=""
+                  }) < 600
+                ) > 0
+              instant: true
+              range: false
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: B
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  operator: { type: and }
+                  query: { params: [A] }
+                  reducer: { params: [], type: last }
+                  type: query
+        for: 0m
+        annotations:
+          summary: A Noetia container restarted recently
+          description: "Check which container restarted: docker ps --format '{{.Names}} {{.Status}}'"
+        labels:
+          severity: warning

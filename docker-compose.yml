@@ -7,6 +7,8 @@ volumes:
   redis_data:
   minio_data:
   meilisearch_data:
+  prometheus_data:
+  grafana_data:
 
 services:
   # ─── Reverse Proxy ──────────────────────────────────────────────────────────
@@ -172,13 +174,63 @@ services:
       - noetia_net
     restart: unless-stopped
 
-  # ─── Grafana + Prometheus ───────────────────────────────────────────────────
+  # ─── Prometheus ─────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      - noetia_net
+    restart: unless-stopped
+
+  # ─── Node Exporter (host metrics: disk, CPU, memory) ────────────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.8.0
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - noetia_net
+    restart: unless-stopped
+
+  # ─── cAdvisor (container metrics: restarts, resource usage) ─────────────────
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    networks:
+      - noetia_net
+    restart: unless-stopped
+
+  # ─── Grafana ─────────────────────────────────────────────────────────────────
   monitor:
     image: grafana/grafana:10.4.0
     ports:
       - "3001:3000"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: changeme
+      GF_UNIFIED_ALERTING_ENABLED: "true"
+      GF_ALERTING_ENABLED: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
     networks:
       - noetia_net
     restart: unless-stopped
