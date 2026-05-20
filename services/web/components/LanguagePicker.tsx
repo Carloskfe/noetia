@@ -6,7 +6,7 @@ interface Props {
   className?: string;
 }
 
-const FLAGS: Record<Language, string> = { es: '🇪🇸', en: '🇺🇸' };
+const FLAGS: Record<Language, string> = { es: '🌎', en: '🇺🇸' };
 
 export default function LanguagePicker({ className = '' }: Props) {
   const { language, setLanguage, t } = useTranslation();

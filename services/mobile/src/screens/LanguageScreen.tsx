@@ -7,7 +7,7 @@ interface Props {
 }
 
 const OPTIONS: Array<{ lang: Language; flag: string; label: string; sublabel: string }> = [
-  { lang: 'es', flag: '🇪🇸', label: 'Español', sublabel: 'Spanish' },
+  { lang: 'es', flag: '🌎', label: 'ES Latam', sublabel: 'Latin America' },
   { lang: 'en', flag: '🇺🇸', label: 'English', sublabel: 'Inglés' },
 ];
 

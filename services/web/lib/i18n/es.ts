@@ -4,7 +4,7 @@ export const es: Translations = {
   lang: {
     pick: 'Elige tu idioma',
     subtitle: 'Puedes cambiarlo más tarde en tu perfil.',
-    es: 'Español',
+    es: 'ES Latam',
     en: 'English',
   },
   common: {

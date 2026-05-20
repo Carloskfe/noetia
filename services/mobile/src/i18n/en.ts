@@ -2,7 +2,7 @@ export const en = {
   lang: {
     pick: 'Choose your language',
     subtitle: 'You can change this later in settings.',
-    es: 'Español',
+    es: 'ES Latam',
     en: 'English',
     continue: 'Continue',
   },
