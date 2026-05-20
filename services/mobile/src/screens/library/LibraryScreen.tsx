@@ -6,6 +6,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../api/client';
+import { useTranslation } from '../../i18n';
 import type { LibraryStackParamList } from '../../navigation/types';
 
 interface Book {
@@ -42,6 +43,7 @@ function BookCard({ book, onPress }: { book: Book; onPress: () => void }) {
 }
 
 export function LibraryScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const [myBooks, setMyBooks] = useState<Book[]>([]);
   const [freeBooks, setFreeBooks] = useState<Book[]>([]);
@@ -64,7 +66,7 @@ export function LibraryScreen() {
       setFreeBooks((booksRes.value ?? []).filter((b) => b.isFree));
     }
     if (libraryRes.status === 'rejected' && booksRes.status === 'rejected') {
-      setError('No se pudo cargar la biblioteca.');
+      setError(t.library.errorLoading);
     }
   }, []);
 
@@ -86,8 +88,8 @@ export function LibraryScreen() {
   }
 
   const sections = [
-    ...(myBooks.length > 0 ? [{ title: 'Mi Biblioteca', data: myBooks }] : []),
-    ...(freeBooks.length > 0 ? [{ title: 'Colección General', data: freeBooks }] : []),
+    ...(myBooks.length > 0 ? [{ title: t.library.mySection, data: myBooks }] : []),
+    ...(freeBooks.length > 0 ? [{ title: t.library.generalSection, data: freeBooks }] : []),
   ];
 
   return (
@@ -96,7 +98,7 @@ export function LibraryScreen() {
       {error !== '' && <Text style={styles.errorText}>{error}</Text>}
       {sections.length === 0 && !error && (
         <View style={styles.center}>
-          <Text style={styles.emptyText}>No hay libros disponibles.</Text>
+          <Text style={styles.emptyText}>{t.library.empty}</Text>
         </View>
       )}
       <SectionList

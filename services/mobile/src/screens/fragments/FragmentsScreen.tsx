@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { apiClient } from '../../api/client';
 import { loadFragments, deleteFragment } from '../../offline/fragment-storage';
+import { useTranslation } from '../../i18n';
 
 interface Fragment {
   id: string;
@@ -14,6 +15,7 @@ interface Fragment {
 }
 
 export function FragmentsScreen() {
+  const { t } = useTranslation();
   const [fragments, setFragments] = useState<Fragment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -49,10 +51,10 @@ export function FragmentsScreen() {
   }, [load]);
 
   const handleDelete = useCallback((frag: Fragment) => {
-    Alert.alert('Eliminar fragmento', '¿Eliminar este fragmento?', [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t.fragments.deleteTitle, t.fragments.deleteConfirm, [
+      { text: t.fragments.cancel, style: 'cancel' },
       {
-        text: 'Eliminar', style: 'destructive',
+        text: t.fragments.delete, style: 'destructive',
         onPress: async () => {
           await apiClient.delete(`/fragments/${frag.id}`).catch(() => {});
           await deleteFragment(frag.id).catch(() => {});
@@ -68,14 +70,12 @@ export function FragmentsScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Fragmentos</Text>
+      <Text style={styles.header}>{t.fragments.title}</Text>
       {fragments.length === 0 ? (
         <View style={styles.center}>
           <Text style={styles.emptyIcon}>🔖</Text>
-          <Text style={styles.emptyTitle}>Sin fragmentos aún</Text>
-          <Text style={styles.emptyBody}>
-            Mantén presionado cualquier frase en el lector para guardarla aquí.
-          </Text>
+          <Text style={styles.emptyTitle}>{t.fragments.empty}</Text>
+          <Text style={styles.emptyBody}>{t.fragments.emptySubtitle}</Text>
         </View>
       ) : (
         <FlatList

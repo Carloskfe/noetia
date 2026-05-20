@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../api/client';
 import { AudioPlayerBar } from '../../components/AudioPlayerBar';
 import { useAudioPlayer } from '../../hooks/useAudioPlayer';
+import { useTranslation } from '../../i18n';
 import { saveFragment } from '../../offline/fragment-storage';
 import { saveProgress } from '../../offline/progress-storage';
 import type { LibraryStackParamList } from '../../navigation/types';
@@ -44,6 +45,7 @@ export function ReaderScreen() {
   const [phrases, setPhrases] = useState<SyncPhrase[]>([]);
   const [rawParagraphs, setRawParagraphs] = useState<string[]>([]);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const { t } = useTranslation();
   const [audioMode, setAudioMode] = useState(false);
   const [savedIndex, setSavedIndex] = useState(0);
   const [selectedPhrase, setSelectedPhrase] = useState<SyncPhrase | null>(null);
@@ -87,11 +89,11 @@ export function ReaderScreen() {
         fetch(book.textFileUrl)
           .then((r) => r.text())
           .then((t) => setRawParagraphs(t.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)))
-          .catch(() => setError('No se pudo cargar el texto.'));
+          .catch(() => setError(t.reader.errorText));
       } else {
-        setError('Texto no disponible.');
+        setError(t.reader.errorUnavailable);
       }
-    }).catch(() => setError('No se pudo cargar el libro.')).finally(() => setLoading(false));
+    }).catch(() => setError(t.reader.errorBook)).finally(() => setLoading(false));
   }, [bookId, bookTitle, navigation]);
 
   useEffect(() => {
@@ -180,7 +182,7 @@ export function ReaderScreen() {
       <View style={styles.center}>
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>← Volver</Text>
+          <Text style={styles.backBtnText}>{t.reader.back}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -211,7 +213,7 @@ export function ReaderScreen() {
         <TouchableOpacity
           style={styles.fab}
           onPress={() => setAudioMode(true)}
-          accessibilityLabel="Modo escucha activa"
+          accessibilityLabel={t.reader.audioMode}
         >
           <Text style={styles.fabText}>🎧</Text>
         </TouchableOpacity>
@@ -258,10 +260,10 @@ export function ReaderScreen() {
             >
               {savingFragment
                 ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={styles.saveBtnText}>Guardar fragmento</Text>}
+                : <Text style={styles.saveBtnText}>{t.reader.saveFragment}</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setSelectedPhrase(null)}>
-              <Text style={styles.cancelBtnText}>Cancelar</Text>
+              <Text style={styles.cancelBtnText}>{t.reader.cancel}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

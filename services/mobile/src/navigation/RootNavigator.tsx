@@ -3,24 +3,31 @@ import { ActivityIndicator, View } from 'react-native';
 import { fetchSubscriptionStatus, requiresPaywall } from '../api/subscriptions';
 import { AuthProvider } from '../auth/AuthContext';
 import { isLoggedIn } from '../auth/token-storage';
+import { LanguageProvider, hasStoredLanguage } from '../i18n';
 import { consentIsCurrent } from '../offline/consent-storage';
 import { ConsentScreen } from '../screens/ConsentScreen';
+import { LanguageScreen } from '../screens/LanguageScreen';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 import { PaywallScreen } from '../screens/PaywallScreen';
 import { MainNavigator } from './MainNavigator';
 
-type AppState = 'loading' | 'consent' | 'login' | 'register' | 'paywall' | 'app';
+type AppState = 'loading' | 'language' | 'consent' | 'login' | 'register' | 'paywall' | 'app';
 
 async function resolveInitialState(): Promise<AppState> {
-  const [consent, authed] = await Promise.all([consentIsCurrent(), isLoggedIn()]);
+  const [hasLang, consent, authed] = await Promise.all([
+    hasStoredLanguage(),
+    consentIsCurrent(),
+    isLoggedIn(),
+  ]);
+  if (!hasLang) return 'language';
   if (!consent) return 'consent';
   if (!authed) return 'login';
   const status = await fetchSubscriptionStatus();
   return requiresPaywall(status) ? 'paywall' : 'app';
 }
 
-export function RootNavigator() {
+function AppNavigator() {
   const [state, setState] = useState<AppState>('loading');
 
   useEffect(() => {
@@ -40,35 +47,27 @@ export function RootNavigator() {
     );
   }
 
-  if (state === 'consent') {
-    return <ConsentScreen onConsent={() => setState('login')} />;
-  }
-
-  if (state === 'login') {
-    return (
-      <LoginScreen
-        onLogin={handleAuthenticated}
-        onRegister={() => setState('register')}
-      />
-    );
-  }
-
-  if (state === 'register') {
-    return (
-      <RegisterScreen
-        onRegister={handleAuthenticated}
-        onLogin={() => setState('login')}
-      />
-    );
-  }
-
-  if (state === 'paywall') {
-    return <PaywallScreen onSubscribed={() => setState('app')} />;
-  }
+  if (state === 'language') return <LanguageScreen onSelect={() => setState('consent')} />;
+  if (state === 'consent') return <ConsentScreen onConsent={() => setState('login')} />;
+  if (state === 'login') return (
+    <LoginScreen onLogin={handleAuthenticated} onRegister={() => setState('register')} />
+  );
+  if (state === 'register') return (
+    <RegisterScreen onRegister={handleAuthenticated} onLogin={() => setState('login')} />
+  );
+  if (state === 'paywall') return <PaywallScreen onSubscribed={() => setState('app')} />;
 
   return (
     <AuthProvider onLogout={() => setState('login')}>
       <MainNavigator />
     </AuthProvider>
+  );
+}
+
+export function RootNavigator() {
+  return (
+    <LanguageProvider>
+      <AppNavigator />
+    </LanguageProvider>
   );
 }

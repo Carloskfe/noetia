@@ -4,36 +4,17 @@ import {
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { fetchSubscriptionStatus, requiresPaywall } from '../api/subscriptions';
+import { useTranslation } from '../i18n';
 
 const PRICING_URL = 'https://noetia.app/pricing';
-
-const PLANS = [
-  {
-    name: 'Individual',
-    price: '$8.99/mes',
-    tokens: '1 token/mes',
-    features: ['Acceso completo a la biblioteca', '90 días para usar el token', 'Fragmentos y compartir'],
-  },
-  {
-    name: 'Duo',
-    price: '$13.99/mes',
-    tokens: '2 tokens compartidos/mes',
-    features: ['Todo lo del plan Individual', 'Hasta 2 usuarios', 'Bibliotecas personales independientes'],
-    popular: true,
-  },
-  {
-    name: 'Family',
-    price: '$18.99/mes',
-    tokens: '4 tokens compartidos/mes',
-    features: ['Todo lo del plan Duo', 'Hasta 5 usuarios'],
-  },
-];
+const PLAN_NAMES = ['Individual', 'Duo', 'Family'] as const;
 
 interface Props {
   onSubscribed: () => void;
 }
 
 export function PaywallScreen({ onSubscribed }: Props) {
+  const { t } = useTranslation();
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');
 
@@ -45,59 +26,52 @@ export function PaywallScreen({ onSubscribed }: Props) {
     if (!requiresPaywall(status)) {
       onSubscribed();
     } else {
-      setError('No encontramos una suscripción activa. Suscríbete en noetia.app/pricing.');
+      setError(t.paywall.error);
     }
   }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Noetia Premium</Text>
-      <Text style={styles.subtitle}>
-        14 días de prueba gratuita. Cancela cuando quieras.
-      </Text>
+      <Text style={styles.title}>{t.paywall.title}</Text>
+      <Text style={styles.subtitle}>{t.paywall.subtitle}</Text>
 
-      {PLANS.map((plan) => (
-        <View key={plan.name} style={[styles.card, plan.popular && styles.cardPopular]}>
-          {plan.popular && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Más popular</Text>
+      {PLAN_NAMES.map((name) => {
+        const plan = t.paywall.plans[name];
+        const isPopular = plan.popular;
+        return (
+          <View key={name} style={[styles.card, isPopular && styles.cardPopular]}>
+            {isPopular && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{t.paywall.popular}</Text>
+              </View>
+            )}
+            <View style={styles.cardHeader}>
+              <Text style={[styles.planName, isPopular && styles.planNamePopular]}>{name}</Text>
+              <Text style={[styles.planPrice, isPopular && styles.planPricePopular]}>{plan.price}</Text>
             </View>
-          )}
-          <View style={styles.cardHeader}>
-            <Text style={[styles.planName, plan.popular && styles.planNamePopular]}>{plan.name}</Text>
-            <Text style={[styles.planPrice, plan.popular && styles.planPricePopular]}>{plan.price}</Text>
+            <Text style={[styles.tokens, isPopular && styles.tokensPopular]}>{plan.tokens}</Text>
+            {plan.features.map((f) => (
+              <Text key={f} style={[styles.feature, isPopular && styles.featurePopular]}>✓ {f}</Text>
+            ))}
           </View>
-          <Text style={[styles.tokens, plan.popular && styles.tokensPopular]}>{plan.tokens}</Text>
-          {plan.features.map((f) => (
-            <Text key={f} style={[styles.feature, plan.popular && styles.featurePopular]}>✓ {f}</Text>
-          ))}
-        </View>
-      ))}
+        );
+      })}
 
-      <TouchableOpacity
-        style={styles.ctaPrimary}
-        onPress={() => Linking.openURL(PRICING_URL)}
-        accessibilityLabel="Ver planes"
-      >
-        <Text style={styles.ctaPrimaryText}>Ver planes y suscribirme →</Text>
+      <TouchableOpacity style={styles.ctaPrimary} onPress={() => Linking.openURL(PRICING_URL)}
+        accessibilityLabel={t.paywall.subscribe}>
+        <Text style={styles.ctaPrimaryText}>{t.paywall.subscribe}</Text>
       </TouchableOpacity>
 
       {error !== '' && <Text style={styles.error}>{error}</Text>}
 
-      <TouchableOpacity
-        style={styles.ctaSecondary}
-        onPress={handleAlreadySubscribed}
-        disabled={checking}
-        accessibilityLabel="Ya me suscribí"
-      >
+      <TouchableOpacity style={styles.ctaSecondary} onPress={handleAlreadySubscribed}
+        disabled={checking} accessibilityLabel={t.paywall.alreadySubscribed}>
         {checking
           ? <ActivityIndicator color="#4F46E5" />
-          : <Text style={styles.ctaSecondaryText}>Ya me suscribí</Text>}
+          : <Text style={styles.ctaSecondaryText}>{t.paywall.alreadySubscribed}</Text>}
       </TouchableOpacity>
 
-      <Text style={styles.hint}>
-        Suscríbete en noetia.app, luego regresa y toca "Ya me suscribí".
-      </Text>
+      <Text style={styles.hint}>{t.paywall.hint}</Text>
     </ScrollView>
   );
 }

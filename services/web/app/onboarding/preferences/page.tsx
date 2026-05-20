@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
+import { useTranslation } from '@/lib/i18n';
 
 const COUNTRIES = [
   { value: 'AR', label: 'Argentina' },
@@ -37,6 +38,7 @@ const LANGUAGES = [
 
 export default function PreferencesPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [country, setCountry] = useState('');
   const [languages, setLanguages] = useState<string[]>(['es']);
   const [loading, setLoading] = useState(false);
@@ -75,20 +77,18 @@ export default function PreferencesPage() {
           <div className="w-8 h-1 rounded-full bg-gray-200" />
         </div>
 
-        <h1 className="text-2xl font-bold text-center mb-1">¿Dónde estás?</h1>
-        <p className="text-gray-500 text-center mb-8">
-          Esto nos ayuda a personalizar tu experiencia.
-        </p>
+        <h1 className="text-2xl font-bold text-center mb-1">{t.onboarding.prefs.title}</h1>
+        <p className="text-gray-500 text-center mb-8">{t.onboarding.prefs.subtitle}</p>
 
         {/* Country */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">País</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t.onboarding.prefs.country}</label>
           <select
             value={country}
             onChange={(e) => setCountry(e.target.value)}
             className="w-full border-2 rounded-xl px-4 py-3 text-gray-900 bg-white focus:outline-none focus:border-blue-600 transition"
           >
-            <option value="">Selecciona tu país</option>
+            <option value="">{t.onboarding.prefs.countryPlaceholder}</option>
             {COUNTRIES.map((c) => (
               <option key={c.value} value={c.value}>
                 {c.label}
@@ -100,7 +100,7 @@ export default function PreferencesPage() {
         {/* Language */}
         <div className="mb-8">
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            Idiomas de lectura
+            {t.onboarding.prefs.readingLanguages}
           </label>
           <div className="flex gap-3">
             {LANGUAGES.map((lang) => (
@@ -126,7 +126,7 @@ export default function PreferencesPage() {
           disabled={!country || languages.length === 0 || loading}
           className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-40 transition"
         >
-          {loading ? 'Guardando…' : 'Continuar'}
+          {loading ? t.onboarding.prefs.submitting : t.onboarding.prefs.submit}
         </button>
       </div>
     </div>

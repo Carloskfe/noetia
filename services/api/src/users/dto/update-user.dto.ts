@@ -28,4 +28,9 @@ export class UpdateUserDto {
   @IsArray()
   @IsString({ each: true })
   interests?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(5)
+  uiLanguage?: string;
 }

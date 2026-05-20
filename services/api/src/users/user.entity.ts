@@ -75,6 +75,9 @@ export class User {
   @Column({ type: 'boolean', default: true })
   emailConfirmed: boolean;
 
+  @Column({ type: 'varchar', length: 5, default: 'es' })
+  uiLanguage: string;
+
   @Column({ type: 'boolean', default: false })
   isAdmin: boolean;
 
