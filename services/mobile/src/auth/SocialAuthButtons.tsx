@@ -15,9 +15,7 @@ import { saveToken, saveUserType } from './token-storage';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const GOOGLE_WEB_CLIENT_ID =
-  '575389024313-abgn6pm2a93m12trjdlocifemss4hkaf.apps.googleusercontent.com';
-
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? '';
 const FACEBOOK_APP_ID = process.env.EXPO_PUBLIC_FACEBOOK_APP_ID ?? '';
 
 interface Props {

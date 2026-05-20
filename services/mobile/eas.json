@@ -19,7 +19,9 @@
       "android": { "buildType": "app-bundle" },
       "ios": { "simulator": false },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://noetia.app/api"
+        "EXPO_PUBLIC_API_URL": "https://noetia.app/api",
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "REPLACE_WITH_GOOGLE_WEB_CLIENT_ID",
+        "EXPO_PUBLIC_FACEBOOK_APP_ID": "REPLACE_WITH_FACEBOOK_APP_ID"
       }
     }
   },
