@@ -18,6 +18,13 @@ const MOCK_PHRASES = [
 ];
 
 test.describe('Flow: sign-up → read', () => {
+  // Force English so assertions match i18n strings regardless of browser default
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('noetia_lang', 'en');
+    });
+  });
+
   test('user registers, lands in library, and opens reader', async ({ page }) => {
     await page.route('**/auth/register', (route) =>
       route.fulfill({
@@ -66,7 +73,6 @@ test.describe('Flow: sign-up → read', () => {
       route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({}) }),
     );
 
-    // Mock calls made by onboarding/library pages after redirect
     await page.route('**/users/me', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'u1', name: 'Test User', userType: 'personal', emailConfirmed: true }) }));
     await page.route('**/subscriptions/me', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'none', planId: null, tokenBalance: 0 }) }));
     await page.route('**/books*', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([MOCK_BOOK]) }));
@@ -116,6 +122,6 @@ test.describe('Flow: sign-up → read', () => {
     await page.locator('input[type="password"]').fill('secure-password-123');
     await page.getByRole('button', { name: /create account/i }).click();
 
-    await expect(page.getByText('Email already in use')).toBeVisible();
+    await expect(page.getByText(/email already in use/i)).toBeVisible();
   });
 });

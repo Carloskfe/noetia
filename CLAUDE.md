@@ -625,6 +625,11 @@ docker compose exec api npm run migration:run
 | 038 | `RenameCreditsToTokens` | creditsRemaining → tokenBalance on subscriptions; creditsPerCycle → tokensPerCycle on plans |
 | 039 | `RestructurePlansAndTokenPackages` | Plans: Individual $8.99, Duo $13.99, Family $18.99 (monthly+annual); token_packages table seeded (1/3/5/10 tokens) |
 | 040 | `CreateTokenLedgerAndCourtesy` | token_ledger (90-day paid, 30-day promo/courtesy, FIFO redemption); courtesy_token_quotas; books.narratorId; subscriptions.linkedUserIds + nextTokenIssuanceAt |
+| 041 | `UpdateStripeProductIds` | Sets real Stripe price IDs on plans and token_packages from env vars |
+| 042 | `CreateSubscriptionInvites` | subscription_invites table for Duo/Family plan invite flow |
+| 043 | `CreateGiftCards` | gift_cards table — token gifts with personal message, 1-year expiry |
+| 044 | `AddUiLanguage` | uiLanguage VARCHAR(5) DEFAULT 'es' on users — Spanish/English i18n |
+| 045 | `CreatePushTokens` | push_tokens table — Expo push tokens per user for notifications |
 
 ---
 

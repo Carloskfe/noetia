@@ -5,60 +5,50 @@
 > 2. **Author/company experience** — content supply chain; upload, sync tooling, analytics
 > 3. **Free library** — beta acquisition only; not expanded after 6–12 months; UI hero will yield to author content
 >
-> **Current status (2026-05-16):** Stages 0–5 functionally complete. **Production live at https://noetia.app** — Contabo VPS (Traefik v2.11, 9 containers healthy, 41 migrations applied). SSH on port 222, fail2ban active. CI/CD working via GitHub Actions. Token system live (Individual $8.99 / Duo $13.99 / Family $18.99). Causas Noetia live. Delete account live.
+> **Current status (2026-05-20):** Stages 0–5 complete + major feature sprint complete. **Production live at https://noetia.app** — Contabo VPS (Traefik v2.11, 10 containers healthy, 45 migrations applied). SSH port 222, fail2ban active. CI/CD working (auto-deploys + runs migrations). 45 migrations applied (latest: CreatePushTokens #045).
 >
-> **Remaining before full beta readiness:**
-> - [x] All Whisper VTTs for first 16 books synced ✅
-> - [x] Email confirmation 404 fixed + payment gate for unverified users ✅
-> - [x] Mobile text selection stuck bug fixed ✅
-> - [x] SSH hardening — port 222, fail2ban ✅
-> - [x] Token system — Individual/Duo/Family plans, 90-day ledger, courtesy tokens, admin UI ✅
-> - [x] Causas Noetia — /causas page, landing banner, CauseSelector at checkout, migration ✅
-> - [x] Delete account — cascade + farewell email + confirmation modal ✅
-> - [x] First-time tutorials — WelcomeSplash, FragmentsTutorial, AudioTutorial ✅
-> - [x] Landing page — beta branding removed, direct CTAs ✅
-> - [x] Book covers — `sharp` installed, storage.noetia.app added to remotePatterns ✅
-> - [ ] **Stripe activation** — system built but keys empty in .env.production. Steps: (1) create 10 Stripe products (Individual/Duo/Family monthly+annual + 4 token packages), (2) set STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET in .env.production
-> - [ ] **Run `seed-search.js`** — Meilisearch index empty, search non-functional. Run: `docker compose --env-file .env.production -f docker-compose.server.yml exec -T -e DB_HOST=db api node dist/ingestion/seed-search.js`
-> - [ ] **Fix La Odisea sync quality** — Wikisource fetch failed during re-ingestion; text-audio mismatch unresolved. Needs clean text source
-> - [ ] **Whisper VTTs for 13 remaining books** — user transcribes on Windows, drops folder in `C:\Users\carlo\Downloads\<Book Title>\`, Claude reads via `/media/sf_Downloads_1/<Book Title>/`. Books still needed: Don Quijote Vol. I, Don Quijote Vol. II, Mateo, Lucas, Efesios, Filipenses, Apocalipsis, Proverbios, Isaías, Fábulas y Verdades, Cuentos de la Selva, Génesis, Juan, Éxodo
-> - [ ] **Duo/Family user invite flow** — backend shared pool ready, needs UI for inviting the 2nd/5th user
-> - [ ] **Token purchase "Comprar" buttons** — pricing page UI exists, needs to call `POST /subscriptions/tokens/purchase` with Stripe price ID
-> - [ ] App store submissions (iOS + Android) — Android APK can be distributed directly from website; iOS needs Apple Developer account ($99/yr, covers all apps)
+> **Completed since last update:**
+> - [x] Stripe fully activated — 10 products, webhook live, price IDs in DB ✅
+> - [x] Meilisearch seeded — 38 books indexed, search functional ✅
+> - [x] Duo/Family invite flow — backend + billing UI + /join acceptance page ✅
+> - [x] Token "Comprar" buttons wired on pricing page ✅
+> - [x] Gift cards — 1/3 tokens, personal message, occasion, Stripe one-time, email delivery ✅
+> - [x] PostgreSQL daily backups — 2 AM cron, 7-day daily + 4-week Sunday retention ✅
+> - [x] MinIO weekly backups — Sunday 3 AM cron, 4-copy retention ✅
+> - [x] MinIO bucket policy audit — books/ and audio/ confirmed private, images/ public ✅
+> - [x] Mobile paywall enforcement — subscription check after every login ✅
+> - [x] Mobile register screen — name/email/password + social auth ✅
+> - [x] Mobile audio player — Modo Escucha Activa, phrase sync, auto-scroll, speed control ✅
+> - [x] Mobile sharing flow — ShareSheet, 4 platforms, generate + share/open ✅
+> - [x] Offline book download — cache phrases, DownloadButton in reader header ✅
+> - [x] Auto-sync on reconnect — NetInfo offline→online triggers syncOfflineData ✅
+> - [x] Push notifications — Expo push, invite accepted + gift claimed triggers ✅
+> - [x] Spanish/English i18n — both web and mobile, language selection as first decision ✅
+> - [x] CD pipeline hardened — force-remove containers before up, DB_HOST in migration step ✅
+> - [x] ShareModal D3/D4/D7 — hex picker, gradient directions, background presets all done ✅
 >
-> **P3 UI backlog (not yet in sprints):**
-> - ~~Fragment text editing before image creation (E1)~~ ✅ done
-> - ~~Citation location in fragment image (E2)~~ ✅ done
-> - ~~Bible / volume collection grouping in Library UI (B2/B3)~~ ✅ done
-> - ~~Image optimization — WebP covers via next/image~~ ✅ done
-> - ~~Content streaming caching — HTTP Cache-Control on sync-map, books list, collections~~ ✅ done
-> - ~~Profile page — name, avatar, subscription status, social accounts, Editar perfil~~ ✅ done
-> - ~~ShareModal fonts — refreshed to 7 visually distinct options~~ ✅ done
-> - ~~Delete account — DELETE /users/me cascade + farewell email + confirmation modal~~ ✅ done (2026-05-16)
-> - Hex color picker for background in ShareModal (D3)
-> - Gradient direction options (D4)
-> - Integrate background preset images into ShareModal UI (D7)
-> - ~~Bottom nav — "Mi Biblioteca" and "Colección General" names + icons aligned~~ ✅ done
-> - Narrator payment schemes (royalty / advance / hybrid) — `narratorPaymentScheme` field on books, narrator marketplace UI
+> **Remaining before app store submission:**
+> - [ ] **Whisper VTTs for 13 books** — user transcribes on Windows. Books: Don Quijote Vol. I, Don Quijote Vol. II, Mateo, Lucas, Efesios, Filipenses, Apocalipsis, Proverbios, Isaías, Fábulas y Verdades, Cuentos de la Selva, Génesis, Juan, Éxodo
+> - [ ] **Fix La Odisea sync quality** — text-audio mismatch, needs clean Spanish text source
+> - [ ] **EAS build config** — configure app.json + eas.json for production iOS/Android builds
+> - [ ] **App store submissions** — iOS ($99/yr Apple Developer) + Android ($25 one-time Google Play)
 >
-> **Onboarding & brand awareness:**
-> - ~~Welcome splash~~ ✅ done — `WelcomeSplash` component, `noetia_welcome_seen` flag
-> - ~~Fragmentos library tutorial~~ ✅ done — `FragmentsTutorial` bottom sheet, `noetia_fragments_tutorial_seen` flag
-> - ~~Audio mode tutorial~~ ✅ done — `AudioTutorial` modal on first FAB tap, `noetia_audio_tutorial_seen` flag
-> - ~~Reader tutorial (4-step: select → save → access → share)~~ ✅ done
+> **Backlog (post app store):**
+> - [ ] English free library — ~20-40 public domain books (Gutenberg + LibriVox), same pipeline as Spanish
+> - [ ] Facebook + Google OAuth credentials — code built, needs developer console setup
+> - [ ] Narrator payment schemes — royalty/advance/hybrid field + marketplace UI
+> - [ ] Gift cards — already built; consider adding more token amounts (5, 10)
 >
-> **Security & ops backlog (not yet in sprints):**
-> - [x] SSH hardening — fail2ban installed, SSH moved to port 222, UFW updated (2026-05-13)
-> - [ ] Automated PostgreSQL backups — daily pg_dump to a separate Contabo snapshot or off-site storage (Backblaze B2 / S3); retention: 7 daily + 4 weekly
-> - [ ] MinIO data backup — sync `minio_data` Docker volume to off-site storage; currently no backup exists
-> - [ ] Server monitoring & alerting — configure Grafana alerts for API error rate, disk usage >80%, container restarts; add uptime monitor (UptimeRobot free tier or BetterStack)
-> - [ ] Let's Encrypt renewal smoke test — Traefik auto-renews but verify renewal is working 30 days before expiry; add Grafana alert or cron check
-> - [ ] Stripe webhook security — add `STRIPE_WEBHOOK_SECRET` and enable signature verification before going live with payments
-> - [ ] MinIO bucket policy audit — confirm `books/` and `audio/` buckets are private in production; only `images/` should allow public download
-> - [ ] GitHub Actions deploy scope — currently uses root SSH key; create a dedicated `deploy` Linux user with limited sudo scope and update `DEPLOY_SSH_KEY`
-> - [ ] Secrets rotation policy — document how and when to rotate JWT_SECRET, MINIO credentials, SOCIAL_TOKEN_SECRET; rotation requires a container restart
-> - [ ] Privacy policy compliance — confirm email addresses collected via waitlist and registration are handled per GDPR/CCPA; add data retention policy
-> - [ ] Add `DB_HOST=db` to `.env.production` template — was missing at launch, caused seed script failures; document in CLAUDE.md required env vars checklist
+> **Security & ops backlog:**
+> - [x] SSH hardening — fail2ban, port 222, UFW ✅
+> - [x] PostgreSQL backups — daily cron + retention ✅
+> - [x] MinIO backups — weekly cron + retention ✅
+> - [x] MinIO bucket policy audit — books/audio private, images public ✅
+> - [ ] Server monitoring & alerting — Grafana alerts for API error rate, disk >80%, container restarts
+> - [ ] Let's Encrypt renewal smoke test — verify auto-renewal 30 days before expiry
+> - [ ] GitHub Actions deploy scope — dedicated deploy user instead of root SSH key
+> - [ ] Secrets rotation policy — JWT_SECRET, MINIO credentials, SOCIAL_TOKEN_SECRET
+> - [ ] Privacy policy compliance — GDPR/CCPA data retention policy
 
 **Estimation key:** Each task is estimated in days (1 dev). Sprints are 2 weeks (10 working days).
 **Legend:** `[ ]` pending · `[x]` done · `[~]` in progress
