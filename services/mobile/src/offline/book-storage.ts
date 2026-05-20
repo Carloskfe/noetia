@@ -8,10 +8,18 @@ export interface BookMeta {
   downloadedAt: number;
 }
 
+export interface OfflinePhrase {
+  index: number;
+  text: string;
+  startTime: number;
+  endTime: number;
+  type?: string;
+}
+
 export interface ChapterContent {
   bookId: string;
   chapterIndex: number;
-  phrases: string[];
+  phrases: OfflinePhrase[];
 }
 
 const BOOK_META_KEY = (bookId: string) => `noetia_book_meta_${bookId}`;
@@ -67,10 +75,20 @@ export async function getDownloadedBookIds(): Promise<string[]> {
 }
 
 export async function removeBook(bookId: string): Promise<void> {
+  const meta = await loadBookMeta(bookId);
+  const chapters = meta?.chaptersCount ?? 1;
   await AsyncStorage.removeItem(BOOK_META_KEY(bookId));
+  for (let i = 0; i < chapters; i++) {
+    await AsyncStorage.removeItem(CHAPTER_KEY(bookId, i));
+  }
   const ids = await getDownloadedBookIds();
   await AsyncStorage.setItem(
     DOWNLOADED_IDS_KEY,
     JSON.stringify(ids.filter((id) => id !== bookId)),
   );
+}
+
+export async function isBookDownloaded(bookId: string): Promise<boolean> {
+  const meta = await loadBookMeta(bookId);
+  return meta !== null;
 }

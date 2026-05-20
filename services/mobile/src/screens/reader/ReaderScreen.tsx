@@ -7,10 +7,12 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../api/client';
 import { AudioPlayerBar } from '../../components/AudioPlayerBar';
+import { DownloadButton } from '../../components/DownloadButton';
 import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import { useTranslation } from '../../i18n';
 import { saveFragment } from '../../offline/fragment-storage';
 import { saveProgress } from '../../offline/progress-storage';
+import { loadChapter } from '../../offline/book-storage';
 import type { LibraryStackParamList } from '../../navigation/types';
 
 type Route = RouteProp<LibraryStackParamList, 'Reader'>;
@@ -70,14 +72,31 @@ export function ReaderScreen() {
   }, [audioMode, audio.isPlaying, audio.activePhraseIndex, phrases.length]);
 
   useEffect(() => {
-    navigation.setOptions({ title: bookTitle });
+    navigation.setOptions({
+      title: bookTitle,
+      headerRight: () => <DownloadButton bookId={bookId} />,
+    });
 
-    Promise.all([
-      apiClient.get<BookData>(`/books/${bookId}`),
-      apiClient.get<{ phrases?: SyncPhrase[] }>(`/books/${bookId}/sync-map`).catch(() => null),
-      apiClient.get<{ phraseIndex?: number }>(`/books/${bookId}/progress`).catch(() => null),
-      apiClient.get<ApiFragment[]>(`/books/${bookId}/fragments`).catch(() => []),
-    ]).then(([book, syncMap, progress, frags]) => {
+    async function loadContent() {
+      // Check offline cache first
+      const cached = await loadChapter(bookId, 0);
+      if (cached?.phrases?.length) {
+        setPhrases(cached.phrases as SyncPhrase[]);
+        const progress = await apiClient.get<{ phraseIndex?: number }>(`/books/${bookId}/progress`).catch(() => null);
+        const frags = await apiClient.get<ApiFragment[]>(`/books/${bookId}/fragments`).catch(() => []);
+        setSavedIndex(progress?.phraseIndex ?? 0);
+        savedPhraseIds.current = new Set((frags ?? []).map((f) => f.startPhraseIndex));
+        return;
+      }
+
+      // Fetch from API
+      const [book, syncMap, progress, frags] = await Promise.all([
+        apiClient.get<BookData>(`/books/${bookId}`),
+        apiClient.get<{ phrases?: SyncPhrase[] }>(`/books/${bookId}/sync-map`).catch(() => null),
+        apiClient.get<{ phraseIndex?: number }>(`/books/${bookId}/progress`).catch(() => null),
+        apiClient.get<ApiFragment[]>(`/books/${bookId}/fragments`).catch(() => []),
+      ]);
+
       setSavedIndex(progress?.phraseIndex ?? 0);
       savedPhraseIds.current = new Set((frags ?? []).map((f) => f.startPhraseIndex));
 
@@ -88,12 +107,14 @@ export function ReaderScreen() {
       } else if (book?.textFileUrl) {
         fetch(book.textFileUrl)
           .then((r) => r.text())
-          .then((t) => setRawParagraphs(t.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)))
+          .then((txt) => setRawParagraphs(txt.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)))
           .catch(() => setError(t.reader.errorText));
       } else {
         setError(t.reader.errorUnavailable);
       }
-    }).catch(() => setError(t.reader.errorBook)).finally(() => setLoading(false));
+    }
+
+    loadContent().catch(() => setError(t.reader.errorBook)).finally(() => setLoading(false));
   }, [bookId, bookTitle, navigation]);
 
   useEffect(() => {

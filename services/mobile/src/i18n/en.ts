@@ -104,6 +104,16 @@ export const en = {
       Family: { price: '$18.99/mo', tokens: '4 shared tokens/mo', features: ['Everything in Duo', 'Up to 5 users'] },
     } as Record<string, { price: string; tokens: string; features: string[]; popular?: boolean }>,
   },
+  download: {
+    download: 'Download',
+    downloading: 'Downloading…',
+    downloaded: 'Downloaded',
+    deleteTitle: 'Remove download',
+    deleteConfirm: 'Remove this book from your device?',
+    delete: 'Remove',
+    cancel: 'Cancel',
+    error: 'Download failed. Check your connection.',
+  },
   sharing: {
     title: 'Share fragment',
     selectPlatform: 'Select a platform',

@@ -106,6 +106,16 @@ export const es: MobileTranslations = {
       Family: { price: '$18.99/mes', tokens: '4 tokens compartidos/mes', features: ['Todo lo del plan Duo', 'Hasta 5 usuarios'] },
     } as Record<string, { price: string; tokens: string; features: string[]; popular?: boolean }>,
   },
+  download: {
+    download: 'Descargar',
+    downloading: 'Descargando…',
+    downloaded: 'Descargado',
+    deleteTitle: 'Eliminar descarga',
+    deleteConfirm: '¿Eliminar este libro de tu dispositivo?',
+    delete: 'Eliminar',
+    cancel: 'Cancelar',
+    error: 'Error al descargar. Revisa tu conexión.',
+  },
   sharing: {
     title: 'Compartir fragmento',
     selectPlatform: 'Elige una plataforma',

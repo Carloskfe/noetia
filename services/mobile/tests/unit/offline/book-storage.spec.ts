@@ -27,7 +27,10 @@ const META: BookMeta = {
 const CHAPTER: ChapterContent = {
   bookId: 'book-1',
   chapterIndex: 0,
-  phrases: ['En un lugar de la Mancha', 'de cuyo nombre no quiero acordarme'],
+  phrases: [
+    { index: 0, text: 'En un lugar de la Mancha', startTime: 0, endTime: 5 },
+    { index: 1, text: 'de cuyo nombre no quiero acordarme', startTime: 5, endTime: 10 },
+  ],
 };
 
 beforeEach(() => {
@@ -130,6 +133,7 @@ describe('getDownloadedBookIds', () => {
 
 describe('removeBook', () => {
   it('removes meta key and filters id from downloaded list', async () => {
+    mockGet.mockResolvedValueOnce(null); // loadBookMeta → null (chaptersCount defaults to 1)
     mockGet.mockResolvedValueOnce(JSON.stringify(['book-1', 'book-2'])); // getDownloadedBookIds
 
     await removeBook('book-1');
@@ -142,6 +146,7 @@ describe('removeBook', () => {
   });
 
   it('handles removing a book not in the downloaded list gracefully', async () => {
+    mockGet.mockResolvedValueOnce(null); // loadBookMeta
     mockGet.mockResolvedValueOnce(JSON.stringify(['book-2'])); // getDownloadedBookIds
 
     await removeBook('book-1');
