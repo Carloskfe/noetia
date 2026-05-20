@@ -18,6 +18,7 @@ import { CodesModule } from './codes/codes.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
 import { CausesModule } from './causes/causes.module';
 import { GiftsModule } from './gifts/gifts.module';
+import { PushModule } from './push/push.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { GiftsModule } from './gifts/gifts.module';
     WaitlistModule,
     CausesModule,
     GiftsModule,
+    PushModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

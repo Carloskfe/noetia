@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text } from 'react-native';
 import { useNetworkSync } from '../hooks/useNetworkSync';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { LibraryScreen } from '../screens/library/LibraryScreen';
@@ -46,6 +47,7 @@ const TAB_LABELS: Record<string, string> = {
 
 export function MainNavigator() {
   useNetworkSync();
+  usePushNotifications();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({

@@ -5,6 +5,7 @@ import { randomBytes } from 'crypto';
 import Stripe from 'stripe';
 import { MoreThan, Repository } from 'typeorm';
 import { EmailService } from '../email/email.service';
+import { PushService } from '../push/push.service';
 import { TokenLedger } from '../subscriptions/token-ledger.entity';
 import { User } from '../users/user.entity';
 import { GiftCard } from './gift-card.entity';
@@ -29,6 +30,7 @@ export class GiftsService {
   constructor(
     private readonly config: ConfigService,
     private readonly emailService: EmailService,
+    private readonly pushService: PushService,
     @InjectRepository(GiftCard)
     private readonly giftRepo: Repository<GiftCard>,
     @InjectRepository(TokenLedger)
@@ -150,6 +152,13 @@ export class GiftsService {
       claimedByUserId: userId,
       claimedAt: new Date(),
     });
+
+    // Notify the buyer if they have a Noetia account
+    if (gift.buyerUserId) {
+      this.pushService.sendToUser(gift.buyerUserId, 'gift_claimed', {
+        tokenCount: gift.tokenCount,
+      }).catch(() => {});
+    }
 
     return { tokenCount: gift.tokenCount };
   }

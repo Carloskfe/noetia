@@ -11,6 +11,7 @@ import { randomBytes } from 'crypto';
 import Stripe from 'stripe';
 import { In, LessThan, MoreThan, Repository } from 'typeorm';
 import { EmailService } from '../email/email.service';
+import { PushService } from '../push/push.service';
 import { Book } from '../books/book.entity';
 import { UserBook } from '../library/user-book.entity';
 import { User } from '../users/user.entity';
@@ -37,6 +38,7 @@ export class SubscriptionsService {
     private readonly usersService: UsersService,
     private readonly plansService: PlansService,
     private readonly emailService: EmailService,
+    private readonly pushService: PushService,
     @InjectRepository(Subscription)
     private readonly subRepo: Repository<Subscription>,
     @InjectRepository(User)
@@ -387,6 +389,11 @@ export class SubscriptionsService {
 
     await this.subRepo.update(sub.id, { linkedUserIds: [...sub.linkedUserIds, userId] });
     await this.inviteRepo.update(invite.id, { status: 'accepted' });
+
+    // Notify plan owner
+    this.pushService.sendToUser(sub.userId, 'invite_accepted', {
+      planName: sub.plan?.name ?? 'Noetia',
+    }).catch(() => {});
   }
 
   async getLinkedUsers(userId: string) {

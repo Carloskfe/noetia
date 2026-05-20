@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EmailModule } from '../email/email.module';
 import { GiftsModule } from '../gifts/gifts.module';
+import { PushModule } from '../push/push.module';
 import { Book } from '../books/book.entity';
 import { UserBook } from '../library/user-book.entity';
 import { User } from '../users/user.entity';
@@ -21,7 +22,7 @@ import { WebhooksService } from './webhooks.service';
 import { AdminTokensController } from './admin-tokens.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Subscription, SubscriptionInvite, Plan, User, Book, UserBook, TokenLedger, TokenPackage, CourtesyTokenQuota]), UsersModule, EmailModule, GiftsModule],
+  imports: [TypeOrmModule.forFeature([Subscription, SubscriptionInvite, Plan, User, Book, UserBook, TokenLedger, TokenPackage, CourtesyTokenQuota]), UsersModule, EmailModule, GiftsModule, PushModule],
   providers: [SubscriptionsService, PlansService, WebhooksService, SubscriptionGuard],
   controllers: [SubscriptionsController, WebhooksController, AdminTokensController],
   exports: [SubscriptionsService, SubscriptionGuard],

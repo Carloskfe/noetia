@@ -12,6 +12,7 @@ module.exports = {
     '^react-native$': '<rootDir>/tests/__mocks__/react-native.ts',
     '^expo-av$': '<rootDir>/tests/__mocks__/expo-av.ts',
     '^@react-native-community/netinfo$': '<rootDir>/tests/__mocks__/@react-native-community/netinfo.ts',
+    '^expo-notifications$': '<rootDir>/tests/__mocks__/expo-notifications.ts',
   },
   collectCoverageFrom: ['src/**/*.ts', 'src/**/*.tsx', '!src/navigation/**'],
   coverageDirectory: 'coverage',
