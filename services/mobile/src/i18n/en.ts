@@ -104,6 +104,22 @@ export const en = {
       Family: { price: '$18.99/mo', tokens: '4 shared tokens/mo', features: ['Everything in Duo', 'Up to 5 users'] },
     } as Record<string, { price: string; tokens: string; features: string[]; popular?: boolean }>,
   },
+  sharing: {
+    title: 'Share fragment',
+    selectPlatform: 'Select a platform',
+    generate: 'Generate card',
+    generating: 'Generating…',
+    shareLink: 'Share link',
+    openImage: 'Open image',
+    tryAgain: 'Try again',
+    error: 'Could not generate the image. Try again.',
+    platforms: {
+      instagram: 'Instagram',
+      facebook: 'Facebook',
+      linkedin: 'LinkedIn',
+      pinterest: 'Pinterest',
+    },
+  },
   consent: {
     title: 'Privacy & Terms',
     agree: 'I agree',

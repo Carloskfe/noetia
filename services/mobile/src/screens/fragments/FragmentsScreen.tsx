@@ -6,6 +6,7 @@ import {
 import { apiClient } from '../../api/client';
 import { loadFragments, deleteFragment } from '../../offline/fragment-storage';
 import { useTranslation } from '../../i18n';
+import { ShareSheet } from '../../components/ShareSheet';
 
 interface Fragment {
   id: string;
@@ -19,6 +20,7 @@ export function FragmentsScreen() {
   const [fragments, setFragments] = useState<Fragment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [sharing, setSharing] = useState<Fragment | null>(null);
 
   const load = useCallback(async () => {
     const [apiRes, offlineRes] = await Promise.allSettled([
@@ -62,7 +64,7 @@ export function FragmentsScreen() {
         },
       },
     ]);
-  }, []);
+  }, [t]);
 
   if (loading) {
     return <View style={styles.center}><ActivityIndicator size="large" color="#4F46E5" /></View>;
@@ -88,11 +90,20 @@ export function FragmentsScreen() {
               activeOpacity={0.75}
             >
               <Text style={styles.cardText} numberOfLines={5}>{item.text}</Text>
-              <Text style={styles.cardMeta}>
-                {new Date(item.createdAt).toLocaleDateString('es', {
-                  day: 'numeric', month: 'long', year: 'numeric',
-                })}
-              </Text>
+              <View style={styles.cardFooter}>
+                <Text style={styles.cardMeta}>
+                  {new Date(item.createdAt).toLocaleDateString('es', {
+                    day: 'numeric', month: 'long', year: 'numeric',
+                  })}
+                </Text>
+                <TouchableOpacity
+                  style={styles.shareBtn}
+                  onPress={() => setSharing(item)}
+                  accessibilityLabel={t.sharing.title}
+                >
+                  <Text style={styles.shareBtnText}>📤</Text>
+                </TouchableOpacity>
+              </View>
             </TouchableOpacity>
           )}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
@@ -102,20 +113,32 @@ export function FragmentsScreen() {
           }
         />
       )}
+
+      {sharing && (
+        <ShareSheet
+          fragmentId={sharing.id}
+          fragmentText={sharing.text}
+          visible={sharing !== null}
+          onClose={() => setSharing(null)}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  header: { fontSize: 28, fontWeight: '800', color: '#0D1B2A', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8 },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#0D1B2A', marginBottom: 8 },
-  emptyBody: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20 },
-  listContent: { padding: 20, paddingBottom: 32 },
-  card: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16 },
-  cardText: { fontSize: 15, color: '#1F2937', lineHeight: 22, fontStyle: 'italic', marginBottom: 10 },
-  cardMeta: { fontSize: 12, color: '#9CA3AF' },
-  sep: { height: 12 },
+  container:    { flex: 1, backgroundColor: '#fff' },
+  center:       { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+  header:       { fontSize: 28, fontWeight: '800', color: '#0D1B2A', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8 },
+  emptyIcon:    { fontSize: 48, marginBottom: 16 },
+  emptyTitle:   { fontSize: 18, fontWeight: '700', color: '#0D1B2A', marginBottom: 8 },
+  emptyBody:    { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20 },
+  listContent:  { padding: 20, paddingBottom: 32 },
+  card:         { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16 },
+  cardText:     { fontSize: 15, color: '#1F2937', lineHeight: 22, fontStyle: 'italic', marginBottom: 10 },
+  cardFooter:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardMeta:     { fontSize: 12, color: '#9CA3AF' },
+  shareBtn:     { padding: 6 },
+  shareBtnText: { fontSize: 18 },
+  sep:          { height: 12 },
 });

@@ -106,6 +106,22 @@ export const es: MobileTranslations = {
       Family: { price: '$18.99/mes', tokens: '4 tokens compartidos/mes', features: ['Todo lo del plan Duo', 'Hasta 5 usuarios'] },
     } as Record<string, { price: string; tokens: string; features: string[]; popular?: boolean }>,
   },
+  sharing: {
+    title: 'Compartir fragmento',
+    selectPlatform: 'Elige una plataforma',
+    generate: 'Generar tarjeta',
+    generating: 'Generando…',
+    shareLink: 'Compartir enlace',
+    openImage: 'Abrir imagen',
+    tryAgain: 'Intentar de nuevo',
+    error: 'No se pudo generar la imagen. Inténtalo de nuevo.',
+    platforms: {
+      instagram: 'Instagram',
+      facebook: 'Facebook',
+      linkedin: 'LinkedIn',
+      pinterest: 'Pinterest',
+    },
+  },
   consent: {
     title: 'Privacidad y Términos',
     agree: 'Acepto',
