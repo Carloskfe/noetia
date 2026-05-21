@@ -14,22 +14,23 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-native-community/netinfo": "^11.3.1",
     "@react-navigation/bottom-tabs": "^6.5.20",
     "@react-navigation/native": "^6.1.17",
     "@react-navigation/native-stack": "^6.9.26",
     "expo": "~51.0.0",
     "expo-apple-authentication": "~6.4.2",
     "expo-auth-session": "~5.5.2",
-    "expo-crypto": "~13.0.2",
-    "expo-status-bar": "~1.12.1",
-    "@react-native-community/netinfo": "^11.3.1",
-    "expo-notifications": "~0.28.0",
     "expo-av": "~14.0.0",
+    "expo-crypto": "~13.0.2",
+    "expo-notifications": "~0.28.0",
+    "expo-status-bar": "~1.12.1",
     "expo-web-browser": "~13.0.3",
     "react": "18.2.0",
     "react-native": "0.74.1",
     "react-native-safe-area-context": "4.10.1",
-    "react-native-screens": "3.31.1"
+    "react-native-screens": "3.31.1",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@babel/core": "^7.24.5",

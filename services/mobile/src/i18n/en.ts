@@ -167,7 +167,7 @@ export const en = {
     selectClub: 'Select a club',
     noClubs: 'You are not a member of any club reading this book.',
     polls: { empty: 'No polls yet.', open: 'Open', closed: 'Closed', vote: 'Vote', close: 'Close', winner: 'Winner' },
-    sessions: { empty: 'No sessions scheduled.', upcoming: 'Upcoming', live: 'Live', completed: 'Done', cancelled: 'Cancelled' },
+    sessions: { empty: 'No sessions scheduled.', upcoming: 'Upcoming', live: 'Live', completed: 'Done', cancelled: 'Cancelled', join: 'Join session' },
     errors: {
       alreadyMember: 'Already a member.',
       clubFull: 'Club is full.',

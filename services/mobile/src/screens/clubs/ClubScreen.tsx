@@ -5,8 +5,9 @@ import {
   TextInput, TouchableOpacity, View,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { clubsApi, Club, ClubBook, ClubDiscussion, ClubMessage, ClubMember, ClubPoll, ClubSession } from '../../api/clubs';
 import { useTranslation } from '../../i18n';
 import type { ClubsStackParamList } from '../../navigation/types';
@@ -224,6 +225,7 @@ function PollsTab({ clubId }: { clubId: string }) {
 function SessionsTab({ clubId }: { clubId: string }) {
   const { t } = useTranslation();
   const c = t.clubs.sessions;
+  const navigation = useNavigation<NativeStackNavigationProp<ClubsStackParamList>>();
   const [sessions, setSessions] = useState<ClubSession[]>([]);
   const [loading, setLoading]   = useState(true);
 
@@ -252,6 +254,16 @@ function SessionsTab({ clubId }: { clubId: string }) {
             </View>
             <Text style={styles.pollMeta}>{new Date(s.scheduledAt).toLocaleString()}</Text>
             <Text style={styles.pollMeta}>Frases {s.startPhraseIndex}–{s.endPhraseIndex} · {s.book?.title}</Text>
+            {(s.status === 'scheduled' || s.status === 'live') && (
+              <TouchableOpacity
+                style={[styles.joinSessionBtn, s.status === 'live' && styles.joinSessionBtnLive]}
+                onPress={() => navigation.navigate('LiveSession', { clubId, sessionId: s.id, sessionTitle: s.title })}
+              >
+                <Text style={styles.joinSessionBtnText}>
+                  {s.status === 'live' ? '🔴 ' : ''}{c.join}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         ))
       )}
@@ -419,5 +431,8 @@ const styles = StyleSheet.create({
   statusText:    { fontSize: 12, fontWeight: '600', color: '#374151' },
   winner:        { fontSize: 13, color: '#059669', fontWeight: '600', marginBottom: 4 },
   pollMeta:      { fontSize: 12, color: '#9CA3AF' },
-  sessionCard:   { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 14, padding: 14, marginBottom: 10 },
+  sessionCard:       { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 14, padding: 14, marginBottom: 10 },
+  joinSessionBtn:    { marginTop: 10, backgroundColor: '#EEF2FF', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  joinSessionBtnLive:{ backgroundColor: '#FEE2E2' },
+  joinSessionBtnText:{ color: '#4F46E5', fontWeight: '600', fontSize: 14 },
 });

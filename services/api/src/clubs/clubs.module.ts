@@ -18,6 +18,7 @@ import { ClubMembersService } from './club-members.service';
 import { ClubMessagesService } from './club-messages.service';
 import { ClubPollsService } from './club-polls.service';
 import { ClubSessionsService } from './club-sessions.service';
+import { ClubSessionGateway } from './club-session.gateway';
 import { ClubsController } from './clubs.controller';
 import { ClubsService } from './clubs.service';
 import { ClubRoleGuard } from './guards/club-role.guard';
@@ -41,6 +42,7 @@ import { ClubRoleGuard } from './guards/club-role.guard';
     ClubDiscussionsService,
     ClubPollsService,
     ClubSessionsService,
+    ClubSessionGateway,
     ClubRoleGuard,
   ],
   exports: [ClubsService],

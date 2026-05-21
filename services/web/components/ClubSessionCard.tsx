@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { clubsApi, ClubBook, ClubSession } from '@/lib/clubs';
 import { useTranslation } from '@/lib/i18n';
@@ -126,8 +127,16 @@ export default function ClubSessionCard({ clubId, activeBook, isAdmin }: {
             </div>
             <p className="text-xs text-gray-400 mb-1">{new Date(s.scheduledAt).toLocaleString()}</p>
             <p className="text-xs text-gray-400">Frases {s.startPhraseIndex}–{s.endPhraseIndex} · {s.book?.title}</p>
+            {(s.status === 'scheduled' || s.status === 'live') && (
+              <Link
+                href={`/clubs/${clubId}/sessions/${s.id}/live`}
+                className="inline-block mt-2 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition"
+              >
+                {s.status === 'live' ? '🔴 ' : ''}{c.join}
+              </Link>
+            )}
             {isAdmin && s.status === 'scheduled' && (
-              <button onClick={() => cancel(s.id)} className="text-xs text-red-500 hover:underline mt-2">{c.cancel}</button>
+              <button onClick={() => cancel(s.id)} className="text-xs text-red-500 hover:underline mt-2 ml-2">{c.cancel}</button>
             )}
           </div>
         ))

@@ -6,6 +6,7 @@ export type LibraryStackParamList = {
 export type ClubsStackParamList = {
   ClubsHome: undefined;
   ClubDetail: { clubId: string; clubName: string };
+  LiveSession: { clubId: string; sessionId: string; sessionTitle: string };
 };
 
 export type RootTabParamList = {

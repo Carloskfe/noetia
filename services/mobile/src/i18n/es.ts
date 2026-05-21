@@ -169,7 +169,7 @@ export const es: MobileTranslations = {
     selectClub: 'Selecciona un club',
     noClubs: 'No eres miembro de ningún club que esté leyendo este libro.',
     polls: { empty: 'No hay sondeos.', open: 'Abierto', closed: 'Cerrado', vote: 'Votar', close: 'Cerrar', winner: 'Ganador' },
-    sessions: { empty: 'No hay sesiones programadas.', upcoming: 'Próxima', live: 'En vivo', completed: 'Completada', cancelled: 'Cancelada' },
+    sessions: { empty: 'No hay sesiones programadas.', upcoming: 'Próxima', live: 'En vivo', completed: 'Completada', cancelled: 'Cancelada', join: 'Unirme a la sesión' },
     errors: {
       alreadyMember: 'Ya eres miembro.',
       clubFull: 'El club está lleno.',

@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { APP_FILTER } from '@nestjs/core';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
@@ -11,6 +12,7 @@ async function bootstrap() {
   if (process.env.SENTRY_DSN) {
     app.useGlobalFilters(new SentryGlobalFilter());
   }
+  app.useWebSocketAdapter(new IoAdapter(app));
   app.enableCors({
     origin: process.env.WEB_URL ?? 'http://localhost:3000',
     credentials: true,

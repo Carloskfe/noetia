@@ -10,6 +10,7 @@ import { FragmentsScreen } from '../screens/fragments/FragmentsScreen';
 import { AccountScreen } from '../screens/account/AccountScreen';
 import { ClubsScreen } from '../screens/clubs/ClubsScreen';
 import { ClubScreen } from '../screens/clubs/ClubScreen';
+import { LiveSessionScreen } from '../screens/clubs/LiveSessionScreen';
 import type { LibraryStackParamList, ClubsStackParamList, RootTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -44,6 +45,11 @@ function ClubsStackNavigator() {
         name="ClubDetail"
         component={ClubScreen}
         options={({ route }) => ({ title: route.params.clubName, headerBackTitle: 'Clubes' })}
+      />
+      <ClubsStack.Screen
+        name="LiveSession"
+        component={LiveSessionScreen}
+        options={({ route }) => ({ title: route.params.sessionTitle, headerBackTitle: 'Club' })}
       />
     </ClubsStack.Navigator>
   );
