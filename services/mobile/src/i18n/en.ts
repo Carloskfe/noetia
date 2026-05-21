@@ -138,6 +138,43 @@ export const en = {
     accessRequiredMsg: 'Noetia cannot be used without accepting the terms.',
     ok: 'OK',
   },
+  clubs: {
+    nav: 'Clubs',
+    explore: 'Explore',
+    myClubs: 'My Clubs',
+    searchPlaceholder: 'Search clubs…',
+    empty: 'No clubs found.',
+    myEmpty: "You haven't joined any clubs yet.",
+    members: 'members',
+    join: 'Join',
+    leave: 'Leave',
+    joined: 'Joined',
+    tabs: { chat: 'Chat', discussion: 'Discussion', polls: 'Polls', sessions: 'Sessions' },
+    chat: {
+      placeholder: 'Write a message…',
+      send: 'Send',
+      deleted: '[Deleted]',
+      empty: 'No messages yet.',
+    },
+    discussion: {
+      empty: 'No comments for this book yet.',
+      noBook: 'No active book.',
+      post: 'Post',
+      placeholder: 'Your thoughts on this passage…',
+      phraseLabel: 'Phrase #',
+    },
+    commentInClub: 'Comment in club',
+    selectClub: 'Select a club',
+    noClubs: 'You are not a member of any club reading this book.',
+    polls: { empty: 'No polls yet.', open: 'Open', closed: 'Closed', vote: 'Vote', close: 'Close', winner: 'Winner' },
+    sessions: { empty: 'No sessions scheduled.', upcoming: 'Upcoming', live: 'Live', completed: 'Done', cancelled: 'Cancelled' },
+    errors: {
+      alreadyMember: 'Already a member.',
+      clubFull: 'Club is full.',
+      mustOwnBook: 'You need this book in your library to join.',
+      banned: 'You are banned from this club.',
+    },
+  },
 };
 
 export type MobileTranslations = typeof en;

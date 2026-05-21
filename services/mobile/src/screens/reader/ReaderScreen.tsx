@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Modal, SafeAreaView,
-  StyleSheet, Text, TouchableOpacity, View,
+  StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../api/client';
+import { clubsApi, ClubMember } from '../../api/clubs';
 import { AudioPlayerBar } from '../../components/AudioPlayerBar';
 import { DownloadButton } from '../../components/DownloadButton';
 import { useAudioPlayer } from '../../hooks/useAudioPlayer';
@@ -51,9 +52,13 @@ export function ReaderScreen() {
   const [audioMode, setAudioMode] = useState(false);
   const [savedIndex, setSavedIndex] = useState(0);
   const [selectedPhrase, setSelectedPhrase] = useState<SyncPhrase | null>(null);
-  const [savingFragment, setSavingFragment] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [savingFragment, setSavingFragment]   = useState(false);
+  const [loading, setLoading]                  = useState(true);
+  const [error, setError]                      = useState('');
+  const [showClubPicker, setShowClubPicker]    = useState(false);
+  const [clubPickerClubs, setClubPickerClubs]  = useState<ClubMember[]>([]);
+  const [clubComment, setClubComment]          = useState('');
+  const [postingClub, setPostingClub]          = useState(false);
 
   const listRef = useRef<FlatList>(null);
   const progressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -131,6 +136,28 @@ export function ReaderScreen() {
       apiClient.post(`/books/${bookId}/progress`, { phraseIndex }).catch(() => {});
     }, PROGRESS_DEBOUNCE);
   }, [bookId]);
+
+  const handleOpenClubComment = useCallback(async () => {
+    try {
+      const memberships = await clubsApi.getMyClubs();
+      setClubPickerClubs(memberships as ClubMember[]);
+      setShowClubPicker(true);
+    } catch {}
+  }, []);
+
+  const handlePostClubComment = useCallback(async (clubId: string) => {
+    if (!selectedPhrase || !clubComment.trim()) return;
+    setPostingClub(true);
+    try {
+      await clubsApi.postDiscussion(clubId, bookId, selectedPhrase.index, clubComment.trim());
+      setShowClubPicker(false);
+      setClubComment('');
+      setSelectedPhrase(null);
+    } catch {}
+    finally {
+      setPostingClub(false);
+    }
+  }, [bookId, clubComment, selectedPhrase]);
 
   const handleSaveFragment = useCallback(async () => {
     if (!selectedPhrase) return;
@@ -283,7 +310,60 @@ export function ReaderScreen() {
                 ? <ActivityIndicator color="#fff" size="small" />
                 : <Text style={styles.saveBtnText}>{t.reader.saveFragment}</Text>}
             </TouchableOpacity>
+            <TouchableOpacity style={styles.clubBtn} onPress={handleOpenClubComment}>
+              <Text style={styles.clubBtnText}>👥  {t.clubs.commentInClub}</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setSelectedPhrase(null)}>
+              <Text style={styles.cancelBtnText}>{t.reader.cancel}</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Club picker + comment modal */}
+      <Modal
+        visible={showClubPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => { setShowClubPicker(false); setClubComment(''); }}
+      >
+        <TouchableOpacity
+          style={styles.overlay}
+          onPress={() => { setShowClubPicker(false); setClubComment(''); }}
+          activeOpacity={1}
+        >
+          <View style={styles.sheet}>
+            <View style={styles.handle} />
+            <Text style={styles.sheetExcerpt} numberOfLines={2}>{selectedPhrase?.text}</Text>
+            <TextInput
+              style={styles.clubCommentInput}
+              value={clubComment}
+              onChangeText={setClubComment}
+              placeholder={t.clubs.discussion.placeholder}
+              placeholderTextColor="#9CA3AF"
+              multiline
+              maxLength={2000}
+            />
+            {clubPickerClubs.length === 0 ? (
+              <Text style={styles.cancelBtnText}>{t.clubs.noClubs}</Text>
+            ) : (
+              clubPickerClubs.map((m: any) => {
+                const club = m.club ?? m;
+                return (
+                  <TouchableOpacity
+                    key={club.id ?? m.clubId}
+                    style={[styles.saveBtn, { marginBottom: 8 }, (!clubComment.trim() || postingClub) && styles.saveBtnOff]}
+                    onPress={() => handlePostClubComment(club.id ?? m.clubId)}
+                    disabled={!clubComment.trim() || postingClub}
+                  >
+                    {postingClub
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <Text style={styles.saveBtnText}>→ {club.name}</Text>}
+                  </TouchableOpacity>
+                );
+              })
+            )}
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setShowClubPicker(false); setClubComment(''); }}>
               <Text style={styles.cancelBtnText}>{t.reader.cancel}</Text>
             </TouchableOpacity>
           </View>
@@ -317,4 +397,7 @@ const styles = StyleSheet.create({
   saveBtnText:       { color: '#fff', fontSize: 16, fontWeight: '600' },
   cancelBtn:         { paddingVertical: 12, alignItems: 'center' },
   cancelBtnText:     { color: '#6B7280', fontSize: 15 },
+  clubBtn:           { backgroundColor: '#EEF2FF', borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginBottom: 10 },
+  clubBtnText:       { color: '#4F46E5', fontSize: 15, fontWeight: '600' },
+  clubCommentInput:  { backgroundColor: '#F3F4F6', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#111827', minHeight: 70, marginBottom: 14, textAlignVertical: 'top' },
 });

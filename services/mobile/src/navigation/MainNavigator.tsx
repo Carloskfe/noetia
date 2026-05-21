@@ -8,10 +8,13 @@ import { LibraryScreen } from '../screens/library/LibraryScreen';
 import { ReaderScreen } from '../screens/reader/ReaderScreen';
 import { FragmentsScreen } from '../screens/fragments/FragmentsScreen';
 import { AccountScreen } from '../screens/account/AccountScreen';
-import type { LibraryStackParamList, RootTabParamList } from './types';
+import { ClubsScreen } from '../screens/clubs/ClubsScreen';
+import { ClubScreen } from '../screens/clubs/ClubScreen';
+import type { LibraryStackParamList, ClubsStackParamList, RootTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
-const LibStack = createNativeStackNavigator<LibraryStackParamList>();
+const LibStack   = createNativeStackNavigator<LibraryStackParamList>();
+const ClubsStack = createNativeStackNavigator<ClubsStackParamList>();
 
 function LibraryStackNavigator() {
   return (
@@ -33,16 +36,31 @@ function LibraryStackNavigator() {
   );
 }
 
+function ClubsStackNavigator() {
+  return (
+    <ClubsStack.Navigator>
+      <ClubsStack.Screen name="ClubsHome" component={ClubsScreen} options={{ headerShown: false }} />
+      <ClubsStack.Screen
+        name="ClubDetail"
+        component={ClubScreen}
+        options={({ route }) => ({ title: route.params.clubName, headerBackTitle: 'Clubes' })}
+      />
+    </ClubsStack.Navigator>
+  );
+}
+
 const TAB_ICONS: Record<string, string> = {
-  Library: '📚',
+  Library:   '📚',
+  Clubs:     '👥',
   Fragments: '🔖',
-  Account: '👤',
+  Account:   '👤',
 };
 
 const TAB_LABELS: Record<string, string> = {
-  Library: 'Biblioteca',
+  Library:   'Biblioteca',
+  Clubs:     'Clubes',
   Fragments: 'Fragmentos',
-  Account: 'Cuenta',
+  Account:   'Cuenta',
 };
 
 export function MainNavigator() {
@@ -61,9 +79,10 @@ export function MainNavigator() {
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Library" component={LibraryStackNavigator} />
+      <Tab.Screen name="Library"   component={LibraryStackNavigator} />
+      <Tab.Screen name="Clubs"     component={ClubsStackNavigator} />
       <Tab.Screen name="Fragments" component={FragmentsScreen} />
-      <Tab.Screen name="Account" component={AccountScreen} />
+      <Tab.Screen name="Account"   component={AccountScreen} />
     </Tab.Navigator>
   );
 }
