@@ -5,6 +5,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { MetricsModule } from './metrics/metrics.module';
 import { MetricsMiddleware } from './metrics/metrics.middleware';
+import { ClubsModule } from './clubs/clubs.module';
 import { HealthModule } from './health/health.module';
 import { StorageModule } from './storage/storage.module';
 import { AuthModule } from './auth/auth.module';
@@ -59,6 +60,7 @@ import { PushModule } from './push/push.module';
     CausesModule,
     GiftsModule,
     PushModule,
+    ClubsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
