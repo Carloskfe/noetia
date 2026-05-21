@@ -630,6 +630,13 @@ docker compose exec api npm run migration:run
 | 043 | `CreateGiftCards` | gift_cards table — token gifts with personal message, 1-year expiry |
 | 044 | `AddUiLanguage` | uiLanguage VARCHAR(5) DEFAULT 'es' on users — Spanish/English i18n |
 | 045 | `CreatePushTokens` | push_tokens table — Expo push tokens per user for notifications |
+| 046 | `CreateClubs` | clubs table — name, description, type (public/private/author_event), owner, approval/token flags |
+| 047 | `CreateClubMembers` | club_members — role, status (active/banned), ban tracking, per-member notification prefs |
+| 048 | `CreateClubBooks` | club_books — reading list per club, status (active/completed/queued) |
+| 049 | `CreateClubMessages` | club_messages — general chat (not phrase-anchored), soft delete |
+| 050 | `CreateClubDiscussions` | club_discussions — phrase-anchored comments tied to sync map phraseIndex |
+| 051 | `CreateClubPollsAndVotes` | club_polls + club_poll_options + club_poll_votes — book nomination voting |
+| 052 | `CreateClubSessions` | club_sessions — Escucha Juntos scheduled live listening sessions |
 
 ---
 
