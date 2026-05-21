@@ -392,6 +392,7 @@ services:
       - "127.0.0.1:3001:3000"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      GF_SECURITY_PASSWORD_POLICY: "false"
       GF_UNIFIED_ALERTING_ENABLED: "true"
       GF_ALERTING_ENABLED: "false"
       GF_SMTP_ENABLED: "true"
