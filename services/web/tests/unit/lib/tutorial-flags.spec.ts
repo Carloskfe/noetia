@@ -2,6 +2,7 @@ import {
   hasSeenWelcome, markWelcomeSeen,
   hasSeenFragmentsTutorial, markFragmentsTutorialSeen,
   hasSeenAudioTutorial, markAudioTutorialSeen,
+  hasSeenClubsTutorial, markClubsTutorialSeen,
 } from '../../../lib/tutorial-flags';
 
 const mockStorage: Record<string, string> = {};
@@ -21,6 +22,7 @@ const CASES = [
   { label: 'welcome',   hasSeen: hasSeenWelcome,          markSeen: markWelcomeSeen,          key: 'noetia_welcome_seen' },
   { label: 'fragments', hasSeen: hasSeenFragmentsTutorial, markSeen: markFragmentsTutorialSeen, key: 'noetia_fragments_tutorial_seen' },
   { label: 'audio',     hasSeen: hasSeenAudioTutorial,     markSeen: markAudioTutorialSeen,     key: 'noetia_audio_tutorial_seen' },
+  { label: 'clubs',     hasSeen: hasSeenClubsTutorial,     markSeen: markClubsTutorialSeen,     key: 'noetia_clubs_tutorial_seen' },
 ];
 
 for (const { label, hasSeen, markSeen, key } of CASES) {

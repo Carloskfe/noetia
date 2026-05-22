@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { clubsApi, Club } from '@/lib/clubs';
 import { useTranslation } from '@/lib/i18n';
 import ClubCard from '@/components/ClubCard';
+import ClubsTutorial from '@/components/ClubsTutorial';
 
 export default function ClubsDiscoveryPage() {
   const { t } = useTranslation();
@@ -34,6 +35,7 @@ export default function ClubsDiscoveryPage() {
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-8">
+      <ClubsTutorial />
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">{c.discovery.title}</h1>

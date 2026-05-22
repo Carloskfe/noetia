@@ -41,6 +41,7 @@ export default function WelcomeSplash() {
           { icon: '🎧', label: 'Escucha mientras sigues el texto' },
           { icon: '✍️', label: 'Captura fragmentos que te inspiran' },
           { icon: '📲', label: 'Comparte en LinkedIn, Instagram y más' },
+          { icon: '👥', label: 'Lee junto a otros en Noetia Clubs' },
         ].map(({ icon, label }) => (
           <div key={label} className="flex items-center gap-3 text-left">
             <span className="text-xl w-8 shrink-0">{icon}</span>
