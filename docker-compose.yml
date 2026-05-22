@@ -219,7 +219,7 @@ services:
 
   # ─── Grafana ─────────────────────────────────────────────────────────────────
   monitor:
-    image: grafana/grafana:10.4.0
+    image: grafana/grafana:11.1.0
     ports:
       - "3001:3000"
     environment:

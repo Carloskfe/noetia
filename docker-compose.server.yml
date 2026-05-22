@@ -387,7 +387,7 @@ services:
   # Bound to 127.0.0.1 — access via SSH tunnel only:
   #   ssh -L 3001:localhost:3001 root@84.247.140.175
   monitor:
-    image: grafana/grafana:10.4.0
+    image: grafana/grafana:11.1.0
     ports:
       - "127.0.0.1:3001:3000"
     environment:
