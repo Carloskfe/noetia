@@ -116,6 +116,48 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Noetia Clubs banner */}
+      <section className="border-t border-white/10" aria-label="Clubes de Lectura">
+        <div className="max-w-4xl mx-auto px-6 py-14">
+          <div className="rounded-2xl bg-white/5 border border-white/10 px-8 py-10 sm:px-12">
+            <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-4">
+              Noetia Clubs
+            </p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white leading-snug mb-3">
+              Para quienes quieren dejar de leer en soledad.
+            </h2>
+            <p className="text-slate-300 text-base leading-relaxed mb-8 max-w-xl">
+              Lee, escucha, expande tus ideas. Los clubes de Noetia reúnen lectores
+              alrededor de un libro — con discusiones ancladas frase a frase, sesiones
+              en vivo sincronizadas y votaciones para elegir el próximo título juntos.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 mb-8">
+              {[
+                { icon: '💬', label: 'Discusiones ancladas', desc: 'Cada comentario vive en la frase exacta que lo inspiró, no en el capítulo' },
+                { icon: '🎧', label: 'Escucha Juntos', desc: 'Sesiones en vivo donde todos escuchan la misma frase al mismo tiempo' },
+                { icon: '🗳️', label: 'Elijan juntos', desc: 'El grupo vota el próximo libro — democracia lectora' },
+              ].map(({ icon, label, desc }) => (
+                <div key={label} className="flex-1 flex gap-3 items-start bg-white/5 rounded-xl p-4">
+                  <span className="text-2xl mt-0.5 shrink-0">{icon}</span>
+                  <div>
+                    <p className="text-sm font-semibold text-white">{label}</p>
+                    <p className="text-xs text-slate-400 leading-snug mt-0.5">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <Link
+              href="/clubs"
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-3 rounded-xl transition text-sm"
+            >
+              Explorar clubes →
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Causas Noetia banner */}
       <section className="border-t border-white/10" aria-label="Causas Noetia">
         <div className="max-w-4xl mx-auto px-6 py-14">
@@ -186,6 +228,7 @@ export default function LandingPage() {
           <span className="font-bold tracking-widest text-slate-400">NOETIA</span>
           <nav aria-label="Footer" className="flex gap-6">
             <Link href="/login" className="hover:text-slate-300 transition">Iniciar sesión</Link>
+            <Link href="/clubs" className="hover:text-slate-300 transition">Clubes</Link>
             <Link href="/causas" className="hover:text-slate-300 transition">Causas Noetia</Link>
             <Link href="/upload-guide" className="hover:text-slate-300 transition">Para autores</Link>
             <a href="mailto:hola@noetia.app" className="hover:text-slate-300 transition">Contacto</a>

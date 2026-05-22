@@ -209,6 +209,9 @@ export default function DiscoverPage() {
             <CollectionsRow collections={collections} />
           )}
 
+          {/* Clubs entry point — shown on home tab */}
+          {isHome && <ClubsBanner />}
+
           {/* Author content hero — replaces free library hero once paid books exist */}
           {showPaidHero && <PaidBooksHero books={paidBooks} libraryIds={libraryIds} onAdd={handleAdd} />}
 
@@ -310,6 +313,18 @@ function CollectionsRow({ collections }: { collections: CollectionSummary[] }) {
         ))}
       </div>
     </div>
+  );
+}
+
+function ClubsBanner() {
+  return (
+    <Link href="/clubs" className="block mb-8">
+      <div className="rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 p-5 shadow-md hover:from-blue-500 hover:to-indigo-500 transition">
+        <p className="text-blue-200 text-xs font-semibold uppercase tracking-widest mb-1">Noetia Clubs</p>
+        <h3 className="text-white text-base font-bold mb-1">¿Quieres dejar de leer en soledad?</h3>
+        <p className="text-blue-200 text-sm">Únete a un club de lectura o crea el tuyo →</p>
+      </div>
+    </Link>
   );
 }
 
