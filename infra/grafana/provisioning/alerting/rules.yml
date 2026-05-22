@@ -94,7 +94,7 @@ groups:
               expression: A
               conditions:
                 - evaluator: { params: [0], type: gt }
-        for: 0m
+        for: 15m
         annotations:
           summary: A Noetia container restarted recently
           description: "Check which container restarted: docker ps --format '{{.Names}} {{.Status}}'"

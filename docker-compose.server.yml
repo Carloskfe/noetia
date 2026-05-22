@@ -56,6 +56,15 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
+      # Block /api/metrics from public internet — Prometheus scrapes internally
+      - "traefik.http.middlewares.noetia-block-metrics.ipallowlist.sourcerange=127.0.0.1/32,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+      - "traefik.http.routers.noetia-api-metrics.rule=Host(`noetia.app`) && Path(`/api/metrics`)"
+      - "traefik.http.routers.noetia-api-metrics.entrypoints=websecure"
+      - "traefik.http.routers.noetia-api-metrics.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.noetia-api-metrics.middlewares=noetia-block-metrics,noetia-strip-api"
+      - "traefik.http.routers.noetia-api-metrics.service=noetia-api"
+      - "traefik.http.routers.noetia-api-metrics.priority=10"
+      # Main API router
       - "traefik.http.routers.noetia-api.rule=Host(`noetia.app`) && PathPrefix(`/api`)"
       - "traefik.http.routers.noetia-api.entrypoints=websecure"
       - "traefik.http.routers.noetia-api.tls.certresolver=letsencrypt"
