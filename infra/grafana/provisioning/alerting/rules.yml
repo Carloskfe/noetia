@@ -27,12 +27,9 @@ groups:
             model:
               type: threshold
               refId: B
+              expression: A
               conditions:
                 - evaluator: { params: [5], type: gt }
-                  operator: { type: and }
-                  query: { params: [A] }
-                  reducer: { params: [], type: last }
-                  type: query
         for: 5m
         annotations:
           summary: API 5xx error rate above 5%
@@ -60,12 +57,9 @@ groups:
             model:
               type: threshold
               refId: B
+              expression: A
               conditions:
                 - evaluator: { params: [80], type: gt }
-                  operator: { type: and }
-                  query: { params: [A] }
-                  reducer: { params: [], type: last }
-                  type: query
         for: 5m
         annotations:
           summary: Disk usage above 80%
@@ -97,12 +91,9 @@ groups:
             model:
               type: threshold
               refId: B
+              expression: A
               conditions:
                 - evaluator: { params: [0], type: gt }
-                  operator: { type: and }
-                  query: { params: [A] }
-                  reducer: { params: [], type: last }
-                  type: query
         for: 0m
         annotations:
           summary: A Noetia container restarted recently
