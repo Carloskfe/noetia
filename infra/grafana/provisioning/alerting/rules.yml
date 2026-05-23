@@ -97,6 +97,6 @@ groups:
         for: 15m
         annotations:
           summary: A Noetia container restarted recently
-          description: "Check which container restarted: docker ps --format '{{.Names}} {{.Status}}'"
+          description: "Check which container restarted: run 'docker ps' on the server"
         labels:
           severity: warning
