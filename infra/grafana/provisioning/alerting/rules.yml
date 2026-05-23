@@ -17,7 +17,7 @@ groups:
             datasourceUid: prometheus-noetia
             model:
               expr: >-
-                sum(rate(http_requests_total{status=~"5.."}[5m]))
+                (sum(rate(http_requests_total{status=~"5.."}[5m])) or vector(0))
                 / (sum(rate(http_requests_total[5m])) + 0.001) * 100
               instant: true
               range: false
@@ -77,12 +77,12 @@ groups:
             datasourceUid: prometheus-noetia
             model:
               expr: >-
-                count(
+                (count(
                   (time() - container_start_time_seconds{
                     name=~"noetia-(api|web|worker|image-gen)-.*",
                     name!=""
                   }) < 600
-                ) > 0
+                ) or vector(0))
               instant: true
               range: false
               refId: A
