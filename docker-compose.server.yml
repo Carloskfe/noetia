@@ -396,12 +396,13 @@ services:
   # Bound to 127.0.0.1 — access via SSH tunnel only:
   #   ssh -L 3001:localhost:3001 root@84.247.140.175
   monitor:
-    image: grafana/grafana:11.1.0
+    image: grafana/grafana:11.3.0
     ports:
       - "127.0.0.1:3001:3000"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
       GF_SERVER_ROOT_URL: "http://localhost:3001"
+      GF_SECURITY_CSRF_TRUSTED_ORIGINS: "localhost:3001"
       GF_UNIFIED_ALERTING_ENABLED: "true"
       GF_ALERTING_ENABLED: "false"
       GF_SMTP_ENABLED: "true"
