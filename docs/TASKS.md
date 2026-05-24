@@ -5,7 +5,7 @@
 > 2. **Author/company experience** — content supply chain; upload, sync tooling, analytics
 > 3. **Free library** — beta acquisition only; not expanded after 6–12 months; UI hero will yield to author content
 >
-> **Current status (2026-05-20):** Stages 0–5 complete + major feature sprint complete. **Production live at https://noetia.app** — Contabo VPS (Traefik v2.11, 10 containers healthy, 45 migrations applied). SSH port 222, fail2ban active. CI/CD working (auto-deploys + runs migrations). 45 migrations applied (latest: CreatePushTokens #045).
+> **Current status (2026-05-24):** Stages 0–5 complete + major feature sprint complete. **Production live at https://noetia.app** — Contabo VPS (Traefik v2.11, containers healthy, 52 migrations applied). SSH port 222, fail2ban active. CI/CD working (auto-deploys + runs migrations). 52 migrations applied (latest: CreateClubSessions #052).
 >
 > **Completed since last update:**
 > - [x] Stripe fully activated — 10 products, webhook live, price IDs in DB ✅
@@ -24,6 +24,9 @@
 > - [x] Auto-sync on reconnect — NetInfo offline→online triggers syncOfflineData ✅
 > - [x] Push notifications — Expo push, invite accepted + gift claimed triggers ✅
 > - [x] Spanish/English i18n — both web and mobile, language selection as first decision ✅
+> - [x] Complete i18n — ReaderTopBar, BottomNav, all 5 tutorials, and all 8 email templates fully bilingual; web + mobile LanguageProvider syncs language to/from API on mount ✅
+> - [x] Noetia Clubs — 7 migrations (046–052: clubs, members, books, messages, discussions, polls, sessions); ClubsTutorial + WelcomeSplash entry point + landing section + discover banner ✅
+> - [x] Grafana monitoring fixed — access via Tailscale (100.84.48.16:3001, no SSH tunnel), `or vector(0)` pattern eliminates false-positive DatasourceNoData alerts; docs at docs/grafana-monitoring.md ✅
 > - [x] CD pipeline hardened — force-remove containers before up, DB_HOST in migration step ✅
 > - [x] ShareModal D3/D4/D7 — hex picker, gradient directions, background presets all done ✅
 >
@@ -44,7 +47,7 @@
 > - [x] PostgreSQL backups — daily cron + retention ✅
 > - [x] MinIO backups — weekly cron + retention ✅
 > - [x] MinIO bucket policy audit — books/audio private, images public ✅
-> - [ ] Server monitoring & alerting — Grafana alerts for API error rate, disk >80%, container restarts
+> - [x] Server monitoring & alerting — Grafana live via Tailscale (100.84.48.16:3001); alerts for API error rate + container restarts; false-positive fix deployed ✅
 > - [ ] Let's Encrypt renewal smoke test — verify auto-renewal 30 days before expiry
 > - [ ] GitHub Actions deploy scope — dedicated deploy user instead of root SSH key
 > - [ ] Secrets rotation policy — JWT_SECRET, MINIO credentials, SOCIAL_TOKEN_SECRET

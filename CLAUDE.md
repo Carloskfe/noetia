@@ -148,9 +148,10 @@ noetia/
 │   │   │   └── (admin)/            # Author/publisher dashboard
 │   │   ├── components/
 │   │   │   ├── BookGrid.tsx        # Book grid with next/image covers + language badge
-│   │   │   ├── ReaderTopBar.tsx    # "Mi Biblioteca" + "Colección General" (books icon)
+│   │   │   ├── ReaderTopBar.tsx    # Back/discover/clubs links + font/dark/audio/chapter/fragments controls — fully i18n
 │   │   │   └── ShareModal.tsx      # Instagram, Facebook, LinkedIn, Pinterest formats
 │   │   ├── lib/
+│   │   │   ├── i18n/               # LanguageProvider, useTranslation(); en.ts + es.ts; syncs language to/from API on mount
 │   │   │   └── share-utils.ts      # SharePlatform, ShareFormat, FORMAT_PLATFORM_MAP
 │   │   ├── public/
 │   │   │   ├── covers/             # Themed book cover PNGs — volume-mounted in docker-compose.yml
@@ -165,6 +166,7 @@ noetia/
 │   ├── mobile/                     # React Native app
 │   │   ├── src/
 │   │   │   ├── screens/
+│   │   │   ├── i18n/               # LanguageProvider, useTranslation(); en.ts + es.ts; syncs language to/from API
 │   │   │   └── offline/            # Offline sync logic
 │   │   └── package.json
 │   │
