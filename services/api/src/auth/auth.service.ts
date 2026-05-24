@@ -49,7 +49,7 @@ export class AuthService {
     const user = await this.usersService.findById(userId);
     if (!user || !user.email || user.emailConfirmed) return;
     const token = await this.tokenService.generateEmailConfirmToken(userId);
-    await this.emailService.sendEmailConfirmation(user.email, user.name ?? user.email, token);
+    await this.emailService.sendEmailConfirmation(user.email, user.name ?? user.email, token, (user.uiLanguage as 'es' | 'en') ?? 'es');
   }
 
   async upsertOAuthUser(data: {
@@ -159,7 +159,7 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
     if (!user || user.provider !== 'local') return; // silent — don't reveal account existence
     const token = await this.tokenService.generatePasswordResetToken(user.id);
-    await this.emailService.sendPasswordReset(email, user.name ?? email, token);
+    await this.emailService.sendPasswordReset(email, user.name ?? email, token, (user.uiLanguage as 'es' | 'en') ?? 'es');
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { FontSize, FONT_SIZES } from '@/lib/reader-preferences';
+import { useTranslation } from '@/lib/i18n';
 
 type Props = {
   title: string;
@@ -34,6 +35,7 @@ export default function ReaderTopBar({
   hasChapters,
   onChaptersToggle,
 }: Props) {
+  const { t } = useTranslation();
   const atMin = fontSize === FONT_SIZES[0];
   const atMax = fontSize === FONT_SIZES[FONT_SIZES.length - 1];
 
@@ -51,30 +53,30 @@ export default function ReaderTopBar({
       <Link
         href="/library"
         className={`flex-shrink-0 flex items-center gap-1 px-2 h-8 rounded-lg transition ${btn}`}
-        aria-label="Volver a Mi Biblioteca"
+        aria-label={t.nav.backToLibrary}
       >
         <ArrowLeftIcon />
-        <span className="hidden sm:inline text-xs font-medium">Mi Biblioteca</span>
+        <span className="hidden sm:inline text-xs font-medium">{t.nav.myLibrary}</span>
       </Link>
 
       {/* General collection */}
       <Link
         href="/discover"
         className={`flex-shrink-0 flex items-center gap-1 px-2 h-8 rounded-lg transition ${btn}`}
-        aria-label="Colección General"
+        aria-label={t.nav.generalCollection}
       >
         <BooksIcon />
-        <span className="hidden sm:inline text-xs font-medium">Colección General</span>
+        <span className="hidden sm:inline text-xs font-medium">{t.nav.generalCollection}</span>
       </Link>
 
       {/* Clubs */}
       <Link
         href="/clubs"
         className={`flex-shrink-0 flex items-center gap-1 px-2 h-8 rounded-lg transition ${btn}`}
-        aria-label="Clubes de Lectura"
+        aria-label={t.nav.clubs}
       >
         <PeopleIcon />
-        <span className="hidden sm:inline text-xs font-medium">Clubes</span>
+        <span className="hidden sm:inline text-xs font-medium">{t.nav.clubs}</span>
       </Link>
 
       {/* Book title */}
@@ -84,7 +86,7 @@ export default function ReaderTopBar({
       <button
         onClick={onFontDecrease}
         disabled={atMin}
-        aria-label="Reducir tamaño de letra"
+        aria-label={t.nav.decreaseFontSize}
         className={`flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition ${atMin ? disabled : btn}`}
       >
         A−
@@ -94,7 +96,7 @@ export default function ReaderTopBar({
       <button
         onClick={onFontIncrease}
         disabled={atMax}
-        aria-label="Aumentar tamaño de letra"
+        aria-label={t.nav.increaseFontSize}
         className={`flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition ${atMax ? disabled : btn}`}
       >
         A+
@@ -103,7 +105,7 @@ export default function ReaderTopBar({
       {/* Dark mode toggle */}
       <button
         onClick={onDarkToggle}
-        aria-label={dark ? 'Activar modo claro' : 'Activar modo oscuro'}
+        aria-label={dark ? t.nav.lightMode : t.nav.darkMode}
         className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition ${btn}`}
       >
         {dark ? <SunIcon /> : <MoonIcon />}
@@ -113,16 +115,8 @@ export default function ReaderTopBar({
       {hasAudio && onModeToggle && (
         <button
           onClick={onModeToggle}
-          aria-label={
-            mode === 'audio' ? 'Volver a modo lectura'
-            : mode === 'escucha-activa' ? 'Volver a modo lectura'
-            : 'Modo Audio (earbuds / segundo plano)'
-          }
-          title={
-            mode === 'audio' ? 'Modo Audio activo — toca para volver'
-            : mode === 'escucha-activa' ? 'Modo Escucha Activa — toca para volver'
-            : 'Modo Audio'
-          }
+          aria-label={mode === 'audio' || mode === 'escucha-activa' ? t.nav.audioModeActive : t.nav.audioMode}
+          title={mode === 'audio' ? t.nav.audioModeActive : mode === 'escucha-activa' ? t.nav.activeListeningMode : t.nav.audioMode}
           className={[
             'flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition',
             mode === 'audio' ? 'bg-blue-600 text-white'
@@ -138,7 +132,7 @@ export default function ReaderTopBar({
       {hasChapters && onChaptersToggle && (
         <button
           onClick={onChaptersToggle}
-          aria-label="Capítulos"
+          aria-label={t.nav.chapters}
           className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition ${btn}`}
         >
           <ListIcon />
@@ -148,7 +142,7 @@ export default function ReaderTopBar({
       {/* Fragments drawer */}
       <button
         onClick={onFragmentsToggle}
-        aria-label="Fragmentos"
+        aria-label={t.nav.fragments}
         className={`relative flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition ${btn}`}
       >
         <BookmarkIcon />

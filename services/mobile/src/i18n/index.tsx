@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiClient } from '../api/client';
 import { en, type MobileTranslations } from './en';
 import { es } from './es';
 
@@ -26,15 +27,27 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
+    AsyncStorage.getItem(STORAGE_KEY).then(async (saved) => {
       if (saved === 'en' || saved === 'es') setLang(saved);
       setIsLoaded(true);
+
+      // Sync from API — server-side preference wins over stale local storage
+      try {
+        const user = await apiClient.get<{ uiLanguage?: string }>('/users/me');
+        if (user?.uiLanguage === 'en' || user?.uiLanguage === 'es') {
+          setLang(user.uiLanguage);
+          AsyncStorage.setItem(STORAGE_KEY, user.uiLanguage);
+        }
+      } catch {
+        // Not logged in or network error — local preference stays
+      }
     });
   }, []);
 
   const setLanguage = useCallback(async (lang: Language) => {
     setLang(lang);
     await AsyncStorage.setItem(STORAGE_KEY, lang);
+    apiClient.patch('/users/me', { uiLanguage: lang }).catch(() => {});
   }, []);
 
   return (

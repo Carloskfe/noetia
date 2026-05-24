@@ -52,7 +52,8 @@ export class UsersService {
 
     // Farewell email (best-effort — don't block deletion if it fails)
     if (user.email) {
-      await this.emailService.sendFarewell(user.email, user.name ?? 'Lector').catch(() => {});
+      const lang = (user.uiLanguage as 'es' | 'en') ?? 'es';
+      await this.emailService.sendFarewell(user.email, user.name ?? (lang === 'en' ? 'Reader' : 'Lector'), lang).catch(() => {});
     }
   }
 }

@@ -26,8 +26,24 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const saved = (localStorage.getItem(STORAGE_KEY) as Language) ?? 'es';
-    setLang(saved === 'en' ? 'en' : 'es');
-    document.documentElement.lang = saved;
+    const lang = saved === 'en' ? 'en' : 'es';
+    setLang(lang);
+    document.documentElement.lang = lang;
+
+    // Sync from API — server-side preference wins over stale localStorage
+    const token = localStorage.getItem('noetia_token');
+    if (token) {
+      fetch('/api/users/me', { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => r.ok ? r.json() : null)
+        .then((user) => {
+          if (user?.uiLanguage === 'en' || user?.uiLanguage === 'es') {
+            setLang(user.uiLanguage);
+            localStorage.setItem(STORAGE_KEY, user.uiLanguage);
+            document.documentElement.lang = user.uiLanguage;
+          }
+        })
+        .catch(() => {});
+    }
   }, []);
 
   const setLanguage = useCallback((lang: Language) => {
