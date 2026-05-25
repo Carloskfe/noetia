@@ -22,6 +22,7 @@ import { WaitlistModule } from './waitlist/waitlist.module';
 import { CausesModule } from './causes/causes.module';
 import { GiftsModule } from './gifts/gifts.module';
 import { PushModule } from './push/push.module';
+import { StatsModule } from './stats/stats.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { PushModule } from './push/push.module';
     GiftsModule,
     PushModule,
     ClubsModule,
+    StatsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

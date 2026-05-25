@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { apiFetch, clearToken } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import DeleteAccountModal from '@/components/DeleteAccountModal';
+import StatsTab from '@/components/StatsTab';
+import PrivacyTab from '@/components/PrivacyTab';
+import { useTranslation } from '@/lib/i18n';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -51,12 +54,6 @@ const PLATFORM_LABELS: Record<SocialPlatform, string> = {
   pinterest: 'Pinterest',
 };
 
-const USER_TYPE_LABELS: Record<string, string> = {
-  personal: 'Lector',
-  author: 'Autor',
-  editorial: 'Editorial',
-};
-
 const SUB_STATUS: Record<string, { label: string; color: string }> = {
   active:    { label: 'Activo',        color: 'bg-green-100 text-green-700' },
   trialing:  { label: 'Prueba gratis', color: 'bg-blue-100 text-blue-700' },
@@ -79,11 +76,15 @@ function fmtDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+type Tab = 'profile' | 'stats' | 'privacy';
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { t } = useTranslation();
 
+  const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [user, setUser] = useState<UserProfile | null>(null);
   const [sub, setSub] = useState<SubscriptionStatus | null>(null);
   const [socials, setSocials] = useState<Partial<Record<SocialPlatform, boolean>>>({});
@@ -159,11 +160,11 @@ export default function ProfilePage() {
       setUser(updated as UserProfile);
       setEditing(false);
     } catch {
-      setSaveError('No se pudo guardar. Intenta de nuevo.');
+      setSaveError(t.account.errorSave);
     } finally {
       setSaving(false);
     }
-  }, [name, country, selectedLanguages, selectedInterests]);
+  }, [name, country, selectedLanguages, selectedInterests, t]);
 
   // ── Resend confirmation ────────────────────────────────────────────────
 
@@ -210,8 +211,8 @@ export default function ProfilePage() {
   if (!user) {
     return (
       <div className="max-w-lg mx-auto px-4 pt-16 text-center">
-        <p className="text-gray-500 mb-4">Debes iniciar sesión para ver tu perfil.</p>
-        <Link href="/auth/login" className="text-blue-600 font-medium">Iniciar sesión →</Link>
+        <p className="text-gray-500 mb-4">{t.account.title}</p>
+        <Link href="/auth/login" className="text-blue-600 font-medium">{t.auth.login.submit} →</Link>
       </div>
     );
   }
@@ -220,6 +221,12 @@ export default function ProfilePage() {
   const subBadge = SUB_STATUS[subStatus] ?? SUB_STATUS.none;
   const renewalDate = sub?.currentPeriodEnd ? fmtDate(sub.currentPeriodEnd) : null;
   const trialDate   = sub?.trialEnd ? fmtDate(sub.trialEnd) : null;
+
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'profile', label: t.profile.tabs.profile },
+    { key: 'stats',   label: t.profile.tabs.stats },
+    { key: 'privacy', label: t.profile.tabs.privacy },
+  ];
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-24 space-y-4">
@@ -234,172 +241,204 @@ export default function ProfilePage() {
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg font-bold text-gray-900 truncate">{user.name ?? 'Sin nombre'}</h1>
+          <h1 className="text-lg font-bold text-gray-900 truncate">{user.name ?? t.account.noName}</h1>
           <p className="text-sm text-gray-500 truncate">{user.email ?? '—'}</p>
           <div className="flex flex-wrap gap-1.5 mt-1.5">
             {user.userType && (
               <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-                {USER_TYPE_LABELS[user.userType] ?? user.userType}
+                {t.account.userTypes[user.userType] ?? user.userType}
               </span>
             )}
             {user.isAdmin && (
-              <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-medium">Admin</span>
+              <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-medium">{t.account.admin}</span>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── Email confirmation banner ────────────────────────────────────── */}
-      {!user.emailConfirmed && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-3">
-          <p className="text-sm text-amber-800 leading-snug">
-            Confirma tu email para acceder a todas las funciones.
-          </p>
-          {confirmSent ? (
-            <span className="text-xs text-green-700 font-semibold whitespace-nowrap">¡Enviado!</span>
-          ) : (
-            <button
-              onClick={handleResend}
-              disabled={resendingConfirm}
-              className="text-xs font-semibold text-amber-700 hover:text-amber-900 whitespace-nowrap disabled:opacity-50 transition"
-            >
-              {resendingConfirm ? 'Enviando…' : 'Reenviar email'}
-            </button>
-          )}
+      {/* ── Tabs ────────────────────────────────────────────────────────── */}
+      <div className="flex border-b border-gray-200">
+        {tabs.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === key
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Stats tab ───────────────────────────────────────────────────── */}
+      {activeTab === 'stats' && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <StatsTab />
         </div>
       )}
 
-      {/* ── Información personal ─────────────────────────────────────────── */}
-      <Section
-        title="Información personal"
-        action={
-          !editing
-            ? <button onClick={() => setEditing(true)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">Editar</button>
-            : (
-              <div className="flex gap-3">
-                <button onClick={cancelEdit} className="text-xs text-gray-500 hover:text-gray-700">Cancelar</button>
-                <button onClick={handleSave} disabled={saving} className="text-xs text-blue-600 hover:text-blue-800 font-semibold disabled:opacity-50">
-                  {saving ? 'Guardando…' : 'Guardar'}
-                </button>
-              </div>
-            )
-        }
-      >
-        {saveError && <p className="text-xs text-red-600 mb-3">{saveError}</p>}
+      {/* ── Privacy tab ─────────────────────────────────────────────────── */}
+      {activeTab === 'privacy' && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <PrivacyTab />
+        </div>
+      )}
 
-        <Row label="Nombre">
-          {editing
-            ? <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue-400" />
-            : <Value>{user.name}</Value>}
-        </Row>
-
-        <Row label="País">
-          {editing
-            ? <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="País de residencia" className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue-400" />
-            : <Value>{user.country}</Value>}
-        </Row>
-
-        <Row label="Idiomas">
-          {editing
-            ? <TagSelector options={LANGUAGES} selected={selectedLanguages} onChange={setSelectedLanguages} />
-            : <TagList items={user.languages} />}
-        </Row>
-
-        <Row label="Intereses">
-          {editing
-            ? <TagSelector options={INTERESTS} selected={selectedInterests} onChange={setSelectedInterests} />
-            : <TagList items={user.interests} />}
-        </Row>
-      </Section>
-
-      {/* ── Suscripción ──────────────────────────────────────────────────── */}
-      <Section
-        title="Mi suscripción"
-        action={<Link href="/account/billing" className="text-xs text-blue-600 hover:text-blue-800 font-medium">Gestionar →</Link>}
-      >
-        <Row label="Estado">
-          <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${subBadge.color}`}>{subBadge.label}</span>
-        </Row>
-        {sub && sub.tokenBalance > 0 && (
-          <Row label="Tokens">
-            <span className="text-sm font-semibold text-blue-700">{sub.tokenBalance} disponible{sub.tokenBalance !== 1 ? 's' : ''}</span>
-          </Row>
-        )}
-        {subStatus === 'trialing' && trialDate && (
-          <Row label="Prueba hasta"><Value>{trialDate}</Value></Row>
-        )}
-        {(subStatus === 'active' || subStatus === 'canceling') && renewalDate && (
-          <Row label={subStatus === 'canceling' ? 'Acceso hasta' : 'Próxima renovación'}>
-            <Value>{renewalDate}</Value>
-          </Row>
-        )}
-        {(subStatus === 'none' || subStatus === 'canceled') && (
-          <Link href="/pricing" className="mt-3 block text-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl py-2.5 transition">
-            Ver planes
-          </Link>
-        )}
-      </Section>
-
-      {/* ── Redes sociales ───────────────────────────────────────────────── */}
-      <Section title="Redes sociales conectadas">
-        {SOCIAL_PLATFORMS.map((platform) => {
-          const connected = socials[platform] ?? false;
-          return (
-            <Row key={platform} label={PLATFORM_LABELS[platform]}>
-              {connected ? (
-                <span className="text-xs font-semibold text-green-700 bg-green-50 px-2.5 py-0.5 rounded-full">Conectado</span>
+      {/* ── Profile tab ─────────────────────────────────────────────────── */}
+      {activeTab === 'profile' && (
+        <>
+          {/* ── Email confirmation banner ────────────────────────────────── */}
+          {!user.emailConfirmed && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-3">
+              <p className="text-sm text-amber-800 leading-snug">{t.account.confirmEmail}</p>
+              {confirmSent ? (
+                <span className="text-xs text-green-700 font-semibold whitespace-nowrap">{t.account.emailSent}</span>
               ) : (
-                <button onClick={() => handleConnectSocial(platform)} className="text-xs font-medium text-blue-600 hover:text-blue-800 transition">
-                  Conectar cuenta
+                <button
+                  onClick={handleResend}
+                  disabled={resendingConfirm}
+                  className="text-xs font-semibold text-amber-700 hover:text-amber-900 whitespace-nowrap disabled:opacity-50 transition"
+                >
+                  {resendingConfirm ? t.account.sendingEmail : t.account.resendEmail}
                 </button>
               )}
+            </div>
+          )}
+
+          {/* ── Información personal ─────────────────────────────────────── */}
+          <Section
+            title={t.account.personalInfo}
+            action={
+              !editing
+                ? <button onClick={() => setEditing(true)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">{t.account.edit}</button>
+                : (
+                  <div className="flex gap-3">
+                    <button onClick={cancelEdit} className="text-xs text-gray-500 hover:text-gray-700">{t.account.cancel}</button>
+                    <button onClick={handleSave} disabled={saving} className="text-xs text-blue-600 hover:text-blue-800 font-semibold disabled:opacity-50">
+                      {saving ? t.account.saving : t.account.save}
+                    </button>
+                  </div>
+                )
+            }
+          >
+            {saveError && <p className="text-xs text-red-600 mb-3">{saveError}</p>}
+
+            <Row label={t.account.name}>
+              {editing
+                ? <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.account.namePlaceholder} className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue-400" />
+                : <Value>{user.name}</Value>}
             </Row>
-          );
-        })}
-      </Section>
 
-      {/* ── Cuenta ───────────────────────────────────────────────────────── */}
-      <Section title="Cuenta">
-        <Row label="Proveedor">
-          <span className="text-sm text-gray-800 capitalize">{user.provider}</span>
-        </Row>
-        <Row label="Email confirmado">
-          {user.emailConfirmed
-            ? <span className="text-xs font-semibold text-green-700 bg-green-50 px-2.5 py-0.5 rounded-full">Confirmado</span>
-            : <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full">Pendiente</span>}
-        </Row>
-        <Row label="Miembro desde"><Value>{fmtDate(user.createdAt)}</Value></Row>
-        <Row label="Último acceso"><Value>{fmtDate(user.lastLoginAt)}</Value></Row>
-      </Section>
+            <Row label={t.account.country}>
+              {editing
+                ? <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder={t.account.countryPlaceholder} className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue-400" />
+                : <Value>{user.country}</Value>}
+            </Row>
 
-      {/* ── Acciones ─────────────────────────────────────────────────────── */}
-      <div className="space-y-2 pt-1">
-        {user.provider === 'local' && (
-          <Link href="/auth/forgot-password" className="block w-full text-center text-sm font-medium text-gray-700 border border-gray-200 rounded-2xl py-3 hover:bg-gray-50 transition">
-            Cambiar contraseña
-          </Link>
-        )}
-        <button
-          onClick={handleLogout}
-          className="w-full text-center text-sm font-medium text-red-600 border border-red-100 rounded-2xl py-3 hover:bg-red-50 transition"
-        >
-          Cerrar sesión
-        </button>
-      </div>
+            <Row label={t.account.languages}>
+              {editing
+                ? <TagSelector options={LANGUAGES} selected={selectedLanguages} onChange={setSelectedLanguages} />
+                : <TagList items={user.languages} notSpecified={t.account.notSpecified} />}
+            </Row>
 
-      {/* ── Danger zone ──────────────────────────────────────────────────── */}
-      <div className="border border-red-100 rounded-2xl p-4">
-        <p className="text-xs font-semibold text-red-600 uppercase tracking-widest mb-1">Zona de peligro</p>
-        <p className="text-sm text-gray-500 leading-relaxed mb-3">
-          Eliminar tu cuenta borrará permanentemente tu perfil, biblioteca, fragmentos y todos tus datos de Noetia.
-        </p>
-        <button
-          onClick={() => setShowDeleteModal(true)}
-          className="text-sm font-medium text-red-600 hover:text-red-800 underline underline-offset-2 transition"
-        >
-          Eliminar mi cuenta
-        </button>
-      </div>
+            <Row label={t.account.interests}>
+              {editing
+                ? <TagSelector options={INTERESTS} selected={selectedInterests} onChange={setSelectedInterests} />
+                : <TagList items={user.interests} notSpecified={t.account.notSpecified} />}
+            </Row>
+          </Section>
+
+          {/* ── Suscripción ──────────────────────────────────────────────── */}
+          <Section
+            title={t.account.subscription}
+            action={<Link href="/account/billing" className="text-xs text-blue-600 hover:text-blue-800 font-medium">{t.account.manage}</Link>}
+          >
+            <Row label={t.account.status}>
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${subBadge.color}`}>{subBadge.label}</span>
+            </Row>
+            {sub && sub.tokenBalance > 0 && (
+              <Row label={t.account.tokens}>
+                <span className="text-sm font-semibold text-blue-700">{t.account.tokenAvail(sub.tokenBalance)}</span>
+              </Row>
+            )}
+            {subStatus === 'trialing' && trialDate && (
+              <Row label={t.account.trialUntil}><Value>{trialDate}</Value></Row>
+            )}
+            {(subStatus === 'active' || subStatus === 'canceling') && renewalDate && (
+              <Row label={subStatus === 'canceling' ? t.account.accessUntil : t.account.renewsOn}>
+                <Value>{renewalDate}</Value>
+              </Row>
+            )}
+            {(subStatus === 'none' || subStatus === 'canceled') && (
+              <Link href="/pricing" className="mt-3 block text-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl py-2.5 transition">
+                {t.account.viewPlans}
+              </Link>
+            )}
+          </Section>
+
+          {/* ── Redes sociales ───────────────────────────────────────────── */}
+          <Section title={t.account.socialAccounts}>
+            {SOCIAL_PLATFORMS.map((platform) => {
+              const connected = socials[platform] ?? false;
+              return (
+                <Row key={platform} label={PLATFORM_LABELS[platform]}>
+                  {connected ? (
+                    <span className="text-xs font-semibold text-green-700 bg-green-50 px-2.5 py-0.5 rounded-full">{t.account.connected}</span>
+                  ) : (
+                    <button onClick={() => handleConnectSocial(platform)} className="text-xs font-medium text-blue-600 hover:text-blue-800 transition">
+                      {t.account.connect}
+                    </button>
+                  )}
+                </Row>
+              );
+            })}
+          </Section>
+
+          {/* ── Cuenta ───────────────────────────────────────────────────── */}
+          <Section title="Cuenta">
+            <Row label={t.account.provider}>
+              <span className="text-sm text-gray-800 capitalize">{user.provider}</span>
+            </Row>
+            <Row label={t.account.emailConfirmed}>
+              {user.emailConfirmed
+                ? <span className="text-xs font-semibold text-green-700 bg-green-50 px-2.5 py-0.5 rounded-full">{t.account.confirmed}</span>
+                : <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full">{t.account.pending}</span>}
+            </Row>
+            <Row label={t.account.memberSince}><Value>{fmtDate(user.createdAt)}</Value></Row>
+            <Row label={t.account.lastLogin}><Value>{fmtDate(user.lastLoginAt)}</Value></Row>
+          </Section>
+
+          {/* ── Acciones ─────────────────────────────────────────────────── */}
+          <div className="space-y-2 pt-1">
+            {user.provider === 'local' && (
+              <Link href="/auth/forgot-password" className="block w-full text-center text-sm font-medium text-gray-700 border border-gray-200 rounded-2xl py-3 hover:bg-gray-50 transition">
+                {t.account.changePassword}
+              </Link>
+            )}
+            <button
+              onClick={handleLogout}
+              className="w-full text-center text-sm font-medium text-red-600 border border-red-100 rounded-2xl py-3 hover:bg-red-50 transition"
+            >
+              {t.account.logout}
+            </button>
+          </div>
+
+          {/* ── Danger zone ──────────────────────────────────────────────── */}
+          <div className="border border-red-100 rounded-2xl p-4">
+            <p className="text-xs font-semibold text-red-600 uppercase tracking-widest mb-1">{t.account.dangerZone}</p>
+            <p className="text-sm text-gray-500 leading-relaxed mb-3">{t.account.deleteWarning}</p>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="text-sm font-medium text-red-600 hover:text-red-800 underline underline-offset-2 transition"
+            >
+              {t.account.deleteAccount}
+            </button>
+          </div>
+        </>
+      )}
 
       {showDeleteModal && <DeleteAccountModal onClose={() => setShowDeleteModal(false)} />}
 
@@ -431,12 +470,12 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 function Value({ children }: { children: React.ReactNode }) {
-  if (!children) return <em className="text-sm text-gray-400">No especificado</em>;
+  if (!children) return <em className="text-sm text-gray-400">—</em>;
   return <span className="text-sm text-gray-800 text-right">{children}</span>;
 }
 
-function TagList({ items }: { items: string[] | null }) {
-  if (!items?.length) return <em className="text-sm text-gray-400">No especificado</em>;
+function TagList({ items, notSpecified }: { items: string[] | null; notSpecified: string }) {
+  if (!items?.length) return <em className="text-sm text-gray-400">{notSpecified}</em>;
   return (
     <div className="flex flex-wrap gap-1 justify-end">
       {items.map((item) => (

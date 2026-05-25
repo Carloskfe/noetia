@@ -20,6 +20,7 @@ import ReaderTopBar from '@/components/ReaderTopBar';
 import ReaderTutorial, { hasSeenReaderTutorial } from '@/components/ReaderTutorial';
 import AudioTutorial from '@/components/AudioTutorial';
 import { hasSeenAudioTutorial } from '@/lib/tutorial-flags';
+import { useReadingHeartbeat } from '@/lib/use-reading-heartbeat';
 
 const FONT_SIZE_CLASSES: Record<FontSize, string> = {
   sm: 'text-base',
@@ -58,6 +59,8 @@ export default function ReaderPage() {
   const [phrases, setPhrases] = useState<Phrase[]>([]);
   const [rawText, setRawText] = useState('');
   const [activePhraseIndex, setActivePhraseIndex] = useState(-1);
+
+  useReadingHeartbeat(bookId ?? null, activePhraseIndex);
   const [savedPhraseIndex, setSavedPhraseIndex] = useState(0);
   const [mode, setMode] = useState<Mode>('reading');
   const [loading, setLoading] = useState(true);

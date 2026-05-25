@@ -1,4 +1,4 @@
-import { IsArray, IsEnum, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUrl, MaxLength, Min } from 'class-validator';
 import { UserType } from '../user.entity';
 
 export class UpdateUserDto {
@@ -33,4 +33,30 @@ export class UpdateUserDto {
   @IsString()
   @MaxLength(5)
   uiLanguage?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  shareReadingProgress?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  shareLibrary?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  shareProfile?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  shareFragments?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  goalWeeklyMinutes?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  goalWeeklyBooks?: number | null;
 }

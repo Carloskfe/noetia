@@ -81,6 +81,24 @@ export class User {
   @Column({ type: 'boolean', default: false })
   isAdmin: boolean;
 
+  @Column({ type: 'boolean', default: true })
+  shareReadingProgress: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  shareLibrary: boolean;
+
+  @Column({ type: 'boolean', default: true })
+  shareProfile: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  shareFragments: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  goalWeeklyMinutes: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  goalWeeklyBooks: number | null;
+
   @CreateDateColumn()
   createdAt: Date;
 
