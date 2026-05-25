@@ -7,21 +7,29 @@ module.exports = {
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
+    assetBundlePatterns: ['**/*'],
+
     splash: {
       image: './assets/splash.png',
       resizeMode: 'contain',
       backgroundColor: '#0D1B2A',
     },
 
+    // OTA updates via EAS Update
+    updates: {
+      fallbackToCacheTimeout: 0,
+      url: 'https://u.expo.dev/99e71dcb-bfa3-4c8d-bb74-2d20edbb1826',
+    },
+
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.noetia.app',
+      deploymentTarget: '13.4',
       usesAppleSignIn: true,
       buildNumber: '1',
       // Background audio for Modo Escucha Activa
       infoPlist: {
         UIBackgroundModes: ['audio'],
-        // Permissions shown to users when the app requests access
         NSCameraUsageDescription:
           'Noetia uses your camera to capture background images for your quote cards.',
         NSPhotoLibraryUsageDescription:
@@ -40,6 +48,10 @@ module.exports = {
       },
       package: 'com.noetia.app',
       versionCode: 1,
+      // Google Play requires targetSdkVersion 34+ as of Nov 2024
+      targetSdkVersion: 34,
+      compileSdkVersion: 34,
+      minSdkVersion: 23,
       permissions: [
         'CAMERA',
         'READ_EXTERNAL_STORAGE',
@@ -47,7 +59,8 @@ module.exports = {
         'VIBRATE',
         'POST_NOTIFICATIONS',
       ],
-      // Resolved at build time from EAS secret GOOGLE_SERVICES_JSON
+      // google-services.json is NOT committed — uploaded as EAS secret GOOGLE_SERVICES_JSON
+      // (a file secret whose value is the path to the file on the EAS build machine)
       ...(process.env.GOOGLE_SERVICES_JSON
         ? { googleServicesFile: process.env.GOOGLE_SERVICES_JSON }
         : {}),
