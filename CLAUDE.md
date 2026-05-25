@@ -133,7 +133,8 @@ noetia/
 │   │   │   ├── ingestion/          # Book ingestion (Gutenberg, Librivox, Wikisource)
 │   │   │   ├── search/             # Meilisearch integration
 │   │   │   ├── storage/            # MinIO S3 client
-│   │   │   ├── users/              # User profiles and settings
+│   │   │   ├── stats/              # Reading stats: heartbeat UPSERT, 7-day chart, streak, goals
+│   │   │   ├── users/              # User profiles, settings, privacy toggles, weekly goals
 │   │   │   └── migrations/         # TypeORM migrations (see §Database Migrations)
 │   │   ├── tests/unit/             # Mirrors src/ exactly
 │   │   ├── Dockerfile
@@ -149,9 +150,12 @@ noetia/
 │   │   ├── components/
 │   │   │   ├── BookGrid.tsx        # Book grid with next/image covers + language badge
 │   │   │   ├── ReaderTopBar.tsx    # Back/discover/clubs links + font/dark/audio/chapter/fragments controls — fully i18n
-│   │   │   └── ShareModal.tsx      # Instagram, Facebook, LinkedIn, Pinterest formats
+│   │   │   ├── ShareModal.tsx      # Instagram, Facebook, LinkedIn, Pinterest formats
+│   │   │   ├── StatsTab.tsx        # 7-day bar chart, streak, goal progress rings, goal form
+│   │   │   └── PrivacyTab.tsx      # 4 privacy toggle switches with optimistic PATCH
 │   │   ├── lib/
 │   │   │   ├── i18n/               # LanguageProvider, useTranslation(); en.ts + es.ts; syncs language to/from API on mount
+│   │   │   ├── use-reading-heartbeat.ts  # 60s interval hook — POST /api/stats/heartbeat, tracks phrasDelta
 │   │   │   └── share-utils.ts      # SharePlatform, ShareFormat, FORMAT_PLATFORM_MAP
 │   │   ├── public/
 │   │   │   ├── covers/             # Themed book cover PNGs — volume-mounted in docker-compose.yml
@@ -639,6 +643,9 @@ docker compose exec api npm run migration:run
 | 050 | `CreateClubDiscussions` | club_discussions — phrase-anchored comments tied to sync map phraseIndex |
 | 051 | `CreateClubPollsAndVotes` | club_polls + club_poll_options + club_poll_votes — book nomination voting |
 | 052 | `CreateClubSessions` | club_sessions — Escucha Juntos scheduled live listening sessions |
+| 053 | `AddPrivacySettings` | shareReadingProgress/Library/Profile/Fragments booleans on users |
+| 054 | `CreateReadingStats` | reading_stats table — daily minutesRead + phrasesRead per user, unique (userId, date) |
+| 055 | `AddReadingGoals` | goalWeeklyMinutes + goalWeeklyBooks nullable integers on users |
 
 ---
 

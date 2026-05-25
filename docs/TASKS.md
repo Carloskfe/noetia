@@ -5,7 +5,7 @@
 > 2. **Author/company experience** — content supply chain; upload, sync tooling, analytics
 > 3. **Free library** — beta acquisition only; not expanded after 6–12 months; UI hero will yield to author content
 >
-> **Current status (2026-05-24):** Stages 0–5 complete + major feature sprint complete. **Production live at https://noetia.app** — Contabo VPS (Traefik v2.11, containers healthy, 52 migrations applied). SSH port 222, fail2ban active. CI/CD working (auto-deploys + runs migrations). 52 migrations applied (latest: CreateClubSessions #052).
+> **Current status (2026-05-24):** Stages 0–5 complete + major feature sprint complete. **Production live at https://noetia.app** — Contabo VPS (Traefik v2.11, containers healthy, 55 migrations applied). SSH port 222, fail2ban active. CI/CD working (auto-deploys + runs migrations). 55 migrations applied (latest: AddReadingGoals #055).
 >
 > **Completed since last update:**
 > - [x] Stripe fully activated — 10 products, webhook live, price IDs in DB ✅
@@ -29,6 +29,10 @@
 > - [x] Grafana monitoring fixed — access via Tailscale (100.84.48.16:3001, no SSH tunnel), `or vector(0)` pattern eliminates false-positive DatasourceNoData alerts; docs at docs/grafana-monitoring.md ✅
 > - [x] CD pipeline hardened — force-remove containers before up, DB_HOST in migration step ✅
 > - [x] ShareModal D3/D4/D7 — hex picker, gradient directions, background presets all done ✅
+> - [x] Reading stats — 7-day bar chart, streak counter, all-time totals, weekly goal progress rings; heartbeat hook in reader (60s, phrasDelta tracking); GET /api/stats/me + POST /api/stats/heartbeat ✅
+> - [x] Privacy settings — 4 toggles (reading progress, library, profile, fragments) with optimistic PATCH; columns on users table ✅
+> - [x] Weekly goals — minutes + books per week, user-editable, stored on users.goalWeeklyMinutes/goalWeeklyBooks ✅
+> - [x] Profile page tabs — Profile / Stats / Privacy three-tab layout; all strings i18n'd ✅
 >
 > **Remaining before app store submission:**
 > - [ ] **Whisper VTTs for 13 books** — user transcribes on Windows. Books: Don Quijote Vol. I, Don Quijote Vol. II, Mateo, Lucas, Efesios, Filipenses, Apocalipsis, Proverbios, Isaías, Fábulas y Verdades, Cuentos de la Selva, Génesis, Juan, Éxodo
