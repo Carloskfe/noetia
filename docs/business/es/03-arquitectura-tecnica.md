@@ -1,5 +1,5 @@
 # Noetia — Documento de Arquitectura Técnica
-**Versión 1.0 | Mayo 2026**
+**Versión 1.1 | Mayo 2026**
 
 ---
 
@@ -122,7 +122,7 @@ El flujo de trabajo gestionado de Expo significa que los directorios nativos `an
 | Tabla | Estimación de filas (Año 1) | Notas |
 |-------|-----------------|-------|
 | users | 5,000 | Identidad principal, configuración de privacidad, metas, uiLanguage |
-| books | 150 | 38 gratuitos + catálogo de autores en crecimiento |
+| books | 200 | 38+ dominio público español + dominio público inglés (en desarrollo) + catálogo de autores en crecimiento |
 | sync_maps | 150 | ~1 por libro; array de frases almacenado como JSONB |
 | reading_progress | 15,000 | 1 fila por (usuario, libro) |
 | reading_stats | 365,000 | 1 fila por (usuario, fecha) — UPSERT diario |
@@ -232,10 +232,17 @@ Webhooks de Stripe: exentos (ThrottlerModule @SkipThrottle)
 - Tokens OAuth sociales encriptados en reposo usando AES-256-CBC antes del almacenamiento en Redis
 
 ### Protección de Contenido
-- Texto del libro servido solo a través de endpoints autenticados con JWT y verificados por suscripción
-- Audio servido mediante endpoint de streaming con range requests con los mismos guards
-- Sync maps (timestamps de frases) con puerta `SubscriptionGuard` — evita extraer la estructura del libro sin acceso
-- URLs prefirmadas de MinIO vencen en 15 minutos
+
+**Enfoque: DRM Suave (acceso vinculado a cuenta)**
+
+Noetia utiliza un modelo de protección de contenido por capas vinculado a cuenta, en lugar de DRM de hardware (Widevine/FairPlay). Esta es una decisión deliberada apropiada para la escala actual del catálogo y las relaciones con autores:
+
+- **Cifrado en reposo:** Todo texto de libros, archivos de audio y sync maps se almacenan en buckets privados de MinIO con cifrado del lado del servidor AES-256 (MinIO SSE). Los archivos nunca son accesibles directamente mediante URL pública.
+- **URLs prefirmadas con TTL corto:** Los endpoints de streaming emiten URLs con TTL de 5 minutos (audio streaming con range requests); los endpoints de descarga emiten URLs con TTL de 1 hora. Las URLs no pueden compartirse ni reproducirse tras su vencimiento.
+- **Vinculación a cuenta:** El acceso al contenido está ligado al JWT del usuario autenticado. `SubscriptionGuard` requiere una suscripción válida o un registro `book_purchase` antes de emitir cualquier URL prefirmada. El derecho se deriva del sujeto JWT, no de un ID de usuario en la ruta.
+- **Protección del sync map:** Los timestamps de frases (`sync_maps`) están protegidos por `SubscriptionGuard`. Son activos propietarios de Noetia — los timestamps alineados con Whisper para libros de dominio público son trabajo técnico original no distribuido a los usuarios.
+- **Sin DRM de hardware a la escala actual:** Widevine/FairPlay no está implementado. Esto es apropiado para el catálogo de dominio público y las relaciones iniciales con autores. A medida que se firmen acuerdos editoriales (ver Sección 8), la integración de DRM de hardware se evaluará por acuerdo.
+- **Hoja de ruta de DRM de hardware:** Widevine completo (Android/web) + FairPlay (iOS) es una pre-condición para los acuerdos con editoriales importantes. Objetivo: Q1 2027 junto con la activación del pipeline editorial.
 
 ---
 
@@ -284,4 +291,69 @@ Webhooks de Stripe: exentos (ThrottlerModule @SkipThrottle)
 
 ---
 
-*Documento mantenido por el Desarrollador Backend y el Ingeniero DevOps. Última actualización: 25 de mayo de 2026.*
+## 8. Pipeline de Contenido y Arquitectura de Licencias
+
+### Pista del Catálogo 1 — Dominio Público
+
+**Fuentes:** Project Gutenberg (texto), LibriVox (audio CC0), Wikisource (texto en español)
+**Licencia:** Dominio público / Creative Commons Zero — sin costos de licencia, sin regalías
+**Pipeline de ingestión:**
+- `seed-ingestion.ts` — obtiene texto mediante los campos `gutenbergId` / `wikisourceTitle` en `catalogue.ts`
+- `seed-audio.ts` / `seed-audio-stream.ts` — descarga capítulos M4B/MP3 de LibriVox al bucket `audio/` de MinIO
+- `seed-covers.ts` — obtiene imágenes de portada desde el CDN de Open Library
+- Sync maps: `seed-sync-whisper.ts` ejecuta alineación con Whisper y almacena timestamps de frases en `sync_maps` con `syncSource = 'whisper'`. Estos datos son propietarios de Noetia — independientes del copyright de la obra subyacente.
+
+**Aplicación técnica:** `isFree = true` en el registro del libro; `JwtAuthGuard` aplica (se requiere cuenta); `SubscriptionGuard` no aplica para libros gratuitos.
+
+---
+
+### Pista del Catálogo 2 — Subida Directa de Autores
+
+**Licencia:** Acuerdo de publicación no exclusivo entre el autor y Noetia
+**Términos:** 36% de regalía al autor en redenciones de tokens y ventas por título; el autor retiene todos los derechos; derecho de retiro de 30 días
+**Flujo de subida:**
+1. El autor envía mediante el portal `/upload`: `.txt/.epub/.pdf` (texto), MP3/M4A (audio), `.jpg/.png` (portada), `.srt/.vtt` (archivo de sync opcional)
+2. Archivos almacenados en buckets `books/` y `audio/` de MinIO bajo el prefijo `pending/`
+3. Revisión editorial 3–5 días hábiles: calidad, validación de sync, metadatos
+4. Tras aprobación: archivos movidos al prefijo `published/`; `isPublished = true`; `syncSource` actualizado a `srt` o `vtt` si se proporcionó archivo de sync
+5. Ingresos: el reparto se aplica en la redención de tokens — `token_ledger` registra cada evento; el pago al autor se calcula desde el ledger en cada ciclo de facturación
+
+**Notas técnicas:**
+- `hostingTier` en `users` aplica límites del catálogo (1 / 3 / 12 libros por nivel)
+- FK `uploadedById` en `books` vincula cada título a su autor
+- `syncSource = 'srt'` o `'vtt'` cuando el autor proporciona archivo de timing; `'auto'` (todas las frases en t=0) cuando no se sube archivo de sync
+
+---
+
+### Pista del Catálogo 3 — Pipeline Editorial (Hoja de Ruta)
+
+**Estado:** Sin acuerdos firmados. Difusión activa; primeras conversaciones editoriales con objetivo Q3 2026.
+**Términos propuestos:** 50% Noetia / 50% editorial sobre ingresos brutos; mínimo garantizado por título por definir
+**Requisitos técnicos antes de la activación:**
+
+| Requisito | Estado |
+|-----------|--------|
+| DRM de hardware (Widevine + FairPlay) | No implementado — requerido por la mayoría de grandes editoriales |
+| Control de acceso territorial (`book.territories[]` vs `user.country`) | No implementado — requerido para títulos con restricciones regionales |
+| Dashboard editorial (analytics por organización) | No implementado — portal de autores existente; scope por organización pendiente |
+| Exportación de conciliación mensual para auditoría | `token_ledger` es FIFO con origen de eventos; capa de exportación pendiente |
+
+**Cronograma:** Todos los requisitos técnicos del pipeline editorial con objetivo Q1 2027.
+
+---
+
+### Capa Técnica de Aplicación de Licencias
+
+| Regla | Punto de Aplicación |
+|-------|---------------------|
+| Suscripción o compra requerida para contenido de pago | `SubscriptionGuard` en `GET /books/:id/sync-map` y `GET /books/:id/stream` |
+| Libros gratuitos accesibles solo para usuarios autenticados | `JwtAuthGuard` en todas las rutas de libros; `isFree = true` omite `SubscriptionGuard` |
+| La redención de tokens registra el derecho del autor | INSERT en `token_ledger` en cada evento de redención |
+| TTL de URL prefirmada limita el caché offline | TTL en MinIO: 5 min (streaming), 1 hr (descarga) |
+| Límites del catálogo de autores | `hostingTier` verificado en el servicio de subida antes de aceptar nueva entrega |
+| Derechos territoriales (hoja de ruta) | `book.territories[]` vs `user.country` en `SubscriptionGuard` — aún no implementado |
+| Sync map como activo propietario | `sync_maps` nunca expuesto en ninguna API pública; requiere JWT válido + derecho activo |
+
+---
+
+*Documento mantenido por el Desarrollador Backend y el Ingeniero DevOps. Última actualización: 26 de mayo de 2026.*

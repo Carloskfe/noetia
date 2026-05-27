@@ -1,5 +1,5 @@
 # Noetia — Documento de Proceso de Desarrollo
-**Versión 1.0 | Mayo 2026**
+**Versión 1.1 | Mayo 2026**
 
 ---
 
@@ -146,6 +146,22 @@ docker compose up -d --build <servicio>
 
 ```bash
 docker compose exec api npm run migration:run
+```
+
+### Datos semilla
+
+```bash
+# Sembrar catálogo de libros desde Gutenberg/Wikisource (español + inglés)
+# El idioma fuente está determinado por el campo `language` en cada entrada de catalogue.ts
+# Español: Project Gutenberg ES / Wikisource ES / LibriVox ES
+# Inglés: Project Gutenberg EN / LibriVox EN (en desarrollo activo — ingestado junto al español)
+docker compose exec api npx ts-node -r tsconfig-paths/register src/ingestion/seed-ingestion.ts
+
+# Sembrar URLs de streaming de audio
+docker compose exec api npx ts-node -r tsconfig-paths/register src/ingestion/seed-audio-stream.ts
+
+# Indexar libros en Meilisearch
+docker compose exec api npx ts-node -r tsconfig-paths/register src/search/seed-search.ts
 ```
 
 ---
@@ -482,4 +498,4 @@ Las descripciones de PR sirven como el registro principal de por qué se realiz�
 
 ---
 
-*Documento mantenido por el Ingeniero DevOps y el Desarrollador Backend. Última actualización: 25 de mayo de 2026.*
+*Documento mantenido por el Ingeniero DevOps y el Desarrollador Backend. Última actualización: 26 de mayo de 2026.*

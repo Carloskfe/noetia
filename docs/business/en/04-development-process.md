@@ -1,5 +1,5 @@
 # Noetia — Development Process Document
-**Version 1.0 | May 2026**
+**Version 1.1 | May 2026**
 
 ---
 
@@ -151,7 +151,10 @@ docker compose exec api npm run migration:run
 ### Seed data
 
 ```bash
-# Seed book catalog from Gutenberg/Wikisource
+# Seed book catalog from Gutenberg/Wikisource (Spanish + English)
+# Source language is determined by the `language` field on each entry in catalogue.ts
+# Spanish: Project Gutenberg ES / Wikisource ES / LibriVox ES
+# English: Project Gutenberg EN / LibriVox EN (in active development — ingested alongside Spanish)
 docker compose exec api npx ts-node -r tsconfig-paths/register src/ingestion/seed-ingestion.ts
 
 # Seed audio stream URLs
@@ -541,4 +544,4 @@ PR descriptions serve as the primary record of why a change was made. They shoul
 
 ---
 
-*Document maintained by the DevOps Engineer and Backend Developer. Last updated: May 25, 2026.*
+*Document maintained by the DevOps Engineer and Backend Developer. Last updated: May 26, 2026.*
