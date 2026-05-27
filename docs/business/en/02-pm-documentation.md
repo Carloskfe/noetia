@@ -1,5 +1,5 @@
 # Noetia — Project Management Documentation
-**Version 1.0 | May 2026**
+**Version 1.1 | May 2026**
 
 ---
 
@@ -17,11 +17,12 @@
 
 ### Project Objectives
 
-1. Design, build, and launch a production-ready multimodal reading platform for Spanish-speaking audiences
+1. Design, build, and launch a production-ready multimodal reading platform with language-agnostic architecture — Spanish as the launch market, English from Year 2, multilingual roadmap thereafter
 2. Deliver phrase-by-phrase text-audio synchronization across web and mobile
 3. Build a monetization engine (subscriptions + tokens) capable of processing real payments via Stripe
 4. Launch a social layer (Clubs, fragment sharing, quote card generation) that creates user retention loops
 5. Deploy to production infrastructure with CI/CD, monitoring, and automated backups
+6. Establish a content and licensing framework covering public domain, author-direct, and publisher pipeline tracks
 
 ### Success Criteria
 
@@ -61,6 +62,9 @@
 - Prioritized Clubs feature in Q4 despite scope risk — correctly identified it as the primary retention driver
 - Kept reading statistics as a Duolingo-inspired engagement loop (streak + weekly goals)
 - Defined the 3-priority hierarchy: Reader experience > Author experience > Free library
+- Chose language-agnostic architecture over Spanish-only from the start — i18n (EN/ES) shipped in Q4; English catalog and audience are Year 2, not Year 3
+- Chose soft DRM (account binding + signed URLs) over full Widevine/FairPlay — sufficient at current catalog scale, avoids certification overhead before publisher deals are signed
+- Chose author-direct model for Year 1 catalog (non-exclusive, self-certified, 45% royalty) while pursuing publisher outreach in parallel rather than waiting for publisher deals before launching paid content
 
 ---
 
@@ -344,4 +348,139 @@ A story is **done** when:
 
 ---
 
-*Document maintained by the Product Manager. Last updated: May 25, 2026.*
+---
+
+## 8. Post-Launch Roadmap
+
+The 12-month build phase ended with beta launch in May 2026. The following phases govern post-launch product and business development.
+
+### Phase 1 — Beta (May–Aug 2026)
+
+**Goal:** Validate product-market fit, collect churn data, onboard first authors.
+
+| Track | Actions |
+|-------|---------|
+| Product | Monitor reading session length, streak retention, club engagement — identify drop-off points |
+| Growth | Activate 500-user waitlist via invite codes; onboard 5–10 authors |
+| Content | Maintain 38+ Spanish public-domain titles; begin English public-domain ingestion |
+| Licensing | Draft Author Agreement template; establish self-certification upload flow |
+| Metrics | Baseline NPS, D1/D7/D30 retention, churn rate, conversion from free to paid |
+
+**Success exit criteria:** ≥ 200 paying subscribers, ≥ 3 active authors, churn ≤ 7%/month.
+
+---
+
+### Phase 2 — Growth (Sep 2026–Feb 2027)
+
+**Goal:** App Store launch, English catalog, scale to 2,000 subscribers.
+
+| Track | Actions |
+|-------|---------|
+| Product | App Store + Google Play launch; English public-domain catalog live; onboarding flow A/B tests |
+| Growth | TikTok/Instagram content strategy; referral program (3 friends → 1 token); author partnership program (10 Spanish + 5 English authors) |
+| Content | English public-domain catalog: 40+ titles via Gutenberg + LibriVox pipeline |
+| Licensing | Begin publisher outreach (first formal meetings Q4 2026); retain IP attorney for Publisher License Agreement |
+| Metrics | MRR, ARR, blended CAC by channel, author count, paying titles count |
+
+**Success exit criteria:** 2,000 paying subscribers, 25 active authors, 75+ paid titles, App Store rating ≥ 4.5.
+
+---
+
+### Phase 3 — Scale (Mar 2027+)
+
+**Goal:** Publisher catalog deals, B2B channel, Portuguese market entry.
+
+| Track | Actions |
+|-------|---------|
+| Product | Full DRM capability (Widevine/FairPlay) — required before major publisher deals |
+| Growth | Podcast/newsletter sponsorships; corporate wellness B2B; university licensing |
+| Content | First publisher catalog deals (Spanish + English); 250+ paid titles |
+| Licensing | Signed Publisher License Agreements; per-territory rights negotiation |
+| Expansion | Portuguese-language market entry (Brazil); localized UI and catalog |
+
+---
+
+## 9. Content & Licensing Governance
+
+### Content Decision Authority
+
+| Decision | Owner | Approval Required |
+|----------|-------|------------------|
+| Add public-domain title | Backend Dev | None — follows ingestion script |
+| Invite new author | PM | PM sign-off on author criteria |
+| Remove author title (DMCA) | PM + Backend | Immediate removal; document incident |
+| Sign publisher deal | PM | Legal review + founder approval |
+| Change royalty split | PM | Founder approval |
+| Enable full DRM | PM + Backend + DevOps | Founder approval |
+
+### Author Onboarding Process
+
+1. Author applies → PM reviews against criteria (1K+ audience, eligible category)
+2. PM issues upload code → author receives onboarding email with Author Agreement
+3. Author self-certifies rights ownership at upload
+4. Backend dev reviews upload for completeness (audio sync-ready, metadata, cover)
+5. Title goes live → author gains access to author dashboard (earnings, fragments, reader stats)
+
+### Content Removal Process
+
+1. DMCA complaint or rights dispute received → title immediately taken offline (< 4 hours)
+2. PM notifies author within 24 hours
+3. If dispute resolved: title restored; if not: title permanently removed
+4. All removals documented in Risk Register (Section 6)
+
+### Publisher Deal Criteria (Year 2+)
+
+Before signing any publisher agreement:
+- [ ] IP attorney has reviewed and approved the Publisher License Agreement template
+- [ ] Publisher has confirmed ownership of both text AND audiobook/digital rights for each title
+- [ ] Revenue split agreed: 50% publisher (inclusive of author share) / 50% Noetia
+- [ ] Territory scope defined in the agreement
+- [ ] DRM requirements confirmed — upgrade to Widevine/FairPlay if required before signing
+
+---
+
+## 10. Post-Launch KPIs
+
+### Growth KPIs
+
+| KPI | Target (Month 3) | Target (Month 12) | Notes |
+|-----|-----------------|------------------|-------|
+| Paying subscribers | 200 | 2,000 | Primary growth metric |
+| Monthly churn | ≤ 7% | ≤ 5% | Should decline as clubs deepen engagement |
+| MRR | $2,040 | $20,400 | Based on blended ARPU $10.20 |
+| Blended CAC | — | $15–25 | Track by channel; organic dominant in Year 1 |
+| LTV:CAC ratio | — | ≥ 7:1 | Validate against real retention data |
+
+### Content KPIs
+
+| KPI | Target (Month 6) | Target (Month 12) | Notes |
+|-----|-----------------|------------------|-------|
+| Active authors | 10 | 50 | Quality over quantity |
+| Paid titles live | 20 | 75+ | Spanish + English combined |
+| English public-domain titles | 20 | 40+ | Gutenberg + LibriVox pipeline |
+| Token attach rate | — | 15% | % of subscribers buying ≥1 token package/year |
+
+### Engagement KPIs
+
+| KPI | Target | Notes |
+|-----|--------|-------|
+| D1 retention | ≥ 60% | % of new users who read again on Day 1 |
+| D7 retention | ≥ 35% | Measures habit formation in first week |
+| D30 retention | ≥ 25% | Measures product stickiness |
+| Avg reading session | ≥ 15 min | Tracked via heartbeat system |
+| Active streak holders | ≥ 40% | % of MAU with a streak ≥ 3 days |
+| Clubs with ≥ 5 members | ≥ 10 | Indicator of community health |
+
+### Licensing KPIs
+
+| KPI | Target (Month 12) | Notes |
+|-----|------------------|-------|
+| Author Agreements signed | 50 | Formal non-exclusive license on file |
+| Publisher conversations active | 3+ | Formal outreach initiated |
+| Publisher deals signed | 1 (stretch) | First deal targeted Q4 2026 |
+| IP attorney retained | Month 6 | Before any publisher negotiation |
+| DMCA incidents | 0 | Track in Risk Register if any occur |
+
+---
+
+*Document maintained by the Product Manager. Last updated: May 26, 2026.*

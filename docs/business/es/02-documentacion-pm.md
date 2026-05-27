@@ -1,5 +1,5 @@
 # Noetia — Documentación de Project Management
-**Versión 1.0 | Mayo 2026**
+**Versión 1.1 | Mayo 2026**
 
 ---
 
@@ -17,11 +17,12 @@
 
 ### Objetivos del Proyecto
 
-1. Diseñar, construir y lanzar una plataforma de lectura multimodal lista para producción para audiencias hispanohablantes
+1. Diseñar, construir y lanzar una plataforma de lectura multimodal con arquitectura independiente del idioma — español como mercado de lanzamiento, inglés desde el Año 2, hoja de ruta multilingüe posterior
 2. Entregar sincronización texto-audio frase por frase en web y móvil
 3. Construir un motor de monetización (suscripciones + tokens) capaz de procesar pagos reales vía Stripe
 4. Lanzar una capa social (Clubes, compartir fragmentos, generación de tarjetas de citas) que cree bucles de retención de usuarios
 5. Desplegar en infraestructura de producción con CI/CD, monitoreo y backups automatizados
+6. Establecer un marco de contenido y licencias que cubra las vías de dominio público, autores directos y pipeline editorial
 
 ### Criterios de Éxito
 
@@ -61,6 +62,9 @@
 - Priorizó la funcionalidad de Clubes en Q4 a pesar del riesgo de alcance — identificó correctamente que es el principal motor de retención
 - Mantuvo las estadísticas de lectura como bucle de engagement inspirado en Duolingo (racha + metas semanales)
 - Definió la jerarquía de 3 prioridades: Experiencia del lector > Experiencia del autor > Biblioteca gratuita
+- Eligió arquitectura independiente del idioma desde el inicio en lugar de solo español — el i18n (EN/ES) se lanzó en Q4; el catálogo y audiencia en inglés son Año 2, no Año 3
+- Eligió DRM suave (vinculación a cuenta + URLs firmadas) sobre Widevine/FairPlay completo — suficiente a la escala actual del catálogo, evita la carga de certificación antes de firmar acuerdos editoriales
+- Eligió el modelo directo con autores para el catálogo del Año 1 (no exclusivo, auto-certificado, 45% de regalía) mientras se persigue el acercamiento editorial en paralelo en lugar de esperar acuerdos editoriales antes de lanzar contenido de pago
 
 ---
 
@@ -344,4 +348,139 @@ Una historia está **terminada** cuando:
 
 ---
 
-*Documento mantenido por el Product Manager. Última actualización: 25 de mayo de 2026.*
+---
+
+## 8. Hoja de Ruta Post-Lanzamiento
+
+La fase de construcción de 12 meses finalizó con el lanzamiento beta en mayo de 2026. Las siguientes fases rigen el desarrollo de producto y negocio post-lanzamiento.
+
+### Fase 1 — Beta (Mayo–Agosto 2026)
+
+**Objetivo:** Validar el product-market fit, recopilar datos de churn, incorporar primeros autores.
+
+| Área | Acciones |
+|------|---------|
+| Producto | Monitorear duración de sesión de lectura, retención de racha, engagement en clubes — identificar puntos de abandono |
+| Crecimiento | Activar lista de espera de 500 usuarios vía códigos de invitación; incorporar 5–10 autores |
+| Contenido | Mantener 38+ títulos en español de dominio público; iniciar ingestión de dominio público en inglés |
+| Licencias | Redactar plantilla de Acuerdo de Autor; establecer flujo de subida con auto-certificación |
+| Métricas | Baseline de NPS, retención D1/D7/D30, tasa de churn, conversión de gratuito a pago |
+
+**Criterios de salida exitosa:** ≥ 200 suscriptores de pago, ≥ 3 autores activos, churn ≤ 7%/mes.
+
+---
+
+### Fase 2 — Crecimiento (Septiembre 2026–Febrero 2027)
+
+**Objetivo:** Lanzamiento en App Store, catálogo en inglés, escalar a 2,000 suscriptores.
+
+| Área | Acciones |
+|------|---------|
+| Producto | Lanzamiento en App Store + Google Play; catálogo de dominio público en inglés en vivo; pruebas A/B del flujo de onboarding |
+| Crecimiento | Estrategia de contenido TikTok/Instagram; programa de referidos (3 amigos → 1 token); programa de alianzas con autores (10 en español + 5 en inglés) |
+| Contenido | Catálogo inglés de dominio público: 40+ títulos vía pipeline Gutenberg + LibriVox |
+| Licencias | Iniciar acercamiento a editoriales (primeras reuniones formales Q4 2026); contratar abogado de PI para el Acuerdo de Licencia Editorial |
+| Métricas | MRR, ARR, CAC combinado por canal, número de autores, número de títulos de pago |
+
+**Criterios de salida exitosa:** 2,000 suscriptores de pago, 25 autores activos, 75+ títulos de pago, calificación en App Store ≥ 4.5.
+
+---
+
+### Fase 3 — Escala (Marzo 2027+)
+
+**Objetivo:** Acuerdos de catálogos editoriales, canal B2B, entrada al mercado portugués.
+
+| Área | Acciones |
+|------|---------|
+| Producto | Capacidad de DRM completo (Widevine/FairPlay) — requerido antes de acuerdos editoriales importantes |
+| Crecimiento | Patrocinios de podcasts/newsletters; bienestar corporativo B2B; licencias universitarias |
+| Contenido | Primeros acuerdos de catálogos editoriales (español + inglés); 250+ títulos de pago |
+| Licencias | Acuerdos de Licencia Editorial firmados; negociación de derechos por territorio |
+| Expansión | Entrada al mercado portugués (Brasil); UI y catálogo localizados |
+
+---
+
+## 9. Gobernanza de Contenido y Licencias
+
+### Autoridad de Decisión de Contenido
+
+| Decisión | Responsable | Aprobación Requerida |
+|----------|------------|---------------------|
+| Añadir título de dominio público | Dev Backend | Ninguna — sigue el script de ingestión |
+| Invitar nuevo autor | PM | Aprobación del PM según criterios de autor |
+| Retirar título de autor (DMCA) | PM + Backend | Retiro inmediato; documentar incidente |
+| Firmar acuerdo editorial | PM | Revisión legal + aprobación del fundador |
+| Cambiar distribución de regalías | PM | Aprobación del fundador |
+| Activar DRM completo | PM + Backend + DevOps | Aprobación del fundador |
+
+### Proceso de Incorporación de Autores
+
+1. El autor aplica → PM revisa según criterios (audiencia ≥1K, categoría elegible)
+2. PM emite código de subida → el autor recibe email de onboarding con el Acuerdo de Autor
+3. El autor auto-certifica la titularidad de derechos en el momento de la subida
+4. Dev Backend revisa la subida por completitud (audio listo para sincronización, metadatos, portada)
+5. El título se publica → el autor accede al panel de autor (ganancias, fragmentos, estadísticas de lectores)
+
+### Proceso de Retiro de Contenido
+
+1. Se recibe queja DMCA o disputa de derechos → título retirado inmediatamente (< 4 horas)
+2. PM notifica al autor dentro de las 24 horas
+3. Si la disputa se resuelve: título restaurado; si no: título eliminado permanentemente
+4. Todos los retiros documentados en el Registro de Riesgos (Sección 6)
+
+### Criterios para Acuerdos Editoriales (Año 2+)
+
+Antes de firmar cualquier acuerdo editorial:
+- [ ] El abogado de PI ha revisado y aprobado la plantilla del Acuerdo de Licencia Editorial
+- [ ] La editorial ha confirmado titularidad de derechos de texto Y audiolibro/digital para cada título
+- [ ] Distribución de ingresos acordada: 50% editorial (incluyendo parte del autor) / 50% Noetia
+- [ ] Alcance territorial definido en el acuerdo
+- [ ] Requisitos de DRM confirmados — actualizar a Widevine/FairPlay si es necesario antes de firmar
+
+---
+
+## 10. KPIs Post-Lanzamiento
+
+### KPIs de Crecimiento
+
+| KPI | Objetivo (Mes 3) | Objetivo (Mes 12) | Notas |
+|-----|-----------------|------------------|-------|
+| Suscriptores de pago | 200 | 2,000 | Métrica de crecimiento principal |
+| Churn mensual | ≤ 7% | ≤ 5% | Debe disminuir al profundizarse el engagement en clubes |
+| MRR | $2,040 | $20,400 | Basado en ARPU combinado $10.20 |
+| CAC combinado | — | $15–25 | Seguir por canal; orgánico dominante en Año 1 |
+| Ratio LTV:CAC | — | ≥ 7:1 | Validar contra datos reales de retención |
+
+### KPIs de Contenido
+
+| KPI | Objetivo (Mes 6) | Objetivo (Mes 12) | Notas |
+|-----|-----------------|------------------|-------|
+| Autores activos | 10 | 50 | Calidad sobre cantidad |
+| Títulos de pago en vivo | 20 | 75+ | Español + inglés combinado |
+| Títulos de dominio público en inglés | 20 | 40+ | Pipeline Gutenberg + LibriVox |
+| Tasa de compra de tokens | — | 15% | % de suscriptores que compran ≥1 paquete/año |
+
+### KPIs de Engagement
+
+| KPI | Objetivo | Notas |
+|-----|--------|-------|
+| Retención D1 | ≥ 60% | % de nuevos usuarios que leen de nuevo el Día 1 |
+| Retención D7 | ≥ 35% | Mide la formación de hábito en la primera semana |
+| Retención D30 | ≥ 25% | Mide la adhesión al producto |
+| Duración promedio de sesión | ≥ 15 min | Seguida vía sistema de heartbeat |
+| Usuarios con racha activa | ≥ 40% | % de MAU con racha ≥ 3 días |
+| Clubes con ≥ 5 miembros | ≥ 10 | Indicador de salud de la comunidad |
+
+### KPIs de Licencias
+
+| KPI | Objetivo (Mes 12) | Notas |
+|-----|------------------|-------|
+| Acuerdos de Autor firmados | 50 | Licencia no exclusiva formal archivada |
+| Conversaciones editoriales activas | 3+ | Acercamiento formal iniciado |
+| Acuerdos editoriales firmados | 1 (meta ambiciosa) | Primer acuerdo previsto Q4 2026 |
+| Abogado de PI contratado | Mes 6 | Antes de cualquier negociación editorial |
+| Incidentes DMCA | 0 | Registrar en Registro de Riesgos si ocurren |
+
+---
+
+*Documento mantenido por el Product Manager. Última actualización: 26 de mayo de 2026.*

@@ -61,7 +61,7 @@ Author-first (within their tier) means:
 
 ### The free library — beta acquisition tool only
 
-The current catalog of public-domain Spanish-language books (Gutenberg, Wikisource, LibriVox) exists for one reason: to give beta users a complete reading experience from day one, before the author catalog is built.
+The current catalog of public-domain books (Spanish: Gutenberg, Wikisource, LibriVox; English: Gutenberg, LibriVox — in active development) exists for one reason: to give beta users a complete reading experience from day one, before the author catalog is built.
 
 **The free library is not the business.** After 6–12 months of operation, new free-library titles will not be added. The slot in the UI currently occupied by "Biblioteca gratuita" will be replaced by curated author content. All engineering decisions about the free library should be made with this sunset in mind — good enough for beta, not worth over-investing in.
 
@@ -70,11 +70,11 @@ The current catalog of public-domain Spanish-language books (Gutenberg, Wikisour
 ## Target Users
 
 ### Tier 1 — Readers ("Insight Creators")
-- Age: 30–70
-- Geography: Spanish-speaking users (Latin America, US Hispanic market, Spain)
-- Profile: Professionals, learners, and growth-oriented individuals active on LinkedIn, Instagram, etc.
+- Age: 18–45
+- Geography: Spanish-speaking users at launch (Latin America, US Hispanic market, Spain); English-speaking users from Year 2 (US, UK, Canada, Australia); multilingual roadmap thereafter
+- Profile: Professionals, learners, and growth-oriented individuals active on TikTok, LinkedIn, Instagram
 - Daily behavior: opens the app to continue a book, saves fragments, shares quotes
-- Revenue: monthly subscription ($9.99–$14.99/mo) or per-title purchase
+- Revenue: monthly subscription or per-title token purchase
 
 ### Tier 2 — Authors, Publishers, and Companies
 - Independent authors, publishing houses, content creators, corporate training teams
@@ -271,7 +271,7 @@ See [CLAUDE.md — Testing](../CLAUDE.md#testing) for naming conventions and run
 | Area | Risk | Mitigation |
 |------|------|------------|
 | Content supply | Author catalog grows too slowly; free library dominates too long | Prioritize author onboarding; set hard deadline to shift hero placement |
-| Market | Competition from Kindle/Audible, Spotify, Apple Books | Focus on social-sharing differentiator; Spanish-language niche |
+| Market | Competition from Kindle/Audible, Spotify, Apple Books | Focus on phrase-sync differentiator + social layer; language-agnostic architecture serves Spanish and English |
 | Technical | Phrase-level sync quality for author-uploaded content | SRT tooling + editorial review checklist includes sync validation |
 | Business | Low author upload rate; content quality below expectations | Clear upload guide, fast review turnaround, dedicated autores@noetia.app inbox |
 | Engagement | Readers use free library but don't convert to paid | Gate Modo Escucha Activa and Fragment Sharing on subscription after beta |
@@ -280,23 +280,26 @@ See [CLAUDE.md — Testing](../CLAUDE.md#testing) for naming conventions and run
 
 ## Growth Strategy
 
-### Phase 1 — Beta (current)
-- Free library as the engagement hook for first users
-- Simultaneously: sign first 10–20 authors/publishers
+### Phase 1 — Beta (May–Aug 2026, current)
+- Spanish public-domain library as the engagement hook for first users
+- English public-domain catalog ingestion running in parallel
+- Simultaneously: onboard first 5–10 authors via invite codes
 - Prove the read → fragment → share loop drives organic referrals
 - Collect data: which book categories convert best to subscriptions
 
-### Phase 2 — Author Catalog Launch
-- Author content replaces free library as the primary hero in Colección General
+### Phase 2 — Growth (Sep 2026–Feb 2027)
+- App Store + Google Play launch
+- English public-domain catalog live alongside app stores
+- Author content replaces free library as the primary hero
 - Free library demoted to a secondary "Clásicos gratuitos" section
 - Gate advanced features (Modo Escucha Activa, direct social publishing) behind subscription
-- Revenue share activated for authors
+- Revenue share activated for authors; 25+ authors, 75+ paid titles
 
-### Phase 3 — Scale
-- English market entry
-- Publisher partnerships (Penguin Random House Latam, Planeta, etc.)
+### Phase 3 — Scale (Mar 2027+)
+- Publisher partnerships (Penguin Random House Latam, Planeta, FCE, etc.)
 - Institutional deals (corporate training, universities)
-- AI-generated sync for author books that don't have SRT files
+- Portuguese-language market entry (Brazil)
+- AI-generated sync for author books that don't have audio files
 
 ---
 
@@ -307,9 +310,9 @@ See [CLAUDE.md — Testing](../CLAUDE.md#testing) for naming conventions and run
 | 0 | Planning | PRD, legal review, design system |
 | 1 | Build | Auth, reader engine, library |
 | 2 | Social Layer | Fragments, image gen, sharing |
-| 3 | Beta Launch | Free library as hook; first author onboarding |
-| 4 | Author Catalog | Author content as hero; subscription gate |
-| 5 | Scale | English market, publisher partnerships, AI sync |
+| 3 | Beta Launch | Spanish + English free library; first author onboarding |
+| 4 | Growth | App Store launch; author catalog as hero; English audience |
+| 5 | Scale | Publisher partnerships; Portuguese market; AI sync |
 
 ---
 
