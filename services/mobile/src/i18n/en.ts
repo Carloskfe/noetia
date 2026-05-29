@@ -67,6 +67,8 @@ export const en = {
     errorUnavailable: 'Text unavailable.',
     errorBook: 'Could not load the book.',
     audioMode: 'Active listening mode',
+    selectionMode: 'Select text',
+    selectionModeHint: 'Long-press any phrase to copy text',
   },
   fragments: {
     title: 'Fragments',

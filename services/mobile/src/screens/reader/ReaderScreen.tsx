@@ -50,6 +50,7 @@ export function ReaderScreen() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const { t } = useTranslation();
   const [audioMode, setAudioMode] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
   const [savedIndex, setSavedIndex] = useState(0);
   const [selectedPhrase, setSelectedPhrase] = useState<SyncPhrase | null>(null);
   const [savingFragment, setSavingFragment]   = useState(false);
@@ -76,12 +77,26 @@ export function ReaderScreen() {
     listRef.current?.scrollToIndex({ index: audio.activePhraseIndex, animated: true, viewPosition: 0.4 });
   }, [audioMode, audio.isPlaying, audio.activePhraseIndex, phrases.length]);
 
+  // Header options — re-runs whenever selectionMode toggles
   useEffect(() => {
     navigation.setOptions({
       title: bookTitle,
-      headerRight: () => <DownloadButton bookId={bookId} />,
+      headerRight: () => (
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={() => setSelectionMode((prev) => !prev)}
+            style={[styles.headerBtn, selectionMode && styles.headerBtnActive]}
+            accessibilityLabel={t.reader.selectionMode}
+          >
+            <Text style={[styles.headerBtnText, selectionMode && styles.headerBtnTextActive]}>✎</Text>
+          </TouchableOpacity>
+          <DownloadButton bookId={bookId} />
+        </View>
+      ),
     });
+  }, [bookId, bookTitle, navigation, selectionMode, t]);
 
+  useEffect(() => {
     async function loadContent() {
       // Check offline cache first
       const cached = await loadChapter(bookId, 0);
@@ -120,7 +135,7 @@ export function ReaderScreen() {
     }
 
     loadContent().catch(() => setError(t.reader.errorBook)).finally(() => setLoading(false));
-  }, [bookId, bookTitle, navigation]);
+  }, [bookId]);
 
   useEffect(() => {
     if (savedIndex > 0 && phrases.length > 0 && !audioMode) {
@@ -194,6 +209,15 @@ export function ReaderScreen() {
     const isHeading = item.type === 'heading';
     const isSaved = savedPhraseIds.current.has(item.index);
     const isActive = audioMode && audio.activePhraseIndex === item.index;
+    const textStyle = [
+      styles.phrase,
+      isHeading && styles.heading,
+      isSaved && styles.saved,
+      isActive && styles.active,
+    ];
+    if (selectionMode) {
+      return <Text selectable style={textStyle}>{item.text}</Text>;
+    }
     return (
       <TouchableOpacity
         activeOpacity={0.7}
@@ -201,27 +225,25 @@ export function ReaderScreen() {
         onLongPress={() => { if (!isHeading) setSelectedPhrase(item); }}
         delayLongPress={400}
       >
-        <Text style={[
-          styles.phrase,
-          isHeading && styles.heading,
-          isSaved && styles.saved,
-          isActive && styles.active,
-        ]}>
-          {item.text}
-        </Text>
+        <Text style={textStyle}>{item.text}</Text>
       </TouchableOpacity>
     );
-  }, [audioMode, audio.activePhraseIndex, audio.isLoaded, handlePhrasePress]);
+  }, [audioMode, audio.activePhraseIndex, audio.isLoaded, handlePhrasePress, selectionMode]);
 
-  const renderParagraph = useCallback(({ item, index }: { item: string; index: number }) => (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onLongPress={() => setSelectedPhrase({ index, text: item, startTime: 0, endTime: 0, type: 'text' })}
-      delayLongPress={400}
-    >
-      <Text style={[styles.phrase, styles.gap]}>{item}</Text>
-    </TouchableOpacity>
-  ), []);
+  const renderParagraph = useCallback(({ item, index }: { item: string; index: number }) => {
+    if (selectionMode) {
+      return <Text selectable style={[styles.phrase, styles.gap]}>{item}</Text>;
+    }
+    return (
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onLongPress={() => setSelectedPhrase({ index, text: item, startTime: 0, endTime: 0, type: 'text' })}
+        delayLongPress={400}
+      >
+        <Text style={[styles.phrase, styles.gap]}>{item}</Text>
+      </TouchableOpacity>
+    );
+  }, [selectionMode]);
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#4F46E5" /></View>;
 
@@ -238,6 +260,11 @@ export function ReaderScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {selectionMode && (
+        <View style={styles.selectionBanner}>
+          <Text style={styles.selectionBannerText}>✎  {t.reader.selectionModeHint}</Text>
+        </View>
+      )}
       {phrases.length > 0 ? (
         <FlatList
           ref={listRef}
@@ -388,6 +415,13 @@ const styles = StyleSheet.create({
   backBtnText:       { color: '#4F46E5', fontSize: 16, fontWeight: '600' },
   fab:               { position: 'absolute', bottom: 24, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: '#0D1B2A', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
   fabText:           { fontSize: 24 },
+  headerRight:       { flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 4 },
+  headerBtn:         { padding: 7, borderRadius: 8 },
+  headerBtnActive:   { backgroundColor: '#4F46E5' },
+  headerBtnText:     { fontSize: 18, color: '#374151' },
+  headerBtnTextActive: { color: '#fff' },
+  selectionBanner:   { backgroundColor: '#EEF2FF', paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#C7D2FE' },
+  selectionBannerText: { fontSize: 13, color: '#4338CA', textAlign: 'center' },
   overlay:           { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet:             { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
   handle:            { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },

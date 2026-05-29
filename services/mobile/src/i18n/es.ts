@@ -69,6 +69,8 @@ export const es: MobileTranslations = {
     errorUnavailable: 'Texto no disponible.',
     errorBook: 'No se pudo cargar el libro.',
     audioMode: 'Modo escucha activa',
+    selectionMode: 'Seleccionar texto',
+    selectionModeHint: 'Mantén presionado cualquier frase para copiar',
   },
   fragments: {
     title: 'Fragmentos',
