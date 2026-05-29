@@ -646,6 +646,7 @@ docker compose exec api npm run migration:run
 | 053 | `AddPrivacySettings` | shareReadingProgress/Library/Profile/Fragments booleans on users |
 | 054 | `CreateReadingStats` | reading_stats table — daily minutesRead + phrasesRead per user, unique (userId, date) |
 | 055 | `AddReadingGoals` | goalWeeklyMinutes + goalWeeklyBooks nullable integers on users |
+| 056 | `AddSyncCoverage` | syncCoverage (float), syncExceptions (int), syncAvgConfidence (float) on sync_maps — persists Whisper alignment quality |
 
 ---
 
