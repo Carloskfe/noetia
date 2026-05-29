@@ -41,6 +41,18 @@ export class SyncMap {
   @Column({ type: 'varchar', default: 'auto' })
   syncSource: SyncSource;
 
+  /** Fraction of text phrases successfully aligned: aligned / total (0–1). NULL means not yet computed. */
+  @Column({ type: 'float', nullable: true, default: null })
+  syncCoverage: number | null;
+
+  /** Raw count of phrases marked exception (not found in audio). NULL means not yet computed. */
+  @Column({ type: 'integer', nullable: true, default: null })
+  syncExceptions: number | null;
+
+  /** Average confidence score of aligned phrases (0–1). NULL means not yet computed. */
+  @Column({ type: 'float', nullable: true, default: null })
+  syncAvgConfidence: number | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

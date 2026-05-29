@@ -76,9 +76,14 @@ export class WhisperSyncService {
     // 5. Upsert the sync map
     const existing = await this.syncMapRepo.findOneBy({ bookId: book.id });
 
+    const syncCoverage = stats.total > 0 ? stats.aligned / stats.total : 0;
+
     if (existing) {
       existing.phrases = aligned;
       existing.syncSource = 'whisper';
+      existing.syncCoverage = syncCoverage;
+      existing.syncExceptions = stats.exceptions;
+      existing.syncAvgConfidence = stats.avgConfidence;
       await this.syncMapRepo.save(existing);
     } else {
       await this.syncMapRepo.save(
@@ -86,6 +91,9 @@ export class WhisperSyncService {
           bookId: book.id,
           phrases: aligned,
           syncSource: 'whisper',
+          syncCoverage,
+          syncExceptions: stats.exceptions,
+          syncAvgConfidence: stats.avgConfidence,
         }),
       );
     }

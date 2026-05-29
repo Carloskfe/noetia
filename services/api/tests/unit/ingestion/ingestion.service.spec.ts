@@ -118,7 +118,7 @@ describe('IngestionService', () => {
 
       await service.ingestOne(wikisourceEntry);
 
-      expect(mockWikisourceFetcher.fetch).toHaveBeenCalledWith('Wikisource Book');
+      expect(mockWikisourceFetcher.fetch).toHaveBeenCalledWith('Wikisource Book', 'es');
       expect(mockGutenbergFetcher.fetch).not.toHaveBeenCalled();
     });
 
@@ -307,7 +307,7 @@ describe('IngestionService', () => {
 
       await service.resyncSyncMap(wikisourceEntry, book);
 
-      expect(mockWikisourceFetcher.fetch).toHaveBeenCalledWith('Wikisource Book');
+      expect(mockWikisourceFetcher.fetch).toHaveBeenCalledWith('Wikisource Book', 'es');
       expect(mockSyncMapRepo.delete).toHaveBeenCalledWith({ bookId: 'ws-1' });
       expect(mockSyncMapRepo.save).toHaveBeenCalled();
     });
@@ -527,7 +527,7 @@ describe('IngestionService', () => {
 
       await service.reIngestText('Lazarillo de Tormes');
 
-      expect(mockWikisourceFetcher.fetch).toHaveBeenCalledWith('El Lazarillo de Tormes');
+      expect(mockWikisourceFetcher.fetch).toHaveBeenCalledWith('El Lazarillo de Tormes', 'es');
       expect(mockMinioUploader.upload).toHaveBeenCalledWith('lazarillo-1.txt', 'Nuevo texto limpio del capítulo.');
     });
 

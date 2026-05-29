@@ -312,4 +312,61 @@ describe('WikisourceFetcherService', () => {
       );
     });
   });
+
+  describe('lang parameter — English Wikisource', () => {
+    it('fetch() uses en.wikisource.org when lang="en"', async () => {
+      mockFetch
+        .mockResolvedValueOnce(LINKS_RESPONSE('Bible (King James)/Genesis', []))
+        .mockResolvedValueOnce(HTML_RESPONSE('<p>In the beginning God created the heaven and the earth.</p>'));
+
+      const result = await service.fetch('Bible (King James)/Genesis', 'en');
+
+      expect(result).toContain('In the beginning God created');
+      const [linksCall, pageCall] = mockFetch.mock.calls;
+      expect(linksCall[0]).toContain('en.wikisource.org');
+      expect(pageCall[0]).toContain('en.wikisource.org');
+    });
+
+    it('fetch() defaults to es.wikisource.org when lang is omitted', async () => {
+      mockFetch
+        .mockResolvedValueOnce(LINKS_RESPONSE('Biblia Reina-Valera 1909/Génesis', []))
+        .mockResolvedValueOnce(HTML_RESPONSE('<p>En el principio creó Dios los cielos y la tierra.</p>'));
+
+      await service.fetch('Biblia Reina-Valera 1909/Génesis');
+
+      const [linksCall] = mockFetch.mock.calls;
+      expect(linksCall[0]).toContain('es.wikisource.org');
+    });
+
+    it('fetchMultiple() uses en.wikisource.org when lang="en"', async () => {
+      mockFetch
+        .mockResolvedValueOnce(HTML_RESPONSE('<p>Blessed is the man that walketh not in the counsel of the ungodly.</p>'))
+        .mockResolvedValueOnce(HTML_RESPONSE('<p>The heavens declare the glory of God.</p>'));
+
+      const result = await service.fetchMultiple(['Bible (King James)/Psalm 1', 'Bible (King James)/Psalm 19'], 'en');
+
+      expect(result).toContain('Blessed is the man');
+      expect(result).toContain('heavens declare');
+      const [call1, call2] = mockFetch.mock.calls;
+      expect(call1[0]).toContain('en.wikisource.org');
+      expect(call2[0]).toContain('en.wikisource.org');
+    });
+
+    it('fetch() with subpages uses en.wikisource.org for all subpage requests', async () => {
+      const TITLE = 'Bible (King James)/Matthew';
+      // Text must be > 100 chars to avoid triggering the fallback fetch
+      const ch1 = '<p>' + 'The book of the generation of Jesus Christ. '.repeat(4) + '</p>';
+      const ch2 = '<p>' + 'Now when Jesus was born in Bethlehem of Judaea. '.repeat(4) + '</p>';
+      mockFetch
+        .mockResolvedValueOnce(LINKS_RESPONSE(TITLE, [`${TITLE}/1`, `${TITLE}/2`]))
+        .mockResolvedValueOnce(HTML_RESPONSE(ch1))
+        .mockResolvedValueOnce(HTML_RESPONSE(ch2));
+
+      await service.fetch(TITLE, 'en');
+
+      for (const [url] of mockFetch.mock.calls) {
+        expect(url).toContain('en.wikisource.org');
+      }
+    });
+  });
 });

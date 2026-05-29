@@ -12,12 +12,12 @@ export class WikisourceFetcherService {
    * Used for collected works whose individual poems/stories exist as separate pages
    * but have no shared index page (e.g. Rafael Pombo's fables).
    */
-  async fetchMultiple(pageTitles: string[]): Promise<string> {
+  async fetchMultiple(pageTitles: string[], lang = 'es'): Promise<string> {
     const parts: string[] = [];
     for (const title of pageTitles) {
       await this.sleep(400);
       try {
-        const text = await this.fetchPageHtml(title);
+        const text = await this.fetchPageHtml(title, lang);
         if (text.trim().length > 20) {
           const shortTitle = title.split('/').pop() ?? title;
           parts.push(`\n\n##HEADING## ${shortTitle}\n\n${text}`);
@@ -37,25 +37,25 @@ export class WikisourceFetcherService {
    * and concatenate every chapter; if none exist we fall back to the single
    * page. This avoids returning the raw index metadata instead of book text.
    */
-  async fetch(pageTitle: string): Promise<string> {
-    const subpages = await this.listSubpages(pageTitle);
+  async fetch(pageTitle: string, lang = 'es'): Promise<string> {
+    const subpages = await this.listSubpages(pageTitle, lang);
 
     if (subpages.length === 0) {
-      return this.fetchPageHtml(pageTitle);
+      return this.fetchPageHtml(pageTitle, lang);
     }
 
     const parts: string[] = [];
     for (const sub of subpages) {
       await this.sleep(400);
       try {
-        const text = await this.fetchPageHtml(sub);
+        const text = await this.fetchPageHtml(sub, lang);
         if (text.trim().length > 100) parts.push(text);
       } catch {
         // skip chapters that can't be fetched
       }
     }
 
-    return parts.length > 0 ? parts.join('\n\n') : this.fetchPageHtml(pageTitle);
+    return parts.length > 0 ? parts.join('\n\n') : this.fetchPageHtml(pageTitle, lang);
   }
 
   private readonly headers = {
@@ -66,10 +66,10 @@ export class WikisourceFetcherService {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  private async listSubpages(pageTitle: string): Promise<string[]> {
+  private async listSubpages(pageTitle: string, lang = 'es'): Promise<string[]> {
     const encoded = encodeURIComponent(pageTitle);
     const url =
-      `https://es.wikisource.org/w/api.php` +
+      `https://${lang}.wikisource.org/w/api.php` +
       `?action=parse&page=${encoded}&prop=links&format=json&formatversion=2`;
     const res = await globalThis.fetch(url, { headers: this.headers });
     if (!res.ok) return [];
@@ -80,7 +80,6 @@ export class WikisourceFetcherService {
       .sort((a, b) => {
         const segA = a.split('/').pop() ?? '';
         const segB = b.split('/').pop() ?? '';
-        // If both segments end with a number (e.g. "Capítulo 10" or "10"), sort numerically
         const mA = /(\d+)\s*$/.exec(segA);
         const mB = /(\d+)\s*$/.exec(segB);
         if (mA && mB) {
@@ -88,14 +87,14 @@ export class WikisourceFetcherService {
           const prefB = segB.slice(0, segB.length - mB[0].length);
           if (prefA === prefB) return parseInt(mA[1], 10) - parseInt(mB[1], 10);
         }
-        return a.localeCompare(b, 'es');
+        return a.localeCompare(b, lang);
       });
   }
 
-  private async fetchPageHtml(pageTitle: string): Promise<string> {
+  private async fetchPageHtml(pageTitle: string, lang = 'es'): Promise<string> {
     const encoded = encodeURIComponent(pageTitle);
     const url =
-      `https://es.wikisource.org/w/api.php` +
+      `https://${lang}.wikisource.org/w/api.php` +
       `?action=parse&page=${encoded}&prop=text&format=json&formatversion=2`;
     const res = await globalThis.fetch(url, { headers: this.headers });
     if (!res.ok) {

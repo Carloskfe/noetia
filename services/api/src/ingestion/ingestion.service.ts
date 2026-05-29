@@ -98,6 +98,7 @@ export class IngestionService {
   }
 
   private async fetchText(entry: CatalogueEntry): Promise<string> {
+    const lang = entry.language ?? 'es';
     return entry.source === 'gutenberg'
       ? this.gutenbergFetcher.fetch(
           entry.gutenbergId!,
@@ -105,8 +106,8 @@ export class IngestionService {
           entry.narrativeEndPattern,
         )
       : entry.wikisourceTitles
-        ? this.wikisourceFetcher.fetchMultiple(entry.wikisourceTitles)
-        : this.wikisourceFetcher.fetch(entry.wikisourceTitle!);
+        ? this.wikisourceFetcher.fetchMultiple(entry.wikisourceTitles, lang)
+        : this.wikisourceFetcher.fetch(entry.wikisourceTitle!, lang);
   }
 
   // ── Audio ingestion ────────────────────────────────────────────────────────
@@ -202,7 +203,7 @@ export class IngestionService {
   }
 
   async resyncSyncMap(entry: CatalogueEntry, book: Book): Promise<void> {
-    const text = await this.wikisourceFetcher.fetch(entry.wikisourceTitle!);
+    const text = await this.wikisourceFetcher.fetch(entry.wikisourceTitle!, entry.language ?? 'es');
     const phrases = this.phraseSplitter.split(text);
     await this.syncMapRepo.delete({ bookId: book.id });
     const syncMap = this.syncMapRepo.create({ bookId: book.id, phrases });
