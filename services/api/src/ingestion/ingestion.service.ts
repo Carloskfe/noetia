@@ -99,15 +99,30 @@ export class IngestionService {
 
   private async fetchText(entry: CatalogueEntry): Promise<string> {
     const lang = entry.language ?? 'es';
-    return entry.source === 'gutenberg'
-      ? this.gutenbergFetcher.fetch(
-          entry.gutenbergId!,
-          entry.narrativeStartPattern,
-          entry.narrativeEndPattern,
-        )
-      : entry.wikisourceTitles
-        ? this.wikisourceFetcher.fetchMultiple(entry.wikisourceTitles, lang)
-        : this.wikisourceFetcher.fetch(entry.wikisourceTitle!, lang);
+    if (entry.source === 'gutenberg') {
+      return this.gutenbergFetcher.fetch(
+        entry.gutenbergId!,
+        entry.narrativeStartPattern,
+        entry.narrativeEndPattern,
+      );
+    }
+    const raw = entry.wikisourceTitles
+      ? await this.wikisourceFetcher.fetchMultiple(entry.wikisourceTitles, lang)
+      : await this.wikisourceFetcher.fetch(entry.wikisourceTitle!, lang);
+    return this.applyNarrativeTrim(raw, entry.narrativeStartPattern, entry.narrativeEndPattern);
+  }
+
+  private applyNarrativeTrim(text: string, startPattern?: string, endPattern?: string): string {
+    let result = text;
+    if (startPattern) {
+      const idx = result.indexOf(startPattern);
+      if (idx >= 0) result = result.slice(idx);
+    }
+    if (endPattern) {
+      const idx = result.indexOf(endPattern);
+      if (idx >= 0) result = result.slice(0, idx + endPattern.length);
+    }
+    return result.trim();
   }
 
   // ── Audio ingestion ────────────────────────────────────────────────────────

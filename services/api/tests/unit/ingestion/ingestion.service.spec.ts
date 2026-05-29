@@ -514,7 +514,11 @@ describe('IngestionService', () => {
 
       await service.reIngestText('Niebla');
 
-      expect(mockGutenbergFetcher.fetch).toHaveBeenCalledWith(49836, undefined, undefined);
+      expect(mockGutenbergFetcher.fetch).toHaveBeenCalledWith(
+        49836,
+        '\nPRÓLOGO\n',
+        '—¡Y luego dirán que no matan las penas!',
+      );
       expect(mockMinioUploader.upload).toHaveBeenCalledWith('niebla-1.txt', 'New clean narrative text.');
     });
 
@@ -529,6 +533,38 @@ describe('IngestionService', () => {
 
       expect(mockWikisourceFetcher.fetch).toHaveBeenCalledWith('El Lazarillo de Tormes', 'es');
       expect(mockMinioUploader.upload).toHaveBeenCalledWith('lazarillo-1.txt', 'Nuevo texto limpio del capítulo.');
+    });
+
+    it('strips preamble and appendix from Wikisource text when narrativeStartPattern is set', async () => {
+      // ingestOne path — wikisource entry with a start pattern
+      const entryWithPattern: CatalogueEntry = {
+        title: 'Wikisource Book',
+        author: 'Wikisource Author',
+        description: 'A wikisource book.',
+        source: 'wikisource',
+        wikisourceTitle: 'Wikisource Book',
+        librivoxAudioUrl: 'https://librivox.org/wikisource-book/',
+        narrativeStartPattern: 'CAPÍTULO I',
+        narrativeEndPattern: 'FIN',
+      };
+      const savedBook = { id: 'ws-trim', textFileKey: null } as Book;
+      mockBookRepo.findOneBy.mockResolvedValue(null);
+      mockWikisourceFetcher.fetch.mockResolvedValue(
+        'Preamble text.\n\nCAPÍTULO I\n\nNarrative text here.\n\nFIN\n\nAppendix text.',
+      );
+      mockPhraseSplitter.split.mockReturnValue([]);
+      mockBookRepo.create.mockReturnValue(savedBook);
+      mockBookRepo.save.mockResolvedValue(savedBook);
+      mockMinioUploader.upload.mockResolvedValue(undefined);
+      mockSyncMapRepo.create.mockReturnValue({});
+      mockSyncMapRepo.save.mockResolvedValue({});
+
+      await service.ingestOne(entryWithPattern);
+
+      expect(mockMinioUploader.upload).toHaveBeenCalledWith(
+        'ws-trim.txt',
+        'CAPÍTULO I\n\nNarrative text here.\n\nFIN',
+      );
     });
 
     it('throws when the book is not in the catalogue', async () => {

@@ -105,6 +105,8 @@ export const CATALOGUE: CatalogueEntry[] = [
     source: 'gutenberg',
     gutenbergId: 49836,
     librivoxAudioUrl: 'https://librivox.org/niebla-by-miguel-de-unamuno/',
+    narrativeStartPattern: '\nPRÓLOGO\n',
+    narrativeEndPattern: '—¡Y luego dirán que no matan las penas!',
   },
   {
     title: 'El Gaucho Martín Fierro',
