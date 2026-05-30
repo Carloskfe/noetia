@@ -2,26 +2,26 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Noetia — Lee. Escucha. Comparte.',
+  title: 'Noetia — Where knowledge becomes visible',
   description:
-    'Sincroniza texto y audio de tus libros favoritos. Captura las ideas que más te cautivan y conviértelas en contenido visual para tus redes sociales — en segundos.',
+    'Lee, escucha, resalta y comparte. Noetia transforma lo que aprendes en una identidad intelectual visible — frase por frase.',
   openGraph: {
-    title: 'Noetia — Lee. Escucha. Comparte.',
-    description: 'La plataforma de lectura sincronizada con audio para lectores que crean contenido.',
+    title: 'Noetia — Where knowledge becomes visible',
+    description: 'La primera plataforma de Expresión del Conocimiento. Lee, escucha, resalta y comparte lo que te define.',
     type: 'website',
     locale: 'es_LA',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Noetia — Lee. Escucha. Comparte.',
-    description: 'La plataforma de lectura sincronizada con audio para lectores que crean contenido.',
+    title: 'Noetia — Where knowledge becomes visible',
+    description: 'La primera plataforma de Expresión del Conocimiento. Lee, escucha, resalta y comparte lo que te define.',
   },
 };
 
 const FEATURES = [
   {
-    title: 'Modo Escucha Activa',
-    desc: 'Lee y escucha al mismo tiempo. Cada frase se resalta en tiempo real mientras el audio la narra — nunca más pierdas el hilo.',
+    title: 'Absorbe',
+    desc: 'Lee y escucha a la vez, frase por frase. El texto y el audio se mueven juntos — lo que escuchas es exactamente lo que ves. Nunca más pierdas el hilo.',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-7 h-7" aria-hidden="true">
         <path d="M3 18v-6a9 9 0 0118 0v6" />
@@ -31,8 +31,8 @@ const FEATURES = [
     ),
   },
   {
-    title: 'Captura fragmentos',
-    desc: 'Selecciona el texto que más te impacta con un toque. Todos tus fragmentos en un solo lugar, organizados por libro.',
+    title: 'Captura',
+    desc: 'Un toque guarda el pasaje que te movió. Cada fragmento es una pieza de lo que piensas — organizado por libro, listo para ser expresado.',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-7 h-7" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
@@ -41,8 +41,8 @@ const FEATURES = [
     ),
   },
   {
-    title: 'Comparte en segundos',
-    desc: 'Convierte cualquier fragmento en una tarjeta visual lista para LinkedIn, Instagram o Pinterest — con tu estilo.',
+    title: 'Expresa',
+    desc: 'Convierte cualquier fragmento en contenido visual para LinkedIn, Instagram o Pinterest. Lo que compartiste hoy es parte de quién eres mañana.',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-7 h-7" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
@@ -68,16 +68,20 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="max-w-3xl mx-auto px-6 pt-16 pb-20 text-center">
+        <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-6">
+          Knowledge Expression Platform
+        </p>
         <h1 className="text-4xl sm:text-5xl font-bold leading-tight mb-6">
-          Lee. Escucha.<br />
+          Lo que lees te define.<br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
-            Comparte lo que más te gusta.
+            Noetia lo hace visible.
           </span>
         </h1>
 
         <p className="text-slate-300 text-lg leading-relaxed mb-10 max-w-xl mx-auto">
-          Noetia sincroniza texto y audio de tus libros favoritos. Tú capturas las ideas que más
-          te cautivan y Noetia las convierte en contenido visual para tus redes sociales — en segundos.
+          Noetia combina lectura, escucha activa, captura de ideas y expresión en una sola
+          plataforma. Lo que resaltas y compartes construye algo más que contenido:
+          construye tu identidad intelectual.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -97,10 +101,10 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section className="bg-white/5 border-t border-white/10" aria-label="Características">
+      <section className="bg-white/5 border-t border-white/10" aria-label="Cómo funciona">
         <div className="max-w-4xl mx-auto px-6 py-16">
           <p className="text-center text-slate-400 text-sm font-medium uppercase tracking-widest mb-10">
-            Qué hace Noetia diferente
+            Tres pasos. Una transformación.
           </p>
           <div className="grid sm:grid-cols-3 gap-8">
             {FEATURES.map((f) => (
@@ -116,6 +120,25 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Identity builder callout */}
+      <section className="border-t border-white/10" aria-label="Identidad intelectual">
+        <div className="max-w-4xl mx-auto px-6 py-14">
+          <div className="rounded-2xl bg-gradient-to-br from-indigo-900/60 to-blue-900/40 border border-indigo-500/20 px-8 py-10 sm:px-12 text-center">
+            <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest mb-4">
+              Lo que ocurre con el tiempo
+            </p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white leading-snug mb-4 max-w-2xl mx-auto">
+              No acumulas libros leídos.<br />Construyes quién eres.
+            </h2>
+            <p className="text-slate-300 text-base leading-relaxed max-w-xl mx-auto">
+              Cada fragmento que guardas y compartes es una pieza de tu identidad intelectual.
+              Con el tiempo, Noetia sabe qué leíste, qué te movió y qué compartiste.
+              El resultado no es una biblioteca. Es un mapa visible de lo que piensas y en qué crees.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Noetia Clubs banner */}
       <section className="border-t border-white/10" aria-label="Clubes de Lectura">
         <div className="max-w-4xl mx-auto px-6 py-14">
@@ -124,19 +147,20 @@ export default function LandingPage() {
               Noetia Clubs
             </p>
             <h2 className="text-2xl sm:text-3xl font-bold text-white leading-snug mb-3">
-              Para quienes quieren dejar de leer en soledad.
+              Las ideas se profundizan cuando se comparten.
             </h2>
             <p className="text-slate-300 text-base leading-relaxed mb-8 max-w-xl">
-              Lee, escucha, expande tus ideas. Los clubes de Noetia reúnen lectores
-              alrededor de un libro — con discusiones ancladas frase a frase, sesiones
-              en vivo sincronizadas y votaciones para elegir el próximo título juntos.
+              Los Clubes de Noetia no son grupos de chat sobre libros. Son comunidades donde
+              el conocimiento se construye colectivamente — con discusiones ancladas a la frase
+              exacta que las inspiró, sesiones en vivo sincronizadas y un historial compartido
+              de lo que el grupo leyó y pensó.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
               {[
                 { icon: '💬', label: 'Discusiones ancladas', desc: 'Cada comentario vive en la frase exacta que lo inspiró, no en el capítulo' },
                 { icon: '🎧', label: 'Escucha Juntos', desc: 'Sesiones en vivo donde todos escuchan la misma frase al mismo tiempo' },
-                { icon: '🗳️', label: 'Elijan juntos', desc: 'El grupo vota el próximo libro — democracia lectora' },
+                { icon: '🗳️', label: 'Elijan juntos', desc: 'El grupo vota el próximo libro — el conocimiento como decisión colectiva' },
               ].map(({ icon, label, desc }) => (
                 <div key={label} className="flex-1 flex gap-3 items-start bg-white/5 rounded-xl p-4">
                   <span className="text-2xl mt-0.5 shrink-0">{icon}</span>
@@ -166,12 +190,12 @@ export default function LandingPage() {
               Causas Noetia
             </p>
             <h2 className="text-2xl sm:text-3xl font-bold text-white leading-snug mb-4">
-              Leer, Escuchar y Compartir ayuda a que el mundo sea un lugar mejor.
+              El conocimiento no es solo poder. Es responsabilidad.
             </h2>
             <p className="text-slate-300 text-base leading-relaxed mb-8 max-w-xl">
-              Apoyamos proyectos sociales en tres líneas estratégicas que nos hacen soñar con un
-              mejor mañana. Cada pago tuyo genera una donación para una o varias de nuestras
-              causas aliadas, y tú puedes elegir a cuál apoyar.
+              Cada suscripción de Noetia genera una donación automática a causas que importan.
+              No es marketing de impacto — es una decisión estructural sobre cómo opera la plataforma.
+              Tú eliges a cuál de nuestras causas aliadas destinar tu aporte.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -205,10 +229,13 @@ export default function LandingPage() {
         <div className="bg-white/5 border border-white/10 rounded-2xl p-8 sm:p-10 flex flex-col sm:flex-row items-start sm:items-center gap-6">
           <div className="flex-1">
             <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-2">Para autores y editoriales</p>
-            <h2 className="text-xl font-bold text-white mb-2">Publica tu libro. Llega a miles de lectores.</h2>
+            <h2 className="text-xl font-bold text-white mb-2">
+              Tus lectores no solo leen tu libro. Lo integran, lo resaltan y lo comparten como parte de quiénes son.
+            </h2>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Sube tu texto y audio. Noetia ofrece el Modo Escucha Activa para todos tus lectores,
-              con analytics en tiempo real de lecturas, fragmentos y compartidos.
+              Publicar en Noetia no es solo distribución digital. Es entrar a una plataforma donde
+              los libros se convierten en expresión — con analytics en tiempo real de lecturas,
+              fragmentos compartidos y alcance orgánico generado por tus lectores.
             </p>
           </div>
           <div className="flex-shrink-0">
@@ -225,7 +252,10 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-white/10 py-8">
         <div className="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
-          <span className="font-bold tracking-widest text-slate-400">NOETIA</span>
+          <div>
+            <span className="font-bold tracking-widest text-slate-400">NOETIA</span>
+            <span className="ml-3 text-slate-600 text-xs">Where knowledge becomes visible.</span>
+          </div>
           <nav aria-label="Footer" className="flex gap-6">
             <Link href="/login" className="hover:text-slate-300 transition">Iniciar sesión</Link>
             <Link href="/clubs" className="hover:text-slate-300 transition">Clubes</Link>
