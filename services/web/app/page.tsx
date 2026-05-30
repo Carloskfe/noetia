@@ -190,12 +190,14 @@ export default function LandingPage() {
               Causas Noetia
             </p>
             <h2 className="text-2xl sm:text-3xl font-bold text-white leading-snug mb-4">
-              El conocimiento no es solo poder. Es responsabilidad.
+              Compartir es una forma de ayudar.
             </h2>
             <p className="text-slate-300 text-base leading-relaxed mb-8 max-w-xl">
-              Cada suscripción de Noetia genera una donación automática a causas que importan.
-              No es marketing de impacto — es una decisión estructural sobre cómo opera la plataforma.
-              Tú eliges a cuál de nuestras causas aliadas destinar tu aporte.
+              Noetia es una plataforma de compartir conocimiento. Y creemos que compartir
+              tiene que significar algo más que alcance. Por eso el{' '}
+              <strong className="text-white">2,22% de cada compra</strong> apoya proyectos sociales
+              reales — no como un botón de donación, sino como parte de cómo opera la plataforma
+              desde el primer día. Tú eliges la causa.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-8">

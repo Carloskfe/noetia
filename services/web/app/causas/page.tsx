@@ -66,16 +66,21 @@ export default function CausasPage() {
         <p className="text-xs font-semibold text-emerald-400 uppercase tracking-widest mb-4">
           Causas Noetia
         </p>
+        <p className="text-slate-400 text-base italic mb-5">
+          "Creemos que compartir es una forma de ayudar."
+        </p>
         <h1 className="text-4xl sm:text-5xl font-bold leading-tight mb-6">
-          Leer aquí mueve<br />
+          Compartir aquí mueve<br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">
             más que páginas.
           </span>
         </h1>
         <p className="text-slate-300 text-lg leading-relaxed max-w-xl mx-auto">
-          El <strong className="text-white">2,22%</strong> de cada pago que procesamos apoya
-          proyectos sociales en tres líneas estratégicas. Los programas evolucionan —
-          las líneas no. Tú decides a cuál causa se suma tu aporte.
+          Construimos Noetia para compartir conocimiento. Pero creemos que compartir
+          tiene que significar algo más que alcance. Por eso el{' '}
+          <strong className="text-white">2,22%</strong> de cada compra en nuestra plataforma
+          apoya proyectos sociales reales — desde el primer día, sin excepción,
+          como parte de cómo operamos.
         </p>
       </section>
 
