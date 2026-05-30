@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { apiClient } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
+import { useTour } from '../../components/TourContext';
 import { useTranslation, type Language } from '../../i18n';
 
 interface User {
@@ -19,6 +20,7 @@ const LANG_FLAGS: Record<Language, string> = { es: '🇪🇸', en: '🇺🇸' };
 export function AccountScreen() {
   const { logout } = useAuth();
   const { t, language, setLanguage } = useTranslation();
+  const { resetAndShowTour } = useTour();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -80,6 +82,14 @@ export function AccountScreen() {
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t.help.title}</Text>
+        <TouchableOpacity style={styles.helpRow} onPress={resetAndShowTour} accessibilityRole="button">
+          <Text style={styles.helpRowText}>{t.help.replayTour}</Text>
+          <Text style={styles.helpRowArrow}>›</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} accessibilityLabel={t.account.logout}>
           <Text style={styles.logoutText}>{t.account.logout}</Text>
         </TouchableOpacity>
@@ -108,6 +118,9 @@ const styles = StyleSheet.create({
   langBtnActive:    { borderColor: '#4F46E5', backgroundColor: '#EEF2FF' },
   langBtnText:      { fontSize: 14, color: '#6B7280', fontWeight: '500' },
   langBtnTextActive:{ color: '#4F46E5', fontWeight: '600' },
+  helpRow:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 16 },
+  helpRowText:      { fontSize: 15, color: '#0D1B2A', fontWeight: '500' },
+  helpRowArrow:     { fontSize: 20, color: '#9CA3AF' },
   logoutBtn:        { borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
   logoutText:       { color: '#EF4444', fontSize: 15, fontWeight: '600' },
 });

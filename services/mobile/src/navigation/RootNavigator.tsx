@@ -3,6 +3,8 @@ import { ActivityIndicator, View } from 'react-native';
 import { fetchSubscriptionStatus, requiresPaywall } from '../api/subscriptions';
 import { AuthProvider } from '../auth/AuthContext';
 import { isLoggedIn } from '../auth/token-storage';
+import { OnboardingTour } from '../components/OnboardingTour';
+import { TourProvider } from '../components/TourContext';
 import { LanguageProvider, hasStoredLanguage } from '../i18n';
 import { consentIsCurrent } from '../offline/consent-storage';
 import { ConsentScreen } from '../screens/ConsentScreen';
@@ -59,7 +61,10 @@ function AppNavigator() {
 
   return (
     <AuthProvider onLogout={() => setState('login')}>
-      <MainNavigator />
+      <TourProvider>
+        <MainNavigator />
+        <OnboardingTour />
+      </TourProvider>
     </AuthProvider>
   );
 }

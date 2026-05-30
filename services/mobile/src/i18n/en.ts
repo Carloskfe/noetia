@@ -140,6 +140,24 @@ export const en = {
     accessRequiredMsg: 'Noetia cannot be used without accepting the terms.',
     ok: 'OK',
   },
+  tour: {
+    slides: {
+      welcome:   { title: 'Welcome to Noetia', body: 'Your synchronized reading companion. Follow along as each phrase highlights in real time.' },
+      library:   { title: 'Your library', body: 'Browse collections and discover titles. Tap any book to start reading.' },
+      reader:    { title: 'Read in sync', body: 'Every phrase highlights as you go. Your position is always saved, on every device.' },
+      audio:     { title: 'Listen while reading', body: 'Tap the headphones icon in the reader to activate audio mode. The highlighted phrase follows along automatically.' },
+      fragments: { title: 'Save what matters', body: 'Long-press any phrase to save it as a fragment. Find all your fragments in the Fragments tab.' },
+      clubs:     { title: 'Read with others', body: 'Join reading clubs, discuss passages, and listen live together with Escucha Juntos.' },
+    },
+    skip: 'Skip',
+    next: 'Next',
+    done: "Let's go!",
+    dismissedMsg: 'You can replay the tour anytime in Account → Help.',
+  },
+  help: {
+    title: 'Help',
+    replayTour: 'Replay tour',
+  },
   clubs: {
     nav: 'Clubs',
     explore: 'Explore',

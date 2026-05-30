@@ -142,6 +142,24 @@ export const es: MobileTranslations = {
     accessRequiredMsg: 'Noetia no puede usarse sin aceptar los términos.',
     ok: 'OK',
   },
+  tour: {
+    slides: {
+      welcome:   { title: 'Bienvenido a Noetia', body: 'Tu lectura sincronizada. Sigue el texto mientras cada frase se resalta en tiempo real.' },
+      library:   { title: 'Tu biblioteca', body: 'Explora colecciones y descubre títulos. Toca cualquier libro para comenzar a leer.' },
+      reader:    { title: 'Lee en sincronía', body: 'Cada frase se resalta mientras avanzas. Tu posición se guarda siempre, en todos tus dispositivos.' },
+      audio:     { title: 'Escucha mientras lees', body: 'Toca el ícono de auriculares en el lector para activar el modo audio. La frase destacada sigue el audio automáticamente.' },
+      fragments: { title: 'Guarda lo que importa', body: 'Mantén presionado cualquier frase para guardarla como fragmento. Los encuentras en la pestaña Fragmentos.' },
+      clubs:     { title: 'Lee con otros', body: 'Únete a clubes de lectura, discute pasajes y escucha en vivo con Escucha Juntos.' },
+    },
+    skip: 'Saltar',
+    next: 'Siguiente',
+    done: '¡Comenzar!',
+    dismissedMsg: 'Puedes ver el tour de nuevo en Cuenta → Ayuda.',
+  },
+  help: {
+    title: 'Ayuda',
+    replayTour: 'Ver tour de nuevo',
+  },
   clubs: {
     nav: 'Clubes',
     explore: 'Explorar',
