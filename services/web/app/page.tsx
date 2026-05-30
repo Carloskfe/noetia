@@ -56,10 +56,18 @@ export default function LandingPage() {
     <main className="min-h-screen bg-[#0D1B2A] text-white">
 
       {/* Nav */}
-      <nav className="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between">
-        <span className="text-xl font-bold tracking-widest">NOETIA</span>
-        <div className="flex items-center gap-4 text-sm">
-          <Link href="/login" className="text-slate-300 hover:text-white transition">Iniciar sesión</Link>
+      <nav className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between gap-6">
+        <span className="text-xl font-bold tracking-widest shrink-0">NOETIA</span>
+        <div className="hidden lg:flex items-center gap-6 text-sm text-slate-400">
+          <Link href="/about" className="hover:text-white transition">Sobre Noetia</Link>
+          <Link href="/company" className="hover:text-white transition">Empresa</Link>
+          <Link href="/how-we-build" className="hover:text-white transition">Cómo construimos</Link>
+          <Link href="/team" className="hover:text-white transition">Equipo</Link>
+          <Link href="/careers" className="hover:text-white transition">Carreras</Link>
+          <Link href="/contact" className="hover:text-white transition">Contacto</Link>
+        </div>
+        <div className="flex items-center gap-4 text-sm shrink-0">
+          <Link href="/login" className="hidden sm:block text-slate-300 hover:text-white transition">Iniciar sesión</Link>
           <Link href="/register" className="bg-white text-[#0D1B2A] px-4 py-1.5 rounded-full font-semibold hover:bg-slate-100 transition text-sm">
             Crear cuenta
           </Link>
