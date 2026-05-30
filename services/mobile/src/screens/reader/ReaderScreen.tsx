@@ -271,6 +271,7 @@ export function ReaderScreen() {
           data={phrases}
           keyExtractor={(item) => String(item.index)}
           renderItem={renderPhrase}
+          extraData={[audioMode, audio.isLoaded, audio.activePhraseIndex, selectionMode]}
           contentContainerStyle={[styles.content, audioMode && styles.contentWithPlayer]}
           onScrollToIndexFailed={() => {}}
         />

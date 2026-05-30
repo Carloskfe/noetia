@@ -27,18 +27,21 @@ export function SocialAuthButtons({ onSuccess, onError }: Props) {
   const [loading, setLoading] = useState<'google' | 'facebook' | 'apple' | null>(null);
 
   // ── Google ──────────────────────────────────────────────────────────────────
+  const googleDiscovery = AuthSession.useAutoDiscovery('https://accounts.google.com');
+  const googleRedirectUri = AuthSession.makeRedirectUri({ scheme: 'noetia' });
   const [googleRequest, googleResponse, promptGoogleAsync] = AuthSession.useAuthRequest(
     {
       clientId: GOOGLE_WEB_CLIENT_ID,
       scopes: ['openid', 'profile', 'email'],
+      redirectUri: googleRedirectUri,
     },
-    AuthSession.GoogleDiscovery,
+    googleDiscovery,
   );
 
   React.useEffect(() => {
     if (googleResponse?.type === 'success') {
-      const { authentication } = googleResponse as AuthSession.TokenResponse & { authentication: any };
-      handleGoogleToken(authentication?.idToken ?? (googleResponse as any).params?.id_token);
+      const auth = (googleResponse as any).authentication;
+      handleGoogleToken(auth?.idToken ?? (googleResponse as any).params?.id_token);
     } else if (googleResponse?.type === 'error') {
       setLoading(null);
       onError('Error al conectar con Google. Inténtalo de nuevo.');
