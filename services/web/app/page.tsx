@@ -231,7 +231,7 @@ export default function LandingPage() {
             <Link href="/clubs" className="hover:text-slate-300 transition">Clubes</Link>
             <Link href="/causas" className="hover:text-slate-300 transition">Causas Noetia</Link>
             <Link href="/upload-guide" className="hover:text-slate-300 transition">Para autores</Link>
-            <a href="mailto:hola@noetia.app" className="hover:text-slate-300 transition">Contacto</a>
+            <a href="mailto:info@noetia.app" className="hover:text-slate-300 transition">Contacto</a>
           </nav>
           <span>© {new Date().getFullYear()} Noetia</span>
         </div>

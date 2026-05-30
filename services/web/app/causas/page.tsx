@@ -169,7 +169,7 @@ export default function CausasPage() {
           <nav className="flex gap-6">
             <Link href="/library" className="hover:text-slate-300 transition">Biblioteca</Link>
             <Link href="/pricing" className="hover:text-slate-300 transition">Planes</Link>
-            <a href="mailto:hola@noetia.app" className="hover:text-slate-300 transition">Contacto</a>
+            <a href="mailto:info@noetia.app" className="hover:text-slate-300 transition">Contacto</a>
           </nav>
           <span>© {new Date().getFullYear()} Noetia</span>
         </div>
