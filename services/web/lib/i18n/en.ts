@@ -597,7 +597,7 @@ export const en = {
     claim: {
       loading: 'Loading…',
       invalidLink: 'Invalid gift link.',
-      tokenLabel: (n: number) => n === 1 ? 'Noetia Token' : 'Noetia Tokens',
+      tokenLabel: (n: number): string => n === 1 ? 'Noetia Token' : 'Noetia Tokens',
       title: 'You have a gift',
       body: 'Each token unlocks a book of your choice. Valid for 90 days from today.',
       cta: 'Claim my gift',
