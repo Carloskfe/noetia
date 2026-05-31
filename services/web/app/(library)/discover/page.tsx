@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { apiFetch } from '@/lib/api';
 import { BookGrid } from '@/components/BookGrid';
+import { useTranslation } from '@/lib/i18n';
 
 type Book = {
   id: string;
@@ -25,15 +26,7 @@ type CollectionSummary = {
   bookCount: number;
 };
 
-// Author content categories appear first; free classics last (beta acquisition, not the business)
-const TABS = [
-  { label: 'Todo', value: 'all' },
-  { label: 'Liderazgo', value: 'leadership' },
-  { label: 'Desarrollo Personal', value: 'personal-development' },
-  { label: 'Negocios', value: 'business' },
-  { label: 'Clásicos', value: 'classic' },
-  { label: 'Gratis', value: 'free' },
-];
+const TAB_VALUES = ['all', 'leadership', 'personal-development', 'business', 'classic', 'free'] as const;
 
 function buildUrl(tab: string): string {
   if (tab === 'all') return '/books';
@@ -42,6 +35,17 @@ function buildUrl(tab: string): string {
 }
 
 export default function DiscoverPage() {
+  const { t } = useTranslation();
+
+  const TABS = [
+    { label: t.discover.tabs.all,                value: 'all' },
+    { label: t.discover.tabs.leadership,         value: 'leadership' },
+    { label: t.discover.tabs.personalDevelopment,value: 'personal-development' },
+    { label: t.discover.tabs.business,           value: 'business' },
+    { label: t.discover.tabs.classic,            value: 'classic' },
+    { label: t.discover.tabs.free,               value: 'free' },
+  ];
+
   const [activeTab, setActiveTab] = useState('all');
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [freeBooks, setFreeBooks] = useState<Book[]>([]);
@@ -136,7 +140,7 @@ export default function DiscoverPage() {
   return (
     <div className="max-w-lg mx-auto px-4">
       <div className="pt-12 pb-4 space-y-4">
-        <h1 className="text-2xl font-bold text-gray-900">Colección General</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t.library.generalSection}</h1>
 
         {/* Search bar */}
         <div className="relative">
@@ -148,15 +152,15 @@ export default function DiscoverPage() {
           </svg>
           <input
             type="search"
-            aria-label="Buscar libros por título, autor o descripción"
-            placeholder="Buscar por título, autor o descripción…"
+            aria-label={t.discover.searchPlaceholder}
+            placeholder={t.discover.searchPlaceholder}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 shadow-sm"
           />
           {searching && (
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-              Buscando…
+              {t.discover.searching}
             </span>
           )}
         </div>
@@ -187,11 +191,11 @@ export default function DiscoverPage() {
           <GridSkeleton />
         ) : searchHits && searchHits.length === 0 ? (
           <p className="text-center text-gray-400 text-sm mt-16">
-            No se encontraron resultados para &ldquo;{query}&rdquo;
+            {t.discover.noResults(query)}
           </p>
         ) : (
           <>
-            <p className="text-xs text-gray-400 mb-4">{searchHits?.length ?? 0} resultados para &ldquo;{query}&rdquo;</p>
+            <p className="text-xs text-gray-400 mb-4">{t.discover.resultCount(searchHits?.length ?? 0, query)}</p>
             <BookGrid books={displayed} libraryBookIds={libraryIds} onAdd={handleAdd} />
           </>
         )
@@ -220,7 +224,7 @@ export default function DiscoverPage() {
 
           {displayed.length === 0 ? (
             <p className="text-center text-gray-400 text-sm mt-16">
-              No hay libros en esta categoría todavía.
+              {t.discover.empty}
             </p>
           ) : (
             <BookGrid books={displayed} libraryBookIds={libraryIds} onAdd={handleAdd} />
@@ -233,11 +237,12 @@ export default function DiscoverPage() {
 
 /** Hero shown when author/paid books exist — the permanent state once the catalog grows. */
 function PaidBooksHero({ books, libraryIds, onAdd }: { books: Book[]; libraryIds: Set<string>; onAdd: (id: string) => void }) {
+  const { t } = useTranslation();
   const preview = books.slice(0, 4);
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-base font-semibold text-gray-900">Disponibles ahora</h2>
+        <h2 className="text-base font-semibold text-gray-900">{t.discover.availableNow}</h2>
         <button onClick={() => {}} className="text-xs text-blue-600 font-medium">Ver todos</button>
       </div>
       <BookGrid books={preview} libraryBookIds={libraryIds} onAdd={onAdd} />
@@ -247,19 +252,20 @@ function PaidBooksHero({ books, libraryIds, onAdd }: { books: Book[]; libraryIds
 
 /** Beta fallback hero — shown only while the author catalog is being built. */
 function FreeLibraryHero({ books }: { books: Book[] }) {
+  const { t } = useTranslation();
   const preview = books.slice(0, 3);
   return (
     <Link href="?tab=free" as="/discover" onClick={() => {}} className="block mb-8">
       <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-slate-600 to-slate-800 p-5 shadow-md">
         <div className="relative z-10">
           <span className="inline-block bg-white/20 text-white text-xs font-semibold px-2.5 py-1 rounded-full mb-3">
-            Clásicos gratuitos
+            {t.discover.freeClassics}
           </span>
           <h2 className="text-white text-lg font-bold leading-tight mb-1">
-            {books.length} clásicos de la literatura universal
+            {t.discover.freeClassicsCount(books.length)}
           </h2>
           <p className="text-white/70 text-sm mb-4">
-            Disponibles sin costo para todos los lectores.
+            {t.discover.freeClassicsSubtitle}
           </p>
           <div className="flex gap-2">
             {preview.map((book) => (
@@ -286,9 +292,10 @@ function FreeLibraryHero({ books }: { books: Book[] }) {
 }
 
 function CollectionsRow({ collections }: { collections: CollectionSummary[] }) {
+  const { t } = useTranslation();
   return (
     <div className="mb-8">
-      <h2 className="text-base font-semibold text-gray-900 mb-3">Colecciones</h2>
+      <h2 className="text-base font-semibold text-gray-900 mb-3">{t.discover.collections}</h2>
       <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
         {collections.map((col) => (
           <Link

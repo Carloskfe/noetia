@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch, saveToken, saveUserType, saveEmailConfirmed, postAuthRedirect } from '@/lib/api';
+import { useTranslation } from '@/lib/i18n';
 
 type State = 'verifying' | 'success' | 'error';
 
 export default function ConfirmEmailPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useSearchParams();
   const [state, setState] = useState<State>('verifying');
@@ -16,7 +18,7 @@ export default function ConfirmEmailPage() {
     const token = params.get('token');
     if (!token) {
       setState('error');
-      setMessage('No confirmation token found.');
+      setMessage(t.auth.confirmEmailPage.noToken);
       return;
     }
 
@@ -30,9 +32,9 @@ export default function ConfirmEmailPage() {
       })
       .catch((err: any) => {
         setState('error');
-        setMessage(err?.message ?? 'The confirmation link is invalid or has expired.');
+        setMessage(err?.message ?? t.auth.confirmEmailPage.expiredOrInvalid);
       });
-  }, [params, router]);
+  }, [params, router, t]);
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-background px-4">
@@ -40,25 +42,23 @@ export default function ConfirmEmailPage() {
         {state === 'verifying' && (
           <>
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-muted-foreground">Verifying your email…</p>
+            <p className="text-muted-foreground">{t.auth.confirmEmailPage.verifying}</p>
           </>
         )}
-
         {state === 'success' && (
           <>
             <div className="text-4xl">✓</div>
-            <h1 className="text-xl font-semibold">Email confirmed</h1>
-            <p className="text-muted-foreground">Redirecting you now…</p>
+            <h1 className="text-xl font-semibold">{t.auth.confirmEmailPage.confirmed}</h1>
+            <p className="text-muted-foreground">{t.auth.confirmEmailPage.redirecting}</p>
           </>
         )}
-
         {state === 'error' && (
           <>
             <div className="text-4xl">✗</div>
-            <h1 className="text-xl font-semibold">Confirmation failed</h1>
+            <h1 className="text-xl font-semibold">{t.auth.confirmEmailPage.failed}</h1>
             <p className="text-muted-foreground">{message}</p>
             <a href="/login" className="text-primary underline text-sm">
-              Back to login
+              {t.auth.confirmEmailPage.backToLogin}
             </a>
           </>
         )}
