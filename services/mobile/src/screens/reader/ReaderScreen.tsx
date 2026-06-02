@@ -144,6 +144,26 @@ export function ReaderScreen() {
     }
   }, [savedIndex, phrases, audioMode]);
 
+  // When audio first loads, seek to the user's current reading position so playback
+  // begins at the phrase they were reading, not at the start of the file.
+  const audioSeekOnLoadDone = useRef(false);
+  useEffect(() => {
+    if (!audio.isLoaded || audioSeekOnLoadDone.current) return;
+    if (savedIndex > 0 && phrases.length > 0) {
+      const idx = Math.min(savedIndex, phrases.length - 1);
+      const phrase = phrases[idx];
+      if (phrase?.startTime) {
+        audioSeekOnLoadDone.current = true;
+        audio.seekToPhrase(phrase);
+      }
+    }
+  }, [audio.isLoaded, savedIndex, phrases]);
+
+  // Reset the one-shot guard when audio mode is closed so the next session seeks correctly.
+  useEffect(() => {
+    if (!audioMode) audioSeekOnLoadDone.current = false;
+  }, [audioMode]);
+
   const trackProgress = useCallback((phraseIndex: number) => {
     if (progressTimer.current) clearTimeout(progressTimer.current);
     progressTimer.current = setTimeout(() => {

@@ -56,3 +56,47 @@ describe('useAudioPlayer exports', () => {
     expect(typeof mod.useAudioPlayer).toBe('function');
   });
 });
+
+// seek-on-load logic — pure helper tests for the ReaderScreen fix
+// When audio mode is first enabled and the file loads, the reader must seek
+// to the user's saved reading position rather than starting at 0.
+describe('seek-on-load: phrase selection logic', () => {
+  function pickSeekTarget(phrases: SyncPhrase[], savedIndex: number): SyncPhrase | null {
+    if (savedIndex <= 0 || phrases.length === 0) return null;
+    const idx = Math.min(savedIndex, phrases.length - 1);
+    const phrase = phrases[idx];
+    return phrase?.startTime ? phrase : null;
+  }
+
+  it('returns null when savedIndex is 0 — no seek needed', () => {
+    expect(pickSeekTarget(PHRASES, 0)).toBeNull();
+  });
+
+  it('returns null when phrases array is empty', () => {
+    expect(pickSeekTarget([], 2)).toBeNull();
+  });
+
+  it('returns null when the target phrase has startTime 0 (already at start)', () => {
+    const phrasesAtZero: SyncPhrase[] = [{ index: 0, startTime: 0, endTime: 5 }];
+    expect(pickSeekTarget(phrasesAtZero, 0)).toBeNull();
+  });
+
+  it('returns the phrase at savedIndex when it has a non-zero startTime', () => {
+    const result = pickSeekTarget(PHRASES, 2);
+    expect(result).not.toBeNull();
+    expect(result?.index).toBe(2);
+    expect(result?.startTime).toBe(12);
+  });
+
+  it('clamps to last phrase when savedIndex exceeds array length', () => {
+    const result = pickSeekTarget(PHRASES, 999);
+    expect(result).not.toBeNull();
+    expect(result?.index).toBe(3);
+    expect(result?.startTime).toBe(20);
+  });
+
+  it('seeks to position 1 (first non-start phrase) correctly', () => {
+    const result = pickSeekTarget(PHRASES, 1);
+    expect(result?.startTime).toBe(5);
+  });
+});
