@@ -1,6 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SubscriptionsService } from '../../../src/subscriptions/subscriptions.service';
 import { WebhooksService } from '../../../src/subscriptions/webhooks.service';
+import { GiftsService } from '../../../src/gifts/gifts.service';
+
+const mockGiftsService = { fulfillGift: jest.fn() };
 
 const mockSubscriptionsService = {
   upsertFromWebhook: jest.fn(),
@@ -26,6 +29,7 @@ describe('WebhooksService', () => {
       providers: [
         WebhooksService,
         { provide: SubscriptionsService, useValue: mockSubscriptionsService },
+        { provide: GiftsService, useValue: mockGiftsService },
       ],
     }).compile();
 

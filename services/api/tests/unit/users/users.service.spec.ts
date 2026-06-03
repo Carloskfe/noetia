@@ -133,7 +133,7 @@ describe('UsersService', () => {
 
       await service.deleteAccount('u1');
 
-      expect(mockEmailService.sendFarewell).toHaveBeenCalledWith('a@b.com', 'Ana');
+      expect(mockEmailService.sendFarewell).toHaveBeenCalledWith('a@b.com', 'Ana', 'es');
     });
 
     it('does nothing when user does not exist', async () => {

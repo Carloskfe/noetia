@@ -40,8 +40,12 @@ describe('parseVtt', () => {
 En un lugar de la Mancha
 `;
     const words = parseVtt(segVtt);
-    expect(words).toHaveLength(1);
-    expect(words[0]).toMatchObject({ word: 'En un lugar de la Mancha', start: 0, end: 5 });
+    // Segment-level cue is split into individual words with proportional timestamps
+    expect(words).toHaveLength(6);
+    expect(words[0]).toMatchObject({ word: 'En', start: 0 });
+    expect(words[5]).toMatchObject({ word: 'Mancha', end: 5 });
+    // Each word spans 5/6 seconds
+    expect(words[0].end).toBeCloseTo(5 / 6, 5);
   });
 
   it('returns empty array for empty input', () => {

@@ -5,11 +5,16 @@
 > 2. **Author/company experience** — content supply chain; upload, sync tooling, analytics
 > 3. **Free library** — beta acquisition only; not expanded after 6–12 months; UI hero will yield to author content
 >
-> **Current status (2026-05-24):** Stages 0–5 complete + major feature sprint complete. **Production live at https://noetia.app** — Contabo VPS (Traefik v2.11, containers healthy, 55 migrations applied). SSH port 222, fail2ban active. CI/CD working (auto-deploys + runs migrations). 55 migrations applied (latest: AddReadingGoals #055).
+> **Current status (2026-06-03):** Stages 0–5 complete + major feature sprint complete. **Production live at https://noetia.app** — Contabo VPS (Traefik v2.11, containers healthy, 57 migrations applied). SSH port 222, fail2ban active. CI/CD working (auto-deploys + runs migrations).
 >
 > **Completed since last update:**
 > - [x] Stripe fully activated — 10 products, webhook live, price IDs in DB ✅
-> - [x] Meilisearch seeded — 38 books indexed, search functional ✅
+> - [x] Meilisearch seeded — 67 books indexed, search functional ✅
+> - [x] Google OAuth live — any Google account can log in ✅
+> - [x] Facebook OAuth configured — Dev mode (test users); Go Live pending Meta business verification ✅
+> - [x] Audio M4B→MP3 transcoding — 63 books on MinIO (progressive streaming, <2s start) ✅
+> - [x] Mobile audio seek-on-load — audio starts from user's saved reading position ✅
+> - [x] All unit tests green — 686 API tests + 145 mobile tests passing ✅
 > - [x] Duo/Family invite flow — backend + billing UI + /join acceptance page ✅
 > - [x] Token "Comprar" buttons wired on pricing page ✅
 > - [x] Gift cards — 1/3 tokens, personal message, occasion, Stripe one-time, email delivery ✅
@@ -42,7 +47,7 @@
 >
 > **Backlog (post app store):**
 > - [ ] English free library — ~20-40 public domain books (Gutenberg + LibriVox), same pipeline as Spanish
-> - [ ] Facebook + Google OAuth credentials — code built, needs developer console setup
+> - [x] Facebook + Google OAuth credentials — Google live; Facebook Dev mode (Go Live pending Meta business verification) ✅
 > - [ ] Narrator payment schemes — royalty/advance/hybrid field + marketplace UI
 > - [ ] Gift cards — already built; consider adding more token amounts (5, 10)
 >

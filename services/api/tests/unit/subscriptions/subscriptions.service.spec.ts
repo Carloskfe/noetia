@@ -12,6 +12,7 @@ import { Subscription } from '../../../src/subscriptions/subscription.entity';
 import { SubscriptionInvite } from '../../../src/subscriptions/subscription-invite.entity';
 import { SubscriptionsService } from '../../../src/subscriptions/subscriptions.service';
 import { TokenLedger } from '../../../src/subscriptions/token-ledger.entity';
+import { PushService } from '../../../src/push/push.service';
 
 const mockStripe = {
   customers: { create: jest.fn() },
@@ -69,6 +70,7 @@ const mockInviteRepo = {
 const mockEmailService = {
   sendPlanInvite: jest.fn(),
 };
+const mockPushService = { sendToUser: jest.fn().mockResolvedValue(undefined) };
 
 const mockUsersService = {
   findById: jest.fn(),
@@ -104,6 +106,7 @@ describe('SubscriptionsService', () => {
         { provide: UsersService, useValue: mockUsersService },
         { provide: PlansService, useValue: mockPlansService },
         { provide: EmailService, useValue: mockEmailService },
+        { provide: PushService, useValue: mockPushService },
         { provide: getRepositoryToken(Subscription), useValue: mockSubRepo },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
         { provide: getRepositoryToken(Book), useValue: mockBookRepo },

@@ -60,8 +60,7 @@ describe('BooksService', () => {
       const result = await service.findAll();
 
       expect(qb.andWhere).toHaveBeenCalledWith(
-        '(book.collection IS NULL OR book.collection = :empty)',
-        { empty: '' },
+        'NOT EXISTS (SELECT 1 FROM book_collections bc WHERE bc."bookId" = book.id)',
       );
       expect(result).toEqual(books);
     });

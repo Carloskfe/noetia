@@ -153,7 +153,7 @@ describe('AuthService', () => {
       mockUsersService.findById.mockResolvedValue({ id: 'u1', email: 'u@test.com', name: 'User', emailConfirmed: false });
       mockTokenService.generateEmailConfirmToken.mockResolvedValue('new-tok');
       await service.resendConfirmation('u1');
-      expect(mockEmailService.sendEmailConfirmation).toHaveBeenCalledWith('u@test.com', 'User', 'new-tok');
+      expect(mockEmailService.sendEmailConfirmation).toHaveBeenCalledWith('u@test.com', 'User', 'new-tok', 'es');
     });
   });
 
@@ -250,6 +250,7 @@ describe('AuthService', () => {
         'local@test.com',
         'Local',
         'reset-token',
+        'es',
       );
     });
   });

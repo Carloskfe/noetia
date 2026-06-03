@@ -7,6 +7,7 @@ import { TokenLedger } from '../../../src/subscriptions/token-ledger.entity';
 import { User } from '../../../src/users/user.entity';
 import { GiftCard } from '../../../src/gifts/gift-card.entity';
 import { GiftsService } from '../../../src/gifts/gifts.service';
+import { PushService } from '../../../src/push/push.service';
 
 const mockStripe = {
   checkout: { sessions: { create: jest.fn() } },
@@ -27,6 +28,7 @@ const mockTokenRepo = {
 };
 
 const mockUserRepo = { findOneBy: jest.fn() };
+const mockPushService = { sendToUser: jest.fn() };
 
 const mockEmailService = {
   sendGiftCard: jest.fn(),
@@ -53,6 +55,7 @@ describe('GiftsService', () => {
         { provide: getRepositoryToken(GiftCard), useValue: mockGiftRepo },
         { provide: getRepositoryToken(TokenLedger), useValue: mockTokenRepo },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
+        { provide: PushService, useValue: mockPushService },
       ],
     }).compile();
 
