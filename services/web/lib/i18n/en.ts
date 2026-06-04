@@ -402,6 +402,8 @@ export const en = {
     shareProfileDesc: 'Your name and avatar are visible to other users.',
     fragments: 'Share fragments',
     fragmentsDesc: 'Other users can see the passages you have saved.',
+    insights: 'Contribute to Noetia Insights',
+    insightsDesc: 'Noetia uses your reading patterns and fragments to build your reader profile and improve recommendations. Disable to opt out of all analytics.',
     saved: 'Saved',
   },
   nav: {

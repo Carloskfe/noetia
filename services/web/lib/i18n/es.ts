@@ -404,6 +404,8 @@ export const es: Translations = {
     shareProfileDesc: 'Tu nombre y avatar son visibles para otros usuarios.',
     fragments: 'Compartir fragmentos',
     fragmentsDesc: 'Otros usuarios pueden ver los pasajes que has guardado.',
+    insights: 'Contribuir a Noetia Insights',
+    insightsDesc: 'Noetia usa tus patrones de lectura y fragmentos para construir tu perfil de lector y mejorar las recomendaciones. Desactívalo para optar por no participar en los análisis.',
     saved: 'Guardado',
   },
   nav: {

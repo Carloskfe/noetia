@@ -36,13 +36,16 @@ export class PersonaComputerService {
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
   async computeAll(): Promise<void> {
     const rows: { user_id: string }[] = await this.ds.query(`
-      SELECT DISTINCT user_id FROM (
+      SELECT DISTINCT t.user_id
+      FROM (
         SELECT user_id FROM fragments
         UNION
         SELECT user_id FROM reading_stats
         UNION
         SELECT user_id FROM events WHERE user_id IS NOT NULL
       ) t
+      JOIN users u ON u.id = t.user_id
+      WHERE u.allow_insights = TRUE
     `);
 
     this.logger.log(`Recomputing personas for ${rows.length} users`);

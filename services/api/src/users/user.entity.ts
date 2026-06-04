@@ -93,6 +93,9 @@ export class User {
   @Column({ type: 'boolean', default: false })
   shareFragments: boolean;
 
+  @Column({ type: 'boolean', default: true })
+  allowInsights: boolean;
+
   @Column({ type: 'int', nullable: true })
   goalWeeklyMinutes: number | null;
 

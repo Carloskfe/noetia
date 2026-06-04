@@ -51,6 +51,10 @@ export class UpdateUserDto {
   shareFragments?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  allowInsights?: boolean;
+
+  @IsOptional()
   @IsInt()
   @Min(1)
   goalWeeklyMinutes?: number | null;
