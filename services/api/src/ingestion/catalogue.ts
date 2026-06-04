@@ -387,6 +387,25 @@ export const CATALOGUE: CatalogueEntry[] = [
     coverUrl: 'https://covers.openlibrary.org/b/id/12324628-L.jpg',
   },
 
+  {
+    title: 'Platero y yo',
+    author: 'Juan Ramón Jiménez',
+    description: 'Elegía andaluza en prosa lírica sobre la amistad entre un poeta y su burro Platero en Moguer. Nobel de Literatura 1956.',
+    source: 'gutenberg',
+    gutenbergId: 39209,
+    librivoxAudioUrl: 'https://librivox.org/platero-y-yo-by-juan-ramon-jimenez/',
+    librivoxSearchTitle: 'Platero',
+  },
+  {
+    title: 'Pepita Jiménez',
+    author: 'Juan Valera',
+    description: 'Novela epistolar en la que un joven seminarista descubre que el amor humano puede ser tan sagrado como la vocación religiosa.',
+    source: 'gutenberg',
+    gutenbergId: 17223,
+    librivoxAudioUrl: 'https://librivox.org/pepita-jimenez-by-juan-valera/',
+    librivoxSearchTitle: 'Pepita Jiménez',
+  },
+
   // ── English Classics ──────────────────────────────────────────────────────
 
   {
@@ -496,6 +515,29 @@ export const CATALOGUE: CatalogueEntry[] = [
     gutenbergId: 25344,
     librivoxAudioUrl: 'https://librivox.org/the-scarlet-letter-by-nathaniel-hawthorne/',
     language: 'en',
+  },
+
+  {
+    title: 'Meditations',
+    author: 'Marcus Aurelius',
+    description: 'Personal reflections of the Roman Emperor Marcus Aurelius — the definitive Stoic guide to resilience, duty, and the art of living with purpose.',
+    source: 'gutenberg',
+    gutenbergId: 2680,
+    language: 'en',
+    librivoxAudioUrl: 'https://librivox.org/the-meditations-of-marcus-aurelius/',
+    librivoxSearchTitle: 'Meditations Marcus Aurelius',
+    narrativeStartPattern: 'THE FIRST BOOK',
+    narrativeEndPattern: '\nAPPENDIX\n',
+  },
+  {
+    title: 'Jane Eyre',
+    author: 'Charlotte Brontë',
+    description: 'A plain-spoken orphan grows into a fiercely independent woman — Brontë\'s masterwork on love, identity, and the courage to refuse compromise.',
+    source: 'gutenberg',
+    gutenbergId: 1260,
+    language: 'en',
+    librivoxAudioUrl: 'https://librivox.org/jane-eyre-by-charlotte-bront/',
+    librivoxSearchTitle: 'Jane Eyre',
   },
 
   // ── English Bible (KJV) — collection: 'Bible' ─────────────────────────────
