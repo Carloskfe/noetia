@@ -647,6 +647,51 @@ docker compose exec api npm run migration:run
 | 054 | `CreateReadingStats` | reading_stats table — daily minutesRead + phrasesRead per user, unique (userId, date) |
 | 055 | `AddReadingGoals` | goalWeeklyMinutes + goalWeeklyBooks nullable integers on users |
 | 056 | `AddSyncCoverage` | syncCoverage (float), syncExceptions (int), syncAvgConfidence (float) on sync_maps — persists Whisper alignment quality |
+| 057 | `CreateEventsTable` | append-only events table (userId, bookId, eventType VARCHAR(50), payload JSONB, createdAt); indexes on user_id, book_id, event_type, created_at, (user_id, event_type) |
+| 058 | `AddFragmentThemes` | themes JSONB column on fragments — auto-tagged at creation with up to 3 thematic labels from the 20-theme Spanish taxonomy |
+| 059 | `CreateUserPersonas` | user_personas table — dominantThemes, engagementArchetype, readingCadence, completionRate, socialAmplification, preferredPlatforms, topGenres, avgSessionMinutes, computedAt; indexes on archetype, cadence, computed_at |
+| 060 | `AddAllowInsights` | allowInsights BOOLEAN DEFAULT TRUE on users — opt-out of reader persona computation and aggregate audience analysis |
+
+---
+
+## Reader Persona Pipeline
+
+Noetia builds a **derived reader profile** (persona) from behavioral signals. The pipeline has three layers:
+
+### Layer 1 — Event stream (`events` table)
+Append-only event log. Two event types are currently captured:
+- `fragment_created` → `{ fragmentId, themes, textLength }` — emitted in `FragmentsService.create()`
+- `fragment_shared` → `{ fragmentId, platform, format, themes }` — emitted in `SharingController.share()`
+
+Events are fire-and-forget — errors are logged but never propagate to the user request.
+
+### Layer 2 — Fragment theme tagging
+`FragmentTaggerService` applies a **20-theme Spanish taxonomy** (`src/fragments/theme-taxonomy.ts`) at fragment creation time. Matching is case-insensitive keyword scoring; up to 3 themes are stored as JSONB on the fragment row.
+
+Themes: `amor · aventura · belleza · conocimiento · destino · familia · fe · filosofia · heroismo · humanidad · identidad · justicia · libertad · muerte · naturaleza · poder · sufrimiento · tiempo · amistad · espiritualidad`
+
+### Layer 3 — Persona computation (`user_personas` table)
+`PersonaComputerService` runs 8 parallel SQL aggregations per user and upserts the result:
+
+| Field | Source | Logic |
+|-------|--------|-------|
+| `dominantThemes` | `fragments.themes` | Top 5 by frequency |
+| `engagementArchetype` | fragments + events + clubs | `social_sharer > community > deep_reader > browser > reader` |
+| `readingCadence` | `reading_stats` (60-day window) | `daily (≥40 days) > weekend (ratio ≥0.6) > binge (≤10 days, ≥45 min avg) > irregular` |
+| `completionRate` | `reading_progress` + `sync_maps` | books at phraseIndex ≥ 80% / total started |
+| `socialAmplification` | `events` | `fragment_shared` / `fragment_created` |
+| `preferredPlatforms` | `events` | Top 4 platforms by `fragment_shared` count |
+| `topGenres` | `fragments` + `books` | Top 3 book categories by fragment count |
+| `avgSessionMinutes` | `reading_stats` | Average minutesRead on active days (60-day window) |
+
+**Nightly cron:** `@Cron(EVERY_DAY_AT_2AM)` — skips users with `allowInsights = FALSE`.
+
+**Admin endpoints:**
+- `POST /api/admin/personas/recompute` — trigger full recompute for all opted-in users
+- `POST /api/admin/personas/:userId/recompute` — recompute a single user
+- `GET /api/admin/personas/:userId` — inspect a user's current persona
+
+**Opt-out:** Users can disable persona computation from **Profile → Privacy → Contribute to Noetia Insights**. Opted-out users are excluded from `computeAll()` and their existing persona row will not be refreshed.
 
 ---
 

@@ -38,11 +38,14 @@
 > - [x] Privacy settings — 4 toggles (reading progress, library, profile, fragments) with optimistic PATCH; columns on users table ✅
 > - [x] Weekly goals — minutes + books per week, user-editable, stored on users.goalWeeklyMinutes/goalWeeklyBooks ✅
 > - [x] Profile page tabs — Profile / Stats / Privacy three-tab layout; all strings i18n'd ✅
+> - [x] Reader Persona pipeline — events table (migrations 057–058), 20-theme fragment tagging, user_personas computed table (migration 059), nightly cron, admin endpoints ✅
+> - [x] Noetia Insights opt-out — allowInsights column (migration 060), 5th privacy toggle (amber accent), persona cron skips opted-out users ✅
+> - [x] Legal terms updated — ALEXANDRIA bug fixed, correct plan prices ($8.99/$13.99/$18.99), analytics/persona disclosure, opt-out path, 30-day change notice ✅
+> - [x] La Odisea text fixed — CatalogueEntry.textPostProcess hook strips verse numbers + illustration captions; reIngestText rebuilds DB phrases; deployed ✅
 >
 > **Remaining before app store submission:**
 > - [ ] **Whisper VTTs for 13 books** — user transcribes on Windows. Books: Don Quijote Vol. I, Don Quijote Vol. II, Mateo, Lucas, Efesios, Filipenses, Apocalipsis, Proverbios, Isaías, Fábulas y Verdades, Cuentos de la Selva, Génesis, Juan, Éxodo
-> - [ ] **Fix La Odisea sync quality** — text-audio mismatch, needs clean Spanish text source
-> - [ ] **EAS build config** — configure app.json + eas.json for production iOS/Android builds
+> - [ ] **EAS build config** — configure app.json + eas.json for production iOS/Android builds (app.config.js + eas.json complete; needs Apple Developer Program enrollment for ascAppId + appleTeamId)
 > - [ ] **App store submissions** — iOS ($99/yr Apple Developer) + Android ($25 one-time Google Play)
 >
 > **Backlog (post app store):**
@@ -50,6 +53,9 @@
 > - [x] Facebook + Google OAuth credentials — Google live; Facebook Dev mode (Go Live pending Meta business verification) ✅
 > - [ ] Narrator payment schemes — royalty/advance/hybrid field + marketplace UI
 > - [ ] Gift cards — already built; consider adding more token amounts (5, 10)
+> - [ ] Market segment engine — admin-defined rule-based segments from user_personas, user_segment_membership table, segment query UI
+> - [ ] Persona-based book recommendations — surface books by semantic similarity to user's dominantThemes
+> - [ ] Author persona analytics dashboard — show which reader archetypes resonate with each book (aggregate, N≥50)
 >
 > **Security & ops backlog:**
 > - [x] SSH hardening — fail2ban, port 222, UFW ✅
@@ -60,7 +66,7 @@
 > - [ ] Let's Encrypt renewal smoke test — verify auto-renewal 30 days before expiry
 > - [ ] GitHub Actions deploy scope — dedicated deploy user instead of root SSH key
 > - [ ] Secrets rotation policy — JWT_SECRET, MINIO credentials, SOCIAL_TOKEN_SECRET
-> - [ ] Privacy policy compliance — GDPR/CCPA data retention policy
+> - [x] Privacy policy compliance — GDPR/CCPA data retention policy, opt-out toggle, analytics disclosure ✅
 
 **Estimation key:** Each task is estimated in days (1 dev). Sprints are 2 weeks (10 working days).
 **Legend:** `[ ]` pending · `[x]` done · `[~]` in progress
