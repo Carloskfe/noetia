@@ -2,6 +2,7 @@ import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { MetricsModule } from './metrics/metrics.module';
 import { MetricsMiddleware } from './metrics/metrics.middleware';
@@ -24,10 +25,12 @@ import { GiftsModule } from './gifts/gifts.module';
 import { PushModule } from './push/push.module';
 import { StatsModule } from './stats/stats.module';
 import { EventsModule } from './events/events.module';
+import { PersonasModule } from './personas/personas.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       { name: 'global', ttl: 60_000, limit: 120 },
     ]),
@@ -65,6 +68,7 @@ import { EventsModule } from './events/events.module';
     ClubsModule,
     StatsModule,
     EventsModule,
+    PersonasModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
