@@ -29,6 +29,13 @@ export interface CatalogueEntry {
    * (glossaries, indexes, appendices) is stripped from the stored text.
    */
   narrativeEndPattern?: string;
+  /**
+   * Optional post-processing applied to the fetched text before storage and
+   * phrase splitting. Use to strip non-spoken elements (verse line numbers,
+   * illustration captions) that appear in the source but are absent from the
+   * audio recording.
+   */
+  textPostProcess?: (text: string) => string;
 }
 
 export const CATALOGUE: CatalogueEntry[] = [
@@ -180,6 +187,15 @@ export const CATALOGUE: CatalogueEntry[] = [
     // Both sections are absent from the LibriVox audio.
     narrativeStartPattern: 'CANTO PRIMERO',
     narrativeEndPattern: '\nFIN\n',
+    textPostProcess: (text: string) => {
+      // Remove [Ilustración ...] captions — not read aloud, may span multiple lines
+      let cleaned = text.replace(/\[Ilustración[^\[]*?\]/g, '');
+      // Remove verse line numbers at paragraph starts (Greek line refs, e.g. "1 Háblame")
+      cleaned = cleaned.replace(/^\d{1,4} /gm, '');
+      // Collapse blank lines left by removed content
+      cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+      return cleaned.trim();
+    },
   },
   {
     title: 'La Divina Comedia',

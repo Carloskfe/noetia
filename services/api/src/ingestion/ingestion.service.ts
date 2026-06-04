@@ -94,22 +94,31 @@ export class IngestionService {
 
     const text = await this.fetchText(entry);
     await this.minioUploader.upload(book.textFileKey, text);
+
+    const phrases = this.phraseSplitter.split(text);
+    await this.syncMapRepo.delete({ bookId: book.id });
+    const syncMap = this.syncMapRepo.create({ bookId: book.id, phrases });
+    await this.syncMapRepo.save(syncMap);
+
     this.logger.log(`Text re-ingested for: ${book.title} (${text.length} chars)`);
   }
 
   private async fetchText(entry: CatalogueEntry): Promise<string> {
     const lang = entry.language ?? 'es';
+    let text: string;
     if (entry.source === 'gutenberg') {
-      return this.gutenbergFetcher.fetch(
+      text = await this.gutenbergFetcher.fetch(
         entry.gutenbergId!,
         entry.narrativeStartPattern,
         entry.narrativeEndPattern,
       );
+    } else {
+      const raw = entry.wikisourceTitles
+        ? await this.wikisourceFetcher.fetchMultiple(entry.wikisourceTitles, lang)
+        : await this.wikisourceFetcher.fetch(entry.wikisourceTitle!, lang);
+      text = this.applyNarrativeTrim(raw, entry.narrativeStartPattern, entry.narrativeEndPattern);
     }
-    const raw = entry.wikisourceTitles
-      ? await this.wikisourceFetcher.fetchMultiple(entry.wikisourceTitles, lang)
-      : await this.wikisourceFetcher.fetch(entry.wikisourceTitle!, lang);
-    return this.applyNarrativeTrim(raw, entry.narrativeStartPattern, entry.narrativeEndPattern);
+    return entry.textPostProcess ? entry.textPostProcess(text) : text;
   }
 
   private applyNarrativeTrim(text: string, startPattern?: string, endPattern?: string): string {

@@ -133,6 +133,31 @@ describe('IngestionService', () => {
       expect(mockMinioUploader.upload).not.toHaveBeenCalled();
     });
 
+    it('applies textPostProcess from the catalogue entry before storing text', async () => {
+      const entryWithPostProcess: CatalogueEntry = {
+        title: 'Test Book',
+        author: 'Test Author',
+        description: 'A test book.',
+        source: 'gutenberg',
+        gutenbergId: 123,
+        librivoxAudioUrl: 'https://librivox.org/test-book/',
+        textPostProcess: (text) => text.replace('[CAPTION]', '').replace(/  +/g, ' ').trim(),
+      };
+      const savedBook = { id: 'pp-uuid', textFileKey: null } as Book;
+      mockBookRepo.findOneBy.mockResolvedValue(null);
+      mockGutenbergFetcher.fetch.mockResolvedValue('Chapter 1. [CAPTION] Content here.');
+      mockPhraseSplitter.split.mockReturnValue([]);
+      mockBookRepo.create.mockReturnValue(savedBook);
+      mockBookRepo.save.mockResolvedValue(savedBook);
+      mockMinioUploader.upload.mockResolvedValue(undefined);
+      mockSyncMapRepo.create.mockReturnValue({});
+      mockSyncMapRepo.save.mockResolvedValue({});
+
+      await service.ingestOne(entryWithPostProcess);
+
+      expect(mockMinioUploader.upload).toHaveBeenCalledWith('pp-uuid.txt', 'Chapter 1. Content here.');
+    });
+
     it('sets textFileKey on the book after uploading to MinIO', async () => {
       const savedBook = { id: 'tf-uuid', textFileKey: null } as Book;
       mockBookRepo.findOneBy.mockResolvedValue(null);
@@ -595,6 +620,51 @@ describe('IngestionService', () => {
       await service.reIngestText('La Odisea');
 
       expect(mockGutenbergFetcher.fetch).toHaveBeenCalledWith(58221, 'CANTO PRIMERO', '\nFIN\n');
+    });
+
+    it('applies textPostProcess from the catalogue entry when re-ingesting', async () => {
+      const book = { id: 'niebla-2', textFileKey: 'niebla-2.txt' } as Book;
+      // Niebla has no textPostProcess — use La Odisea which does
+      const odiseaBook = { id: 'odisea-pp', textFileKey: 'odisea-pp.txt' } as Book;
+      mockBookRepo.findOneBy.mockResolvedValue(odiseaBook);
+      // Return text with a verse number and an illustration caption
+      mockGutenbergFetcher.fetch.mockResolvedValue(
+        'CANTO PRIMERO\n\n1 Háblame, Musa.\n\n[Ilustración: El héroe]\n\n11 Navega Ulises.',
+      );
+      mockMinioUploader.upload.mockResolvedValue(undefined);
+      mockPhraseSplitter.split.mockReturnValue([]);
+      mockSyncMapRepo.delete.mockResolvedValue({ affected: 1 });
+      mockSyncMapRepo.create.mockReturnValue({});
+      mockSyncMapRepo.save.mockResolvedValue({});
+
+      await service.reIngestText('La Odisea');
+
+      const uploadCall = mockMinioUploader.upload.mock.calls[0];
+      expect(uploadCall[0]).toBe('odisea-pp.txt');
+      // Verse numbers and illustration caption removed
+      expect(uploadCall[1]).not.toMatch(/^\d+ /m);
+      expect(uploadCall[1]).not.toContain('[Ilustración');
+      expect(uploadCall[1]).toContain('Háblame, Musa.');
+      expect(uploadCall[1]).toContain('Navega Ulises.');
+    });
+
+    it('rebuilds sync_map phrases from the cleaned text', async () => {
+      const book = { id: 'odisea-ph', textFileKey: 'odisea-ph.txt' } as Book;
+      mockBookRepo.findOneBy.mockResolvedValue(book);
+      mockGutenbergFetcher.fetch.mockResolvedValue('CANTO PRIMERO\nHáblame, Musa.\n\nFIN\n');
+      mockMinioUploader.upload.mockResolvedValue(undefined);
+      const phrases = [{ index: 0, text: 'Háblame, Musa.', startTime: 0, endTime: 0 }];
+      mockPhraseSplitter.split.mockReturnValue(phrases);
+      const newSyncMap = { bookId: 'odisea-ph', phrases };
+      mockSyncMapRepo.create.mockReturnValue(newSyncMap);
+      mockSyncMapRepo.delete.mockResolvedValue({ affected: 1 });
+      mockSyncMapRepo.save.mockResolvedValue(newSyncMap);
+
+      await service.reIngestText('La Odisea');
+
+      expect(mockSyncMapRepo.delete).toHaveBeenCalledWith({ bookId: 'odisea-ph' });
+      expect(mockSyncMapRepo.create).toHaveBeenCalledWith({ bookId: 'odisea-ph', phrases });
+      expect(mockSyncMapRepo.save).toHaveBeenCalledWith(newSyncMap);
     });
   });
 
