@@ -1,4 +1,4 @@
-export const LAST_UPDATED = '24 de abril de 2026 / April 24, 2026';
+export const LAST_UPDATED = '4 de junio de 2026 / June 4, 2026';
 
 export const COOKIE_POLICY_ES = `
 # Política de Cookies
