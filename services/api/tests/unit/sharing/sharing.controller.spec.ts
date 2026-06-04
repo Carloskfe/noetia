@@ -3,12 +3,17 @@ import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { SharingController } from '../../../src/sharing/sharing.controller';
 import { SharingService } from '../../../src/sharing/sharing.service';
+import { EventsService } from '../../../src/events/events.service';
 import { Fragment } from '../../../src/fragments/fragment.entity';
 import { Book } from '../../../src/books/book.entity';
 import { JwtAuthGuard } from '../../../src/auth/jwt-auth.guard';
 
 const mockSharingService = {
   generateShareUrl: jest.fn(),
+};
+
+const mockEventsService = {
+  emit: jest.fn().mockResolvedValue(undefined),
 };
 
 const mockFragmentRepo = {
@@ -21,17 +26,21 @@ const mockBookRepo = {
 };
 
 const mockUser = { id: 'user-1' };
-const mockFragment = { id: 'frag-1', bookId: 'book-1', text: 'A great quote' } as Fragment;
+const mockFragment = { id: 'frag-1', bookId: 'book-1', text: 'A great quote', themes: ['amor'] } as Fragment;
 const mockBook = { id: 'book-1', title: 'My Book', author: 'An Author', shareCount: 0 } as Book;
 
 describe('SharingController', () => {
   let controller: SharingController;
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+    mockEventsService.emit.mockResolvedValue(undefined);
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SharingController],
       providers: [
         { provide: SharingService, useValue: mockSharingService },
+        { provide: EventsService, useValue: mockEventsService },
         { provide: getRepositoryToken(Fragment), useValue: mockFragmentRepo },
         { provide: getRepositoryToken(Book), useValue: mockBookRepo },
       ],

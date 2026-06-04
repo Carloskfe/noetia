@@ -8,21 +8,33 @@ import { Repository } from 'typeorm';
 import { Fragment } from './fragment.entity';
 import { CreateFragmentDto } from './dto/create-fragment.dto';
 import { UpdateFragmentDto } from './dto/update-fragment.dto';
+import { FragmentTaggerService } from './fragment-tagger.service';
+import { EventsService } from '../events/events.service';
 
 @Injectable()
 export class FragmentsService {
   constructor(
     @InjectRepository(Fragment)
     private readonly repo: Repository<Fragment>,
+    private readonly tagger: FragmentTaggerService,
+    private readonly events: EventsService,
   ) {}
 
-  create(userId: string, dto: CreateFragmentDto): Promise<Fragment> {
+  async create(userId: string, dto: CreateFragmentDto): Promise<Fragment> {
+    const themes = this.tagger.tag(dto.text);
     const fragment = this.repo.create({
       userId,
       bookId: dto.bookId,
       text: dto.text,
+      themes: themes.length > 0 ? themes : null,
     });
-    return this.repo.save(fragment);
+    const saved = await this.repo.save(fragment);
+    this.events.emit('fragment_created', userId, dto.bookId, {
+      fragmentId: saved.id,
+      themes,
+      textLength: dto.text.length,
+    }).catch(() => {});
+    return saved;
   }
 
   findByUserAndBook(userId: string, bookId: string): Promise<Fragment[]> {

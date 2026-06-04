@@ -3,6 +3,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ForbiddenException, UnprocessableEntityException } from '@nestjs/common';
 import { FragmentsService } from '../../../src/fragments/fragments.service';
 import { Fragment } from '../../../src/fragments/fragment.entity';
+import { FragmentTaggerService } from '../../../src/fragments/fragment-tagger.service';
+import { EventsService } from '../../../src/events/events.service';
 
 const mockRepo = () => ({
   create: jest.fn(),
@@ -11,6 +13,9 @@ const mockRepo = () => ({
   findOneBy: jest.fn(),
   remove: jest.fn(),
 });
+
+const mockTagger = { tag: jest.fn() };
+const mockEvents = { emit: jest.fn() };
 
 const makeFragment = (overrides: Partial<Fragment> = {}): Fragment =>
   ({
@@ -21,6 +26,7 @@ const makeFragment = (overrides: Partial<Fragment> = {}): Fragment =>
     endPhraseIndex: null,
     text: 'hello world',
     note: null,
+    themes: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -31,10 +37,15 @@ describe('FragmentsService', () => {
   let repo: ReturnType<typeof mockRepo>;
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+    mockEvents.emit.mockResolvedValue(undefined);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FragmentsService,
         { provide: getRepositoryToken(Fragment), useFactory: mockRepo },
+        { provide: FragmentTaggerService, useValue: mockTagger },
+        { provide: EventsService, useValue: mockEvents },
       ],
     }).compile();
 
@@ -45,26 +56,52 @@ describe('FragmentsService', () => {
   // ── create ─────────────────────────────────────────────────────────────────
 
   describe('create', () => {
-    it('creates and saves a fragment with bookId and text only', async () => {
-      const fragment = makeFragment();
+    it('creates and saves a fragment with bookId, text, and detected themes', async () => {
+      const fragment = makeFragment({ themes: ['filosofia'] });
+      mockTagger.tag.mockReturnValue(['filosofia']);
       repo.create.mockReturnValue(fragment);
       repo.save.mockResolvedValue(fragment);
 
-      const result = await service.create('user-1', {
-        bookId: 'book-1',
-        text: 'hello world',
-      });
+      const result = await service.create('user-1', { bookId: 'book-1', text: 'hello world' });
 
-      expect(repo.create).toHaveBeenCalledWith({
-        userId: 'user-1',
-        bookId: 'book-1',
-        text: 'hello world',
-      });
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'user-1', bookId: 'book-1', text: 'hello world', themes: ['filosofia'] }),
+      );
       expect(result).toEqual(fragment);
+    });
+
+    it('sets themes to null when tagger returns no matches', async () => {
+      const fragment = makeFragment();
+      mockTagger.tag.mockReturnValue([]);
+      repo.create.mockReturnValue(fragment);
+      repo.save.mockResolvedValue(fragment);
+
+      await service.create('user-1', { bookId: 'book-1', text: 'no keywords here' });
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ themes: null }),
+      );
+    });
+
+    it('emits a fragment_created event after saving', async () => {
+      const fragment = makeFragment({ id: 'frag-42', themes: ['amor'] });
+      mockTagger.tag.mockReturnValue(['amor']);
+      repo.create.mockReturnValue(fragment);
+      repo.save.mockResolvedValue(fragment);
+
+      await service.create('user-1', { bookId: 'book-1', text: 'love text' });
+
+      expect(mockEvents.emit).toHaveBeenCalledWith(
+        'fragment_created',
+        'user-1',
+        'book-1',
+        { fragmentId: 'frag-42', themes: ['amor'], textLength: 9 },
+      );
     });
 
     it('does not pass phrase indices to the repository', async () => {
       const fragment = makeFragment();
+      mockTagger.tag.mockReturnValue([]);
       repo.create.mockReturnValue(fragment);
       repo.save.mockResolvedValue(fragment);
 
@@ -73,6 +110,18 @@ describe('FragmentsService', () => {
       expect(repo.create).not.toHaveBeenCalledWith(
         expect.objectContaining({ startPhraseIndex: expect.anything() }),
       );
+    });
+
+    it('returns the saved fragment even if event emission fails', async () => {
+      const fragment = makeFragment();
+      mockTagger.tag.mockReturnValue([]);
+      repo.create.mockReturnValue(fragment);
+      repo.save.mockResolvedValue(fragment);
+      mockEvents.emit.mockRejectedValue(new Error('DB down'));
+
+      const result = await service.create('user-1', { bookId: 'book-1', text: 'text' });
+
+      expect(result).toEqual(fragment);
     });
   });
 

@@ -41,6 +41,9 @@ export class Fragment {
   @Column({ type: 'text', nullable: true })
   note: string | null;
 
+  @Column({ type: 'jsonb', nullable: true })
+  themes: string[] | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 

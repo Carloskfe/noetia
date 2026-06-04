@@ -13,11 +13,13 @@ import { Repository } from 'typeorm';
 import { Fragment } from '../fragments/fragment.entity';
 import { Book } from '../books/book.entity';
 import { SharingService } from './sharing.service';
+import { EventsService } from '../events/events.service';
 
 @Controller()
 export class SharingController {
   constructor(
     private readonly sharingService: SharingService,
+    private readonly events: EventsService,
     @InjectRepository(Fragment)
     private readonly fragmentRepo: Repository<Fragment>,
     @InjectRepository(Book)
@@ -55,6 +57,13 @@ export class SharingController {
 
     book.shareCount = (book.shareCount ?? 0) + 1;
     await this.bookRepo.save(book);
+
+    this.events.emit('fragment_shared', req.user.id, fragment.bookId, {
+      fragmentId: fragment.id,
+      platform,
+      format: format ?? null,
+      themes: fragment.themes ?? [],
+    }).catch(() => {});
 
     return { url };
   }

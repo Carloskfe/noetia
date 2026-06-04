@@ -23,6 +23,7 @@ import { CausesModule } from './causes/causes.module';
 import { GiftsModule } from './gifts/gifts.module';
 import { PushModule } from './push/push.module';
 import { StatsModule } from './stats/stats.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { StatsModule } from './stats/stats.module';
     PushModule,
     ClubsModule,
     StatsModule,
+    EventsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
