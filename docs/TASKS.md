@@ -68,7 +68,8 @@
 > - [ ] **App store submissions** — iOS ($99/yr Apple Developer) + Android ($25 one-time Google Play)
 >
 > **Backlog (post app store):**
-> - [ ] English free library — Whisper VTTs for remaining 29 EN books once priority titles are done
+> - [ ] **English Whisper sync — NEXT SESSION PRIORITY** — run Whisper on English LibriVox audio to get fully synchronized EN books; start with Meditations (15 sections, ~3h) and Jane Eyre (39 sections, ~18h); then work through the remaining 29 EN titles
+ - [ ] English free library — expand EN catalogue once priority titles are fully synced
 > - [x] Facebook + Google OAuth credentials — Google live; Facebook Dev mode (Go Live pending Meta business verification) ✅
 > - [ ] Narrator payment schemes — royalty/advance/hybrid field + marketplace UI
 > - [ ] Gift cards — already built; consider adding more token amounts (5, 10)
