@@ -42,14 +42,33 @@
 > - [x] Noetia Insights opt-out — allowInsights column (migration 060), 5th privacy toggle (amber accent), persona cron skips opted-out users ✅
 > - [x] Legal terms updated — ALEXANDRIA bug fixed, correct plan prices ($8.99/$13.99/$18.99), analytics/persona disclosure, opt-out path, 30-day change notice ✅
 > - [x] La Odisea text fixed — CatalogueEntry.textPostProcess hook strips verse numbers + illustration captions; reIngestText rebuilds DB phrases; deployed ✅
+> - [x] 4 new books added — Platero y yo, Pepita Jiménez (ES); Meditations, Jane Eyre (EN); text + audio + covers live ✅
+>
+> **Sync quality audit (2026-06-04) — 71 books total (40 ES / 31 EN):**
+>
+> ES — complies (Whisper ≥ 85%): **5 books**
+> - Marianela 99.8% · Romeo y Julieta 99.1% · Don Juan Tenorio 98.6% · Cuentos de Amor de Locura y de Muerte 98.0% · Niebla 88.1%
+> - Lazarillo de Tormes 84.1% (borderline)
+>
+> ES — below threshold, text mismatch — needs source investigation before re-aligning: **11 books**
+> - Salmos 80.9% · Los Cuatro Jinetes 77.2% · Crimen y Castigo 72.7% · El Sombrero de Tres Picos 70.6% · Doña Perfecta 69.0%
+> - Viaje al Centro de la Tierra 67.4% · La Odisea 59.1% (archaic language) · Leyendas 58.8% · La Isla del Tesoro 55.7% · El Gaucho Martín Fierro 55.4%
+>
+> ES — auto sync only (no Whisper yet): **24 books**
+> - Don Quijote I & II, La Divina Comedia, Orgullo y Prejuicio, Platero y yo, Pepita Jiménez, Cuentos de la Selva, Fábulas y Verdades, + 16 Bible books
+>
+> EN — auto sync only (no Whisper run on any English book yet): **31 books**
+> - All English titles readable but no phrase-level sync; Meditations and Jane Eyre are highest priority
 >
 > **Remaining before app store submission:**
-> - [ ] **Whisper VTTs for 13 books** — user transcribes on Windows. Books: Don Quijote Vol. I, Don Quijote Vol. II, Mateo, Lucas, Efesios, Filipenses, Apocalipsis, Proverbios, Isaías, Fábulas y Verdades, Cuentos de la Selva, Génesis, Juan, Éxodo
-> - [ ] **EAS build config** — configure app.json + eas.json for production iOS/Android builds (app.config.js + eas.json complete; needs Apple Developer Program enrollment for ascAppId + appleTeamId)
+> - [ ] **Whisper VTTs for priority Spanish books** — Don Quijote Vol. I & II (flagship; no sync at all); then Bible books pending: Mateo, Lucas, Efesios, Filipenses, Apocalipsis, Proverbios, Isaías, Génesis, Juan, Éxodo; Fábulas y Verdades, Cuentos de la Selva
+> - [ ] **Text source investigation for 11 below-threshold Spanish books** — identify which edition the LibriVox reader uses (check LibriVox url_text_source), find matching Gutenberg/Wikisource text, apply textPostProcess, re-align
+> - [ ] **English Whisper VTTs** — no English book has been Whisper-aligned; Meditations (15 sections) and Jane Eyre (39 sections) first
+> - [ ] **EAS build config** — app.config.js + eas.json complete; needs Apple Developer Program enrollment for ascAppId + appleTeamId
 > - [ ] **App store submissions** — iOS ($99/yr Apple Developer) + Android ($25 one-time Google Play)
 >
 > **Backlog (post app store):**
-> - [ ] English free library — ~20-40 public domain books (Gutenberg + LibriVox), same pipeline as Spanish
+> - [ ] English free library — Whisper VTTs for remaining 29 EN books once priority titles are done
 > - [x] Facebook + Google OAuth credentials — Google live; Facebook Dev mode (Go Live pending Meta business verification) ✅
 > - [ ] Narrator payment schemes — royalty/advance/hybrid field + marketplace UI
 > - [ ] Gift cards — already built; consider adding more token amounts (5, 10)

@@ -654,6 +654,26 @@ docker compose exec api npm run migration:run
 
 ---
 
+## Sync Quality Status (audited 2026-06-04)
+
+**Standard:** Whisper syncCoverage ≥ 85%. Books below this threshold have audio/text mismatches that produce broken phrase highlighting for readers. Books on `auto` sync are readable but have no phrase-level synchronization.
+
+### Spanish (40 books total)
+
+| Status | Count | Books |
+|--------|-------|-------|
+| Whisper ≥ 85% ✅ | 5 | Marianela 99.8%, Romeo y Julieta 99.1%, Don Juan Tenorio 98.6%, Cuentos de Amor 98.0%, Niebla 88.1% |
+| Whisper < 85% ❌ | 11 | Lazarillo 84.1%, Salmos 80.9%, Los Cuatro Jinetes 77.2%, Crimen y Castigo 72.7%, El Sombrero 70.6%, Doña Perfecta 69.0%, Viaje al Centro 67.4%, La Odisea 59.1%, Leyendas 58.8%, La Isla del Tesoro 55.7%, El Gaucho Martín Fierro 55.4% |
+| Auto sync only | 24 | Don Quijote I & II, La Divina Comedia, Orgullo y Prejuicio, Platero y yo, Pepita Jiménez, Cuentos de la Selva, Fábulas y Verdades, 16 Bible books (ES) |
+
+**Root cause for below-threshold books:** LibriVox readers used a different edition/translation than the stored Gutenberg/Wikisource text. Fix procedure: check `url_text_source` on the LibriVox API entry, locate the matching text source, add `textPostProcess` to the catalogue entry if needed, run `reIngestText`, then re-run `seed-sync-whisper`. La Odisea's low score (59.1%) is additionally caused by archaic 1910 Spanish that Whisper transcribes inaccurately.
+
+### English (31 books total)
+
+All 31 English books are on `auto` sync — no Whisper VTTs have been run on any English title. Readable but no phrase-level synchronization. Priority for first Whisper run: Meditations (15 sections) and Jane Eyre (39 sections).
+
+---
+
 ## Reader Persona Pipeline
 
 Noetia builds a **derived reader profile** (persona) from behavioral signals. The pipeline has three layers:
