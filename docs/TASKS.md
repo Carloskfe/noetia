@@ -77,6 +77,15 @@
 > - [ ] Persona-based book recommendations — surface books by semantic similarity to user's dominantThemes
 > - [ ] Author persona analytics dashboard — show which reader archetypes resonate with each book (aggregate, N≥50)
 >
+> **Content pipeline — special titles:**
+> - [x] **Magnifica Humanitas (León XIV) — rights clearance email sent** — Email sent 2026-06-10 to `diritti.lev@spc.va` (LEV Ufficio Diritti) from `pronoiallc@gmail.com`. Bilingual ES+EN. Subject: "Request for Authorization / Solicitud de autorización — Free Reproduction of Magnifica Humanitas (Leo XIV, 2026)". Requests: free reproduction of full ES+EN text, Vatican News EN audiobook licensing, and advance authorization for any future official ES audio. Follow up after 3–4 weeks if no reply; fallback `segreteria.lev@spc.va` or +39 06 6984 5766.
+> - [ ] **Magnifica Humanitas — Spanish text ingestion** *(blocked on rights)* — Source: `https://www.vatican.va/content/leo-xiv/es/encyclicals/documents/20260515-magnifica-humanitas.html`. 7 sections (Intro + 5 chapters + Conclusión), ~245 párrafos, ~37,000 words. Add catalogue entry, ingest text, seed phrases.
+> - [ ] **Magnifica Humanitas — English text ingestion** *(blocked on rights)* — Source: `https://www.vatican.va/content/leo-xiv/en/encyclicals/documents/20260515-magnifica-humanitas.html`. Same structure. Add catalogue entry, ingest text, seed phrases.
+> - [ ] **Magnifica Humanitas — English audio sync** *(blocked on rights)* — Vatican News produced an official 7-part English audiobook (~4.5–6h total, narrator: Sr. Bernadette Reis FSP). Contact Vatican News to request licensing for third-party use. If granted, download the 7 files, run Whisper per-chapter, merge VTTs, align. Podcast page: `https://www.vaticannews.va/en/podcast/magnifica-humanitas.html`
+> - [ ] **Magnifica Humanitas — Spanish audio** *(no source exists yet)* — No Spanish audiobook has been produced by the Vatican or any publisher as of 2026-06-10. This is a significant gap: ~40% of global Catholics are Spanish-speaking and Leo XIV is a native Spanish speaker. Options: (a) wait and monitor Vatican News Spanish service; (b) commission a narrator once LEV rights are confirmed — Noetia could be the first Spanish reading of this encyclical. ~4–5 hours of narration estimated.
+>
+> **Why this matters for Noetia:** *Magnifica Humanitas* is a papal encyclical specifically on AI and human dignity, signed May 15, 2026 (135th anniversary of Rerum Novarum). It is culturally timely, intellectually substantial (~37,000 words, comparable to Meditations in scope), available in both target languages, and authored by the first American pope — a native Spanish speaker. Offering it in a Spanish reading app with synchronized audio would be distinctive and relevant to Noetia's audience.
+>
 > **Security & ops backlog:**
 > - [x] SSH hardening — fail2ban, port 222, UFW ✅
 > - [x] PostgreSQL backups — daily cron + retention ✅

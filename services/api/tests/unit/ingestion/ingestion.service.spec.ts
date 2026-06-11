@@ -179,7 +179,7 @@ describe('IngestionService', () => {
   // ── ingestAll ─────────────────────────────────────────────────────────────
 
   describe('ingestAll', () => {
-    it('calls ingestOne for every entry in CATALOGUE', async () => {
+    it('calls ingestOne for every non-pending entry in CATALOGUE', async () => {
       const ingestOneSpy = jest
         .spyOn(service, 'ingestOne')
         .mockResolvedValue({} as Book);
@@ -187,7 +187,21 @@ describe('IngestionService', () => {
       await service.ingestAll();
 
       const { CATALOGUE } = await import('../../../src/ingestion/catalogue');
-      expect(ingestOneSpy).toHaveBeenCalledTimes(CATALOGUE.length);
+      const eligibleCount = CATALOGUE.filter((e) => !e.pendingRights).length;
+      expect(ingestOneSpy).toHaveBeenCalledTimes(eligibleCount);
+    });
+
+    it('skips entries with pendingRights: true without calling ingestOne', async () => {
+      const ingestOneSpy = jest
+        .spyOn(service, 'ingestOne')
+        .mockResolvedValue({} as Book);
+
+      await service.ingestAll();
+
+      const { CATALOGUE } = await import('../../../src/ingestion/catalogue');
+      const pendingTitles = CATALOGUE.filter((e) => e.pendingRights).map((e) => e.title);
+      const calledTitles = ingestOneSpy.mock.calls.map((c) => c[0].title);
+      pendingTitles.forEach((t) => expect(calledTitles).not.toContain(t));
     });
 
     it('continues processing remaining entries when one fails', async () => {
@@ -237,6 +251,23 @@ describe('IngestionService', () => {
 
       await expect(service.ingestAudio(gutenbergEntry, book)).rejects.toThrow('API down');
     });
+
+    it('throws when the catalogue entry has no librivoxAudioUrl', async () => {
+      const pendingEntry: CatalogueEntry = {
+        pendingRights: true,
+        source: 'vatican',
+        title: 'Magnifica Humanitas',
+        author: 'León XIV',
+        description: 'Test.',
+        language: 'es',
+      };
+      const book = { id: 'bk-pending' } as Book;
+
+      await expect(service.ingestAudio(pendingEntry, book)).rejects.toThrow(
+        'No LibriVox audio URL for: "Magnifica Humanitas"',
+      );
+      expect(mockLibrivoxApi.getZipUrl).not.toHaveBeenCalled();
+    });
   });
 
   // ── ingestAudioStream ─────────────────────────────────────────────────────
@@ -259,6 +290,24 @@ describe('IngestionService', () => {
       mockLibrivoxApi.getM4bUrl = jest.fn().mockRejectedValue(new Error('no M4B found'));
 
       await expect(service.ingestAudioStream(gutenbergEntry, book)).rejects.toThrow('no M4B found');
+    });
+
+    it('throws when the catalogue entry has no librivoxAudioUrl', async () => {
+      const pendingEntry: CatalogueEntry = {
+        pendingRights: true,
+        source: 'vatican',
+        title: 'Magnifica Humanitas',
+        author: 'Leo XIV',
+        description: 'Test.',
+        language: 'en',
+        externalAudioUrl: 'https://www.vaticannews.va/en/podcast/magnifica-humanitas.html',
+      };
+      const book = { id: 'bk-pending-stream' } as Book;
+
+      await expect(service.ingestAudioStream(pendingEntry, book)).rejects.toThrow(
+        'No LibriVox audio URL for: "Magnifica Humanitas"',
+      );
+      expect(mockLibrivoxApi.getM4bUrl).not.toHaveBeenCalled();
     });
   });
 

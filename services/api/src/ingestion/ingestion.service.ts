@@ -30,6 +30,10 @@ export class IngestionService {
 
   async ingestAll(): Promise<void> {
     for (const entry of CATALOGUE) {
+      if (entry.pendingRights) {
+        this.logger.log(`Skipping (rights pending): ${entry.title}`);
+        continue;
+      }
       try {
         await this.ingestOne(entry);
         this.logger.log(`Ingested: ${entry.title}`);
@@ -104,6 +108,9 @@ export class IngestionService {
   }
 
   private async fetchText(entry: CatalogueEntry): Promise<string> {
+    if (!entry.source || entry.source === 'vatican') {
+      throw new Error(`No text fetcher available for source "${entry.source}" on: "${entry.title}"`);
+    }
     const lang = entry.language ?? 'es';
     let text: string;
     if (entry.source === 'gutenberg') {
@@ -163,6 +170,7 @@ export class IngestionService {
   }
 
   async ingestAudio(entry: CatalogueEntry, book: Book): Promise<void> {
+    if (!entry.librivoxAudioUrl) throw new Error(`No LibriVox audio URL for: "${entry.title}"`);
     const zipUrl = await this.librivoxApi.getZipUrl(entry.librivoxAudioUrl);
     const audioKey = `${book.id}.zip`;
     await this.audioDownloader.downloadAndStore(zipUrl, audioKey);
@@ -199,6 +207,7 @@ export class IngestionService {
   }
 
   async ingestAudioStream(entry: CatalogueEntry, book: Book): Promise<void> {
+    if (!entry.librivoxAudioUrl) throw new Error(`No LibriVox audio URL for: "${entry.title}"`);
     const m4bUrl = await this.librivoxApi.getM4bUrl(entry.librivoxAudioUrl);
     book.audioStreamKey = m4bUrl;
     await this.bookRepo.save(book);

@@ -1,15 +1,21 @@
-export type TextSource = 'gutenberg' | 'wikisource';
+export type TextSource = 'gutenberg' | 'wikisource' | 'vatican';
 
 export interface CatalogueEntry {
   title: string;
   author: string;
   description: string;
-  source: TextSource;
+  /** Omitted for pendingRights entries — source fetcher is not yet wired for 'vatican' */
+  source?: TextSource;
   gutenbergId?: number;
   wikisourceTitle?: string;
   /** Fetch and concatenate multiple individual Wikisource pages (for collected works with no index page) */
   wikisourceTitles?: string[];
-  librivoxAudioUrl: string;
+  /** Absent for non-LibriVox audio sources or pendingRights entries */
+  librivoxAudioUrl?: string;
+  /** Non-LibriVox audio source URL (e.g. Vatican News podcast page) — for reference/future ingestion */
+  externalAudioUrl?: string;
+  /** When true, ingestAll() skips this entry — used for titles awaiting rights authorization */
+  pendingRights?: boolean;
   /** Override search string passed to LibriVox API when the full title doesn't match */
   librivoxSearchTitle?: string;
   /** Hardcoded cover image URL — skips Open Library search when present */
@@ -790,5 +796,35 @@ export const CATALOGUE: CatalogueEntry[] = [
     librivoxAudioUrl: 'https://librivox.org/cuentos-de-la-selva-para-los-ninos-by-horacio-quiroga/',
     librivoxSearchTitle: 'Cuentos de la Selva',
     coverUrl: '/covers/cuentos-selva.png',
+  },
+
+  // ── Pending rights — do NOT ingest until authorization is confirmed ────────
+
+  // Rights request sent 2026-06-10 to diritti.lev@spc.va (LEV Ufficio Diritti) from pronoiallc@gmail.com.
+  // Requested: free reproduction of full text, Vatican News EN audio licensing, advance auth for future ES audio.
+  // Text source: https://www.vatican.va/content/leo-xiv/es/encyclicals/documents/20260515-magnifica-humanitas.html
+  // Audio: no Spanish recording exists as of 2026-06-10.
+  {
+    pendingRights: true,
+    source: 'vatican',
+    title: 'Magnifica Humanitas',
+    author: 'León XIV',
+    description:
+      'Carta encíclica del Papa León XIV sobre la salvaguarda de la persona humana en tiempos de inteligencia artificial. Introducción + 5 capítulos + Conclusión; 245 párrafos; ~37.000 palabras.',
+    language: 'es',
+  },
+
+  // Rights request sent 2026-06-10 to diritti.lev@spc.va (LEV Ufficio Diritti) from pronoiallc@gmail.com.
+  // Text source: https://www.vatican.va/content/leo-xiv/en/encyclicals/documents/20260515-magnifica-humanitas.html
+  // Audio: Vatican News EN audiobook (7 files, ~4.5–6h, narrator Sr. Bernadette Reis FSP) — licensing TBD.
+  {
+    pendingRights: true,
+    source: 'vatican',
+    title: 'Magnifica Humanitas',
+    author: 'Leo XIV',
+    description:
+      'Encyclical letter of Pope Leo XIV on safeguarding the human person in the time of artificial intelligence. Introduction + 5 chapters + Conclusion; 245 paragraphs; ~37,000 words.',
+    language: 'en',
+    externalAudioUrl: 'https://www.vaticannews.va/en/podcast/magnifica-humanitas.html',
   },
 ];
