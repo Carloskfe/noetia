@@ -44,32 +44,81 @@
 > - [x] La Odisea text fixed — CatalogueEntry.textPostProcess hook strips verse numbers + illustration captions; reIngestText rebuilds DB phrases; deployed ✅
 > - [x] 4 new books added — Platero y yo, Pepita Jiménez (ES); Meditations, Jane Eyre (EN); text + audio + covers live ✅
 >
-> **Sync quality audit (2026-06-04) — 71 books total (40 ES / 31 EN):**
+> **Sync quality audit (2026-06-15 updated) — 73 books total (40 ES + 31 EN + 2 pending rights):**
 >
-> ES — complies (Whisper ≥ 85%): **5 books**
-> - Marianela 99.8% · Romeo y Julieta 99.1% · Don Juan Tenorio 98.6% · Cuentos de Amor de Locura y de Muerte 98.0% · Niebla 88.1%
-> - Lazarillo de Tormes 84.1% (borderline)
+> **Standard:** Whisper syncCoverage ≥ 85%. Books below this produce broken phrase highlighting.
 >
-> ES — below threshold, text mismatch — needs source investigation before re-aligning: **11 books**
-> - Salmos 80.9% · Los Cuatro Jinetes 77.2% · Crimen y Castigo 72.7% · El Sombrero de Tres Picos 70.6% · Doña Perfecta 69.0%
-> - Viaje al Centro de la Tierra 67.4% · La Odisea 59.1% (archaic language) · Leyendas 58.8% · La Isla del Tesoro 55.7% · El Gaucho Martín Fierro 55.4%
+> ### ES — Compliant (Whisper ≥ 85%): 5 books ✅
+> | Book | Coverage | VTT |
+> |------|----------|-----|
+> | Marianela | 99.8% | marianela.merged.vtt ✅ |
+> | Romeo y Julieta | 99.1% | romeo-y-julieta.merged.vtt ✅ |
+> | Don Juan Tenorio | 98.6% | don-juan.merged.vtt ✅ |
+> | Cuentos de Amor de Locura y de Muerte | 98.0% | cuentos-de-amor.merged.vtt ✅ |
+> | Niebla | 88.1% | niebla.merged.vtt ✅ |
+> | Lazarillo de Tormes | 84.1% | lazarillo.merged.vtt ⚠️ borderline |
 >
-> ES — auto sync only (no Whisper yet): **24 books**
-> - Don Quijote I & II, La Divina Comedia, Orgullo y Prejuicio, Platero y yo, Pepita Jiménez, Cuentos de la Selva, Fábulas y Verdades, + 16 Bible books
+> ### ES — Below Threshold (VTT exists but text edition mismatch): 11 books ❌
+> Root cause: LibriVox reader used a different edition/translation than stored text. Fix: check LibriVox url_text_source, find matching Gutenberg/Wikisource text, apply textPostProcess, re-run Whisper.
 >
-> EN — auto sync only (no Whisper run on any English book yet): **31 books**
-> - All English titles readable but no phrase-level sync; Meditations and Jane Eyre are highest priority
+> | Book | Coverage | VTT |
+> |------|----------|-----|
+> | Salmos | 80.9% | salmos.merged.vtt |
+> | Los Cuatro Jinetes del Apocalipsis | 77.2% | cuatro-jinetes.merged.vtt |
+> | Crimen y Castigo | 72.7% | crimen-y-castigo.merged.vtt |
+> | El Sombrero de Tres Picos | 70.6% | el-sombrero-de-tres-picos.merged.vtt |
+> | Doña Perfecta | 69.0% | dona-perfecta.merged.vtt |
+> | Viaje al Centro de la Tierra | 67.4% | viaje-al-centro.merged.vtt |
+> | La Odisea | 59.1% | la-odisea.merged.vtt (+ archaic 1910 Spanish) |
+> | Leyendas | 58.8% | rimas-y-leyendas.merged.vtt |
+> | La Isla del Tesoro | 55.7% | la-isla-del-tesoro.merged.vtt |
+> | El Gaucho Martín Fierro | 55.4% | martin-fierro.merged.vtt |
+>
+> ### ES — Auto Sync Only (no Whisper VTT yet): 24 books
+> Whisper pipeline queued in `scripts/whisper-batch.sh`. Priority order:
+>
+> | Book | Batch script | Est. audio | Notes |
+> |------|-------------|-----------|-------|
+> | Don Quijote Vol. I | ✅ | ~4.3h | **RUNNING ON SERVER 2026-06-15 OVERNIGHT** |
+> | Don Quijote Vol. II | ✅ | ~4.0h | **RUNNING ON SERVER 2026-06-15 OVERNIGHT** |
+> | Fábulas y Verdades | ✅ | short | — |
+> | Cuentos de la Selva | ✅ | short | — |
+> | Efesios | ✅ | short | — |
+> | Filipenses | ✅ | short | — |
+> | Apocalipsis | ✅ | short | — |
+> | Mateo | ✅ | short | — |
+> | Juan | ✅ | short | — |
+> | Lucas | ✅ | medium | — |
+> | Proverbios | ✅ | medium | — |
+> | Isaías | ✅ | medium | — |
+> | Génesis | ✅ | medium | — |
+> | Éxodo | ✅ | medium | — |
+> | Santiago | ✅ | short | Added 2026-06-15 |
+> | 1 Corintios | ✅ | short | Added 2026-06-15 |
+> | Hebreos | ✅ | short | Added 2026-06-15 |
+> | Romanos | ✅ | short | Added 2026-06-15 |
+> | Marcos | ✅ | medium | Added 2026-06-15 |
+> | Hechos | ✅ | medium | Added 2026-06-15 |
+> | Platero y yo | ✅ | medium | Added 2026-06-15 |
+> | Pepita Jiménez | ✅ | medium | Added 2026-06-15 |
+> | Orgullo y Prejuicio | ✅ | ~7h | Added 2026-06-15 |
+> | La Divina Comedia | ✅ | ~10h | Added 2026-06-15; longest ES book |
+>
+> ### EN — Auto Sync Only (no Whisper run on any English book yet): 31 books
+> All English titles are readable but have no phrase-level synchronization.
+> Priority for first Whisper run: Meditations (15 sections, ~3h) → Jane Eyre (39 sections, ~18h) → remaining 29 titles.
 >
 > **Remaining before app store submission:**
-> - [ ] **Whisper VTTs for priority Spanish books** — Don Quijote Vol. I & II (flagship; no sync at all); then Bible books pending: Mateo, Lucas, Efesios, Filipenses, Apocalipsis, Proverbios, Isaías, Génesis, Juan, Éxodo; Fábulas y Verdades, Cuentos de la Selva
-> - [ ] **Text source investigation for 11 below-threshold Spanish books** — identify which edition the LibriVox reader uses (check LibriVox url_text_source), find matching Gutenberg/Wikisource text, apply textPostProcess, re-align
-> - [ ] **English Whisper VTTs** — no English book has been Whisper-aligned; Meditations (15 sections) and Jane Eyre (39 sections) first
+> - [~] **Don Quijote Vol. I & II Whisper** — running on server overnight 2026-06-15; SCP VTTs back, commit, align on server when done
+> - [ ] **Run whisper-batch.sh for remaining 22 Spanish books** — after Don Quijote completes; run on server; commit VTTs; align each via seed-sync-whisper.js
+> - [ ] **Text source investigation for 11 below-threshold Spanish books** — identify which edition the LibriVox reader used; find matching Gutenberg/Wikisource text; apply textPostProcess; re-run Whisper
+> - [ ] **English Whisper VTTs** — no English book Whisper-aligned; start Meditations then Jane Eyre on server after Spanish batch completes
 > - [ ] **EAS build config** — app.config.js + eas.json complete; needs Apple Developer Program enrollment for ascAppId + appleTeamId
 > - [ ] **App store submissions** — iOS ($99/yr Apple Developer) + Android ($25 one-time Google Play)
 >
 > **Backlog (post app store):**
-> - [ ] **English Whisper sync — NEXT SESSION PRIORITY** — run Whisper on English LibriVox audio to get fully synchronized EN books; start with Meditations (15 sections, ~3h) and Jane Eyre (39 sections, ~18h); then work through the remaining 29 EN titles
- - [ ] English free library — expand EN catalogue once priority titles are fully synced
+> - [ ] **English Whisper sync** — run remaining 29 EN titles after Meditations + Jane Eyre; then expand EN catalogue
+> - [ ] English free library — expand EN catalogue once priority titles are fully synced
 > - [x] Facebook + Google OAuth credentials — Google live; Facebook Dev mode (Go Live pending Meta business verification) ✅
 > - [ ] Narrator payment schemes — royalty/advance/hybrid field + marketplace UI
 > - [ ] Gift cards — already built; consider adding more token amounts (5, 10)

@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# Batch Whisper transcription pipeline for all 21 remaining books.
+# Batch Whisper transcription pipeline for all remaining Spanish books.
 # Sorted by chapter count (shortest first) so early books finish quickly.
 #
+# Books already done (merged VTT exists, already aligned in DB):
+#   Romeo y Julieta 99.1% · Don Juan Tenorio 98.6% · Cuentos de Amor 98.0%
+#   Niebla 88.1% · Marianela 99.8% · Lazarillo 84.1%
+#   (below 85%: Salmos 80.9% · Los Cuatro Jinetes 77.2% · Crimen y Castigo 72.7%
+#    El Sombrero 70.6% · Doña Perfecta 69.0% · Viaje Centro 67.4%
+#    La Odisea 59.1% · Leyendas 58.8% · La Isla 55.7% · Martín Fierro 55.4%)
+#
 # Usage:
-#   bash scripts/whisper-batch.sh           # all 21 books, medium model
+#   bash scripts/whisper-batch.sh           # all books, medium model
 #   bash scripts/whisper-batch.sh small     # use 'small' model (~4x faster on CPU)
-#   SKIP="genesis mateo" bash scripts/whisper-batch.sh  # skip already-done books
+#   SKIP="genesis mateo" bash scripts/whisper-batch.sh  # skip specific books
 #
 # After all books complete, commit and push transcriptions/, then run
 # seed-sync-whisper.js on the server for each new .merged.vtt file.
@@ -103,6 +110,38 @@ run_book "https://librivox.org/don-quijote-vol-1-by-miguel-de-cervantes-saavedra
 
 run_book "https://librivox.org/don-quijote-volume-2-by-miguel-de-cervantes-saavedra/" \
          "don-quijote-vol-2" "Don Quijote Vol. II"
+
+# ── Remaining auto-sync Spanish books (no VTT yet) ───────────────────────────
+
+run_book "https://librivox.org/carta-del-apostol-santiago-by-reina-valera/" \
+         "santiago" "Santiago"
+
+run_book "https://librivox.org/1-corintios-reina-valera/" \
+         "1-corintios" "1 Corintios"
+
+run_book "https://librivox.org/hebreos-version-reina-valera/" \
+         "hebreos" "Hebreos"
+
+run_book "https://librivox.org/bible-nt-06-romanos-by-reina-valera/" \
+         "romanos" "Romanos"
+
+run_book "https://librivox.org/el-bible-reina-valera-nt-02-evangelio-segun-marcos-by-reina-valera/" \
+         "marcos" "Marcos"
+
+run_book "https://librivox.org/bible-reina-valera-nt-05-hechos-de-los-apostoles-by-reina-valera/" \
+         "hechos" "Hechos"
+
+run_book "https://librivox.org/platero-y-yo-by-juan-ramon-jimenez/" \
+         "platero-y-yo" "Platero y yo"
+
+run_book "https://librivox.org/pepita-jimenez-by-juan-valera/" \
+         "pepita-jimenez" "Pepita Jiménez"
+
+run_book "https://librivox.org/orgullo-y-prejuicio1-by-jane-austen/" \
+         "orgullo-y-prejuicio" "Orgullo y Prejuicio"
+
+run_book "https://librivox.org/la-divina-comedia-by-dante-alighieri/" \
+         "la-divina-comedia" "La Divina Comedia"
 
 echo ""
 echo "============================================================"
