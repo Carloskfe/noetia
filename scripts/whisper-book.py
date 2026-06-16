@@ -159,15 +159,21 @@ def run_whisper(audio_path: Path, out_dir: Path, lang: str, model: str) -> Path:
     ]
     print(f"    whisper {audio_path.name} ...", end="", flush=True)
     result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
+    combined = result.stdout + result.stderr
+    if result.returncode != 0 or "Skipping" in combined:
         print(f"\n  Whisper FAILED for {audio_path.name}")
-        print(result.stderr[-1000:])
+        print(combined[-2000:])
+        if "ffmpeg" in combined:
+            raise RuntimeError("ffmpeg not found — install it with: apt-get install -y ffmpeg")
         raise RuntimeError(f"Whisper failed on {audio_path.name}")
     print(" done")
     # Whisper names output file same as input but with .vtt extension
     vtt = out_dir / (audio_path.stem + ".vtt")
     if not vtt.exists():
-        raise RuntimeError(f"Expected VTT not found: {vtt}")
+        # Search for any vtt written to out_dir to help diagnose filename changes
+        vtts = list(out_dir.glob("*.vtt"))
+        hint = f" (found: {[v.name for v in vtts]})" if vtts else " (no .vtt files in output dir)"
+        raise RuntimeError(f"Expected VTT not found: {vtt}{hint}")
     return vtt
 
 
@@ -223,6 +229,10 @@ def main():
     # Step 4: run Whisper
     vtt_dir.mkdir(parents=True, exist_ok=True)
     for i, audio in enumerate(audio_paths):
+        vtt = vtt_dir / (audio.stem + ".vtt")
+        if vtt.exists():
+            print(f"\n[{i+1}/{len(audio_paths)}] Already done: {audio.name}")
+            continue
         print(f"\n[{i+1}/{len(audio_paths)}] Transcribing: {audio.name}")
         vtt = run_whisper(audio, vtt_dir, args.lang, args.model)
         print(f"  → {vtt.name}")
