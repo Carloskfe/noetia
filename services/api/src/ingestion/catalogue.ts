@@ -524,6 +524,17 @@ export const CATALOGUE: CatalogueEntry[] = [
   },
 
   {
+    title: 'Walden',
+    author: 'Henry David Thoreau',
+    description: 'Two years alone in a cabin by Walden Pond — the defining American meditation on self-reliance, simplicity, and living deliberately in nature.',
+    source: 'gutenberg',
+    gutenbergId: 205,
+    librivoxAudioUrl: 'https://librivox.org/walden-by-henry-david-thoreau',
+    language: 'en',
+    narrativeEndPattern: '\nON THE DUTY OF CIVIL DISOBEDIENCE\n',
+  },
+
+  {
     title: 'Meditations',
     author: 'Marcus Aurelius',
     description: 'Personal reflections of the Roman Emperor Marcus Aurelius — the definitive Stoic guide to resilience, duty, and the art of living with purpose.',
