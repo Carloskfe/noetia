@@ -650,7 +650,8 @@ docker compose exec api npm run migration:run
 | 057 | `CreateEventsTable` | append-only events table (userId, bookId, eventType VARCHAR(50), payload JSONB, createdAt); indexes on user_id, book_id, event_type, created_at, (user_id, event_type) |
 | 058 | `AddFragmentThemes` | themes JSONB column on fragments — auto-tagged at creation with up to 3 thematic labels from the 20-theme Spanish taxonomy |
 | 059 | `CreateUserPersonas` | user_personas table — dominantThemes, engagementArchetype, readingCadence, completionRate, socialAmplification, preferredPlatforms, topGenres, avgSessionMinutes, computedAt; indexes on archetype, cadence, computed_at |
-| 060 | `AddAllowInsights` | allowInsights BOOLEAN DEFAULT TRUE on users — opt-out of reader persona computation and aggregate audience analysis |
+| 060 | `AddAllowInsights` | allowInsights BOOLEAN DEFAULT TRUE on users — opt-out of reader persona computation and aggregate audience analysis. **Bug:** raw SQL added `allow_insights` (snake_case) instead of the entity's camelCase `allowInsights`, breaking every query that loads a `User` row (login, OAuth, password reset) until migration 061 |
+| 061 | `FixAllowInsightsColumnName` | Renames `users.allow_insights` → `"allowInsights"` to match the `User` entity column |
 
 ---
 
