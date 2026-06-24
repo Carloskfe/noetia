@@ -488,6 +488,8 @@ All third-party services used in production. Credentials are in `.env.production
 
 Use this procedure whenever you have Whisper-generated VTT files for a book that currently has no phrase timestamps (`syncSource = 'auto'`).
 
+**If coverage comes back below 90% after following this procedure**, do not just re-run Whisper — see [`docs/whisper-sync-troubleshooting.md`](docs/whisper-sync-troubleshooting.md) for the full diagnostic decision tree (announcement noise, untrimmed front/back matter, scattered footnotes/illustrations, story-order mismatches in multi-piece collections, shared-text bugs across volumes, and genuine edition/translation mismatches). That doc also applies to books received directly from authors/publishers with their own narration, not just LibriVox re-syncs.
+
 ### Step 1 — Prepare individual chapter VTTs
 
 Run Whisper on each LibriVox chapter audio file with word-level timestamps:
@@ -655,23 +657,25 @@ docker compose exec api npm run migration:run
 
 ---
 
-## Sync Quality Status (audited 2026-06-04)
+## Sync Quality Status (audited 2026-06-24)
 
-**Standard:** Whisper syncCoverage ≥ 85%. Books below this threshold have audio/text mismatches that produce broken phrase highlighting for readers. Books on `auto` sync are readable but have no phrase-level synchronization.
+**Standard:** Whisper syncCoverage ≥ **90%** (raised from 85% on 2026-06-24 — see [`docs/whisper-sync-troubleshooting.md` § Why 90%](docs/whisper-sync-troubleshooting.md#why-90)). Books below this threshold have audio/text mismatches that produce broken phrase highlighting for readers. Books on `auto` sync are readable but have no phrase-level synchronization.
+
+**Before re-syncing any book below threshold, read [`docs/whisper-sync-troubleshooting.md`](docs/whisper-sync-troubleshooting.md) first.** It's a living document — append every newly-discovered, validated bug/fix to it as you find them, not just at the end of a session. "Edition mismatch" was the only documented root cause as of 2026-06-04; as of 2026-06-24 there are at least 5 distinct root-cause categories (announcement noise, untrimmed front/back matter, scattered footnotes/illustrations, story-order mismatches in multi-piece collections, shared-text bugs across sibling volumes) — most below-threshold books are NOT genuine edition mismatches and have a real fix available.
 
 ### Spanish (40 books total)
 
 | Status | Count | Books |
 |--------|-------|-------|
-| Whisper ≥ 85% ✅ | 5 | Marianela 99.8%, Romeo y Julieta 99.1%, Don Juan Tenorio 98.6%, Cuentos de Amor 98.0%, Niebla 88.1% |
-| Whisper < 85% ❌ | 11 | Lazarillo 84.1%, Salmos 80.9%, Los Cuatro Jinetes 77.2%, Crimen y Castigo 72.7%, El Sombrero 70.6%, Doña Perfecta 69.0%, Viaje al Centro 67.4%, La Odisea 59.1%, Leyendas 58.8%, La Isla del Tesoro 55.7%, El Gaucho Martín Fierro 55.4% |
-| Auto sync only | 24 | Don Quijote I & II, La Divina Comedia, Orgullo y Prejuicio, Platero y yo, Pepita Jiménez, Cuentos de la Selva, Fábulas y Verdades, 16 Bible books (ES) |
+| Whisper ≥ 90% ✅ | 5 | Marianela 99.8%, Romeo y Julieta 99.1%, Don Juan Tenorio 98.6%, Cuentos de Amor 98.0%, **Cuentos de la Selva 100.0%** (fixed 2026-06-24 — story-order mismatch, see troubleshooting doc §7) |
+| Whisper < 90% ❌ | 19 | Platero y yo 89.0%, Niebla 88.1%, Fábulas y Verdades 85.3% (re-audit under new threshold — was passing at 85%), Lazarillo 84.1%, Salmos 80.9%, Los Cuatro Jinetes 76.4% (confirmed edition mismatch, §6 — front/back-matter trim applied 2026-06-24, no improvement), Crimen y Castigo 73.0% (confirmed edition mismatch, §6), El Sombrero 70.6%, Pepita Jiménez 71.1% (front/back matter confirmed clean; re-testing with expanded announcement patterns), Doña Perfecta 69.0%, Orgullo y Prejuicio 65.1%, Viaje al Centro 67.5% (confirmed edition mismatch, §6), La Divina Comedia 66.0% (front/back-matter trim applied 2026-06-24, up from 56.0% — still needs more), Don Quijote Vol. II 56.4%, Don Quijote Vol. I 54.4% (**both capped near 50% by a shared-`gutenbergId: 2000` text bug, §8 — not yet fixed**), La Odisea 58.6%, Leyendas 58.8%, La Isla del Tesoro 55.7%, El Gaucho Martín Fierro 55.4% |
+| Auto sync only | 16 | 16 Bible books (ES) |
 
-**Root cause for below-threshold books:** LibriVox readers used a different edition/translation than the stored Gutenberg/Wikisource text. Fix procedure: check `url_text_source` on the LibriVox API entry, locate the matching text source, add `textPostProcess` to the catalogue entry if needed, run `reIngestText`, then re-run `seed-sync-whisper`. La Odisea's low score (59.1%) is additionally caused by archaic 1910 Spanish that Whisper transcribes inaccurately.
+**Root cause varies — see `docs/whisper-sync-troubleshooting.md` for the per-book diagnostic process.** Do not assume "edition mismatch" without first confirming front/back matter and scattered noise are clean (§3-5) and checking for story-order/shared-text bugs (§7-8) — most of the books above were re-tested on 2026-06-24 and several have a known, documented next step rather than being a dead end.
 
 ### English (31 books total)
 
-All 31 English books are on `auto` sync — no Whisper VTTs have been run on any English title. Readable but no phrase-level synchronization. Priority for first Whisper run: Meditations (15 sections) and Jane Eyre (39 sections).
+30 of 31 English books are on `auto` sync — no Whisper VTTs run. **Meditations** was Whisper-synced 2026-06-24: 42.6% coverage, below threshold, root cause not yet diagnosed (first English title attempted — confirm front/back matter and announcement patterns the same way as Spanish titles before assuming edition mismatch). Priority for next Whisper run: Jane Eyre (39 sections).
 
 ---
 
