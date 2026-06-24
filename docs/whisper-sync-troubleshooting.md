@@ -84,10 +84,26 @@ No output = clean. If you find a new announcement phrasing not covered above,
 add it to `ANNOUNCEMENT_WHOLE_CUE` / `ANNOUNCEMENT_TRAILING` / `READER_CREDIT`
 in `merge-transcriptions.ts`, add a test case, then re-merge and re-sync.
 
-**Caveat — this alone is rarely sufficient.** In a 13-book batch test
-(2026-06-24), this fix alone moved coverage by less than 1.5 points for 10 of
-11 affected books. It's necessary but usually not sufficient — keep going to
-§3 onward.
+**Caveat — coverage depends entirely on whether your pattern list actually
+covers that book's reader's vocabulary.** In a 13-book batch test
+(2026-06-24) using only the original pattern set (capítulo/canto/parte/
+volumen, librivox, traducido), this fix moved coverage by less than 1.5
+points for 10 of 11 affected books — not because announcements weren't the
+problem, but because the pattern list was incomplete (missing "sección",
+reader-credit lines, Amara.org subtitling credits). Once those patterns were
+added (same day), **re-testing Pepita Jiménez alone — no other change —
+jumped coverage from 71.1% to 96.8% and confidence from 54% to 95%.** The
+takeaway: don't conclude "announcements aren't the problem for this book"
+until you've confirmed §2's residual-noise grep is clean. If it isn't, fix
+the pattern gap before moving on to §3-8.
+
+**Worked example (Pepita Jiménez, Gutenberg #17223):** front/back matter and
+illustrations/footnotes were already confirmed clean (this book has almost
+none). The residual problem was entirely missed announcement vocabulary:
+*"Fin de la sección 22. Fin de Pepita Jiménez. De Juan Valera."* and
+*"Leído por Luje Calderón."* embedded mid-cue. Adding `secci[oó]n` to the
+chapter-noun pattern list and a dedicated `READER_CREDIT` regex for "Leído
+por [name]." fixed it completely — no catalogue/text changes needed at all.
 
 ---
 
