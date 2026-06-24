@@ -146,6 +146,12 @@ export const CATALOGUE: CatalogueEntry[] = [
     gutenbergId: 24536,
     librivoxAudioUrl: 'https://librivox.org/los-cuatro-jinetes-del-apocalipsis-by-vicente-blasco-ibanez/',
     librivoxSearchTitle: 'Cuatro Jinetes',
+    // Gutenberg 24536 opens with a transcriber's note, title/copyright page,
+    // and a full ÍNDICE (table of contents listing every part and chapter)
+    // before Chapter I — none of it narrated. Ends cleanly at "FIN".
+    // No illustrations or footnotes in this text (unlike La Divina Comedia).
+    narrativeStartPattern: 'Debían encontrarse á las cinco de la tarde en el pequeño jardín de la',
+    narrativeEndPattern: 'caderas de ánfora.',
   },
   {
     title: 'La Isla del Tesoro',
