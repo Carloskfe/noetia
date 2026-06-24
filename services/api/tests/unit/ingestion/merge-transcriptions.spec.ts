@@ -2,6 +2,7 @@ import {
   parseTimestamp, formatTimestamp,
   parseVttCues, lastEndTime, renderVtt,
   extractSequenceNumber, mergeVttDirectory,
+  stripAnnouncement,
 } from '../../../src/ingestion/merge-transcriptions';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -86,6 +87,71 @@ describe('renderVtt', () => {
   });
 });
 
+// ── stripAnnouncement ────────────────────────────────────────────────────────────
+
+function cue(payload: string): { startTime: number; endTime: number; payload: string } {
+  return { startTime: 0, endTime: 1, payload };
+}
+
+describe('stripAnnouncement', () => {
+  it('drops a standalone "Fin del canto..." cue', () => {
+    expect(stripAnnouncement(cue('Fin del canto primero del infierno.'))).toBeNull();
+  });
+
+  it('drops a standalone "Canto segundo del..." announcement cue', () => {
+    expect(stripAnnouncement(cue('Canto segundo del infierno de Dante.'))).toBeNull();
+  });
+
+  it('drops a standalone "Fin de la primera parte..." cue', () => {
+    expect(stripAnnouncement(cue('Fin de la primera parte del ingenioso Hidalgo Don Quijote de la Mancha.'))).toBeNull();
+  });
+
+  it('drops an English "Chapter N of..." announcement cue', () => {
+    expect(stripAnnouncement(cue('Chapter 1 of Meditations of Marcus Aurelius by Marcus'))).toBeNull();
+  });
+
+  it('drops any cue mentioning LibriVox', () => {
+    expect(stripAnnouncement(cue('Esta es una grabación de LibriVox. Todas las grabaciones de LibriVox son de dominio público.'))).toBeNull();
+  });
+
+  it('drops a translator-credit cue (Spanish)', () => {
+    expect(stripAnnouncement(cue('Orgullo y Prejuicio, primer volumen, de Jane Austen. Traducido por José Jordán de Urríez y Azara.'))).toBeNull();
+  });
+
+  it('drops a translator-credit cue (English)', () => {
+    expect(stripAnnouncement(cue('Don Quijote, translated by John Ormsby.'))).toBeNull();
+  });
+
+  it('strips a trailing announcement appended without a cue break, keeping the real text', () => {
+    const result = stripAnnouncement(cue('visiteo y el adquirir noticias fin del capítulo primero'));
+    expect(result).not.toBeNull();
+    expect(result!.payload).toBe('visiteo y el adquirir noticias');
+  });
+
+  it('strips a multi-word trailing announcement (e.g. "Fin del canto décimo séptimo del purgatorio")', () => {
+    const result = stripAnnouncement(cue('al pie de una torre. Fin del canto séptimo del infierno.'));
+    expect(result).not.toBeNull();
+    expect(result!.payload).toBe('al pie de una torre.');
+  });
+
+  it('strips a trailing announcement with no terminating period', () => {
+    const result = stripAnnouncement(cue('de vuestro monte que de sí la rechaza». Fin del Canto XXIII del Purgatorio'));
+    expect(result).not.toBeNull();
+    expect(result!.payload).toBe('de vuestro monte que de sí la rechaza».');
+  });
+
+  it('leaves ordinary narrative text untouched', () => {
+    const result = stripAnnouncement(cue('En un lugar de la Mancha, de cuyo nombre no quiero acordarme.'));
+    expect(result!.payload).toBe('En un lugar de la Mancha, de cuyo nombre no quiero acordarme.');
+  });
+
+  it('leaves a cue unchanged (same object identity check not required) when no match', () => {
+    const c = cue('Pero los lirios que venían conmigo olían más en la frescura tibia.');
+    const result = stripAnnouncement(c);
+    expect(result).toEqual(c);
+  });
+});
+
 // ── extractSequenceNumber ──────────────────────────────────────────────────────
 
 describe('extractSequenceNumber', () => {
@@ -161,5 +227,38 @@ describe('mergeVttDirectory', () => {
 
   it('throws when directory contains no VTT files', () => {
     expect(() => mergeVttDirectory(tmpDir)).toThrow(/No .vtt files/);
+  });
+
+  it('strips chapter-boundary announcements and computes offset from the cleaned last cue', () => {
+    writeVtt('01.vtt', [
+      'WEBVTT',
+      '',
+      '00:00:00.000 --> 00:00:05.000',
+      'En un lugar de la Mancha.',
+      '',
+      '00:00:05.000 --> 00:00:07.000',
+      'Fin del capítulo primero.',
+      '',
+    ].join('\n'));
+    writeVtt('02.vtt', [
+      'WEBVTT',
+      '',
+      '00:00:00.000 --> 00:00:03.000',
+      'Capítulo 2 de Don Quijote de Cervantes.',
+      '',
+      '00:00:03.000 --> 00:00:06.000',
+      'De cuyo nombre no quiero acordarme.',
+      '',
+    ].join('\n'));
+
+    const merged = mergeVttDirectory(tmpDir, 2);
+
+    expect(merged).toHaveLength(2);
+    expect(merged[0].payload).toBe('En un lugar de la Mancha.');
+    // file2's announcement cue (its first cue) is stripped, leaving only the
+    // real second cue; offset is based on file1's cleaned last end (5s), not
+    // the stripped announcement's end time (7s): 3 (original start) + 5 + 2 = 10
+    expect(merged[1].startTime).toBeCloseTo(10);
+    expect(merged[1].payload).toBe('De cuyo nombre no quiero acordarme.');
   });
 });

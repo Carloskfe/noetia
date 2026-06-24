@@ -94,6 +94,41 @@ export function lastEndTime(cues: Cue[]): number {
   return cues.reduce((max, c) => Math.max(max, c.endTime), 0);
 }
 
+// ── LibriVox announcement stripping ─────────────────────────────────────────────
+//
+// LibriVox chapter recordings include reader announcements ("Fin del capítulo
+// primero", "Capítulo 2 de...", "Esta es una grabación de LibriVox...",
+// translator credit lines) that exist only in the audio, never in the stored
+// book text. Left in, they inflate the audio-side word count at every chapter
+// boundary, which breaks the aligner's proportional position estimate over
+// many-chapter books (confirmed: La Divina Comedia, Orgullo y Prejuicio,
+// Meditations, Don Quijote all carry this at every chapter file boundary).
+//
+// Some announcements are their own cue (dropped whole); others are appended
+// to the end of the last real sentence with no cue break (trailing strip).
+
+const ANNOUNCEMENT_WHOLE_CUE: RegExp[] = [
+  /\blibrivox\b/i,
+  /^fin (del|de la)\s+(\S+\s+){0,3}(cap[ií]tulo|canto|parte|libro|volumen)\b/i,
+  /^(cap[ií]tulo|canto|chapter)\s+\S+\s+(del?|of)\b/i,
+  /\btraducid[oa]\s+(al|por)\b/i,
+  /\btranslated by\b/i,
+];
+
+const ANNOUNCEMENT_TRAILING =
+  /\s*fin (del|de la)\s+(\S+\s+){0,3}(cap[ií]tulo|canto|parte|libro|volumen)\b.*$/i;
+
+/** Strip LibriVox reader announcements from a cue. Returns null if the cue is
+ *  entirely an announcement (should be dropped), or a cleaned cue otherwise. */
+export function stripAnnouncement(cue: Cue): Cue | null {
+  const text = cue.payload.trim();
+  if (ANNOUNCEMENT_WHOLE_CUE.some((re) => re.test(text))) return null;
+
+  const stripped = text.replace(ANNOUNCEMENT_TRAILING, '').trim();
+  if (stripped === '') return null;
+  return stripped !== text ? { ...cue, payload: stripped } : cue;
+}
+
 /** Shift all timestamps in a cue by `offset` seconds. */
 function shiftCue(cue: Cue, offset: number): Cue {
   const payload = cue.payload.replace(INLINE_TS, (_, open, ts, close) =>
@@ -150,11 +185,17 @@ export function mergeVttDirectory(dir: string, gapSeconds = 2): Cue[] {
   let offset = 0;
 
   for (const file of files) {
-    const content = readFileSync(file, 'utf-8');
-    const cues    = parseVttCues(content);
-    const last    = lastEndTime(cues);
+    const content  = readFileSync(file, 'utf-8');
+    const rawCues  = parseVttCues(content);
+    const cues     = rawCues.map(stripAnnouncement).filter((c): c is Cue => c !== null);
+    const stripped = rawCues.length - cues.length;
+    const last     = lastEndTime(cues);
 
-    console.log(`  ${basename(file)} → ${cues.length} cues, ends at ${formatTimestamp(last)}, offset ${formatTimestamp(offset)}`);
+    console.log(
+      `  ${basename(file)} → ${cues.length} cues` +
+      (stripped > 0 ? ` (${stripped} announcement${stripped > 1 ? 's' : ''} stripped)` : '') +
+      `, ends at ${formatTimestamp(last)}, offset ${formatTimestamp(offset)}`,
+    );
 
     for (const cue of cues) {
       merged.push(shiftCue(cue, offset));
