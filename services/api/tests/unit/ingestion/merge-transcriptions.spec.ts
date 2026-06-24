@@ -150,6 +150,30 @@ describe('stripAnnouncement', () => {
     const result = stripAnnouncement(c);
     expect(result).toEqual(c);
   });
+
+  it('drops a "Sección N de..." chapter-start announcement cue', () => {
+    expect(stripAnnouncement(cue('Sección 1 de Fábulas y Verdades. Esta es una grabación de LibriVox.'))).toBeNull();
+  });
+
+  it('drops a "Fin de la sección N..." closing announcement, including trailing book/author credit', () => {
+    expect(stripAnnouncement(cue('Fin de la sección 22. Fin de Pepita Jiménez. De Juan Valera.'))).toBeNull();
+  });
+
+  it('strips a trailing "Fin de la sección N" with no further text', () => {
+    const result = stripAnnouncement(cue('sabré resistir y no pecar, Dios me protege. Fin de la sección 12'));
+    expect(result).not.toBeNull();
+    expect(result!.payload).toBe('sabré resistir y no pecar, Dios me protege.');
+  });
+
+  it('drops a standalone Amara.org subtitling-credit cue', () => {
+    expect(stripAnnouncement(cue('Subtítulos realizados por la comunidad de Amara.org'))).toBeNull();
+  });
+
+  it('strips an embedded "Leído por [reader]." credit, keeping real text on both sides', () => {
+    const result = stripAnnouncement(cue('público. Leído por Luje Calderón. Capítulo 1. 6 de junio. La anodriza de Pepita, hoy su ama de'));
+    expect(result).not.toBeNull();
+    expect(result!.payload).toBe('público. Capítulo 1. 6 de junio. La anodriza de Pepita, hoy su ama de');
+  });
 });
 
 // ── extractSequenceNumber ──────────────────────────────────────────────────────

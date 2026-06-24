@@ -109,14 +109,21 @@ export function lastEndTime(cues: Cue[]): number {
 
 const ANNOUNCEMENT_WHOLE_CUE: RegExp[] = [
   /\blibrivox\b/i,
-  /^fin (del|de la)\s+(\S+\s+){0,3}(cap[ií]tulo|canto|parte|libro|volumen)\b/i,
-  /^(cap[ií]tulo|canto|chapter)\s+\S+\s+(del?|of)\b/i,
+  /\bamara\.org\b/i,
+  /^subt[ií]tulos realizados por/i,
+  /^fin (del|de la)\s+(\S+\s+){0,3}(cap[ií]tulo|canto|parte|libro|volumen|secci[oó]n)\b/i,
+  /^(cap[ií]tulo|canto|chapter|secci[oó]n)\s+\S+\s+(del?|of)\b/i,
   /\btraducid[oa]\s+(al|por)\b/i,
   /\btranslated by\b/i,
 ];
 
 const ANNOUNCEMENT_TRAILING =
-  /\s*fin (del|de la)\s+(\S+\s+){0,3}(cap[ií]tulo|canto|parte|libro|volumen)\b.*$/i;
+  /\s*fin (del|de la)\s+(\S+\s+){0,3}(cap[ií]tulo|canto|parte|libro|volumen|secci[oó]n)\b.*$/i;
+
+// Reader-attribution credit ("Leído por Milton Muñoz.") can appear embedded
+// mid-cue, not just at a cue boundary — stripped as a substring, not a
+// whole-cue/trailing match.
+const READER_CREDIT = /\s*le[ií]do por [^.]*\.\s*/gi;
 
 /** Strip LibriVox reader announcements from a cue. Returns null if the cue is
  *  entirely an announcement (should be dropped), or a cleaned cue otherwise. */
@@ -124,7 +131,8 @@ export function stripAnnouncement(cue: Cue): Cue | null {
   const text = cue.payload.trim();
   if (ANNOUNCEMENT_WHOLE_CUE.some((re) => re.test(text))) return null;
 
-  const stripped = text.replace(ANNOUNCEMENT_TRAILING, '').trim();
+  const withoutCredit = text.replace(READER_CREDIT, ' ').trim();
+  const stripped = withoutCredit.replace(ANNOUNCEMENT_TRAILING, '').trim();
   if (stripped === '') return null;
   return stripped !== text ? { ...cue, payload: stripped } : cue;
 }
