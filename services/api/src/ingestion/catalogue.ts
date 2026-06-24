@@ -819,15 +819,20 @@ export const CATALOGUE: CatalogueEntry[] = [
     description:
       'Ocho cuentos para niños ambientados en la selva misionera: La Abeja Haragana, Las Medias de los Flamencos, La Tortuga Gigante y más. Obra hermana de los Cuentos de Amor ya disponibles en Noetia. Dominio público.',
     source: 'wikisource',
+    // Order matches the LibriVox audio's actual chapter sequence (confirmed
+    // from each chapter file's spoken title announcement), not the order the
+    // stories are usually published in. The two orders are unrelated — the
+    // previous list order silently misaligned every story against the wrong
+    // audio chapter.
     wikisourceTitles: [
-      'La tortuga gigante',
-      'Las medias de los flamencos',
-      'El loro pelado',
-      'La guerra de los yacarés',
       'La abeja haragana',
       'Historia de dos cachorros de coatí y de dos cachorros de hombre',
-      'La gama ciega',
+      'Las medias de los flamencos',
+      'La tortuga gigante',
       'El paso del Yabebirí',
+      'El loro pelado',
+      'La guerra de los yacarés',
+      'La gama ciega',
     ],
     librivoxAudioUrl: 'https://librivox.org/cuentos-de-la-selva-para-los-ninos-by-horacio-quiroga/',
     librivoxSearchTitle: 'Cuentos de la Selva',
