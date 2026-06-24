@@ -211,6 +211,25 @@ export const CATALOGUE: CatalogueEntry[] = [
     gutenbergId: 57303,
     librivoxAudioUrl: 'https://librivox.org/la-divina-comedia-by-dante-alighieri/',
     librivoxSearchTitle: 'Divina Comedia',
+    // Gutenberg 57303 has a transcriber's note, title pages, and a full
+    // Francesco De Sanctis critical essay before Canto I, plus a table of
+    // contents and printer's colophon after the poem's final line.
+    // None of this is read aloud in the LibriVox recording.
+    narrativeStartPattern: 'CANTO PRIMERO',
+    narrativeEndPattern: 'por el Amor que mueve el Sol y las demás estrellas.',
+    textPostProcess: (text: string) => {
+      // Remove [Ilustración] captions — not read aloud (176 occurrences, one per canto)
+      let cleaned = text.replace(/\[Ilustración[^\[]*?\]/g, '');
+      // Remove translator's footnote definition blocks, e.g.:
+      //   "       [220] Los ojos de la Virgen María."
+      // (may wrap onto further indented lines before the next blank line)
+      cleaned = cleaned.replace(/^[ \t]+\[\d+\][^\n]*(\n[ \t]+\S[^\n]*)*\n?/gm, '');
+      // Remove the remaining inline footnote reference markers, e.g. "venera,[220] fijos"
+      cleaned = cleaned.replace(/\[\d{1,3}\]/g, '');
+      // Collapse blank lines left by removed content
+      cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+      return cleaned.trim();
+    },
   },
   {
     title: 'Don Quijote de la Mancha — Vol. I',
