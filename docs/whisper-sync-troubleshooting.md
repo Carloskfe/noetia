@@ -105,6 +105,21 @@ none). The residual problem was entirely missed announcement vocabulary:
 chapter-noun pattern list and a dedicated `READER_CREDIT` regex for "Leído
 por [name]." fixed it completely — no catalogue/text changes needed at all.
 
+**Counter-example — don't assume the fix is universal.** Re-tested Platero y
+yo and Orgullo y Prejuicio (different books, different LibriVox readers)
+with the same extended pattern set: **zero change for either** (Platero y
+yo stayed at 89.0%/94% confidence, Orgullo y Prejuicio at 65.0%/27%
+confidence — both confirmed clean of residual announcement noise via the
+grep in this section). Announcement vocabulary is per-reader, not universal
+— a pattern extension that fixes one book may do nothing for the next one.
+Always confirm with the residual-noise grep before assuming a re-test is
+worth running; if it's already clean, the bottleneck is elsewhere (§3-8).
+Platero y yo specifically is now only 1 point under threshold and never had
+its exception phrases inspected — likely a quick front/back-matter win
+(§3), not yet investigated. Orgullo y Prejuicio's confidence (27%) staying
+flat alongside zero coverage change suggests something more systemic,
+possibly §6.
+
 ---
 
 ## 3. Untrimmed front/back matter
