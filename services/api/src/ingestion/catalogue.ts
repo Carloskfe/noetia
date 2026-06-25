@@ -144,6 +144,15 @@ export const CATALOGUE: CatalogueEntry[] = [
     gutenbergId: 14765,
     librivoxAudioUrl: 'https://librivox.org/el-gaucho-martin-fierro-by-jose-hernandez/',
     librivoxSearchTitle: 'Martin Fierro',
+    // No front/back-matter issue — the dedicatory "Carta del Autor" is
+    // genuinely narrated (confirmed in the chapter 0 transcript) and the
+    // ending is clean. The real issue: 395 standalone verse-stanza numbers
+    // ("392", "393"...), each followed by a single newline (not a blank
+    // line + space), so they glue onto the next sentence as "392\nY
+    // cuando..." instead of being filtered as a heading — never narrated,
+    // guaranteed to fail alignment. La Odisea's existing fix
+    // (`/^\d{1,4} /gm`, requires a space) doesn't match this format.
+    textPostProcess: (text: string) => text.replace(/^\d{1,3}\r?\n/gm, ''),
   },
   {
     title: 'Cuentos de Amor de Locura y de Muerte',

@@ -5,6 +5,25 @@ interface WikisourceParseResponse {
   error?: { info: string };
 }
 
+const STRICT_ROMAN_NUMERAL = /^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/i;
+const ROMAN_VALUES: Record<string, number> = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+
+/** Converts a strict Roman numeral string to its integer value, or null if
+ *  the string isn't a valid Roman numeral (used for sorting Wikisource
+ *  subpages named just "I", "II", "IX", "XIV"... — plain alphabetical sort
+ *  puts "IX" before "V" and "XIX" before "XV", scrambling chapter order). */
+export function romanToInt(value: string): number | null {
+  if (!value || !STRICT_ROMAN_NUMERAL.test(value)) return null;
+  const upper = value.toUpperCase();
+  let result = 0;
+  for (let i = 0; i < upper.length; i++) {
+    const current = ROMAN_VALUES[upper[i]];
+    const next = ROMAN_VALUES[upper[i + 1]];
+    result += next && current < next ? -current : current;
+  }
+  return result;
+}
+
 @Injectable()
 export class WikisourceFetcherService {
   /**
@@ -87,6 +106,9 @@ export class WikisourceFetcherService {
           const prefB = segB.slice(0, segB.length - mB[0].length);
           if (prefA === prefB) return parseInt(mA[1], 10) - parseInt(mB[1], 10);
         }
+        const romanA = romanToInt(segA);
+        const romanB = romanToInt(segB);
+        if (romanA !== null && romanB !== null) return romanA - romanB;
         return a.localeCompare(b, lang);
       });
   }

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { WikisourceFetcherService } from '../../../src/ingestion/wikisource-fetcher.service';
+import { WikisourceFetcherService, romanToInt } from '../../../src/ingestion/wikisource-fetcher.service';
 
 const mockFetch = jest.fn();
 
@@ -21,6 +21,48 @@ const LINKS_RESPONSE = (title: string, subs: string[]) => ({
 const HTML_RESPONSE = (html: string) => ({
   ok: true,
   json: async () => ({ parse: { text: html } }),
+});
+
+describe('romanToInt', () => {
+  it('converts simple numerals', () => {
+    expect(romanToInt('I')).toBe(1);
+    expect(romanToInt('II')).toBe(2);
+    expect(romanToInt('III')).toBe(3);
+  });
+
+  it('converts subtractive-notation numerals (IV, IX, XL, XC)', () => {
+    expect(romanToInt('IV')).toBe(4);
+    expect(romanToInt('IX')).toBe(9);
+    expect(romanToInt('XL')).toBe(40);
+    expect(romanToInt('XC')).toBe(90);
+  });
+
+  it('converts the V+I additive range (VI, VII, VIII) — regression for the malformed-regex bug', () => {
+    expect(romanToInt('VI')).toBe(6);
+    expect(romanToInt('VII')).toBe(7);
+    expect(romanToInt('VIII')).toBe(8);
+  });
+
+  it('converts larger numerals (XIV, XIX, XXXIV)', () => {
+    expect(romanToInt('XIV')).toBe(14);
+    expect(romanToInt('XIX')).toBe(19);
+    expect(romanToInt('XXXIV')).toBe(34);
+  });
+
+  it('is case-insensitive', () => {
+    expect(romanToInt('xiv')).toBe(14);
+  });
+
+  it('returns null for non-Roman-numeral strings', () => {
+    expect(romanToInt('CAPÍTULO')).toBeNull();
+    expect(romanToInt('')).toBeNull();
+    expect(romanToInt('ABC')).toBeNull();
+  });
+
+  it('returns null for invalid Roman numeral notation (repeated subtractive forms)', () => {
+    expect(romanToInt('IIII')).toBeNull();
+    expect(romanToInt('VV')).toBeNull();
+  });
 });
 
 describe('WikisourceFetcherService', () => {
@@ -155,6 +197,33 @@ describe('WikisourceFetcherService', () => {
       expect(fetchOrder[1]).toContain('%2FII&');
       expect(fetchOrder[2]).toContain('%2FIII&');
     });
+
+    // Regression test: I, II, III sort correctly even alphabetically, which
+    // let a real bug ship undetected for the IV/V/IX divergence range
+    // (plain string sort puts "IX" before "V"). La Isla del Tesoro's 34
+    // chapters were silently scrambled by this. Limited to IV-X (not the
+    // full I-XX range) to keep real-elapsed sleep() time well under Jest's
+    // default test timeout — each subpage fetch sleeps 400ms.
+    it('sorts Roman-numeral subpages IV through X in true numeric order, not alphabetical', async () => {
+      const fetchOrder: string[] = [];
+      const shuffled = ['IX', 'IV', 'X', 'V', 'VI', 'VII', 'VIII'];
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.includes('prop=links')) {
+          return LINKS_RESPONSE(TITLE, shuffled.map((n) => `${TITLE}/${n}`));
+        }
+        fetchOrder.push(url as string);
+        // Must exceed fetch()'s 100-char "near-empty" threshold, or every
+        // subpage gets discarded and it falls back to re-fetching the bare
+        // title page once — adding a spurious 8th URL to fetchOrder.
+        return HTML_RESPONSE('<p>' + 'Lorem ipsum dolor sit amet consectetuer. '.repeat(5) + '</p>');
+      });
+
+      await service.fetch(TITLE);
+
+      const expected = ['IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+      const actual = fetchOrder.map((url) => decodeURIComponent(url).split('/').pop()?.split('&')[0]);
+      expect(actual).toEqual(expected);
+    }, 10000);
 
     it('sorts numeric subpages in numeric order (1, 2, 10 not 1, 10, 2)', async () => {
       const fetchOrder: string[] = [];
