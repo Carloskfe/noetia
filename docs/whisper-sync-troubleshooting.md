@@ -186,6 +186,32 @@ if (endPattern)   { const idx = result.indexOf(endPattern);   if (idx >= 0) resu
    console.log('Pattern found:', raw.includes('your candidate pattern'));
    ```
 
+   **This bug was silently shipping in production before this guide
+   existed.** Auditing every `narrativeStartPattern`/`narrativeEndPattern`
+   in `catalogue.ts` on 2026-06-24 found 4 pre-existing entries broken this
+   exact way — all written before the CRLF issue was understood:
+   - **La Odisea**: `'\nFIN\n'` never matched → the entire ~276,000-character,
+     1700-entry glossary had been attached to the stored text the whole
+     time. Fixed to `'FIN'` (confirmed unique, no embedded newline).
+   - **Niebla**: `'\nPRÓLOGO\n'` never matched → ~800 chars of title
+     page/transcriber's note left attached. Fixed by anchoring on the real
+     opening sentence instead (the bare word "PRÓLOGO" also isn't safe —
+     it appears 4 more times: once on the title page, twice in a
+     back-of-book table of contents).
+   - **Meditations**: `'\nAPPENDIX\n'` never matched. Also wouldn't have
+     been safe even fixed naively — "APPENDIX" appears in a front-of-book
+     table of contents before the real appendix heading. Fixed by anchoring
+     on the real closing sentence of Book Twelve instead.
+   - **Walden** (not yet Whisper-attempted): same pattern, same fix
+     approach, applied proactively before anyone hits it.
+
+   **Takeaway: if you inherit a catalogue entry with a multi-line pattern,
+   don't trust it — verify it actually matches the live source before
+   assuming the trim is working,** even for books that already look
+   "handled." A passing-looking coverage number doesn't prove the trim
+   fired; it might be passing *despite* an inert trim, with a much higher
+   score available once it's fixed (La Odisea's case).
+
 5. **Verify the full pipeline before touching the catalogue**, by mirroring
    `stripHeaders()` + `trimNarrative()` + your planned `textPostProcess` in a
    throwaway Node script against the real fetched text. Check:

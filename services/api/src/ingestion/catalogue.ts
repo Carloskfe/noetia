@@ -126,7 +126,14 @@ export const CATALOGUE: CatalogueEntry[] = [
     source: 'gutenberg',
     gutenbergId: 49836,
     librivoxAudioUrl: 'https://librivox.org/niebla-by-miguel-de-unamuno/',
-    narrativeStartPattern: '\nPRÓLOGO\n',
+    // BUG FOUND 2026-06-24: original startPattern '\nPRÓLOGO\n' has embedded
+    // newlines but the real Gutenberg file uses \r\n — silently never
+    // matched, leaving ~800 chars of title page / transcriber's note
+    // attached. "PRÓLOGO" alone isn't safe either (also appears as
+    // "PRÓLOGO DE\nVÍCTOR GOTI" on the title page, and twice more in a
+    // back-of-book table of contents) — anchoring on the real opening
+    // sentence instead, confirmed unique.
+    narrativeStartPattern: 'Se empeña don Miguel de Unamuno en que ponga yo un',
     narrativeEndPattern: '—¡Y luego dirán que no matan las penas!',
   },
   {
@@ -193,6 +200,21 @@ export const CATALOGUE: CatalogueEntry[] = [
     source: 'gutenberg',
     gutenbergId: 61851,
     librivoxAudioUrl: 'https://librivox.org/crimen-y-castigo-by-fyodor-dostoyevsky/',
+    // Gutenberg 61851 opens with a transcriber's note and title/publisher
+    // page before "PRIMERA PARTE" (no duplicate index — single occurrence,
+    // safe to anchor directly). Ends cleanly at "FIN". 20 translator
+    // footnotes explain Russian terms/names to Spanish readers — never
+    // narrated. Previously assumed to be a pure edition mismatch; this had
+    // never actually been verified against the real source until now.
+    narrativeStartPattern: 'PRIMERA PARTE',
+    narrativeEndPattern: 'el que hemos querido ofrecer al lector, está terminado.',
+    textPostProcess: (text: string) => {
+      let cleaned = text.replace(/\[Ilustración[^\[]*?\]/g, '');
+      cleaned = cleaned.replace(/^[ \t]+\[\d+\][^\n]*(\n[ \t]+\S[^\n]*)*\n?/gm, '');
+      cleaned = cleaned.replace(/\[\d{1,3}\]/g, '');
+      cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+      return cleaned.trim();
+    },
   },
   {
     title: 'La Odisea',
@@ -205,8 +227,16 @@ export const CATALOGUE: CatalogueEntry[] = [
     // Gutenberg 58221 has a long scholarly preamble (AL LECTOR + NOTAS) before Canto I
     // and a 1700-entry glossary (ÍNDICE DE NOMBRES PROPIOS) after FIN.
     // Both sections are absent from the LibriVox audio.
+    //
+    // BUG FOUND 2026-06-24: the original endPattern '\nFIN\n' has embedded
+    // newlines, but the real Gutenberg file uses \r\n line endings — plain
+    // indexOf() silently never matched, so the entire ~276,000-character
+    // glossary has been attached to this book's stored text since this fix
+    // was first written. 'FIN' (no embedded newline, confirmed to appear
+    // exactly once in the source) is the safe single-line replacement — see
+    // docs/whisper-sync-troubleshooting.md §3's CRLF warning.
     narrativeStartPattern: 'CANTO PRIMERO',
-    narrativeEndPattern: '\nFIN\n',
+    narrativeEndPattern: 'FIN',
     textPostProcess: (text: string) => {
       // Remove [Ilustración ...] captions — not read aloud, may span multiple lines
       let cleaned = text.replace(/\[Ilustración[^\[]*?\]/g, '');
@@ -564,7 +594,13 @@ export const CATALOGUE: CatalogueEntry[] = [
     gutenbergId: 205,
     librivoxAudioUrl: 'https://librivox.org/walden-by-henry-david-thoreau',
     language: 'en',
-    narrativeEndPattern: '\nON THE DUTY OF CIVIL DISOBEDIENCE\n',
+    // BUG FOUND 2026-06-24: original pattern had embedded newlines but the
+    // real Gutenberg file uses \r\n — silently never matched. Also "ON THE
+    // DUTY OF CIVIL DISOBEDIENCE" alone isn't safe regardless — it appears
+    // in the title page and table of contents before the real second-essay
+    // heading. Anchoring on "THE END" (confirmed unique, appears right
+    // after Walden's real closing line and before the second essay begins).
+    narrativeEndPattern: 'THE END',
   },
 
   {
@@ -576,8 +612,14 @@ export const CATALOGUE: CatalogueEntry[] = [
     language: 'en',
     librivoxAudioUrl: 'https://librivox.org/the-meditations-of-marcus-aurelius/',
     librivoxSearchTitle: 'Meditations Marcus Aurelius',
+    // BUG FOUND 2026-06-24: original endPattern '\nAPPENDIX\n' has embedded
+    // newlines but the real Gutenberg file uses \r\n — silently never
+    // matched. Also "APPENDIX" alone isn't safe regardless — it appears
+    // first in a front-of-book table of contents, which indexOf would
+    // match instead of the real appendix heading. Anchoring on the real
+    // closing sentence of Book Twelve instead, confirmed unique.
     narrativeStartPattern: 'THE FIRST BOOK',
-    narrativeEndPattern: '\nAPPENDIX\n',
+    narrativeEndPattern: 'dismisseth thee.',
   },
   {
     title: 'Jane Eyre',

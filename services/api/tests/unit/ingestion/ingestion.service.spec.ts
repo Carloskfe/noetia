@@ -590,7 +590,7 @@ describe('IngestionService', () => {
 
       expect(mockGutenbergFetcher.fetch).toHaveBeenCalledWith(
         49836,
-        '\nPRÓLOGO\n',
+        'Se empeña don Miguel de Unamuno en que ponga yo un',
         '—¡Y luego dirán que no matan las penas!',
       );
       expect(mockMinioUploader.upload).toHaveBeenCalledWith('niebla-1.txt', 'New clean narrative text.');
@@ -668,7 +668,7 @@ describe('IngestionService', () => {
 
       await service.reIngestText('La Odisea');
 
-      expect(mockGutenbergFetcher.fetch).toHaveBeenCalledWith(58221, 'CANTO PRIMERO', '\nFIN\n');
+      expect(mockGutenbergFetcher.fetch).toHaveBeenCalledWith(58221, 'CANTO PRIMERO', 'FIN');
     });
 
     it('applies textPostProcess from the catalogue entry when re-ingesting', async () => {
