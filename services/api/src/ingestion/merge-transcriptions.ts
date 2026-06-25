@@ -122,15 +122,19 @@ const ANNOUNCEMENT_WHOLE_CUE: RegExp[] = [
   // X. Capítulo 1..." don't start with this and fall through to the
   // substring-based READER_CREDIT strip below instead.)
   /^le[ií]do por\b/i,
+  // Same cross-cue-segmentation issue for "Grabado por [reader]." (recorded
+  // by) — some readers credit themselves at every chapter, not just once,
+  // so this is worth catching as both a whole-cue and substring pattern.
+  /^grabado por\b/i,
 ];
 
 const ANNOUNCEMENT_TRAILING =
   /\s*fin (del|de la)\s+(\S+\s+){0,3}(cap[ií]tulo|canto|parte|libro|volumen|secci[oó]n)\b.*$/i;
 
-// Reader-attribution credit ("Leído por Milton Muñoz.") can appear embedded
-// mid-cue, not just at a cue boundary — stripped as a substring, not a
-// whole-cue/trailing match.
-const READER_CREDIT = /\s*le[ií]do por [^.]*\.\s*/gi;
+// Reader-attribution credit ("Leído por Milton Muñoz.", "Grabado por Claudia
+// Barrett.") can appear embedded mid-cue, not just at a cue boundary —
+// stripped as a substring, not a whole-cue/trailing match.
+const READER_CREDIT = /\s*(le[ií]do|grabado) por [^.]*\.\s*/gi;
 
 /** Strip LibriVox reader announcements from a cue. Returns null if the cue is
  *  entirely an announcement (should be dropped), or a cleaned cue otherwise. */

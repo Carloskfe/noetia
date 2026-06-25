@@ -464,6 +464,12 @@ export const CATALOGUE: CatalogueEntry[] = [
     gutenbergId: 39209,
     librivoxAudioUrl: 'https://librivox.org/platero-y-yo-by-juan-ramon-jimenez/',
     librivoxSearchTitle: 'Platero',
+    // No narrativeStartPattern needed — the "Advertencia á los hombres..."
+    // front matter is genuinely narrated in the audio (confirmed directly
+    // in the chapter 0 transcript), unlike most other books. Back matter
+    // is a real gap: a full chapter-by-chapter ÍNDICE after "FIN" that is
+    // NOT narrated. 'FIN' confirmed unique, no embedded newline.
+    narrativeEndPattern: 'FIN',
   },
   {
     title: 'Pepita Jiménez',

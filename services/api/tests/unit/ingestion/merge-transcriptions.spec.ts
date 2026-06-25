@@ -178,6 +178,16 @@ describe('stripAnnouncement', () => {
   it('drops a cue that starts with "Leído por" even with no period in this cue (split across Whisper segments)', () => {
     expect(stripAnnouncement(cue('Leído por Gabriela Cahuen en Kingston,'))).toBeNull();
   });
+
+  it('drops a standalone "Grabado por [reader]." cue', () => {
+    expect(stripAnnouncement(cue('Grabado por Claudia Barrett.'))).toBeNull();
+  });
+
+  it('strips an embedded "Grabado por [reader]." credit, keeping real text around it', () => {
+    const result = stripAnnouncement(cue('sección de Platero y Yo, grabado por Claudia Barrett.'));
+    expect(result).not.toBeNull();
+    expect(result!.payload).toBe('sección de Platero y Yo,');
+  });
 });
 
 // ── extractSequenceNumber ──────────────────────────────────────────────────────
