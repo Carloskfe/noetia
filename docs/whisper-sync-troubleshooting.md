@@ -317,10 +317,40 @@ translations — Dante, Cervantes, Dostoyevsky all have several).
 3. If no matching public-domain text exists, this book may simply not be a
    good candidate for phrase-level sync until a different recording exists.
 
-**Confirmed cases (as of 2026-06-24):** Crimen y Castigo, La Odisea, Los
-Cuatro Jinetes del Apocalipsis, Viaje al Centro de la Tierra. Don't re-attempt
-the noise-stripping fixes on these without first re-verifying §3-5 are
-already clean — they are, for at least Cuatro Jinetes (verified directly).
+**Best diagnostic — check the translator credit on both sides directly,
+don't just infer from exception content.** The LibriVox chapter
+announcements usually state the translator by name (*"traducido por
+[Name]"*); compare that against whatever your Gutenberg/Wikisource source
+states. **Worked example (Viaje al Centro de la Tierra):** the Wikisource
+page's own metadata says `traducción de Anónimo`, while every LibriVox
+chapter explicitly credits *"traducido por Antonio Ribot y Fonseré"* — two
+different translators, confirmed directly, not inferred. This is much
+stronger evidence than "the exceptions look like real prose."
+
+**Caveat — a matching translator doesn't guarantee the book is fixable.**
+Crimen y Castigo's Gutenberg text and its LibriVox recording **both**
+credit the exact same translator (*"Pedro Pedraza y Páez"*), yet after
+confirming front/back matter and footnotes were already clean (§3-5
+verified, fixed 2026-06-24) and re-syncing, coverage didn't move at all
+(73.0% → 72.9%). Possible explanations not yet investigated: different
+print editions of the same translation, an abridged/revised edition, or
+ASR transcription quality specific to this LibriVox reader. Don't assume
+"same translator named" settles the question — it rules out the easy case
+but the book can still be stuck for an unexplained reason.
+
+**Status as of 2026-06-24:**
+- **Confirmed via direct evidence** (mismatched translator credit): Viaje
+  al Centro de la Tierra.
+- **Confirmed clean of noise, root cause still unexplained**: Crimen y
+  Castigo (translator matches — see caveat above), Los Cuatro Jinetes del
+  Apocalipsis (exceptions are genuine scattered narrative, translator
+  credit not yet checked).
+- **Partially improved, not yet explained**: La Odisea (CRLF-bug glossary
+  fix gave +2pts; remaining gap may be the archaic 1910 Spanish your notes
+  already flagged, or an undetected translator mismatch — not yet
+  checked), Meditations (CRLF-bug appendix fix gave +2.5pts; confidence
+  stuck flat at 25%, translator not yet checked against the English
+  LibriVox reader).
 
 ---
 
@@ -397,6 +427,12 @@ pattern (`/^le[ií]do por\b/i`) to drop any cue that *starts* with "Leído
 por" regardless of whether it ends with a period in that same cue — the
 two trailing fragments ("Ontario," / "Canadá.") are left as harmless orphan
 exceptions (2 phrases, negligible).
+
+**Result: 58.8% → 80.6% coverage, 71.0% confidence.** A big improvement,
+but not yet over threshold (1,703/2,112 aligned, 406 exceptions) — the
+remaining gap hasn't been investigated yet (next step: inspect the
+exception phrases the same way as §6 to see whether it's residual noise
+or a genuine edition mismatch for one or more of the 16 legends).
 
 ---
 
