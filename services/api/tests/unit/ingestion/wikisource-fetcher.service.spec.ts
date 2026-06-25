@@ -269,6 +269,47 @@ describe('WikisourceFetcherService', () => {
       expect(actual).toEqual(expected);
     }, 10000);
 
+    // El Sombrero de Tres Picos has a "Prefacio" subpage alongside 36
+    // numbered chapters. "Prefacio" matches no numeral pattern, so plain
+    // sort falls through to alphabetical — "P" sorts after "C", appending
+    // the preface at the very END of the book instead of the very start.
+    // Confirmed via the live Wikisource API.
+    it('sorts an un-numbered "Prefacio" subpage to the front, not alphabetically to the back', async () => {
+      const fetchOrder: string[] = [];
+      const shuffled = ['Capítulo III', 'Capítulo I', 'Prefacio', 'Capítulo II'];
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.includes('prop=links')) {
+          return LINKS_RESPONSE(TITLE, shuffled.map((n) => `${TITLE}/${n}`));
+        }
+        fetchOrder.push(url as string);
+        return HTML_RESPONSE('<p>' + 'Lorem ipsum dolor sit amet consectetuer. '.repeat(5) + '</p>');
+      });
+
+      await service.fetch(TITLE);
+
+      const expected = ['Prefacio', 'Capítulo I', 'Capítulo II', 'Capítulo III'];
+      const actual = fetchOrder.map((url) => decodeURIComponent(url).split('/').pop()?.split('&')[0]);
+      expect(actual).toEqual(expected);
+    }, 10000);
+
+    it('sorts an un-numbered back-matter subpage ("Índice") to the end', async () => {
+      const fetchOrder: string[] = [];
+      const shuffled = ['Índice', 'Capítulo II', 'Capítulo I'];
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.includes('prop=links')) {
+          return LINKS_RESPONSE(TITLE, shuffled.map((n) => `${TITLE}/${n}`));
+        }
+        fetchOrder.push(url as string);
+        return HTML_RESPONSE('<p>' + 'Lorem ipsum dolor sit amet consectetuer. '.repeat(5) + '</p>');
+      });
+
+      await service.fetch(TITLE);
+
+      const expected = ['Capítulo I', 'Capítulo II', 'Índice'];
+      const actual = fetchOrder.map((url) => decodeURIComponent(url).split('/').pop()?.split('&')[0]);
+      expect(actual).toEqual(expected);
+    }, 10000);
+
     it('sorts numeric subpages in numeric order (1, 2, 10 not 1, 10, 2)', async () => {
       const fetchOrder: string[] = [];
       mockFetch.mockImplementation(async (url: string) => {

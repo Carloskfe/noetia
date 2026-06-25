@@ -76,6 +76,28 @@ function extractTrailingNumber(segment: string): TrailingNumber | null {
   return null;
 }
 
+// Un-numbered front/back-matter subpages (e.g. "Prefacio") don't match any
+// numeral pattern, so plain sort logic falls through to alphabetical —
+// which puts "Prefacio" (P) after "Capítulo XXXVI" (C), appending it at the
+// very END of the book instead of the very start. Confirmed via the live
+// Wikisource API for El sombrero de tres picos (1874): 36 numbered chapters
+// sort correctly, but "Prefacio" lands last. Whether this content is
+// actually narrated is book-specific (handle via catalogue.ts
+// narrativeStartPattern/textPostProcess) — this only fixes the ORDER so
+// that downstream trimming has a sane position to work with.
+const FRONT_MATTER_KEYWORDS = ['prologo', 'prefacio', 'introduccion', 'proemio', 'advertencia', 'dedicatoria'];
+const BACK_MATTER_KEYWORDS = ['epilogo', 'apendice', 'indice', 'conclusion', 'glosario', 'notas'];
+
+/** Returns -1 for recognized front-matter keywords, Infinity for recognized
+ *  back-matter keywords, or null if the segment isn't one of these (i.e. a
+ *  normal numbered chapter, sorted by extractTrailingNumber instead). */
+function frontOrBackMatterRank(segment: string): number | null {
+  const normalized = stripAccents(segment.trim());
+  if (FRONT_MATTER_KEYWORDS.includes(normalized)) return -1;
+  if (BACK_MATTER_KEYWORDS.includes(normalized)) return Infinity;
+  return null;
+}
+
 @Injectable()
 export class WikisourceFetcherService {
   /**
@@ -151,6 +173,13 @@ export class WikisourceFetcherService {
       .sort((a, b) => {
         const segA = a.split('/').pop() ?? '';
         const segB = b.split('/').pop() ?? '';
+        const fbA = frontOrBackMatterRank(segA);
+        const fbB = frontOrBackMatterRank(segB);
+        if (fbA !== null || fbB !== null) {
+          const rankA = fbA ?? 0;
+          const rankB = fbB ?? 0;
+          if (rankA !== rankB) return rankA - rankB;
+        }
         const numA = extractTrailingNumber(segA);
         const numB = extractTrailingNumber(segB);
         if (numA && numB && numA.prefix === numB.prefix) return numA.value - numB.value;
