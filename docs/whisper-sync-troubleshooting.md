@@ -277,6 +277,42 @@ Count occurrences before writing the regex (`grep -c "Ilustración"`,
 book with 2 illustrations isn't worth the regex risk; one with 176 (La Divina
 Comedia) clearly is.
 
+### Standalone verse/stanza/line numbers (verse poetry only)
+
+**Symptom:** A numbered-verse poem (each stanza prefixed with its number,
+e.g. "392") shows widespread low-confidence exceptions even with clean
+front/back matter.
+
+**Root cause:** `phrase-splitter.service.ts`'s `isHeading()` recognizes
+standalone Roman numerals but not Arabic digits, so a bare number line
+isn't filtered out as a heading. **Whether it becomes its own failing
+phrase or gets silently glued onto the next sentence depends on the
+exact whitespace**: La Odisea's Greek line numbers are followed by a
+*space* on the same line ("1 Háblame") — already handled by
+`cleaned.replace(/^\d{1,4} /gm, '')`. El Gaucho Martín Fierro's stanza
+numbers are followed by a *newline*, no blank line ("392\nY cuando..."),
+which that regex does NOT match (no space character) — the number stays
+glued as a prefix to the next sentence, guaranteed to never align since
+the reader doesn't speak "trescientos noventa y dos" aloud.
+
+**Fix:** match the actual whitespace structure, don't assume it's the same
+as a previously-fixed book:
+```ts
+textPostProcess: (text: string) => text.replace(/^\d{1,3}\r?\n/gm, ''),
+```
+
+**Worked example (El Gaucho Martín Fierro):** 395 standalone stanza
+numbers, confirmed via `raw.match(/^\d{1,3}\r?\n/gm)` before writing the
+fix. **Result: 55.4% → 82.4% coverage** — the single largest contributor
+found for this book, bigger than the Wikisource-sort fixes in §7.
+
+**Suspected but not yet confirmed: Salmos** (Reina-Valera Psalms,
+Wikisource). Re-tested with the Grabado-por pattern alone (§2) and stayed
+flat at ~81% with confidence stuck at 30% — the same symptom profile.
+Bible chapter:verse numbering is exactly the kind of standalone-number
+structure this section describes; not yet inspected for the exact
+whitespace pattern.
+
 ---
 
 ## 5. Wikisource sources are usually already clean
@@ -433,6 +469,76 @@ but not yet over threshold (1,703/2,112 aligned, 406 exceptions) — the
 remaining gap hasn't been investigated yet (next step: inspect the
 exception phrases the same way as §6 to see whether it's residual noise
 or a genuine edition mismatch for one or more of the 16 legends).
+
+### §7 continued: this bug class also lives in the ingestion CODE, not just catalogue data
+
+Everything above is about `wikisourceTitles` array ordering (catalogue
+data). A **separate, more dangerous version of the same bug lives inside
+`wikisource-fetcher.service.ts` itself** — `listSubpages()`'s chapter
+sort, used for every book with a single `wikisourceTitle` and
+auto-detected numbered subpages (Viaje al Centro's "Capítulo N" pattern
+is one example that already worked). Confirmed broken for two other
+numbering conventions on 2026-06-25:
+
+- **Roman numerals** ("I", "II", "IX"...): the sort only recognized
+  Arabic-digit suffixes; Roman numerals fell through to alphabetical
+  string sort, which is wrong for anything past III — "IX" sorts before
+  "V", "XIX" sorts before "XV". Affected **La Isla del Tesoro** (34
+  chapters), **Doña Perfecta** (33), and, combined with a prefix
+  ("Capítulo I", "Capítulo IX"...), **El Sombrero de Tres Picos** (37)
+  and **Orgullo y Prejuicio** (61).
+- **Spelled-out Spanish ordinal words** ("Tratado primero", "Tratado
+  segundo", "Tratado cuarto"...): not numerals at all, no chance of
+  matching either numeral pattern. Affected **Lazarillo de Tormes** (8
+  subpages: Prólogo + 7 Tratados, sorted as cuarto/primero/quinto/
+  segundo/sexto/séptimo/tercero — completely scrambled).
+- **Un-numbered front/back-matter subpages** ("Prefacio", "Índice"...):
+  match no pattern at all, so plain alphabetical sort places them
+  wherever their first letter happens to fall — "Prefacio" (P) sorts
+  *after* "Capítulo XXXVI" (C), appending the preface at the very END of
+  the book. Affected **El Sombrero de Tres Picos**.
+
+Fixed by adding `romanToInt()` (strict regex, validated subtractive
+notation), a small Spanish-ordinal-word lookup table (1st-30th), and a
+front/back-matter keyword list, all feeding a single
+`extractTrailingNumber()` / `frontOrBackMatterRank()` pair used by the
+sort comparator. See `wikisource-fetcher.service.ts` and its test file
+for the full pattern catalog — extend both when a new numbering
+convention surfaces.
+
+**Diagnosing this for a new book:** query the live Wikisource API
+directly rather than guessing:
+```bash
+curl -s "https://es.wikisource.org/w/api.php?action=parse&page=<URL-encoded title>&prop=links&format=json&formatversion=2" \
+  -H 'User-Agent: Noetia-Ingestion/1.0' | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+title = '<exact title>'
+subs = [l['title'].split('/')[-1] for l in d['parse']['links'] if l.get('title','').startswith(title + '/')]
+print(subs)
+"
+```
+Then mentally check: does this list contain anything that *isn't* a
+plain Arabic numeral? If yes, verify the shipped sort actually produces
+correct order for it before assuming it's fine.
+
+**Results after fixing (2026-06-25):**
+| Book | Bug | Before | After |
+|---|---|---|---|
+| Lazarillo de Tormes | ordinal words | 84.1% | **100.0%**, 0 exceptions, 94% confidence |
+| El Gaucho Martín Fierro | (see §4 — verse numbers, different bug) | 55.4% | 82.4% |
+| Doña Perfecta | bare Roman numerals | 69.0% | 71.6% |
+| El Sombrero de Tres Picos | "Capítulo + Roman" + misplaced Prefacio | 70.6% | 75.2% |
+| La Isla del Tesoro | bare Roman numerals | 55.7% | 55.4% (flat) |
+| Orgullo y Prejuicio | "Capítulo + Roman" | 65.0% | 64.4% (flat) |
+
+**Two of six showed no improvement despite the fix being independently
+verified correct against the live API.** La Isla del Tesoro and Orgullo
+y Prejuicio's translator credits were checked and **match** the audio
+(ruling out §6's easy case) — same unexplained-but-not-edition-mismatch
+situation as Crimen y Castigo. Don't assume "the order bug must be the
+whole story" for every Roman-numeral book; verify the actual coverage
+number after fixing, the same way every fix in this guide was validated.
 
 ---
 
