@@ -115,6 +115,13 @@ const ANNOUNCEMENT_WHOLE_CUE: RegExp[] = [
   /^(cap[ií]tulo|canto|chapter|secci[oó]n)\s+\S+\s+(del?|of)\b/i,
   /\btraducid[oa]\s+(al|por)\b/i,
   /\btranslated by\b/i,
+  // Whisper sometimes segments "Leído por [reader] en [city], [region/country]."
+  // into separate cues with no period in the first one (only in the last
+  // fragment) — if the cue STARTS with "Leído por" drop it whole, regardless
+  // of whether it ends with a period. (Mixed cues like "público. Leído por
+  // X. Capítulo 1..." don't start with this and fall through to the
+  // substring-based READER_CREDIT strip below instead.)
+  /^le[ií]do por\b/i,
 ];
 
 const ANNOUNCEMENT_TRAILING =

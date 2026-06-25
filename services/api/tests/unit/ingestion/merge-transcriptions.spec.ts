@@ -174,6 +174,10 @@ describe('stripAnnouncement', () => {
     expect(result).not.toBeNull();
     expect(result!.payload).toBe('público. Capítulo 1. 6 de junio. La anodriza de Pepita, hoy su ama de');
   });
+
+  it('drops a cue that starts with "Leído por" even with no period in this cue (split across Whisper segments)', () => {
+    expect(stripAnnouncement(cue('Leído por Gabriela Cahuen en Kingston,'))).toBeNull();
+  });
 });
 
 // ── extractSequenceNumber ──────────────────────────────────────────────────────

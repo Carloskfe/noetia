@@ -347,6 +347,31 @@ which fable(s) it contains — a much bigger task. Since this book was already
 passing the (old 85%) threshold, it was left alone rather than risk
 regressing a working sync. Re-evaluate under the new 90% threshold.
 
+**Worked example #2 — extra unmatched chapters, not just wrong order
+(Leyendas, Gustavo Adolfo Bécquer):** the LibriVox "Leyendas" recording has
+**21 chapters**, but the catalogue only lists 16 legends. Checking each
+chapter's spoken title announcement revealed 5 chapters are *other* Bécquer
+works not in this catalogue entry at all — *"Es raro"*, *"La Arquitectura
+Árabe en Toledo"*, *"La creación"*, *"Las hojas secas"*, *"3 fechas"*
+(likely Rimas/poems or prose essays, scattered between the legends, not
+clustered at start/end like front/back matter). Reordering alone isn't
+enough here — the 5 unmatched chapter **files** must be excluded from the
+merge entirely (copy the valid subset into a clean directory before running
+`merge-transcriptions.ts`; the tool has no include/exclude-file flag), in
+addition to reordering `wikisourceTitles` to match the remaining 16 chapters'
+confirmed sequence. **Always count audio chapters against catalogued titles
+first** — a count mismatch (here 21 vs. 16) is the tell that you need
+exclusion, not just reordering.
+
+This investigation also surfaced a §2 gap: a reader-credit line Whisper
+segmented across 3 cues (*"Leído por Gabriela Cahuen en Kingston,"* /
+*"Ontario,"* / *"Canadá."*) had no period in the first cue, so the
+substring-based `READER_CREDIT` strip didn't catch it. Added a whole-cue
+pattern (`/^le[ií]do por\b/i`) to drop any cue that *starts* with "Leído
+por" regardless of whether it ends with a period in that same cue — the
+two trailing fragments ("Ontario," / "Canadá.") are left as harmless orphan
+exceptions (2 phrases, negligible).
+
 ---
 
 ## 8. Shared/duplicate source text across volumes

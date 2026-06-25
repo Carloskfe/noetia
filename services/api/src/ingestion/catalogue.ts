@@ -67,23 +67,31 @@ export const CATALOGUE: CatalogueEntry[] = [
     author: 'Gustavo Adolfo Bécquer',
     description: 'Colección de leyendas románticas del poeta y narrador sevillano del siglo XIX.',
     source: 'wikisource',
+    // Order matches the LibriVox audio's actual chapter sequence (confirmed
+    // from each chapter file's spoken title announcement) — same bug class
+    // as Cuentos de la Selva. The recording also includes 5 extra Bécquer
+    // pieces not in this catalogue entry ("Es raro", "La Arquitectura Árabe
+    // en Toledo", "La creación", "Las hojas secas", "3 fechas" — likely
+    // Rimas/poems or prose essays, not leyendas) scattered between the
+    // legends; those chapter files must be excluded before merging, not
+    // just reordered.
     wikisourceTitles: [
+      'Creed en Dios',
+      'El Cristo de la calavera',
+      'El beso',
+      'El caudillo de las manos rojas',
+      'El gnomo',
+      'El miserere (Bécquer)',
       'El monte de las ánimas',
-      'Maese Pérez el organista',
       'El rayo de luna',
       'La ajorca de oro',
-      'El miserere (Bécquer)',
-      'La rosa de pasión',
-      'El beso',
-      'El Cristo de la calavera',
-      'La promesa',
-      'Los ojos verdes',
-      'El gnomo',
       'La corza blanca',
       'La cruz del Diablo',
       'La cueva de la mora',
-      'Creed en Dios',
-      'El caudillo de las manos rojas',
+      'La promesa',
+      'La rosa de pasión',
+      'Los ojos verdes',
+      'Maese Pérez el organista',
     ],
     librivoxAudioUrl: 'https://librivox.org/leyendas-by-gustavo-adolfo-becquer/',
   },
