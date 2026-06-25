@@ -24,6 +24,58 @@ export function romanToInt(value: string): number | null {
   return result;
 }
 
+interface TrailingNumber {
+  prefix: string;
+  value: number;
+}
+
+// Spelled-out Spanish ordinals (e.g. Lazarillo de Tormes' "Tratado primero",
+// "Tratado segundo"...). Keys are accent-stripped lowercase; lookup
+// normalizes the candidate word the same way. Covers 1st-30th, which is
+// more than any catalogued book currently needs.
+const SPANISH_ORDINAL_WORDS: Record<string, number> = {
+  primero: 1, primer: 1, segundo: 2, tercero: 3, tercer: 3, cuarto: 4, quinto: 5,
+  sexto: 6, septimo: 7, setimo: 7, octavo: 8, noveno: 9, nono: 9, decimo: 10,
+  undecimo: 11, decimoprimero: 11, duodecimo: 12, decimosegundo: 12,
+  decimotercero: 13, decimotercio: 13, decimocuarto: 14, decimoquinto: 15,
+  decimosexto: 16, decimoseptimo: 17, decimoctavo: 18, decimonoveno: 19,
+  decimonono: 19, vigesimo: 20, vigesimoprimero: 21, vigesimosegundo: 22,
+  vigesimotercero: 23, vigesimocuarto: 24, vigesimoquinto: 25, vigesimosexto: 26,
+  vigesimoseptimo: 27, vigesimoctavo: 28, vigesimonoveno: 29, trigesimo: 30,
+};
+
+function stripAccents(word: string): string {
+  return word.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+/** Extracts a trailing Arabic numeral, Roman numeral, or spelled-out
+ *  Spanish ordinal word, plus the prefix before it (e.g. "Capítulo IX" →
+ *  { prefix: "Capítulo ", value: 9 }, "Tratado primero" →
+ *  { prefix: "Tratado ", value: 1 }), or null if the segment doesn't end in
+ *  a recognizable number. Tries Arabic digits first (cheapest, unambiguous),
+ *  then Roman numerals, then ordinal words. */
+function extractTrailingNumber(segment: string): TrailingNumber | null {
+  const arabic = /(\d+)\s*$/.exec(segment);
+  if (arabic) {
+    return { prefix: segment.slice(0, segment.length - arabic[0].length), value: parseInt(arabic[1], 10) };
+  }
+  const roman = /\b([IVXLCDM]+)\s*$/i.exec(segment);
+  if (roman) {
+    const value = romanToInt(roman[1]);
+    if (value !== null) {
+      return { prefix: segment.slice(0, segment.length - roman[0].length), value };
+    }
+  }
+  const word = /([a-záéíóúñ]+)\s*$/i.exec(segment);
+  if (word) {
+    const value = SPANISH_ORDINAL_WORDS[stripAccents(word[1])];
+    if (value !== undefined) {
+      return { prefix: segment.slice(0, segment.length - word[0].length), value };
+    }
+  }
+  return null;
+}
+
 @Injectable()
 export class WikisourceFetcherService {
   /**
@@ -99,16 +151,9 @@ export class WikisourceFetcherService {
       .sort((a, b) => {
         const segA = a.split('/').pop() ?? '';
         const segB = b.split('/').pop() ?? '';
-        const mA = /(\d+)\s*$/.exec(segA);
-        const mB = /(\d+)\s*$/.exec(segB);
-        if (mA && mB) {
-          const prefA = segA.slice(0, segA.length - mA[0].length);
-          const prefB = segB.slice(0, segB.length - mB[0].length);
-          if (prefA === prefB) return parseInt(mA[1], 10) - parseInt(mB[1], 10);
-        }
-        const romanA = romanToInt(segA);
-        const romanB = romanToInt(segB);
-        if (romanA !== null && romanB !== null) return romanA - romanB;
+        const numA = extractTrailingNumber(segA);
+        const numB = extractTrailingNumber(segB);
+        if (numA && numB && numA.prefix === numB.prefix) return numA.value - numB.value;
         return a.localeCompare(b, lang);
       });
   }

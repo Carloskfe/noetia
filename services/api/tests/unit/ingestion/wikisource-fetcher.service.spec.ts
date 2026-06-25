@@ -225,6 +225,50 @@ describe('WikisourceFetcherService', () => {
       expect(actual).toEqual(expected);
     }, 10000);
 
+    // El Sombrero de Tres Picos and Orgullo y Prejuicio name their subpages
+    // "Capítulo I", "Capítulo IX", etc. — a prefix plus a Roman numeral, not
+    // a bare numeral. Confirms the prefix-matching logic (shared with the
+    // Arabic-digit case) also applies to the Roman-numeral path.
+    it('sorts "Capítulo <Roman numeral>" subpages numerically (Capítulo IX after Capítulo VIII, not before Capítulo V)', async () => {
+      const fetchOrder: string[] = [];
+      const shuffled = ['Capítulo IX', 'Capítulo IV', 'Capítulo X', 'Capítulo V', 'Capítulo VI', 'Capítulo VII', 'Capítulo VIII'];
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.includes('prop=links')) {
+          return LINKS_RESPONSE(TITLE, shuffled.map((n) => `${TITLE}/${n}`));
+        }
+        fetchOrder.push(url as string);
+        return HTML_RESPONSE('<p>' + 'Lorem ipsum dolor sit amet consectetuer. '.repeat(5) + '</p>');
+      });
+
+      await service.fetch(TITLE);
+
+      const expected = ['Capítulo IV', 'Capítulo V', 'Capítulo VI', 'Capítulo VII', 'Capítulo VIII', 'Capítulo IX', 'Capítulo X'];
+      const actual = fetchOrder.map((url) => decodeURIComponent(url).split('/').pop()?.split('&')[0]);
+      expect(actual).toEqual(expected);
+    }, 10000);
+
+    // Lazarillo de Tormes names its subpages with spelled-out Spanish
+    // ordinals ("Tratado primero", "Tratado segundo"...), not numerals at
+    // all — confirmed via the live Wikisource API. Plain alphabetical sort
+    // scrambles these completely (cuarto before primero, etc.).
+    it('sorts "Tratado <ordinal word>" subpages by ordinal value, not alphabetically', async () => {
+      const fetchOrder: string[] = [];
+      const shuffled = ['Tratado cuarto', 'Tratado primero', 'Tratado quinto', 'Tratado segundo', 'Tratado sexto', 'Tratado séptimo', 'Tratado tercero'];
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.includes('prop=links')) {
+          return LINKS_RESPONSE(TITLE, shuffled.map((n) => `${TITLE}/${n}`));
+        }
+        fetchOrder.push(url as string);
+        return HTML_RESPONSE('<p>' + 'Lorem ipsum dolor sit amet consectetuer. '.repeat(5) + '</p>');
+      });
+
+      await service.fetch(TITLE);
+
+      const expected = ['Tratado primero', 'Tratado segundo', 'Tratado tercero', 'Tratado cuarto', 'Tratado quinto', 'Tratado sexto', 'Tratado séptimo'];
+      const actual = fetchOrder.map((url) => decodeURIComponent(url).split('/').pop()?.split('&')[0]);
+      expect(actual).toEqual(expected);
+    }, 10000);
+
     it('sorts numeric subpages in numeric order (1, 2, 10 not 1, 10, 2)', async () => {
       const fetchOrder: string[] = [];
       mockFetch.mockImplementation(async (url: string) => {
