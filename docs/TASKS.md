@@ -5,7 +5,7 @@
 > 2. **Author/company experience** — content supply chain; upload, sync tooling, analytics
 > 3. **Free library** — beta acquisition only; not expanded after 6–12 months; UI hero will yield to author content
 >
-> **Current status (2026-06-03):** Stages 0–5 complete + major feature sprint complete. **Production live at https://noetia.app** — Contabo VPS (Traefik v2.11, containers healthy, 57 migrations applied). SSH port 222, fail2ban active. CI/CD working (auto-deploys + runs migrations).
+> **Current status (2026-06-25):** Stages 0–5 complete + major feature sprint complete. **Production live at https://noetia.app** — Contabo VPS (Traefik v2.11, containers healthy, 61 migrations applied). SSH port 222, fail2ban active. CI/CD working (auto-deploys + runs migrations).
 >
 > **Completed since last update:**
 > - [x] Stripe fully activated — 10 products, webhook live, price IDs in DB ✅
@@ -43,6 +43,14 @@
 > - [x] Legal terms updated — ALEXANDRIA bug fixed, correct plan prices ($8.99/$13.99/$18.99), analytics/persona disclosure, opt-out path, 30-day change notice ✅
 > - [x] La Odisea text fixed — CatalogueEntry.textPostProcess hook strips verse numbers + illustration captions; reIngestText rebuilds DB phrases; deployed ✅
 > - [x] 4 new books added — Platero y yo, Pepita Jiménez (ES); Meditations, Jane Eyre (EN); text + audio + covers live ✅
+> - [x] **Developer docs overhaul (2026-06-25)** — CLAUDE.md restructured (39,987 → 31,576 chars); 5 new reference docs created; §Development Safety Rules added ✅
+>   - `docs/sync-procedures.md` — Whisper pipeline, VTT procedure, quality status table (ES: 8 ✅ / 16 ❌ / 16 auto; EN: Meditations 45.1%, Jane Eyre next)
+>   - `docs/incident-response.md` — 8 production playbooks (Traefik, OOM, DB, MinIO, SSL, CI/CD, Grafana)
+>   - `docs/secrets-rotation.md` — rotation procedure for all 9 production secrets
+>   - `docs/database-migrations.md` — migration history (000–061), golden rules, run/generate commands
+>   - `docs/persona-pipeline.md` — event stream, 20-theme taxonomy, 8-aggregation computation, admin endpoints, opt-out
+>   - PRD.md: plan names/prices corrected (Individual/Duo/Family, tokens not credits), catalog count, Whisper syncSource
+>   - apple-app-privacy.md: behavioral analytics + persona pipeline disclosure added
 >
 > **Sync quality audit (2026-06-25 updated) — 73 books total (40 ES + 31 EN + 2 pending rights):**
 >
@@ -87,7 +95,7 @@
 > - [x] Server monitoring & alerting — Grafana live via Tailscale (100.84.48.16:3001); alerts for API error rate + container restarts; false-positive fix deployed ✅
 > - [ ] Let's Encrypt renewal smoke test — verify auto-renewal 30 days before expiry
 > - [ ] GitHub Actions deploy scope — dedicated deploy user instead of root SSH key
-> - [ ] Secrets rotation policy — JWT_SECRET, MINIO credentials, SOCIAL_TOKEN_SECRET
+> - [x] Secrets rotation policy — `docs/secrets-rotation.md` with full procedure for all 9 production secrets ✅
 > - [x] Privacy policy compliance — GDPR/CCPA data retention policy, opt-out toggle, analytics disclosure ✅
 
 **Estimation key:** Each task is estimated in days (1 dev). Sprints are 2 weeks (10 working days).
