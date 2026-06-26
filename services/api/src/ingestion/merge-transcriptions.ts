@@ -143,6 +143,10 @@ const ANNOUNCEMENT_WHOLE_CUE: RegExp[] = [
   /^(?:this is (?:a |the )?)?end of chapters?\b/i,
   // Public domain notices mixed with recording credits
   /\bpublic domain\b.*\brecording by\b/i,
+  // "Today's reading by [podcast/name]" embedded anywhere in cue
+  /\btoday's reading by\b/i,
+  // LibriVox chapter-intro format: "This is [Title] by [Author], Chapter N, read by [Name]..."
+  /^this is\s+\S+.*,\s*chapter\s+\d+/i,
 ];
 
 const ANNOUNCEMENT_TRAILING =
