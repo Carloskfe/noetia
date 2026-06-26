@@ -44,69 +44,13 @@
 > - [x] La Odisea text fixed — CatalogueEntry.textPostProcess hook strips verse numbers + illustration captions; reIngestText rebuilds DB phrases; deployed ✅
 > - [x] 4 new books added — Platero y yo, Pepita Jiménez (ES); Meditations, Jane Eyre (EN); text + audio + covers live ✅
 >
-> **Sync quality audit (2026-06-15 updated) — 73 books total (40 ES + 31 EN + 2 pending rights):**
+> **Sync quality audit (2026-06-25 updated) — 73 books total (40 ES + 31 EN + 2 pending rights):**
 >
-> **Standard:** Whisper syncCoverage ≥ 85%. Books below this produce broken phrase highlighting.
+> **Standard:** Whisper `syncCoverage` ≥ **90%** (raised from 85% on 2026-06-24). Full status table, diagnostic SQL, and per-book next steps: [`docs/sync-procedures.md`](sync-procedures.md).
 >
-> ### ES — Compliant (Whisper ≥ 85%): 5 books ✅
-> | Book | Coverage | VTT |
-> |------|----------|-----|
-> | Marianela | 99.8% | marianela.merged.vtt ✅ |
-> | Romeo y Julieta | 99.1% | romeo-y-julieta.merged.vtt ✅ |
-> | Don Juan Tenorio | 98.6% | don-juan.merged.vtt ✅ |
-> | Cuentos de Amor de Locura y de Muerte | 98.0% | cuentos-de-amor.merged.vtt ✅ |
-> | Niebla | 88.1% | niebla.merged.vtt ✅ |
-> | Lazarillo de Tormes | 84.1% | lazarillo.merged.vtt ⚠️ borderline |
+> **ES:** 8 books ✅ ≥ 90% (Marianela 99.8%, Romeo y Julieta 99.1%, Don Juan Tenorio 98.6%, Cuentos de Amor 98.0%, Cuentos de la Selva 100%, Lazarillo 100%, Platero y yo 98.2%, Pepita Jiménez 96.8%) · 16 books ❌ below threshold (root causes vary — see sync-procedures.md) · 16 Bible books auto-sync only.
 >
-> ### ES — Below Threshold (VTT exists but text edition mismatch): 11 books ❌
-> Root cause: LibriVox reader used a different edition/translation than stored text. Fix: check LibriVox url_text_source, find matching Gutenberg/Wikisource text, apply textPostProcess, re-run Whisper.
->
-> | Book | Coverage | VTT |
-> |------|----------|-----|
-> | Salmos | 80.9% | salmos.merged.vtt |
-> | Los Cuatro Jinetes del Apocalipsis | 77.2% | cuatro-jinetes.merged.vtt |
-> | Crimen y Castigo | 72.7% | crimen-y-castigo.merged.vtt |
-> | El Sombrero de Tres Picos | 70.6% | el-sombrero-de-tres-picos.merged.vtt |
-> | Doña Perfecta | 69.0% | dona-perfecta.merged.vtt |
-> | Viaje al Centro de la Tierra | 67.4% | viaje-al-centro.merged.vtt |
-> | La Odisea | 59.1% | la-odisea.merged.vtt (+ archaic 1910 Spanish) |
-> | Leyendas | 58.8% | rimas-y-leyendas.merged.vtt |
-> | La Isla del Tesoro | 55.7% | la-isla-del-tesoro.merged.vtt |
-> | El Gaucho Martín Fierro | 55.4% | martin-fierro.merged.vtt |
->
-> ### ES — Auto Sync Only (no Whisper VTT yet): 24 books
-> Whisper pipeline queued in `scripts/whisper-batch.sh`. Priority order:
->
-> | Book | Batch script | Est. audio | Notes |
-> |------|-------------|-----------|-------|
-> | Don Quijote Vol. I | ✅ | ~4.3h | **RUNNING ON SERVER 2026-06-15 OVERNIGHT** |
-> | Don Quijote Vol. II | ✅ | ~4.0h | **RUNNING ON SERVER 2026-06-15 OVERNIGHT** |
-> | Fábulas y Verdades | ✅ | short | — |
-> | Cuentos de la Selva | ✅ | short | — |
-> | Efesios | ✅ | short | — |
-> | Filipenses | ✅ | short | — |
-> | Apocalipsis | ✅ | short | — |
-> | Mateo | ✅ | short | — |
-> | Juan | ✅ | short | — |
-> | Lucas | ✅ | medium | — |
-> | Proverbios | ✅ | medium | — |
-> | Isaías | ✅ | medium | — |
-> | Génesis | ✅ | medium | — |
-> | Éxodo | ✅ | medium | — |
-> | Santiago | ✅ | short | Added 2026-06-15 |
-> | 1 Corintios | ✅ | short | Added 2026-06-15 |
-> | Hebreos | ✅ | short | Added 2026-06-15 |
-> | Romanos | ✅ | short | Added 2026-06-15 |
-> | Marcos | ✅ | medium | Added 2026-06-15 |
-> | Hechos | ✅ | medium | Added 2026-06-15 |
-> | Platero y yo | ✅ | medium | Added 2026-06-15 |
-> | Pepita Jiménez | ✅ | medium | Added 2026-06-15 |
-> | Orgullo y Prejuicio | ✅ | ~7h | Added 2026-06-15 |
-> | La Divina Comedia | ✅ | ~10h | Added 2026-06-15; longest ES book |
->
-> ### EN — Auto Sync Only (no Whisper run on any English book yet): 31 books
-> All English titles are readable but have no phrase-level synchronization.
-> Priority for first Whisper run: Meditations (15 sections, ~3h) → Jane Eyre (39 sections, ~18h) → remaining 29 titles.
+> **EN:** 1 book Whisper-attempted (Meditations 45.1% — CRLF fix applied; confidence stuck at 25%, likely translation mismatch). 30 books auto-sync. Next Whisper priority: **Jane Eyre** (39 sections).
 >
 > **Remaining before app store submission:**
 > - [~] **Don Quijote Vol. I & II Whisper** — running on server overnight 2026-06-15; SCP VTTs back, commit, align on server when done

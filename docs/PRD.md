@@ -138,7 +138,7 @@ Authors / Publishers / Companies
 - Author analytics: readers, shares, storage, revenue
 
 #### Beta Catalog (acquisition / engagement)
-- ~40 Spanish-language public-domain classics (Gutenberg, Wikisource, LibriVox)
+- ~40 Spanish + ~31 English public-domain classics (Gutenberg, Wikisource, LibriVox)
 - Free for all users — no subscription required
 - Visible in "Colección General" as a secondary section ("Clásicos gratuitos")
 - Not expanded after the first 6–12 months of operation
@@ -158,7 +158,7 @@ Authors / Publishers / Companies
   2. "Continuar desde frase N" — resumes from last saved position
   3. "Desde el principio"
 - Sync engine: phrase-level highlight driven by `phraseAt()` binary search on `startTime/endTime`
-- Sync timestamps come from SRT/VTT files uploaded by authors; public-domain books have `startTime=0`
+- Sync timestamps come from SRT/VTT files uploaded by authors, or Whisper-generated VTT files for public-domain books (`syncSource = 'whisper'`); books without a sync file are readable but have `startTime=0` throughout
 
 ### 4. Highlight & Fragment System
 - Select text while reading to save as "fragments"
@@ -192,23 +192,25 @@ Noetia follows a hybrid model inspired by Audible.
 
 #### Monthly Subscription Plans
 
-| Plan       | Monthly | Annual | Credits/month |
-|------------|---------|--------|---------------|
-| Individual | $9.99   | $89    | 1 credit      |
-| Reader     | $14.99  | $135   | 2 credits     |
+| Plan       | Monthly | Annual   | Tokens/month |
+|------------|---------|----------|--------------|
+| Individual | $8.99   | $83.99   | 1 token |
+| Duo        | $13.99  | $129.99  | 2 tokens (shared pool, up to 2 users) |
+| Family     | $18.99  | $179.99  | 3 tokens (shared pool, up to 6 users) |
 
-#### Credit Mechanics
-- 1 credit = 1 book of any list price
-- Credits issued at the start of each billing cycle; expire at end of cycle (MVP)
-- Subscribers can also purchase titles at list price without using a credit
-- Free trial: 14 days
+#### Token Mechanics
+- 1 token = 1 book of any list price (redeemed at checkout)
+- Paid tokens expire 90 days after issuance; promo/courtesy tokens expire in 30 days
+- FIFO redemption — oldest token consumed first
+- Token packages for one-time purchase: 1 / 3 / 5 / 10 tokens
+- Subscribers can also purchase titles at list price without spending a token
 
 ### 9. Author / Publisher Module ← Priority 2 feature
 - Upload: text (.txt/.epub/.pdf), audio (MP3/M4A), cover image (.jpg/.png), sync file (SRT/VTT)
 - Review workflow: submission → 3–5 day editorial review → publication
 - Hosting tiers: 1 / 3 / 12 books (enforced via `hostingTier` on User)
 - SRT/VTT sync upload: activates phrase-level highlighting in Modo Escucha Activa
-  - Each cue in the SRT = one phrase of the book; `syncSource` field tracks origin (`auto`/`srt`/`vtt`)
+  - Each cue in the SRT = one phrase of the book; `syncSource` field tracks origin (`auto`/`srt`/`vtt`/`whisper`)
   - Can be uploaded at any time, even post-publication
 - Analytics: readers, shares, storage per book
 - Revenue sharing model (implementation in Phase 2)

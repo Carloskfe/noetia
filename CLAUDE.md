@@ -30,9 +30,13 @@ The ~40 public-domain books exist to give beta users a complete reading experien
 5. [Docker Dev Volume Mounts](#docker-dev-volume-mounts)
 6. [Production Deployment](#production-deployment)
 7. [Infrastructure & Vendors](#infrastructure--vendors)
-8. [Content Ingestion](#content-ingestion)
-9. [Database Migrations](#database-migrations)
-10. [Testing](#testing)
+8. [Whisper Sync Map](#whisper-sync-map)
+9. [Content Ingestion](#content-ingestion)
+10. [Database Migrations](#database-migrations)
+11. [Reader Persona Pipeline](#reader-persona-pipeline)
+12. [Testing](#testing)
+13. [Voice & Style Guide](#voice--style-guide)
+14. [Reference Documents](#reference-documents)
 
 ---
 
@@ -87,8 +91,6 @@ Never batch multiple unrelated changes into a single commit. Small, focused comm
 | `proxy`     | Nginx (dev) / Traefik (prod) | Reverse proxy, SSL termination      |
 | `search`    | Meilisearch           | Book and fragment full-text search         |
 | `monitor`   | Grafana + Prometheus  | Metrics and alerting                       |
-
-**Supporting services:** Supabase Auth or Auth.js (social login), Stripe (subscriptions)
 
 ---
 
@@ -185,9 +187,9 @@ noetia/
 │   │   │   ├── pinterest.py        # 1000×1500 (pin), 1000×1000 (pin-square)
 │   │   │   └── whatsapp.py         # kept for backwards compatibility
 │   │   ├── scripts/
-│   │   │   ├── generate_book_covers.py   # Generates placeholder covers for 12 initial books
-│   │   │   ├── generate_bg_presets.py    # Generates imagen-1..5 + upload-slot placeholders
-│   │   │   └── generate_presets.py       # Font preview thumbnails for ShareModal
+│   │   │   ├── generate_book_covers.py   # Book cover PNGs
+│   │   │   ├── generate_bg_presets.py    # imagen-1..5 + upload-slot placeholders
+│   │   │   └── generate_presets.py       # Font preview thumbnails
 │   │   ├── tests/unit/
 │   │   ├── Dockerfile
 │   │   └── requirements.txt
@@ -387,40 +389,24 @@ cd /opt/traefik && touch acme.json && chmod 600 acme.json && docker compose up -
 
 ### Critical server operations — hard-won lessons
 
-**NEVER paste multi-line content via SSH terminal.** The server terminal wraps long lines and the shell misinterprets line-breaks as command separators, corrupting files. This caused a 2-hour outage on 2026-05-12.
+**NEVER paste multi-line content via SSH terminal.** The shell misinterprets line-breaks as command separators, corrupting files — caused a 2-hour outage on 2026-05-12. Use nano or base64 instead:
 
-**To write a file on the server, use one of:**
 ```bash
-# Option 1 — nano (safest for multi-line content)
-nano /opt/traefik/traefik.yml
-# Ctrl+K to delete lines, paste content, Ctrl+O to save, Ctrl+X to exit
+# nano (safest)
+nano /opt/traefik/traefik.yml  # Ctrl+O save, Ctrl+X exit
 
-# Option 2 — single-line Python (no newlines in command)
-python3 -c "open('/path/file','w').write('line1\nline2\n')"
-
-# Option 3 — base64 (immune to space/newline corruption)
-# Generate on local: python3 -c "import base64; print(base64.b64encode(open('file').read().encode()).decode())"
-# Apply on server:
+# base64 (immune to newline corruption — generate on local, apply on server)
+# Local: python3 -c "import base64; print(base64.b64encode(open('file').read().encode()).decode())"
 echo <BASE64> | base64 -d > /path/file
 ```
 
-**Traefik config is at `/opt/traefik/traefik.yml`.** If it gets corrupted:
-1. Use nano to restore it
-2. Content must have exact 2-space YAML indentation
-3. `docker restart traefik` after any change
-4. If Traefik won't start: `docker logs traefik --tail 10` to see the YAML parse error, then `sed -i 's/^  //' /opt/traefik/traefik.yml` to strip accidental extra indentation
+**Traefik config** is at `/opt/traefik/traefik.yml` — requires exact 2-space YAML indentation. After any change: `docker restart traefik`. If it won't start: `docker logs traefik --tail 10`; strip extra indentation with `sed -i 's/^  //' /opt/traefik/traefik.yml`.
 
-**Traefik 502/404 diagnosis checklist:**
-- `docker ps` → are web and api containers `(healthy)`? If `(unhealthy)` → Traefik drops their routes
-- `docker exec traefik wget -qO- http://<container_ip>:3000` → can Traefik reach the container?
-- `docker inspect <container> --format "{{.State.Health.Status}}"` → check health
-- `docker inspect <container> --format '{{range .State.Health.Log}}Exit={{.ExitCode}} Output={{.Output}}{{"\n"}}{{end}}'` → see healthcheck failures
-- `docker network inspect proxy` → confirm container is on the proxy network
+**Traefik 502/404 diagnosis:** see [`docs/incident-response.md §1`](docs/incident-response.md#1-traefik-502--404) for the full checklist. Quick checks: `docker ps` (confirm containers are `(healthy)`); `docker network inspect proxy` (confirm container is on the proxy network).
 
-**Known container gotchas:**
-- Next.js 14 standalone `server.js` reads `HOSTNAME` env var for bind address. Docker sets `HOSTNAME` to the container ID. Without `HOSTNAME: "0.0.0.0"` in compose, Next.js binds to only one network interface → Traefik 502.
-- Alpine `busybox wget` resolves `localhost` to `::1` (IPv6). Healthchecks must use `127.0.0.1` not `localhost`. Using `localhost` marks container unhealthy → Traefik drops the route → 404.
-- Fix for both is in `docker-compose.server.yml` (already applied). If containers are recreated, these fixes are preserved.
+**Known container gotchas** (both fixed in `docker-compose.server.yml`):
+- Next.js requires `HOSTNAME: "0.0.0.0"` — Docker sets `HOSTNAME` to the container ID, causing Next.js to bind to a single interface → Traefik 502.
+- Alpine healthchecks must use `127.0.0.1` not `localhost` — `busybox wget` resolves `localhost` as `::1` (IPv6), marking the container unhealthy → Traefik drops the route.
 
 ---
 
@@ -484,71 +470,11 @@ All third-party services used in production. Credentials are in `.env.production
 
 ---
 
-## Adding a Whisper Sync Map for a Book
+## Whisper Sync Map
 
-Use this procedure whenever you have Whisper-generated VTT files for a book that currently has no phrase timestamps (`syncSource = 'auto'`).
+Full pipeline — Colab GPU setup (`scripts/whisper-colab.ipynb`), step-by-step VTT procedure, known gotchas (`mkdir -p /app/transcriptions` before every `docker cp`; `/app/transcriptions` is wiped on each deploy), and current quality status by book — is in [`docs/sync-procedures.md`](docs/sync-procedures.md).
 
-**If coverage comes back below 90% after following this procedure**, do not just re-run Whisper — see [`docs/whisper-sync-troubleshooting.md`](docs/whisper-sync-troubleshooting.md) for the full diagnostic decision tree (announcement noise, untrimmed front/back matter, scattered footnotes/illustrations, story-order mismatches in multi-piece collections, shared-text bugs across volumes, and genuine edition/translation mismatches). That doc also applies to books received directly from authors/publishers with their own narration, not just LibriVox re-syncs.
-
-### Step 1 — Prepare individual chapter VTTs
-
-Run Whisper on each LibriVox chapter audio file with word-level timestamps:
-
-```bash
-whisper chapter_01.mp3 --language es --word_timestamps True --output_format vtt
-whisper chapter_02.mp3 --language es --word_timestamps True --output_format vtt
-# repeat for all chapters
-```
-
-Name the output files so they sort in chapter order (e.g. `01_prologue.vtt`, `02_chapter.vtt`). The merge tool orders by the first integer it finds in each filename.
-
-### Step 2 — Place VTTs in the transcriptions directory
-
-```
-transcriptions/
-└── Book Title/           ← directory named exactly as the book title
-    ├── 01_chapter.vtt
-    ├── 02_chapter.vtt
-    └── ...
-```
-
-### Step 3 — Merge into a single VTT
-
-Run from the repo root on your local machine (requires ts-node):
-
-```bash
-npx ts-node services/api/src/ingestion/merge-transcriptions.ts \
-  --dir "transcriptions/Book Title" \
-  --out "transcriptions/book-slug.merged.vtt"
-```
-
-This stitches all chapter VTTs into one file with adjusted timestamps and a 2-second gap between chapters.
-
-### Step 4 — Commit and push
-
-```bash
-git add transcriptions/
-git commit -m "chore: add Whisper VTT for Book Title"
-git push
-```
-
-### Step 5 — Copy to server and run sync
-
-```bash
-# On the server
-cd /opt/noetia && git pull
-
-# Copy VTT into the running api container
-docker cp transcriptions/book-slug.merged.vtt noetia-api-1:/app/transcriptions/book-slug.merged.vtt
-
-# Run the alignment
-docker compose --env-file .env.production -f docker-compose.server.yml exec -T -e DB_HOST=db api \
-  node dist/ingestion/seed-sync-whisper.js \
-  --book "Book Title" \
-  --transcript /app/transcriptions/book-slug.merged.vtt
-```
-
-The script prints an alignment summary (phrase count, avg confidence, low-confidence phrases to spot-check) and saves the sync map to the database with `syncSource = 'whisper'`.
+Root-cause diagnosis for books below 90% (announcement noise, front/back matter, story-order mismatches, edition mismatches) is in [`docs/whisper-sync-troubleshooting.md`](docs/whisper-sync-troubleshooting.md).
 
 ---
 
@@ -657,25 +583,11 @@ docker compose exec api npm run migration:run
 
 ---
 
-## Sync Quality Status (audited 2026-06-24)
+## Sync Quality Status
 
-**Standard:** Whisper syncCoverage ≥ **90%** (raised from 85% on 2026-06-24 — see [`docs/whisper-sync-troubleshooting.md` § Why 90%](docs/whisper-sync-troubleshooting.md#why-90)). Books below this threshold have audio/text mismatches that produce broken phrase highlighting for readers. Books on `auto` sync are readable but have no phrase-level synchronization.
+Current book-by-book coverage numbers, pass/fail status, and the diagnostic SQL are in [`docs/sync-procedures.md § Sync Quality Status`](docs/sync-procedures.md#3-sync-quality-status). Standard: `syncCoverage` ≥ **90%**. Last audited 2026-06-25.
 
-**Before re-syncing any book below threshold, read [`docs/whisper-sync-troubleshooting.md`](docs/whisper-sync-troubleshooting.md) first.** It's a living document — append every newly-discovered, validated bug/fix to it as you find them, not just at the end of a session. "Edition mismatch" was the only documented root cause as of 2026-06-04; as of 2026-06-24 there are at least 5 distinct root-cause categories (announcement noise, untrimmed front/back matter, scattered footnotes/illustrations, story-order mismatches in multi-piece collections, shared-text bugs across sibling volumes) — most below-threshold books are NOT genuine edition mismatches and have a real fix available.
-
-### Spanish (40 books total)
-
-| Status | Count | Books |
-|--------|-------|-------|
-| Whisper ≥ 90% ✅ | 8 | Marianela 99.8%, Romeo y Julieta 99.1%, Don Juan Tenorio 98.6%, Cuentos de Amor 98.0%, **Cuentos de la Selva 100.0%** (fixed 2026-06-24 — story-order mismatch, §7), **Lazarillo de Tormes 100.0%** (fixed 2026-06-25 — Wikisource subpages named with spelled-out ordinals "Tratado primero/segundo/cuarto..." were sorted alphabetically, completely scrambled; the 2026-05-29 "ASR errors" diagnosis was wrong, §7), **Platero y yo 98.2%** (fixed 2026-06-25 — missing "Grabado por" reader-credit pattern + untrimmed back-matter ÍNDICE, §2/§3), **Pepita Jiménez 96.8%** (fixed 2026-06-24 — missing announcement patterns "sección"/reader-credit, §2) |
-| Whisper < 90% ❌ | 16 | El Gaucho Martín Fierro 82.4% (up from 55.4% 2026-06-25 — standalone stanza numbers "392" glued onto the next sentence, §4), Leyendas 80.6% (up from 58.8% — story-order mismatch + 5 unmatched chapters excluded, §7), Niebla 88.0%, Fábulas y Verdades 85.3% (re-audit under new threshold — was passing at 85%; unresolved 16-section-vs-11-fable count mismatch, §7), Salmos 81.0% (flat — likely the same standalone-verse-number issue as Martín Fierro, not yet confirmed, §4), Los Cuatro Jinetes 76.4% (confirmed edition mismatch, §6), El Sombrero de Tres Picos 75.2% (up from 70.6% — "Capítulo+Roman" sort fix + misplaced "Prefacio" now positioned correctly, §7; modest gain only, remaining gap unexplained), Doña Perfecta 71.6% (up from 69.0% — bare Roman-numeral sort fix, §7; modest gain, remaining gap unexplained), Crimen y Castigo 72.9% (front/back-matter + footnote trim applied, no improvement — **translator confirmed matching exactly** "Pedro Pedraza y Páez", ruling out §6; remaining gap unexplained), Orgullo y Prejuicio 64.4% (Roman-numeral sort fix confirmed correct against the live API — **flat, no improvement**, root cause still unexplained, §7), Viaje al Centro 67.5% (**confirmed §6 edition mismatch with direct evidence** — Wikisource text says "traducción de Anónimo", LibriVox credits "traducido por Antonio Ribot y Fonseré"), La Divina Comedia 66.0% (front/back-matter trim applied, up from 56.0% — still needs more), Don Quijote Vol. II 56.4%, Don Quijote Vol. I 54.4% (**both capped near 50% by a shared-`gutenbergId: 2000` text bug, §8 — not yet fixed**), La Odisea 60.6% (up from 58.6% — **CRLF bug found**: a ~276,000-char, 1700-entry glossary had been silently attached to the stored text the whole time; fixed, but only modest gain), La Isla del Tesoro 55.4% (Roman-numeral sort fix confirmed correct against the live API — **flat, no improvement**; translator confirmed matching "Manuel Caballero", ruling out §6; root cause still unexplained) |
-| Auto sync only | 16 | 16 Bible books (ES) |
-
-**Root cause varies — see `docs/whisper-sync-troubleshooting.md` for the per-book diagnostic process.** Do not assume "edition mismatch" without first confirming front/back matter and scattered noise are clean (§3-5) and checking for story-order/shared-text bugs (§7-8) — most of the books above were re-tested on 2026-06-24 and several have a known, documented next step rather than being a dead end.
-
-### English (31 books total)
-
-30 of 31 English books are on `auto` sync — no Whisper VTTs run. **Meditations**: 45.1% coverage (up from 42.6% 2026-06-24 — found and fixed a CRLF bug identical to La Odisea's: `narrativeEndPattern: '\nAPPENDIX\n'` never matched the real `\r\n` source, leaving the back-of-book correspondence appendix attached; also wouldn't have been safe even with CRLF fixed, since "APPENDIX" appears in a front-of-book table of contents first — anchored on the real closing sentence of Book Twelve instead). Confidence stuck flat at 25% even after the fix — likely a translation mismatch (Gutenberg #2680 is George Long's specific translation; not yet checked against what the LibriVox reader used). **Walden**'s identical CRLF bug was also found and fixed proactively, before it's ever been Whisper-attempted. Priority for next Whisper run: Jane Eyre (39 sections).
+`docs/whisper-sync-troubleshooting.md` is a living document — append every newly-validated bug/fix as you find it, not batched at session end.
 
 ---
 
@@ -796,3 +708,63 @@ The rule: **take the source path, prepend `tests/unit/` to the directory, and pr
 - [ ] All tests pass with the run command above
 - [ ] Coverage for the modified service is above 80%
 - [ ] No test depends on a real database or external network call
+
+---
+
+## Voice & Style Guide
+
+Guidelines for all user-facing copy — i18n strings, error messages, email templates, push notifications.
+
+**i18n rule:** Always update all 4 files in the same PR:
+`services/web/lib/i18n/{en,es}.ts` · `services/mobile/src/i18n/{en,es}.ts`
+
+### Register and tone
+
+- **"tú" form throughout** — `¿No tienes cuenta?`, `Inténtalo de nuevo.` — never formal "usted"
+- **Warm and direct** — speak like a thoughtful peer, not a help desk
+- App name in copy: always "Noetia" — never "la app" or "la plataforma"
+
+### Copy patterns
+
+| Context | Pattern | Example (ES) |
+|---------|---------|--------------|
+| Loading / submitting | verb + `…` (unicode, not `...`) | `Cargando…` · `Guardando…` · `Enviando…` |
+| Success | affirmative past tense | `Email confirmado` · `Guardado` |
+| Generic error | statement + action | `Algo salió mal. Inténtalo de nuevo.` |
+| Validation error | specific + corrective hint | `La contraseña debe tener al menos 8 caracteres` |
+| Destructive confirm | name the consequence | `¿Eliminar este fragmento? Esta acción no se puede deshacer.` |
+
+Rules: sentence case on all labels (`Iniciar sesión`, not `Iniciar Sesión`); no `¡` or `!` in errors or loading states; no `"Error:"` prefix on messages.
+
+### Canonical Spanish terms
+
+| Concept | Use | Not |
+|---------|-----|-----|
+| User highlight | Fragmento | highlight, marcador, nota |
+| User's book list | Biblioteca | librería, colección |
+| Synchronized listening mode | Escucha Activa | (proper noun — always both words capitalized) |
+| Reading clubs | Clubes de Lectura | clubs, círculos |
+| Subscription credit | Token | crédito (renamed migration 038) |
+| Active phrase | Frase | oración, cue |
+
+---
+
+## Reference Documents
+
+All docs live in `docs/`. Engineering-relevant docs:
+
+| Document | Purpose |
+|----------|---------|
+| [PRD.md](docs/PRD.md) | Product vision, feature specs, roadmap, KPIs |
+| [TASKS.md](docs/TASKS.md) | Sprint tracker and active backlog |
+| [sync-procedures.md](docs/sync-procedures.md) | Whisper pipeline, VTT steps, quality status table |
+| [whisper-sync-troubleshooting.md](docs/whisper-sync-troubleshooting.md) | Root-cause diagnosis for books below 90% coverage |
+| [stripe-setup.md](docs/stripe-setup.md) | Stripe products, webhook registration, env vars |
+| [upload-guide.md](docs/upload-guide.md) | Author file specs — text, audio, cover, SRT/VTT |
+| [eas-build.md](docs/eas-build.md) | EAS build and OTA updates |
+| [app-store-submission.md](docs/app-store-submission.md) | iOS and Android store submission steps |
+| [grafana-monitoring.md](docs/grafana-monitoring.md) | Monitoring, Tailscale access, password reset |
+| [incident-response.md](docs/incident-response.md) | Playbooks — Traefik 502, container unhealthy, DB, MinIO, SSL |
+| [secrets-rotation.md](docs/secrets-rotation.md) | Which secrets need rotation and how |
+| [business/](docs/business/) | Business plans, PM docs, technical architecture (EN + ES) |
+| [store-listings/](docs/store-listings/) | App Store privacy labels, Google Play data safety |

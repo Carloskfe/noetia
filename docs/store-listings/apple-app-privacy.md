@@ -23,7 +23,8 @@ The following data types are collected and **linked to the user's identity**:
 | Name | Contact Info | Account Management | Collected via registration or OAuth providers |
 | Purchase History | Purchases | Analytics, Account Management | Subscription history managed via Stripe |
 | Reading Activity | Usage Data | App Functionality, Product Personalization | Reading progress per book, phrase position |
-| User Content (fragments, notes) | User Content | App Functionality | Highlights and notes created by the user |
+| Behavioral Analytics | Usage Data | Product Personalization | Computed reader persona: reading cadence, engagement archetype, dominant fragment themes, preferred platforms — derived from reading and sharing activity. Opt-out available via Profile → Privacy → Contribute to Noetia Insights |
+| User Content (fragments, notes) | User Content | App Functionality | Highlights and notes created by the user; auto-tagged with up to 3 thematic labels from a 20-theme taxonomy |
 
 ---
 
@@ -75,5 +76,5 @@ When completing the questionnaire step-by-step in App Store Connect, select:
 
 ---
 
-*Last updated: April 24, 2026*
+*Last updated: June 25, 2026*
 *Subject to legal review before submission.*
