@@ -126,15 +126,34 @@ const ANNOUNCEMENT_WHOLE_CUE: RegExp[] = [
   // by) — some readers credit themselves at every chapter, not just once,
   // so this is worth catching as both a whole-cue and substring pattern.
   /^grabado por\b/i,
+  // English LibriVox reader credits — "Recording by [name].", "Read by [name].",
+  // "Today's recording by [name].", "Today's reading [title]..., read by [name]."
+  /^recording by\b/i,
+  /^this recording\b/i,
+  /^today's recording\b/i,
+  /^today's reading\b/i,
+  /^read by\b/i,
+  /^as read by\b/i,
+  // "This book, read by [name]." / "Authorized Version, read by [name]."
+  /^(?:this book|authorized version),?\s*read by\b/i,
+  // "57. Recording by Simon Wainwright." — verse/section stub + credit
+  /^\d{1,3}\.\s+recording by\b/i,
+  // English chapter-end announcements — "End of chapter N", "End of chapters N and M",
+  // "End of chapter two of The Time Machine", "This is the end of chapter N".
+  /^(?:this is (?:a |the )?)?end of chapters?\b/i,
+  // Public domain notices mixed with recording credits
+  /\bpublic domain\b.*\brecording by\b/i,
 ];
 
 const ANNOUNCEMENT_TRAILING =
-  /\s*fin (del|de la)\s+(\S+\s+){0,3}(cap[ií]tulo|canto|parte|libro|volumen|secci[oó]n)\b.*$/i;
+  /\s*(?:fin (del|de la)\s+(?:\S+\s+){0,3}(?:cap[ií]tulo|canto|parte|libro|volumen|secci[oó]n)|(?:this is (?:a |the )?)?end of chapters?\s+[\w][\w\s,]*).*$/i;
 
-// Reader-attribution credit ("Leído por Milton Muñoz.", "Grabado por Claudia
-// Barrett.") can appear embedded mid-cue, not just at a cue boundary —
-// stripped as a substring, not a whole-cue/trailing match.
+// Reader-attribution credit — stripped as a substring when embedded mid-cue.
+// Spanish: "Leído por Milton Muñoz.", "Grabado por Claudia Barrett."
 const READER_CREDIT = /\s*(le[ií]do|grabado) por [^.]*\.\s*/gi;
+// English: ". Recording by Simon Wainwright." / ", recording by Eric Conover."
+// Capital after "by" is intentional — guards against false positives in narrative.
+const READER_CREDIT_EN = /\s*[.,]\s*[Rr]ecording by [A-Z][^.]*\.\s*/g;
 
 /** Strip LibriVox reader announcements from a cue. Returns null if the cue is
  *  entirely an announcement (should be dropped), or a cleaned cue otherwise. */
@@ -142,7 +161,7 @@ export function stripAnnouncement(cue: Cue): Cue | null {
   const text = cue.payload.trim();
   if (ANNOUNCEMENT_WHOLE_CUE.some((re) => re.test(text))) return null;
 
-  const withoutCredit = text.replace(READER_CREDIT, ' ').trim();
+  const withoutCredit = text.replace(READER_CREDIT, ' ').replace(READER_CREDIT_EN, ' ').trim();
   const stripped = withoutCredit.replace(ANNOUNCEMENT_TRAILING, '').trim();
   if (stripped === '') return null;
   return stripped !== text ? { ...cue, payload: stripped } : cue;
