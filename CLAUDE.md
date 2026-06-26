@@ -34,9 +34,10 @@ The ~40 public-domain books exist to give beta users a complete reading experien
 9. [Content Ingestion](#content-ingestion)
 10. [Database Migrations](#database-migrations)
 11. [Reader Persona Pipeline](#reader-persona-pipeline)
-12. [Testing](#testing)
-13. [Voice & Style Guide](#voice--style-guide)
-14. [Reference Documents](#reference-documents)
+12. [Development Safety Rules](#development-safety-rules)
+13. [Testing](#testing)
+14. [Voice & Style Guide](#voice--style-guide)
+15. [Reference Documents](#reference-documents)
 
 ---
 
@@ -285,11 +286,7 @@ Leave all Sentry vars empty in development — the SDK skips initialization when
 ### Stripe
 See [`docs/stripe-setup.md`](docs/stripe-setup.md) for full setup instructions.
 
-### Production — MinIO
-| Variable | Production value | Notes |
-|----------|-----------------|-------|
-| `MINIO_ENDPOINT` | `storage` | Docker service name (same in prod) |
-| `MINIO_PUBLIC_URL` | `https://storage.noetia.app` | Traefik exposes MinIO API at this subdomain |
+> **Production MinIO:** `MINIO_ENDPOINT=storage` (same Docker name) · `MINIO_PUBLIC_URL=https://storage.noetia.app`
 
 ---
 
@@ -412,61 +409,17 @@ echo <BASE64> | base64 -d > /path/file
 
 ## Infrastructure & Vendors
 
-All third-party services used in production. Credentials are in `.env.production` on the server — never committed.
+Credentials are in `.env.production` on the server — never committed.
 
-### DNS & Domain management
-| Service | Provider | Notes |
-|---------|----------|-------|
-| `noetia.app` | Cloudflare | DNS-only mode (gray cloud) — Traefik handles SSL |
-| `storage.noetia.app` | Cloudflare | MinIO API subdomain — DNS-only |
-| `www.noetia.app` | Cloudflare | Permanent redirect to apex via Traefik |
-
-### Transactional email
-| Property | Value |
-|----------|-------|
-| Provider | Resend (resend.com) |
-| Plan | Free tier (3,000 emails/month, 100/day) |
-| Sending domain | `noetia.app` (DKIM + SPF + DMARC verified in Cloudflare) |
-| From address | `noreply@noetia.app` |
-| SMTP relay | `smtp.resend.com:465` (TLS) |
-| Used for | Email confirmation, password reset |
-
-### Payments
-| Property | Value |
-|----------|-------|
-| Provider | Stripe (stripe.com) |
-| Status | Not yet configured for production — keys empty in `.env.production` |
-| Webhook endpoint | `https://noetia.app/api/webhooks/stripe` |
-
-### Error tracking
-| Property | Value |
-|----------|-------|
-| Provider | Sentry (sentry.io) |
-| Status | SDK installed, not yet activated — set `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` to enable |
-
-### Search
-| Property | Value |
-|----------|-------|
-| Provider | Meilisearch (self-hosted, v1.7) |
-| Location | Running in Docker on the Contabo VPS |
-| Access | Internal only (no external port) |
-
-### File storage
-| Property | Value |
-|----------|-------|
-| Provider | MinIO (self-hosted, S3-compatible) |
-| Location | Running in Docker on the Contabo VPS |
-| Public URL | `https://storage.noetia.app` |
-| Console | SSH tunnel only: `ssh -p 222 -L 9001:localhost:9001 root@84.247.140.175` |
-| Buckets | `books/` (private) · `audio/` (private) · `images/` (public download) |
-
-### CI/CD
-| Property | Value |
-|----------|-------|
-| Provider | GitHub Actions |
-| Trigger | Push to `main` branch |
-| Auth | `DEPLOY_SSH_KEY` secret in GitHub repo settings |
-| Deploy key location | `/root/.ssh/deploy_key` on server |
+| Category | Provider | Key facts |
+|----------|----------|-----------|
+| DNS | Cloudflare | DNS-only (gray cloud) — Traefik handles SSL. DKIM+SPF+DMARC verified on `noetia.app` |
+| Email | Resend | Free (3K/mo, 100/day). SMTP: `smtp.resend.com:465`. From: `noreply@noetia.app` |
+| Payments | Stripe | Keys not yet in `.env.production`. Webhook: `/api/webhooks/stripe` |
+| Error tracking | Sentry | SDK installed; activate by setting `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` |
+| Search | Meilisearch | Self-hosted v1.7 — internal Docker only (no external port) |
+| File storage | MinIO | Self-hosted. **`books/` + `audio/` = private; `images/` = public.** Console: SSH tunnel port 9001 |
+| CI/CD | GitHub Actions | Trigger: push to `main`. Auth: `DEPLOY_SSH_KEY` → `/root/.ssh/deploy_key` on server |
 
 ---
 
@@ -507,79 +460,17 @@ Themed cover PNGs live in `services/web/public/covers/` (generate with `services
 
 ## Database Migrations
 
-Migrations live in `services/api/src/migrations/` and are named `<timestamp>-<Description>.ts`.
-
-**Run pending migrations inside the API container:**
+**Run pending migrations:**
 ```bash
+# Dev
 docker compose exec api npm run migration:run
+# Production
+docker compose --env-file .env.production -f docker-compose.server.yml exec -T -e DB_HOST=db api npm run migration:run:prod
 ```
 
-**Current migration history:**
+Full history (000–061 through `FixAllowInsightsColumnName`), golden rules, and how to generate a new migration: [`docs/database-migrations.md`](docs/database-migrations.md).
 
-| # | Migration | Description |
-|---|-----------|-------------|
-| 000 | `CreateUsersTable` | users table with auth fields |
-| 001 | `AddUserType` | userType enum (personal, author, editorial) |
-| 002 | `AddUserPreferences` | country, languages, interests |
-| 003 | `AddUpdatedAt` | updatedAt timestamp |
-| 004 | `CreateBooksTable` | books with category, audio/text keys |
-| 005 | `CreateSyncMapsAndProgress` | phrase sync maps + reading progress |
-| 006 | `CreateFragments` | user highlights |
-| 007 | `CreatePlansTable` | subscription plans |
-| 008 | `AddStripeCustomerId` | stripeCustomerId on users |
-| 009 | `CreateSubscriptions` | subscriptions + book_purchases |
-| 010 | `SeedPlans` | Individual + Reader plan seed data |
-| 011 | `MakeFragmentPhraseIndicesNullable` | |
-| 012 | `AddFreeLibrary` | isFree flag on books |
-| 013 | `AddAudioStreamKey` | audioStreamKey on books |
-| 014 | `AddUploadedBy` | uploadedById foreign key |
-| 015 | `CreateUserBooksTable` | user library ownership |
-| 016 | `CreateCollectionsTable` | book collections/series |
-| 017 | `AddBookPriceCents` | per-title price in cents |
-| 018 | `AddUserBookPurchaseType` | purchase vs credit redemption |
-| 019 | `AddSubscriptionCredits` | creditBalance on subscriptions |
-| 020 | `AddPlanCreditsPerCycle` | creditsPerCycle on plans |
-| 021 | `AddHostingTier` | hostingTier enum on users |
-| 022 | `AddBookAnalytics` | shareCount on books |
-| 023 | `AddEmailConfirmed` | emailConfirmed boolean (default true for existing users; new local registrations start false) |
-| 024 | `AddBookCollection` | collection varchar on books; auto-seeds Bible books with collection='Biblia' |
-| 025 | `SeedCollectionsFromBookField` | Populates collections table from existing books.collection values |
-| 026 | `FixCollectionsAndCovers` | Corrects collection slugs and adds themed cover URLs |
-| 027 | `FixCollectionDataFinal` | Normalizes empty string → NULL, canonical Bible order, excludes Blasco Ibáñez |
-| 028 | `UpdateThemedCoverUrls` | Sets /covers/*.png paths for 10 books + 2 collections |
-| 029 | `LiteraturaInfantilCoverUrls` | Cover URLs for Literatura Infantil books (superseded by migration 030) |
-| 030 | `CleanupLiteraturaInfantil` | Removes La Edad de Oro and Literatura Infantil collection; Pombo/Quiroga → standalone |
-| 031 | `FixCuentosSelvaLanguage` | Deletes English Gutenberg text; re-ingested from Spanish Wikisource |
-| 032 | `AddMissingIndexes` | idx_books_published_free, idx_books_collection, idx_books_category, idx_books_uploaded_by, idx_subscriptions_plan |
-| 033 | `AddSyncSource` | syncSource VARCHAR on sync_maps ('auto'\|'srt'\|'vtt'\|'manual') |
-| 034 | `CreateUploadCodes` | upload_codes table — admin-issued single-use courtesy upload codes |
-| 035 | `CreateWaitlist` | waitlist_entries table — email, name, isAuthor, invitedAt |
-| 036 | `CreateCausesAndPreferences` | causes table (3 seeded) + user_cause_preferences (up to 2 causes per user) |
-| 037 | `RenameCausaToMedioAmbiente` | Renames "Conservación Ambiental" → "Medio Ambiente" in causes table |
-| 038 | `RenameCreditsToTokens` | creditsRemaining → tokenBalance on subscriptions; creditsPerCycle → tokensPerCycle on plans |
-| 039 | `RestructurePlansAndTokenPackages` | Plans: Individual $8.99, Duo $13.99, Family $18.99 (monthly+annual); token_packages table seeded (1/3/5/10 tokens) |
-| 040 | `CreateTokenLedgerAndCourtesy` | token_ledger (90-day paid, 30-day promo/courtesy, FIFO redemption); courtesy_token_quotas; books.narratorId; subscriptions.linkedUserIds + nextTokenIssuanceAt |
-| 041 | `UpdateStripeProductIds` | Sets real Stripe price IDs on plans and token_packages from env vars |
-| 042 | `CreateSubscriptionInvites` | subscription_invites table for Duo/Family plan invite flow |
-| 043 | `CreateGiftCards` | gift_cards table — token gifts with personal message, 1-year expiry |
-| 044 | `AddUiLanguage` | uiLanguage VARCHAR(5) DEFAULT 'es' on users — Spanish/English i18n |
-| 045 | `CreatePushTokens` | push_tokens table — Expo push tokens per user for notifications |
-| 046 | `CreateClubs` | clubs table — name, description, type (public/private/author_event), owner, approval/token flags |
-| 047 | `CreateClubMembers` | club_members — role, status (active/banned), ban tracking, per-member notification prefs |
-| 048 | `CreateClubBooks` | club_books — reading list per club, status (active/completed/queued) |
-| 049 | `CreateClubMessages` | club_messages — general chat (not phrase-anchored), soft delete |
-| 050 | `CreateClubDiscussions` | club_discussions — phrase-anchored comments tied to sync map phraseIndex |
-| 051 | `CreateClubPollsAndVotes` | club_polls + club_poll_options + club_poll_votes — book nomination voting |
-| 052 | `CreateClubSessions` | club_sessions — Escucha Juntos scheduled live listening sessions |
-| 053 | `AddPrivacySettings` | shareReadingProgress/Library/Profile/Fragments booleans on users |
-| 054 | `CreateReadingStats` | reading_stats table — daily minutesRead + phrasesRead per user, unique (userId, date) |
-| 055 | `AddReadingGoals` | goalWeeklyMinutes + goalWeeklyBooks nullable integers on users |
-| 056 | `AddSyncCoverage` | syncCoverage (float), syncExceptions (int), syncAvgConfidence (float) on sync_maps — persists Whisper alignment quality |
-| 057 | `CreateEventsTable` | append-only events table (userId, bookId, eventType VARCHAR(50), payload JSONB, createdAt); indexes on user_id, book_id, event_type, created_at, (user_id, event_type) |
-| 058 | `AddFragmentThemes` | themes JSONB column on fragments — auto-tagged at creation with up to 3 thematic labels from the 20-theme Spanish taxonomy |
-| 059 | `CreateUserPersonas` | user_personas table — dominantThemes, engagementArchetype, readingCadence, completionRate, socialAmplification, preferredPlatforms, topGenres, avgSessionMinutes, computedAt; indexes on archetype, cadence, computed_at |
-| 060 | `AddAllowInsights` | allowInsights BOOLEAN DEFAULT TRUE on users — opt-out of reader persona computation and aggregate audience analysis. **Bug:** raw SQL added `allow_insights` (snake_case) instead of the entity's camelCase `allowInsights`, breaking every query that loads a `User` row (login, OAuth, password reset) until migration 061 |
-| 061 | `FixAllowInsightsColumnName` | Renames `users.allow_insights` → `"allowInsights"` to match the `User` entity column |
+> **Critical rule:** Never edit a migration after deployment — write a corrective migration instead. Migrations 060 → 061 are the canonical example.
 
 ---
 
@@ -593,42 +484,42 @@ Current book-by-book coverage numbers, pass/fail status, and the diagnostic SQL 
 
 ## Reader Persona Pipeline
 
-Noetia builds a **derived reader profile** (persona) from behavioral signals. The pipeline has three layers:
+Event stream → fragment theme tagging (20-theme taxonomy) → nightly persona computation (8 SQL aggregations), admin endpoints, opt-out flow: [`docs/persona-pipeline.md`](docs/persona-pipeline.md).
 
-### Layer 1 — Event stream (`events` table)
-Append-only event log. Two event types are currently captured:
-- `fragment_created` → `{ fragmentId, themes, textLength }` — emitted in `FragmentsService.create()`
-- `fragment_shared` → `{ fragmentId, platform, format, themes }` — emitted in `SharingController.share()`
+---
 
-Events are fire-and-forget — errors are logged but never propagate to the user request.
+## Development Safety Rules
 
-### Layer 2 — Fragment theme tagging
-`FragmentTaggerService` applies a **20-theme Spanish taxonomy** (`src/fragments/theme-taxonomy.ts`) at fragment creation time. Matching is case-insensitive keyword scoring; up to 3 themes are stored as JSONB on the fragment row.
+Hard-won rules that are not obvious from the code.
 
-Themes: `amor · aventura · belleza · conocimiento · destino · familia · fe · filosofia · heroismo · humanidad · identidad · justicia · libertad · muerte · naturaleza · poder · sufrimiento · tiempo · amistad · espiritualidad`
+### Production data
+- **Always `SELECT COUNT(*)` before a destructive `DELETE` or `UPDATE`.** Never run bulk deletes without a `WHERE` clause.
+- Use transactions for operations that touch more than one table.
+- Take a **server snapshot** (Contabo console → Snapshots) before: running a migration that drops or renames a column, making any infrastructure change, or switching a major dependency. You have 3 snapshot slots.
 
-### Layer 3 — Persona computation (`user_personas` table)
-`PersonaComputerService` runs 8 parallel SQL aggregations per user and upserts the result:
+### Schema / migrations
+- **Never edit a migration after it has been deployed.** TypeORM checksums each file — editing a shipped migration breaks `migration:run` everywhere. Write a new corrective migration instead (pattern: migrations 060 → 061).
+- Every schema change must go through a migration, not a raw `ALTER TABLE` on the server.
+- Seed-data migrations must be idempotent (`ON CONFLICT DO NOTHING` or existence check).
 
-| Field | Source | Logic |
-|-------|--------|-------|
-| `dominantThemes` | `fragments.themes` | Top 5 by frequency |
-| `engagementArchetype` | fragments + events + clubs | `social_sharer > community > deep_reader > browser > reader` |
-| `readingCadence` | `reading_stats` (60-day window) | `daily (≥40 days) > weekend (ratio ≥0.6) > binge (≤10 days, ≥45 min avg) > irregular` |
-| `completionRate` | `reading_progress` + `sync_maps` | books at phraseIndex ≥ 80% / total started |
-| `socialAmplification` | `events` | `fragment_shared` / `fragment_created` |
-| `preferredPlatforms` | `events` | Top 4 platforms by `fragment_shared` count |
-| `topGenres` | `fragments` + `books` | Top 3 book categories by fragment count |
-| `avgSessionMinutes` | `reading_stats` | Average minutesRead on active days (60-day window) |
+### Secrets and logging
+- `.env.production` is never committed — confirm with `.gitignore` before any `git add .`
+- **Never log JWT payloads, passwords, raw tokens, or user PII.** API errors must surface as `HttpException` with a safe message — not raw database or stack trace output.
+- Stripe webhook handlers must verify the `stripe-signature` header before processing any event.
 
-**Nightly cron:** `@Cron(EVERY_DAY_AT_2AM)` — skips users with `allowInsights = FALSE`.
+### Deployment verification
+After every production deploy, run:
+```bash
+docker ps                               # all containers (healthy)?
+# Check last migration applied:
+docker compose -f docker-compose.server.yml exec -T db \
+  psql -U noetia -d noetia \
+  -c "SELECT name FROM typeorm_migrations ORDER BY timestamp DESC LIMIT 3;"
+```
+Spot-test one key endpoint (login, book list, or audio stream) before closing the deploy.
 
-**Admin endpoints:**
-- `POST /api/admin/personas/recompute` — trigger full recompute for all opted-in users
-- `POST /api/admin/personas/:userId/recompute` — recompute a single user
-- `GET /api/admin/personas/:userId` — inspect a user's current persona
-
-**Opt-out:** Users can disable persona computation from **Profile → Privacy → Contribute to Noetia Insights**. Opted-out users are excluded from `computeAll()` and their existing persona row will not be refreshed.
+### Mobile OTA updates (EAS)
+OTA updates are safe for **JavaScript-only changes**. Any change to native code, new native package, or `app.config.ts` config requires a full `eas build` and store submission — an OTA cannot update native binaries.
 
 ---
 
@@ -638,49 +529,16 @@ Themes: `amor · aventura · belleza · conocimiento · destino · familia · fe
 
 For every service file created or modified, a corresponding unit test file MUST be created or updated in the same task. No service is considered "done" without its tests passing.
 
-### File structure — Mirrored `tests/unit/` directory
+### File structure and naming convention
 
-All unit tests live under `tests/unit/` inside each service and MUST mirror the structure of `src/` exactly.
+All tests live under `tests/unit/` inside each service, mirroring `src/` exactly.
 
-```
-services/api/
-├── src/
-│   ├── auth/
-│   │   └── auth.service.ts
-│   └── email/
-│       └── email.service.ts
-└── tests/
-    └── unit/
-        ├── auth/
-        │   ├── auth.service.spec.ts
-        │   ├── email.service.spec.ts   ← mirrors src/email/
-        │   └── token.service.spec.ts
-        └── social/
-            ├── social.controller.spec.ts
-            └── social-token.service.spec.ts
+| Language | Source | Test |
+|----------|--------|------|
+| TypeScript | `src/books/books.service.ts` | `tests/unit/books/books.service.spec.ts` |
+| Python | `templates/pinterest.py` | `tests/unit/templates/test_pinterest.py` |
 
-services/image-gen/
-├── templates/
-│   └── pinterest.py
-└── tests/
-    └── unit/
-        └── templates/
-            └── test_pinterest.py
-```
-
-### Naming convention — per language
-
-**TypeScript (api, worker, web, mobile):**
-- Source:  `src/books/books.service.ts`
-- Test:    `tests/unit/books/books.service.spec.ts`
-
-The rule: **take the source path, replace `src/` with `tests/unit/`, and suffix the filename with `.spec`.**
-
-**Python (image-gen):**
-- Source:  `templates/pinterest.py`
-- Test:    `tests/unit/templates/test_pinterest.py`
-
-The rule: **take the source path, prepend `tests/unit/` to the directory, and prefix the filename with `test_`.**
+Rule: replace `src/` with `tests/unit/`, suffix `.spec` (TS) or prefix `test_` (Python).
 
 ### Non-negotiable behaviors
 
@@ -759,6 +617,8 @@ All docs live in `docs/`. Engineering-relevant docs:
 | [TASKS.md](docs/TASKS.md) | Sprint tracker and active backlog |
 | [sync-procedures.md](docs/sync-procedures.md) | Whisper pipeline, VTT steps, quality status table |
 | [whisper-sync-troubleshooting.md](docs/whisper-sync-troubleshooting.md) | Root-cause diagnosis for books below 90% coverage |
+| [database-migrations.md](docs/database-migrations.md) | Migration history (000–061), golden rules, run commands |
+| [persona-pipeline.md](docs/persona-pipeline.md) | Event stream, theme tagging, persona computation, opt-out |
 | [stripe-setup.md](docs/stripe-setup.md) | Stripe products, webhook registration, env vars |
 | [upload-guide.md](docs/upload-guide.md) | Author file specs — text, audio, cover, SRT/VTT |
 | [eas-build.md](docs/eas-build.md) | EAS build and OTA updates |
