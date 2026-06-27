@@ -241,5 +241,14 @@ describe('PhraseSplitterService', () => {
       expect(phrases.every((p) => !p.text.includes('Revisión 1909'))).toBe(true);
       expect(phrases.some((p) => p.text.includes('Teófilo'))).toBe(true);
     });
+
+    it('skips Wikisource Bible chapter-navigation block with book-name prefix (Salmos format)', () => {
+      // Salmos uses "Salmos de Biblia Reina-Valera, Revisión 1909" instead of "Biblia ... : Salmos"
+      const navBlock = 'Salmos de Biblia Reina-Valera, Revisión 1909\n1 -\n2 -\n3 -\n4 -\n5 -\n6 -\n7 -\n8 -\n9 -\n10 -\n11 -\n12 -\n13 -\n14 -\n15 -\n16 -\n17 -\n18 -\n19 -\n20 -\n21 -\n22 -\n23 -\n24 -\n25 -\n26 -\n27 -\n28 -\n29 -\n30 -\n150';
+      const text = `${navBlock}\n\n1 Bienaventurado el varón que no anduvo en consejo de malos.`;
+      const phrases = service.split(text);
+      expect(phrases.every((p) => !p.text.includes('Revisión 1909'))).toBe(true);
+      expect(phrases.some((p) => p.text.includes('Bienaventurado'))).toBe(true);
+    });
   });
 });
