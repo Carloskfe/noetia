@@ -98,14 +98,21 @@ export function lastEndTime(cues: Cue[]): number {
 //
 // LibriVox chapter recordings include reader announcements ("Fin del capítulo
 // primero", "Capítulo 2 de...", "Esta es una grabación de LibriVox...",
-// translator credit lines) that exist only in the audio, never in the stored
-// book text. Left in, they inflate the audio-side word count at every chapter
-// boundary, which breaks the aligner's proportional position estimate over
-// many-chapter books (confirmed: La Divina Comedia, Orgullo y Prejuicio,
-// Meditations, Don Quijote all carry this at every chapter file boundary).
+// translator credit lines, "CHAPTER XIV", "King James Version, Chapter 1")
+// that exist only in the audio, never in the stored book text. Left in, they
+// inflate the audio-side word count at every chapter boundary, which breaks
+// the aligner's proportional position estimate over many-chapter books
+// (confirmed: La Divina Comedia, Orgullo y Prejuicio, Meditations, Don Quijote,
+// Matthew, Luke, John, Jane Eyre — all carry these at every chapter file boundary).
 //
-// Some announcements are their own cue (dropped whole); others are appended
-// to the end of the last real sentence with no cue break (trailing strip).
+// Three shapes:
+//   1. Whole-cue announcements  → dropped entirely (ANNOUNCEMENT_WHOLE_CUE)
+//   2. Chapter-heading prefix   → "CHAPTER VII My first quarter..." → strip prefix,
+//      keep remainder if it contains lowercase (= real narrative); all-caps
+//      remainder = chapter title only → drop  (CHAPTER_HEADING_PREFIX)
+//   3. Inline / trailing        → chapter marker embedded mid-sentence or appended
+//      at the end of a real sentence  (CHAPTER_INLINE, CHAPTER_TRAILING,
+//      ANNOUNCEMENT_TRAILING, READER_CREDIT*)
 
 const ANNOUNCEMENT_WHOLE_CUE: RegExp[] = [
   /\blibrivox\b/i,
@@ -145,8 +152,26 @@ const ANNOUNCEMENT_WHOLE_CUE: RegExp[] = [
   /\bpublic domain\b.*\brecording by\b/i,
   // "Today's reading by [podcast/name]" embedded anywhere in cue
   /\btoday's reading by\b/i,
-  // LibriVox chapter-intro format: "This is [Title] by [Author], Chapter N, read by [Name]..."
-  /^this is\s+\S+.*,\s*chapter\s+\d+/i,
+  // LibriVox chapter-intro format: "This is [Title] by [Author], Chapter N..."
+  // Accept both comma and period separating title from "chapter".
+  /^this is\s+\S+.*[.,]\s*chapter\s+\d+/i,
+  // "This is Chapter 5." / "And this is Chapter 6." — simple Whisper chapter stubs
+  /^(?:and\s+)?this is chapter\s+\S+\b/i,
+  // EN Bible / Gospel version announcements — always standalone cues in LibriVox
+  // KJV recordings: "The Gospel According to Saint Luke, Chapters 15 and 16.",
+  // "In the Authorized Version Commonly Known as the King James Translation",
+  // "End of the Gospel according to St. Matthew King James Version."
+  /^the gospel\s+(of|according)\b/i,
+  /^end of the gospel\b/i,
+  /^in the authorized version\b/i,
+  // "King James Version", "King James' Version", "King James Translation"
+  /\bking james'?\s+(version|translation)\b/i,
+  // "CHAPTERS XI AND XII Of the Gospel According to St. Luke" — multi-chapter Gospel intro
+  /^chapters?\s+.{0,50}\bgospel\b/i,
+  // "Jane Eyre by Charlotte Bronte, Chapter 22" / "by Mary Shelley. Chapter 11."
+  /\bby [A-Z][a-z][\w ]+[.,]\s*chapter\s+\S+\b/i,
+  // "John chapter 11." / "John chapter 12" — Bible book name + chapter stub
+  /^(?:genesis|exodus|psalms?|proverbs?|isaiah|matthew|mark|luke|john|acts|revelation|romans|corinthians|galatians|ephesians|philippians|colossians|thessalonians|timothy|hebrews|james)\s+chapter\s+\d+\b/i,
 ];
 
 const ANNOUNCEMENT_TRAILING =
@@ -159,13 +184,56 @@ const READER_CREDIT = /\s*(le[ií]do|grabado) por [^.]*\.\s*/gi;
 // Capital after "by" is intentional — guards against false positives in narrative.
 const READER_CREDIT_EN = /\s*[.,]\s*[Rr]ecording by [A-Z][^.]*\.\s*/g;
 
+// English chapter heading at the START of a cue.
+// Matches: "CHAPTER I", "CHAPTER 14", "Chapter One", "CHAPTERS XI AND XII", etc.
+// After stripping this prefix, stripAnnouncement checks the remainder:
+//   - empty or all-caps (chapter title only like "MENA HARKER'S JOURNAL") → drop cue
+//   - contains lowercase (real narrative) → keep remainder
+const CHAPTER_HEADING_PREFIX =
+  /^CHAPTERS?\s+(?:[IVXLCDM]+|[0-9]+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth|thirtieth)\b(?:\s+(?:and|to|through|&)\s+(?:[IVXLCDM]+|[0-9]+|one|two|three|four|five|six|seven|eight|nine|ten|twenty|thirty|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|twentieth|thirtieth)\b)?[.,]?\s*/i;
+
+// Mid-cue chapter marker: "...sentence. Chapter 8. Next sentence..."
+// The reader announces the next chapter inline within the same breath.
+const CHAPTER_INLINE = /\.\s+[Cc]hapters?\s+(?:[IVXLCDMivxlcdm]+|[0-9]+)[.,]?\s+/g;
+
+// Trailing chapter heading appended at the end of a real sentence:
+// "as touched were made perfectly whole. CHAPTER XIV"
+// "back, is fit for the kingdom of God. Chapter 10"
+// "how shall ye believe my words? Chapter 6"
+const CHAPTER_TRAILING = /[.,?!]\s+CHAPTERS?\s+(?:[IVXLCDMivxlcdm]+|[0-9]+)[.,]?$/i;
+
+// Mid-sentence Arabic chapter number without a leading period:
+// "arise let us go hence chapter 15 I am the true vine..."
+// Digits only (not Roman numerals) to avoid false-positives in narrative prose.
+const CHAPTER_DIGIT_INLINE = /\bchapter\s+\d+\s+/gi;
+
 /** Strip LibriVox reader announcements from a cue. Returns null if the cue is
  *  entirely an announcement (should be dropped), or a cleaned cue otherwise. */
 export function stripAnnouncement(cue: Cue): Cue | null {
   const text = cue.payload.trim();
   if (ANNOUNCEMENT_WHOLE_CUE.some((re) => re.test(text))) return null;
 
-  const withoutCredit = text.replace(READER_CREDIT, ' ').replace(READER_CREDIT_EN, ' ').trim();
+  // English chapter heading at start of cue.
+  // "CHAPTER XIV MENA HARKER'S JOURNAL" → all-caps remainder → drop
+  // "CHAPTER VII My first quarter at Lowood seemed an age," → has lowercase → strip prefix, keep rest
+  const chMatch = CHAPTER_HEADING_PREFIX.exec(text);
+  if (chMatch) {
+    const rest = text.slice(chMatch[0].length).trim();
+    if (rest.length === 0 || !/[a-z]/.test(rest)) return null;
+    const cleaned = rest
+      .replace(READER_CREDIT, ' ').replace(READER_CREDIT_EN, ' ').trim()
+      .replace(ANNOUNCEMENT_TRAILING, '').trim();
+    return cleaned.length > 0 ? { ...cue, payload: cleaned } : null;
+  }
+
+  // Mid-cue and trailing chapter markers.
+  const working = text
+    .replace(CHAPTER_INLINE, '. ')
+    .replace(CHAPTER_DIGIT_INLINE, '')
+    .replace(CHAPTER_TRAILING, '')
+    .trim();
+
+  const withoutCredit = working.replace(READER_CREDIT, ' ').replace(READER_CREDIT_EN, ' ').trim();
   const stripped = withoutCredit.replace(ANNOUNCEMENT_TRAILING, '').trim();
   if (stripped === '') return null;
   return stripped !== text ? { ...cue, payload: stripped } : cue;
