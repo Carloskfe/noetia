@@ -51,8 +51,18 @@ export function normalizeWord(w: string): string {
     .replace(/[^a-z0-9]/g, '');       // remove punctuation
 }
 
+// Pure-digit tokens are dropped from the alignment side only: verse numbers and
+// marginal cross-reference numbers in the Wikisource KJV edition (e.g. "2 4 Abraham
+// begat... and 5 Isaac begat...", or large refs like "23 704 Then...") are never
+// read aloud, so they can only ever miss — inflating the `matches / n` denominator
+// and sinking otherwise-aligned verses below SKIP_THRESHOLD. In Matthew they are
+// ~20% of all tokens. This affects scoring only; the displayed phrase.text is
+// untouched. Mixed alphanumerics ("2nd", "v1") and Roman numerals are kept.
 function tokenize(text: string): string[] {
-  return text.split(/\s+/).map(normalizeWord).filter(Boolean);
+  return text
+    .split(/\s+/)
+    .map(normalizeWord)
+    .filter((t) => t && !/^\d+$/.test(t));
 }
 
 // ── Window scoring ─────────────────────────────────────────────────────────────

@@ -49,6 +49,23 @@ describe('alignPhrases', () => {
     expect(stats.avgConfidence).toBe(1);
   });
 
+  it('ignores verse and marginal-reference numbers (Wikisource KJV) when scoring', () => {
+    // "23 704 Then said Mary" — leading verse number + large marginal cross-ref
+    // number, neither read aloud. With digits counted the score would be 3/5 = 0.6;
+    // dropping pure-digit tokens gives a perfect 3/3 match.
+    const phrases = [makePhrase(0, '23 704 Then said Mary')];
+    const words = [
+      makeWord('Then', 0, 0.4),
+      makeWord('said', 0.4, 0.8),
+      makeWord('Mary', 0.8, 1.5),
+    ];
+
+    const { phrases: result, stats } = alignPhrases(phrases, words);
+    expect(result[0].startTime).toBe(0);
+    expect(result[0].endTime).toBe(1.5);
+    expect(stats.avgConfidence).toBe(1);
+  });
+
   it('handles slight word mismatches (Whisper errors) gracefully', () => {
     const phrases = [makePhrase(0, 'de cuyo nombre no quiero acordarme')];
     // Whisper mishears "cuyo" as "cuio"
