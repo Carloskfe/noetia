@@ -153,7 +153,7 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | Platero y yo | 98.2% ✅ | "Grabado por" pattern + ÍNDICE trim 2026-06-25 — §2/§3 |
 | Cuentos de Amor de Locura y de Muerte | 98.0% ✅ | |
 | Pepita Jiménez | 96.8% ✅ | announcement patterns 2026-06-24 — §2 |
-| Niebla | 88.0% | |
+| Niebla | 88.0% | §6 edition mismatch — Gutenberg #49836 diverges from LibriVox recording ~57% through (ch. 20+) |
 | Fábulas y Verdades | 85.3% | 16 audio sections vs. 11 catalogued fables — §7 count mismatch |
 | El Gaucho Martín Fierro | 82.4% | stanza-number fix 2026-06-25 — §4; gap unexplained |
 | Leyendas | 80.6% | story-order + 5 excluded chapters — §7 |
