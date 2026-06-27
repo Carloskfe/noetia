@@ -166,6 +166,26 @@ its exception phrases inspected — likely a quick front/back-matter win
 flat alongside zero coverage change suggests something more systemic,
 possibly §6.
 
+**§2c — Wikisource Bible chapter-navigation block (Reina-Valera, KJV, and likely others)**
+
+**Symptom:** ES Bible books (Hechos, Juan, Mateo, etc.) have many exceptions. Each chapter in the Wikisource Reina-Valera source includes a chapter-list navbox at the top of the page, rendered as:
+
+```
+Biblia Reina-Valera, Revisión 1909 : Hechos
+1 -
+2 -
+...
+28
+```
+
+This entire block arrives as one paragraph and becomes one phrase that never aligns. For a 28-chapter book, that's 28 wasted exceptions. **Hechos went from 89.8% → 100.0% and Juan from 89.7% → 99.9% after stripping this pattern** (2026-06-27).
+
+**Fix:** `isNavigationNoise()` in `phrase-splitter.service.ts` now strips any block matching `/^Biblia\s+Reina-Valera[^\n]*Revisión/i`. No VTT change needed — just re-align.
+
+**Affected books still needing re-alignment as of 2026-06-27:** Mateo (86%), Éxodo (84.3%), 1 Corintios (82.5%), Salmos (81%), Isaías (76.3%). Run each through `seed-sync-whisper.js` with its existing VTT to pick up the improvement.
+
+**Secondary noise — `"La Biblia\n[BookName]"` headers:** Each chapter page also includes a low-level page-title header "La Biblia / Juan" (rendered as `La Biblia\nJuan`). These DO align (at ~33% confidence) so they don't cause exceptions — but they inflate the total phrase count and drag down avg confidence. Not worth fixing until books are otherwise at 90%+.
+
 ---
 
 ## 3. Untrimmed front/back matter

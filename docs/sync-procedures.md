@@ -187,15 +187,15 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | Romanos | 91.0% ✅ | |
 | Lucas | 90.8% ✅ | |
 | Génesis | 90.3% ✅ | |
-| Hechos | 89.8% | 0.2% below threshold |
-| Juan | 89.7% | 0.3% below threshold |
-| Salmos | 81.0% | verse-number gluing suspected — §4 |
-| Éxodo | 84.3% | |
-| 1 Corintios | 82.5% | |
-| Mateo | 86.0% | |
-| Isaías | 76.3% | |
+| Hechos | 100.0% ✅ | was 89.8% — Wikisource nav-block fix 2026-06-27 |
+| Juan | 99.9% ✅ | was 89.7% — Wikisource nav-block fix 2026-06-27 |
+| Salmos | 81.0% | verse-number gluing suspected — §4; nav-block fix not yet applied |
+| Éxodo | 84.3% | nav-block fix not yet applied |
+| 1 Corintios | 82.5% | nav-block fix not yet applied |
+| Mateo | 86.0% | nav-block fix not yet applied |
+| Isaías | 76.3% | nav-block fix not yet applied |
 
-**10 of 17 ES Bible at ≥ 90%.** Hechos (89.8%) and Juan (89.7%) are on the cusp — re-run after any VTT improvement may tip them over.
+**12 of 17 ES Bible at ≥ 90%.** Remaining 5 (Mateo, Éxodo, 1 Corintios, Salmos, Isaías) need re-alignment with the Wikisource nav-block fix — expected to improve all of them, potentially pushing Mateo/Éxodo/1 Corintios over 90%.
 
 ### English Narrative (14 books)
 
