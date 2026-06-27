@@ -214,9 +214,9 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | The Picture of Dorian Gray | 54.4% | |
 | Pride and Prejudice | 53.2% | |
 | Meditations | 45.1% | likely translation mismatch (Gutenberg #2680 = George Long) |
-| Walden | *(not in DB)* | book not yet ingested — run `seed-ingestion.ts` then align |
+| Walden | 53.6% | ingested + aligned 2026-06-26 |
 
-**0 of 12 EN Narrative at ≥ 90%.** Low coverage across the board is consistent with EN LibriVox chapter intro announcements not yet stripped (new pattern needed in `merge-transcriptions.ts`).
+**0 of 13 EN Narrative at ≥ 90%.** Low coverage across the board is consistent with EN LibriVox chapter intro announcements not yet stripped (new pattern needed in `merge-transcriptions.ts`).
 
 ### English Bible (13 books)
 
