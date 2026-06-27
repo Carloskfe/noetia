@@ -57,6 +57,10 @@ docker logs traefik --tail 20
 nano /opt/traefik/traefik.yml
 # Ctrl+K to delete lines, paste content, Ctrl+O to save, Ctrl+X to exit
 
+# Or base64 (immune to newline corruption — generate on local, apply on server)
+# Local: python3 -c "import base64; print(base64.b64encode(open('file').read().encode()).decode())"
+echo <BASE64> | base64 -d > /opt/traefik/traefik.yml
+
 # If indentation is broken (extra spaces):
 sed -i 's/^  //' /opt/traefik/traefik.yml
 

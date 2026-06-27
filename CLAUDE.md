@@ -365,15 +365,9 @@ docker compose -f docker-compose.server.yml logs -f web
 
 # Check running containers
 docker ps
-
-# Access MinIO console (SSH tunnel — run on local machine)
-ssh -p 222 -L 9001:localhost:9001 root@84.247.140.175
-# Then open http://localhost:9001 in browser
-
-# Access Grafana (SSH tunnel — run on local machine)
-ssh -p 222 -L 3001:localhost:3001 root@84.247.140.175
-# Then open http://localhost:3001 in browser
 ```
+
+Console access: **MinIO** via SSH tunnel on port 9001 — see [`docs/incident-response.md §5`](docs/incident-response.md#5-minio-unreachable--wrong-bucket-policy). **Grafana** is on Tailscale (not an SSH tunnel) — see [`docs/grafana-monitoring.md`](docs/grafana-monitoring.md).
 
 ### First-time server setup
 
@@ -386,24 +380,11 @@ cd /opt/traefik && touch acme.json && chmod 600 acme.json && docker compose up -
 
 ### Critical server operations — hard-won lessons
 
-**NEVER paste multi-line content via SSH terminal.** The shell misinterprets line-breaks as command separators, corrupting files — caused a 2-hour outage on 2026-05-12. Use nano or base64 instead:
+- **NEVER paste multi-line content via SSH terminal.** The shell treats line-breaks as command separators and corrupts files — caused a 2-hour outage on 2026-05-12. Use `nano` or single-line `base64` instead.
+- **Traefik config** lives at `/opt/traefik/traefik.yml` — exact 2-space YAML indentation; `docker restart traefik` after any change.
+- **Container gotchas** (both already fixed in `docker-compose.server.yml`): Next.js requires `HOSTNAME: "0.0.0.0"` (else it binds one interface → Traefik 502); Alpine healthchecks must use `127.0.0.1`, not `localhost` (`busybox wget` resolves `localhost` as IPv6 `::1` → unhealthy → Traefik drops the route).
 
-```bash
-# nano (safest)
-nano /opt/traefik/traefik.yml  # Ctrl+O save, Ctrl+X exit
-
-# base64 (immune to newline corruption — generate on local, apply on server)
-# Local: python3 -c "import base64; print(base64.b64encode(open('file').read().encode()).decode())"
-echo <BASE64> | base64 -d > /path/file
-```
-
-**Traefik config** is at `/opt/traefik/traefik.yml` — requires exact 2-space YAML indentation. After any change: `docker restart traefik`. If it won't start: `docker logs traefik --tail 10`; strip extra indentation with `sed -i 's/^  //' /opt/traefik/traefik.yml`.
-
-**Traefik 502/404 diagnosis:** see [`docs/incident-response.md §1`](docs/incident-response.md#1-traefik-502--404) for the full checklist. Quick checks: `docker ps` (confirm containers are `(healthy)`); `docker network inspect proxy` (confirm container is on the proxy network).
-
-**Known container gotchas** (both fixed in `docker-compose.server.yml`):
-- Next.js requires `HOSTNAME: "0.0.0.0"` — Docker sets `HOSTNAME` to the container ID, causing Next.js to bind to a single interface → Traefik 502.
-- Alpine healthchecks must use `127.0.0.1` not `localhost` — `busybox wget` resolves `localhost` as `::1` (IPv6), marking the container unhealthy → Traefik drops the route.
+Full diagnosis + fix commands — Traefik 502/404, config corruption (nano/base64 edit procedure), crash loops, DB/MinIO outages — are in [`docs/incident-response.md`](docs/incident-response.md).
 
 ---
 
@@ -460,15 +441,7 @@ Themed cover PNGs live in `services/web/public/covers/` (generate with `services
 
 ## Database Migrations
 
-**Run pending migrations:**
-```bash
-# Dev
-docker compose exec api npm run migration:run
-# Production
-docker compose --env-file .env.production -f docker-compose.server.yml exec -T -e DB_HOST=db api npm run migration:run:prod
-```
-
-Full history (000–061 through `FixAllowInsightsColumnName`), golden rules, and how to generate a new migration: [`docs/database-migrations.md`](docs/database-migrations.md).
+Run commands (dev + prod), full history (000–061), golden rules, and how to generate a new migration: [`docs/database-migrations.md`](docs/database-migrations.md).
 
 > **Critical rule:** Never edit a migration after deployment — write a corrective migration instead. Migrations 060 → 061 are the canonical example.
 
@@ -476,7 +449,7 @@ Full history (000–061 through `FixAllowInsightsColumnName`), golden rules, and
 
 ## Sync Quality Status
 
-Current book-by-book coverage numbers, pass/fail status, and the diagnostic SQL are in [`docs/sync-procedures.md § Sync Quality Status`](docs/sync-procedures.md#3-sync-quality-status). Standard: `syncCoverage` ≥ **90%**. Last audited 2026-06-25.
+Current book-by-book coverage numbers (with audit date), pass/fail status, and the diagnostic SQL are in [`docs/sync-procedures.md § Sync Quality Status`](docs/sync-procedures.md#3-sync-quality-status). Standard: `syncCoverage` ≥ **90%**.
 
 `docs/whisper-sync-troubleshooting.md` is a living document — append every newly-validated bug/fix as you find it, not batched at session end.
 
