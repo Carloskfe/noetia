@@ -125,16 +125,19 @@ from Spanish readers. The ES patterns above do **not** help EN books at all.
 grep -in "chapter [ivx0-9]\|king james\|gospel of\|authorized version\|recording by\|read by\|as read by" transcriptions/<book>.merged.vtt | head -20
 ```
 
-**Results from the 2026-06-27 batch (27 EN books re-merged):**
-| Book | Before | After | Notes |
+**Results from the 2026-06-27 batch (27 EN books re-merged + `lastEndTime` fix applied):**
+| Book | Before | Final | Notes |
 |------|--------|-------|-------|
-| Treasure Island | 55.4% | **71.3%** | +15.9% — biggest EN win to date |
-| The Adventures of Tom Sawyer | 67.2% | 67.6% | +0.4% |
-| Frankenstein | 80.5% | 80.6% | marginal |
-| Dracula | 66.1% | 57.4% | **−8.7% regression** — see §10 `lastEndTime` bug |
-| Most EN Narrative | ~same | ~same | chapter stripping helps books with many chapter intros |
-| EN Epistles (Acts, Romans, etc.) | already passing | unchanged | these books have no chapter intros |
-| EN Gospels (Matthew, Mark, Luke, John, Revelation) | 38-57% | 38-57% | chapter stripping did not help — root cause is different (possibly edition/ASR quality) |
+| Treasure Island | 55.4% | **71.3%** | +15.9% — biggest EN win; chapter announcement stripping |
+| Dracula | 66.1% | **66.5%** | net +0.4% — regressed to 57.4% from `lastEndTime` bug then recovered |
+| Walden | ~54% | 55.5% | +1.9% from `lastEndTime` fix |
+| Pride and Prejudice | 53.3% | 54.7% | +1.4% from `lastEndTime` fix |
+| Anne of Green Gables | 56.9% | 58.3% | +1.4% from `lastEndTime` fix |
+| The Adventures of Tom Sawyer | 67.2% | 64.1% | **−3.1% net** — +0.4% from stripping, −3.5% from `lastEndTime` fix (see §10) |
+| Frankenstein | 80.5% | 80.5% | negligible change |
+| Most other EN Narrative | varies | ~same | chapter stripping + `lastEndTime` fix combined < ±0.2% |
+| EN Epistles (Acts, Romans, etc.) | already passing | unchanged | no chapter intros to strip |
+| EN Gospels (Matthew, Mark, Luke, John, Revelation) | 38-57% | 38-57% | stripping did not help — different root cause |
 
 **EN Narrative root-cause is NOT fully explained by announcements.** After clean stripping, coverage on most EN novels is still 50-80%, not 90%+. Run the decision tree (§11) against exception phrases before assuming more pattern work will help.
 
@@ -693,6 +696,17 @@ These aren't sync-quality bugs, but will burn an hour if you don't know them:
   "Read by X.") is the canonical regression detector — run it through merge
   and check that its merged VTT's total duration matches the sum of the raw
   chapter durations ± 2s-per-chapter gap before aligning anything.
+
+- **`lastEndTime` fix result (2026-06-27 full EN re-align):** After the
+  `rawCues` fix was applied and all 13 EN Narrative books were re-aligned:
+  Dracula recovered from 57.4% → **66.5%** (+9.1% — confirms the bug was the
+  root cause). Tom Sawyer regressed from 67.6% → **64.1%** (−3.5%). The
+  regression is unexpected — Tom Sawyer should not have been hurt by using the
+  correct raw boundary. Possible cause: Tom Sawyer has tail announcements that
+  when included in `lastEndTime` push the chapter offset forward enough to
+  misalign phrases in the next chapter. Investigate by diffing the merged VTT
+  timestamps before/after the fix and comparing against the raw chapter-file
+  durations. All other EN Narrative books changed ±0.2% or less (noise).
 
 ---
 

@@ -199,31 +199,29 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 
 ### English Narrative (14 books)
 
-> ⚠️ **Numbers below reflect a re-merge on 2026-06-27 that introduced then fixed a `lastEndTime` bug in `merge-transcriptions.ts`** (see troubleshooting §10). Dracula's number is lower than it should be; all 14 books need a clean re-merge and re-align once the fix is confirmed. The Treasure Island win (+15.9%) is real and stable.
-
 | Book | Coverage | Notes |
 |------|----------|-------|
-| Frankenstein | 80.6% | |
+| Frankenstein | 80.5% | |
 | Alice's Adventures in Wonderland | 77.3% | |
 | The Time Machine | 76.1% | |
 | Treasure Island | 71.3% | was 55.4% — chapter announcement stripping 2026-06-27 +15.9% |
-| The Strange Case of Dr Jekyll and Mr Hyde | 70.2% | re-align pending (file copy failed in batch) |
-| The Adventures of Tom Sawyer | 67.6% | |
-| The Scarlet Letter | 65.9% | |
-| Jane Eyre | 60.5% | |
-| Dracula | 57.4% | ⚠️ regressed from 66.1% due to `lastEndTime` bug — re-align pending |
+| The Strange Case of Dr Jekyll and Mr Hyde | 70.2% | first clean align 2026-06-27 |
+| Dracula | 66.5% | was 57.4% (lastEndTime bug) → recovered +9.1% after fix 2026-06-27 |
+| The Scarlet Letter | 65.8% | |
+| The Adventures of Tom Sawyer | 64.1% | was 67.6% — regressed -3.5% after lastEndTime re-merge; needs investigation |
+| Jane Eyre | 60.6% | |
+| Anne of Green Gables | 58.3% | +1.4% from lastEndTime fix |
 | Mark | 57.3% | chapter stripping did not help — different root cause |
-| Anne of Green Gables | 56.9% | |
+| Walden | 55.5% | +1.9% from lastEndTime fix |
+| Pride and Prejudice | 54.7% | +1.4% from lastEndTime fix |
 | The Picture of Dorian Gray | 54.5% | |
-| Walden | 53.6% | ingested + aligned 2026-06-26 |
-| Pride and Prejudice | 53.3% | |
 | Luke | 48.4% | |
-| Meditations | 45.1% | likely translation mismatch (Gutenberg #2680 = George Long) |
+| Meditations | 45.0% | likely translation mismatch (Gutenberg #2680 = George Long) |
 | Matthew | 44.7% | |
 | John | 43.6% | |
 | Revelation | 38.6% | |
 
-**0 of 14 EN Narrative at ≥ 90%.** EN chapter announcement stripping (§2b in troubleshooting) helped Treasure Island significantly but the rest of EN Narrative needs §3-8 investigation — announcement stripping alone is not enough.
+**0 of 14 EN Narrative at ≥ 90%.** EN chapter announcement stripping helped Treasure Island (+15.9%). The `lastEndTime` fix recovered Dracula (+9.1%) but regressed Tom Sawyer (-3.5%) — see troubleshooting for investigation. Most EN Narrative needs §3-8 investigation.
 
 **5 EN books with no sync map yet (NULL coverage):** Ephesians, The Call of the Wild, Genesis (EN), Exodus (EN), Philippians — need VTT files.
 
