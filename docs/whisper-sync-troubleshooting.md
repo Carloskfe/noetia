@@ -180,9 +180,15 @@ Biblia Reina-Valera, Revisión 1909 : Hechos
 
 This entire block arrives as one paragraph and becomes one phrase that never aligns. For a 28-chapter book, that's 28 wasted exceptions. **Hechos went from 89.8% → 100.0% and Juan from 89.7% → 99.9% after stripping this pattern** (2026-06-27).
 
-**Fix:** `isNavigationNoise()` in `phrase-splitter.service.ts` now strips any block matching `/^Biblia\s+Reina-Valera[^\n]*Revisión/i`. No VTT change needed — just re-align.
+**Fix:** `isNavigationNoise()` in `phrase-splitter.service.ts` strips any block matching `/Biblia\s+Reina-Valera[^\n]*Revisión/i`. No VTT change needed — just re-align.
 
-**Affected books still needing re-alignment as of 2026-06-27:** Mateo (86%), Éxodo (84.3%), 1 Corintios (82.5%), Salmos (81%), Isaías (76.3%). Run each through `seed-sync-whisper.js` with its existing VTT to pick up the improvement.
+**Two Wikisource formats exist (both now caught):**
+- `"Biblia Reina-Valera, Revisión 1909 : Hechos\n1 -\n2 -\n..."` — book name after colon (most NT books)
+- `"Salmos de Biblia Reina-Valera, Revisión 1909\n1 -\n2 -\n..."` — book name before "de Biblia" (Salmos; possibly other OT books)
+
+The original regex had a `^` anchor so only the first format was caught. Removing `^` catches both. **Salmos went from 81.1% → 99.96%** after this second fix (2026-06-27).
+
+**Status as of 2026-06-27:** All 16 of 17 ES Bible books at ≥ 90%. Isaías (87%) is the remaining holdout — §6 edition mismatch in Wikisource chapters 32–66, not a nav-block issue.
 
 **Secondary noise — `"La Biblia\n[BookName]"` headers:** Each chapter page also includes a low-level page-title header "La Biblia / Juan" (rendered as `La Biblia\nJuan`). These DO align (at ~33% confidence) so they don't cause exceptions — but they inflate the total phrase count and drag down avg confidence. Not worth fixing until books are otherwise at 90%+.
 

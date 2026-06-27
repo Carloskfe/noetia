@@ -193,9 +193,9 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | Mateo | 99.9% ✅ | was 86.0% — Wikisource nav-block fix 2026-06-27 |
 | 1 Corintios | 99.8% ✅ | was 82.5% — Wikisource nav-block fix 2026-06-27 |
 | Isaías | 87.0% | was 76.3% — nav-block fix +10.7% but 180 exceptions remain; §6 edition mismatch — Wikisource ch. 32–66 diverges from LibriVox recording |
-| Salmos | 81.1% | barely moved (was 81.0%) — 546 exceptions; verse-number gluing suspected — §4 |
+| Salmos | 99.96% ✅ | was 81.1% — §2b Salmos-format nav block ("Salmos de Biblia Reina-Valera, Revisión 1909") fixed 2026-06-27 |
 
-**15 of 17 ES Bible at ≥ 90%.** Isaías (87%) and Salmos (81.1%) remain below — the nav-block fix helped Isaías +10.7% but did not clear it; Salmos has a deeper structural issue (546 remaining exceptions after nav-block strip).
+**16 of 17 ES Bible at ≥ 90%.** Isaías (87%) is the only holdout — §6 edition mismatch in Wikisource chapters 32–66 vs. LibriVox recording.
 
 ### English Narrative (14 books)
 
