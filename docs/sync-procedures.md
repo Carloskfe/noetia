@@ -234,8 +234,8 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | Romans | 95.8% ✅ | |
 | 1 Corinthians | 95.4% ✅ | |
 | Hebrews | 94.7% ✅ | |
+| Psalms | 94.3% ✅ | was 89.0% — Wikisource `[ edit ]` + TOC nav-block fix 2026-06-27 +5.3% |
 | James | 93.3% ✅ | |
-| Psalms | 89.0% | |
 | Isaiah | 87.3% | |
 | Mark | 57.3% | |
 | Luke | 48.4% | chapter stripping applied 2026-06-27 — no gain; investigate §6 |
@@ -243,7 +243,7 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | John | 43.6% | chapter stripping applied — no gain; investigate §6 |
 | Revelation | 38.6% | |
 
-**6 of 13 EN Bible at ≥ 90%.** The Epistles (Acts, Romans, 1 Cor, Hebrews, James, Proverbs) all pass; the Gospels + Revelation remain very low after chapter stripping — root cause is not announcement noise (stripping is now confirmed clean), likely ASR quality or edition differences.
+**7 of 13 EN Bible at ≥ 90%.** The Epistles (Acts, Romans, 1 Cor, Hebrews, James, Proverbs) plus Psalms all pass; the Gospels + Revelation remain very low after chapter stripping — root cause is not announcement noise (stripping is now confirmed clean), likely ASR quality or edition differences.
 
 ---
 

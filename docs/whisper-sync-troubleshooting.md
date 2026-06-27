@@ -192,6 +192,21 @@ The original regex had a `^` anchor so only the first format was caught. Removin
 
 **Secondary noise — `"La Biblia\n[BookName]"` headers:** Each chapter page also includes a low-level page-title header "La Biblia / Juan" (rendered as `La Biblia\nJuan`). These DO align (at ~33% confidence) so they don't cause exceptions — but they inflate the total phrase count and drag down avg confidence. Not worth fixing until books are otherwise at 90%+.
 
+**§2d — Wikisource KJV editorial/navigation noise (English Bible)**
+
+**Symptom:** EN KJV books have many exceptions that are not announcement noise (which `merge-transcriptions.ts` already strips) but editorial artifacts leaked from the heavily-annotated English Wikisource KJV edition. For Psalms, `[ edit ]` section-edit links alone were ~150 of ~300 exceptions.
+
+**Distinct noise shapes (all stripped in `isNavigationNoise()`, `phrase-splitter.service.ts`, 2026-06-27):**
+- `[ edit ]` — inline section-edit links leaked as their own phrase → `/^\[\s*edit\s*\]$/i`
+- `↑ r ch. 16. 21. & 20. 17. Mark 8. 31. ...` — cross-reference footnote blocks → `/^↑\s*[a-z]\b/i`
+- `Anno DOMINI ...` — editorial year annotations → `/^Anno DOMINI\b/i`
+- `(Upload an image ...)` — placeholder text → `/^\(Upload an image\b/i`
+- OT/NT/Deuterocanon table-of-contents book lists (Genesis…Exodus…Leviticus; Matthew…Mark…Luke…John…Acts; 1 Esdras…2 Esdras…Tobit) → three `\b…\b.*\b…\b` sequence patterns
+
+**Result: Psalms 89.0% → 94.3% (+5.3%)** — clears the 90% gate. No VTT change needed, just re-align.
+
+**Did NOT help the Gospels.** The same filters were active for Matthew (44.7%), Mark (57.3%), Luke (48.4%), John (43.6%), Revelation (38.6%) with no gain — their bottleneck is a different, harder problem: embedded marginal verse numbers fused into prose (e.g. `"23 704 Then..."`), which would need text-level preprocessing, not a nav-block filter. Likely ASR-quality or edition divergence too. Run the §11 decision tree against their exception phrases before more pattern work.
+
 ---
 
 ## 3. Untrimmed front/back matter
