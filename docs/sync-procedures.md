@@ -168,9 +168,8 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | Don Quijote de la Mancha — Vol. II | 56.4% | shared `gutenbergId: 2000` with Vol. I — §8, not yet fixed |
 | La Isla del Tesoro | 55.4% | sort fix correct; flat — unexplained |
 | Don Quijote de la Mancha — Vol. I | 54.4% | shared `gutenbergId: 2000` with Vol. II — §8, not yet fixed |
-| Salmos | 81.0% | suspected verse-number gluing §4 — unconfirmed |
 
-**8 of 24 ES Narrative at ≥ 90%.**
+**8 of 23 ES Narrative at ≥ 90%.** (Salmos is categorised as ES Bible — see table below.)
 
 **Before investigating any < 90% book**, read the troubleshooting guide. Most have a documented next step — do not assume edition mismatch without ruling out §2-5 and §7-8 first.
 

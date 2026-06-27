@@ -65,6 +65,20 @@ describe('BooksService', () => {
       expect(result).toEqual(books);
     });
 
+    it('applies quality gate — free books must have syncCoverage >= 0.90', async () => {
+      const qb = makeQb([]);
+      mockRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findAll();
+
+      const qualityCall = (qb.andWhere.mock.calls as unknown[][]).find(
+        (c) => typeof c[0] === 'string' && (c[0] as string).includes('syncCoverage'),
+      );
+      expect(qualityCall).toBeDefined();
+      expect(qualityCall![0]).toContain('0.90');
+      expect(qualityCall![0]).toContain('isFree');
+    });
+
     it('includes collection books when standalone=false', async () => {
       const qb = makeQb([]);
       mockRepo.createQueryBuilder.mockReturnValue(qb);
@@ -99,12 +113,13 @@ describe('BooksService', () => {
       expect(qb.andWhere).toHaveBeenCalledWith('book.isFree = :isFree', { isFree: false });
     });
 
-    it('does not add isFree filter when isFree is undefined', async () => {
+    it('does not add isFree = :isFree filter when isFree is undefined', async () => {
       const qb = makeQb([]);
       mockRepo.createQueryBuilder.mockReturnValue(qb);
       await service.findAll(undefined, undefined);
-      const freeCalls = qb.andWhere.mock.calls.filter(
-        (c: unknown[]) => typeof c[0] === 'string' && (c[0] as string).includes('isFree'),
+      // Quality gate SQL also mentions isFree; check for the parameter-binding form specifically
+      const freeCalls = (qb.andWhere.mock.calls as unknown[][]).filter(
+        (c) => typeof c[0] === 'string' && (c[0] as string).includes('book.isFree = :isFree'),
       );
       expect(freeCalls).toHaveLength(0);
     });

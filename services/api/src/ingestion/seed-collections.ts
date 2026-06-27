@@ -42,6 +42,28 @@ const QUIJOTE_ORDER = [
   'Don Quijote de la Mancha — Vol. II',
 ];
 
+const KJV_ORDER = [
+  // Old Testament
+  'Genesis',
+  'Exodus',
+  'Psalms',
+  'Proverbs',
+  'Isaiah',
+  // New Testament
+  'Matthew',
+  'Mark',
+  'Luke',
+  'John',
+  'Acts',
+  'Romans',
+  '1 Corinthians',
+  'Ephesians',
+  'Philippians',
+  'Hebrews',
+  'James',
+  'Revelation',
+];
+
 const INFANTIL_ORDER = [
   'Fábulas y Verdades',
   'La Edad de Oro',
@@ -107,6 +129,18 @@ async function bootstrap() {
     biblePositions,
   );
   console.log(`  ✓ ${biblePositions.length} books in canonical order`);
+
+  // ── Bible — King James Version ────────────────────────────────────────────
+  console.log('Seeding collection: Bible (King James Version)…');
+  const kjvPositions = await resolveBookIds(ds, KJV_ORDER);
+  await service.upsertCollection(
+    'bible-kjv',
+    'Bible (King James Version)',
+    'The Holy Bible in the classic King James Version. Books of the Old and New Testament available as text synchronized with audio.',
+    'https://covers.openlibrary.org/b/id/12324628-L.jpg',
+    kjvPositions,
+  );
+  console.log(`  ✓ ${kjvPositions.length} books in canonical order`);
 
   // ── Don Quijote de la Mancha ───────────────────────────────────────────────
   console.log('Seeding collection: Don Quijote de la Mancha…');

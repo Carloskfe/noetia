@@ -22,6 +22,16 @@ export class BooksService {
     // Using the join table rather than book.collection VARCHAR so the filter works
     // even when the VARCHAR field was never populated (e.g. books ingested after migrations).
     if (standalone) qb.andWhere('NOT EXISTS (SELECT 1 FROM book_collections bc WHERE bc."bookId" = book.id)');
+    // Quality gate: free-library books must have a Whisper sync map with ≥ 90% coverage.
+    // Paid/author books bypass the gate — authors manage their own quality through the admin flow.
+    qb.andWhere(`(
+      book."isFree" = false
+      OR EXISTS (
+        SELECT 1 FROM sync_maps sm
+        WHERE sm."bookId" = book.id
+          AND sm."syncCoverage" >= 0.90
+      )
+    )`);
     return qb.getMany();
   }
 
