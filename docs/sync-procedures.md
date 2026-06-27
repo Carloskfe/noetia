@@ -119,7 +119,7 @@ Avg confidence:  46.0%
 
 ## 3. Sync Quality Status
 
-*Last audited: 2026-06-25. Standard: `syncCoverage` ≥ 90%.*
+*Last audited: 2026-06-26. Standard: `syncCoverage` ≥ 90%.*
 
 Refresh numbers any time with the diagnostic SQL (see troubleshooting §9):
 
@@ -141,25 +141,102 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
   psql -U noetia -d noetia -c "..."
 ```
 
-### Spanish (40 books total)
-
-| Status | Count | Books |
-|--------|-------|-------|
-| Whisper ≥ 90% ✅ | 8 | Marianela 99.8%, Romeo y Julieta 99.1%, Don Juan Tenorio 98.6%, Cuentos de Amor 98.0%, **Cuentos de la Selva 100%** (story-order fix 2026-06-24 — §7), **Lazarillo de Tormes 100%** (Wikisource ordinal-word sort fix 2026-06-25 — §7), **Platero y yo 98.2%** ("Grabado por" pattern + ÍNDICE trim 2026-06-25 — §2/§3), **Pepita Jiménez 96.8%** (announcement patterns 2026-06-24 — §2) |
-| Whisper < 90% ❌ | 16 | El Gaucho Martín Fierro 82.4% (stanza-number §4 fix 2026-06-25 — not yet over threshold), Leyendas 80.6% (story-order + 5 excluded chapters — §7), Niebla 88.0%, Fábulas y Verdades 85.3% (16 audio sections vs. 11 catalogued fables — §7 count mismatch), Salmos 81.0% (suspected verse-number gluing §4 — unconfirmed), Los Cuatro Jinetes 76.4% (edition mismatch — §6), El Sombrero de Tres Picos 75.2% (sort fix applied — gap unexplained), Doña Perfecta 71.6% (sort fix applied — gap unexplained), Crimen y Castigo 72.9% (same translator confirmed; root cause unexplained), Orgullo y Prejuicio 64.4% (sort fix correct; flat — unexplained), Viaje al Centro 67.5% (edition mismatch confirmed — Anónimo vs. Ribot y Fonseré), La Divina Comedia 66.0% (front/back-matter trim applied — still needs more), Don Quijote Vol. II 56.4%, Don Quijote Vol. I 54.4% (shared `gutenbergId: 2000` — §8, not yet fixed), La Odisea 60.6% (CRLF glossary fix applied — modest gain only), La Isla del Tesoro 55.4% (sort fix correct; flat — unexplained) |
-| Auto sync only | 16 | 16 Bible books (ES) |
-
-**Before investigating any < 90% book**, read the troubleshooting guide. Most have a documented next step — do not assume edition mismatch without ruling out §2-5 and §7-8 first.
-
-### English (31 books total)
-
-30 of 31 on `auto` sync — Whisper not yet run. Next priority: **Jane Eyre** (39 sections).
+### Spanish Narrative (24 books)
 
 | Book | Coverage | Notes |
 |------|----------|-------|
-| Meditations | 45.1% | CRLF appendix bug fixed 2026-06-24. Confidence stuck at 25% — likely translation mismatch (Gutenberg #2680 = George Long; not yet compared to LibriVox reader's edition) |
-| Walden | *(not yet run)* | CRLF bug fixed proactively 2026-06-24 |
-| All others | *(not yet run)* | |
+| Cuentos de la Selva | 100.0% ✅ | story-order fix 2026-06-24 — §7 |
+| Lazarillo de Tormes | 100.0% ✅ | Wikisource ordinal-word sort fix 2026-06-25 — §7 |
+| Marianela | 99.8% ✅ | |
+| Romeo y Julieta | 99.1% ✅ | |
+| Don Juan Tenorio | 98.6% ✅ | |
+| Platero y yo | 98.2% ✅ | "Grabado por" pattern + ÍNDICE trim 2026-06-25 — §2/§3 |
+| Cuentos de Amor de Locura y de Muerte | 98.0% ✅ | |
+| Pepita Jiménez | 96.8% ✅ | announcement patterns 2026-06-24 — §2 |
+| Niebla | 88.0% | |
+| Fábulas y Verdades | 85.3% | 16 audio sections vs. 11 catalogued fables — §7 count mismatch |
+| El Gaucho Martín Fierro | 82.4% | stanza-number fix 2026-06-25 — §4; gap unexplained |
+| Leyendas | 80.6% | story-order + 5 excluded chapters — §7 |
+| Los Cuatro Jinetes del Apocalipsis | 76.4% | edition mismatch — §6 |
+| El Sombrero de Tres Picos | 75.2% | sort fix applied — gap unexplained |
+| Crimen y Castigo | 72.9% | same translator confirmed; root cause unexplained |
+| Doña Perfecta | 71.6% | sort fix applied — gap unexplained |
+| Viaje al Centro de la Tierra | 67.5% | edition mismatch confirmed — Anónimo vs. Ribot y Fonseré |
+| La Divina Comedia | 66.0% | front/back-matter trim applied — still needs more |
+| Orgullo y Prejuicio | 64.4% | sort fix correct; flat — unexplained |
+| La Odisea | 60.6% | CRLF glossary fix applied — modest gain only |
+| Don Quijote de la Mancha — Vol. II | 56.4% | shared `gutenbergId: 2000` with Vol. I — §8, not yet fixed |
+| La Isla del Tesoro | 55.4% | sort fix correct; flat — unexplained |
+| Don Quijote de la Mancha — Vol. I | 54.4% | shared `gutenbergId: 2000` with Vol. II — §8, not yet fixed |
+| Salmos | 81.0% | suspected verse-number gluing §4 — unconfirmed |
+
+**8 of 24 ES Narrative at ≥ 90%.**
+
+**Before investigating any < 90% book**, read the troubleshooting guide. Most have a documented next step — do not assume edition mismatch without ruling out §2-5 and §7-8 first.
+
+### Spanish Bible (17 books)
+
+| Book | Coverage | Notes |
+|------|----------|-------|
+| Efesios | 96.4% ✅ | |
+| Santiago | 95.8% ✅ | |
+| Filipenses | 93.8% ✅ | |
+| Hebreos | 92.4% ✅ | |
+| Apocalipsis | 91.9% ✅ | |
+| Proverbios | 91.7% ✅ | |
+| Marcos | 91.0% ✅ | |
+| Romanos | 91.0% ✅ | |
+| Lucas | 90.8% ✅ | |
+| Génesis | 90.3% ✅ | |
+| Hechos | 89.8% | 0.2% below threshold |
+| Juan | 89.7% | 0.3% below threshold |
+| Salmos | 81.0% | verse-number gluing suspected — §4 |
+| Éxodo | 84.3% | |
+| 1 Corintios | 82.5% | |
+| Mateo | 86.0% | |
+| Isaías | 76.3% | |
+
+**10 of 17 ES Bible at ≥ 90%.** Hechos (89.8%) and Juan (89.7%) are on the cusp — re-run after any VTT improvement may tip them over.
+
+### English Narrative (13 books)
+
+| Book | Coverage | Notes |
+|------|----------|-------|
+| Frankenstein | 80.5% | |
+| Alice's Adventures in Wonderland | 77.3% | |
+| The Time Machine | 76.0% | |
+| The Strange Case of Dr Jekyll and Mr Hyde | 70.2% | |
+| The Adventures of Tom Sawyer | 67.2% | |
+| The Scarlet Letter | 66.5% | |
+| Dracula | 66.1% | |
+| Jane Eyre | 60.5% | |
+| Anne of Green Gables | 56.7% | |
+| The Picture of Dorian Gray | 54.4% | |
+| Pride and Prejudice | 53.2% | |
+| Meditations | 45.1% | likely translation mismatch (Gutenberg #2680 = George Long) |
+| Walden | *(not in DB)* | book not yet ingested — run `seed-ingestion.ts` then align |
+
+**0 of 12 EN Narrative at ≥ 90%.** Low coverage across the board is consistent with EN LibriVox chapter intro announcements not yet stripped (new pattern needed in `merge-transcriptions.ts`).
+
+### English Bible (13 books)
+
+| Book | Coverage | Notes |
+|------|----------|-------|
+| Acts | 100.0% ✅ | |
+| Proverbs | 96.3% ✅ | |
+| Romans | 95.8% ✅ | |
+| 1 Corinthians | 95.4% ✅ | |
+| Hebrews | 94.7% ✅ | |
+| James | 93.3% ✅ | |
+| Psalms | 88.9% | |
+| Isaiah | 87.4% | |
+| Mark | 57.6% | |
+| Luke | 50.4% | likely chapter-intro announcements not stripped |
+| John | 45.8% | likely chapter-intro announcements not stripped |
+| Matthew | 44.6% | likely chapter-intro announcements not stripped |
+| Revelation | 38.6% | likely chapter-intro announcements not stripped |
+
+**6 of 13 EN Bible at ≥ 90%.** The Epistles (Acts, Romans, 1 Cor, Hebrews, James, Proverbs) all pass; the Gospels + Revelation are very low. Pattern: "Chapter N" standalone cues are not currently stripped by `ANNOUNCEMENT_WHOLE_CUE` — confirmed next root cause to investigate.
 
 ---
 
