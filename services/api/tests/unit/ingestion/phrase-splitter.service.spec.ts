@@ -250,5 +250,37 @@ describe('PhraseSplitterService', () => {
       expect(phrases.every((p) => !p.text.includes('Revisión 1909'))).toBe(true);
       expect(phrases.some((p) => p.text.includes('Bienaventurado'))).toBe(true);
     });
+
+    it('skips Wikisource KJV [ edit ] inline section-edit links', () => {
+      const text = '[ edit ]\n\n1 Blessed is the man that walketh not in the counsel of the ungodly.';
+      const phrases = service.split(text);
+      expect(phrases.every((p) => p.text !== '[ edit ]')).toBe(true);
+      expect(phrases.some((p) => p.text.includes('Blessed is the man'))).toBe(true);
+    });
+
+    it('skips Wikisource KJV cross-reference footnote blocks (↑ r / ↑ h / ↑ s)', () => {
+      const text = '1 In the beginning God created the heaven and the earth.\n\n↑ r ch. 16. 21. & 20. 17. Mark 8. 31.\n\n2 And the earth was without form, and void.';
+      const phrases = service.split(text);
+      expect(phrases.every((p) => !p.text.startsWith('↑'))).toBe(true);
+      expect(phrases.some((p) => p.text.includes('In the beginning'))).toBe(true);
+    });
+
+    it('skips Wikisource KJV editorial annotations and image placeholders', () => {
+      const text = 'Anno DOMINI 31.\n\n(Upload an image to replace this placeholder.)\n\n1 And it came to pass in those days.';
+      const phrases = service.split(text);
+      expect(phrases.every((p) => !p.text.includes('Anno DOMINI'))).toBe(true);
+      expect(phrases.every((p) => !p.text.includes('Upload an image'))).toBe(true);
+      expect(phrases.some((p) => p.text.includes('it came to pass'))).toBe(true);
+    });
+
+    it('skips Wikisource KJV Bible table-of-contents navigation blocks', () => {
+      const otList = 'Genesis Exodus Leviticus Numbers Deuteronomy Joshua Judges Ruth 1 Samuel 2 Samuel 1 Kings 2 Kings';
+      const ntList = 'Matthew Mark Luke John Acts Romans 1 Corinthians';
+      const text = `${otList}\n\n${ntList}\n\n1 God so loved the world.`;
+      const phrases = service.split(text);
+      expect(phrases.every((p) => !p.text.includes('Genesis Exodus'))).toBe(true);
+      expect(phrases.every((p) => !p.text.includes('Matthew Mark Luke'))).toBe(true);
+      expect(phrases.some((p) => p.text.includes('God so loved'))).toBe(true);
+    });
   });
 });

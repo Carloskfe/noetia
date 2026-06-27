@@ -66,6 +66,17 @@ export class PhraseSplitterService {
     // "Biblia Reina-Valera, Revisión 1909 : Hechos\n1 -\n2 -\n..."  (Hechos, Juan, Mateo, …)
     // "Salmos de Biblia Reina-Valera, Revisión 1909\n1 -\n2 -\n..."  (Salmos, and other books that prefix the title)
     if (/Biblia\s+Reina-Valera[^\n]*Revisión/i.test(text)) return true;
+    // Wikisource KJV inline section-edit link leaked as text content
+    if (/^\[\s*edit\s*\]$/i.test(text)) return true;
+    // Wikisource KJV cross-reference footnote blocks: "↑ r ch. 16. 21. & 20. 17. Mark 8. 31. ..."
+    if (/^↑\s*[a-z]\b/i.test(text)) return true;
+    // Wikisource KJV editorial annotations and placeholders
+    if (/^Anno DOMINI\b/i.test(text)) return true;
+    if (/^\(Upload an image\b/i.test(text)) return true;
+    // Wikisource KJV Bible table-of-contents navigation block (OT/NT book lists in sequence)
+    if (/\bGenesis\b.*\bExodus\b.*\bLeviticus\b/s.test(text)) return true;
+    if (/\bMatthew\b.*\bMark\b.*\bLuke\b.*\bJohn\b.*\bActs\b/s.test(text)) return true;
+    if (/\b1 Esdras\b.*\b2 Esdras\b.*\bTobit\b/s.test(text)) return true;
     return false;
   }
 
