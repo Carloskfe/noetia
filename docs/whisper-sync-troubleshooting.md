@@ -97,6 +97,49 @@ takeaway: don't conclude "announcements aren't the problem for this book"
 until you've confirmed §2's residual-noise grep is clean. If it isn't, fix
 the pattern gap before moving on to §3-8.
 
+### §2b. English LibriVox chapter announcements (different pattern vocabulary)
+
+English LibriVox readers use a completely different announcement vocabulary
+from Spanish readers. The ES patterns above do **not** help EN books at all.
+
+**Five distinct EN announcement shapes (all added 2026-06-27):**
+
+1. **Standalone chapter heading as its own cue** — "CHAPTER ONE", "CHAPTER XIV." — dropped entirely if the remainder after stripping the chapter marker is empty or all-caps (chapter title with no real prose). Pattern: `CHAPTER_HEADING_PREFIX`.
+
+2. **Chapter heading prefix before real prose** — "Chapter VII My first quarter at Lowood…" — strip the prefix, keep the sentence if it has lowercase letters. If the remainder is all-caps (e.g., "MENA HARKER'S JOURNAL"), keep the entire original cue intact — that all-caps text IS in the book as a chapter title and should align. Dropping it causes a measurable regression (see `lastEndTime` bug note in §10).
+
+3. **Inline chapter marker after a period** — "peace. Chapter 8. And it came to pass…" → replace `. Chapter 8.` with `. `. Pattern: `CHAPTER_INLINE` (`/\.\s+[Cc]hapters?\s+[IVXLCDMivxlcdm0-9]+[.,]?\s+/g`).
+
+4. **Arabic-numeral inline without preceding period** — "chapter 15 I am the true vine…" → strip "chapter 15 ". Pattern: `CHAPTER_DIGIT_INLINE` (`/\bchapter\s+\d+\s+/gi`).
+
+5. **Trailing chapter marker at end of real sentence** — "…made whole. CHAPTER XIV" — strip the trailer. Pattern: `CHAPTER_TRAILING` (`/[.,?!]\s+CHAPTERS?\s+...[.,]?$/i`).
+
+**Gospel/KJV-specific patterns also added:**
+- `The Gospel of Mark` / `The Gospel According to Luke` → drop whole cue
+- `King James Version` / `King James' Version` → drop whole cue
+- `[BookName] chapter N` → drop (e.g. "John chapter 11", "Matthew chapter 5")
+- `In the Authorized Version` → drop
+
+**Verify EN noise is clean with:**
+```bash
+grep -in "chapter [ivx0-9]\|king james\|gospel of\|authorized version\|recording by\|read by\|as read by" transcriptions/<book>.merged.vtt | head -20
+```
+
+**Results from the 2026-06-27 batch (27 EN books re-merged):**
+| Book | Before | After | Notes |
+|------|--------|-------|-------|
+| Treasure Island | 55.4% | **71.3%** | +15.9% — biggest EN win to date |
+| The Adventures of Tom Sawyer | 67.2% | 67.6% | +0.4% |
+| Frankenstein | 80.5% | 80.6% | marginal |
+| Dracula | 66.1% | 57.4% | **−8.7% regression** — see §10 `lastEndTime` bug |
+| Most EN Narrative | ~same | ~same | chapter stripping helps books with many chapter intros |
+| EN Epistles (Acts, Romans, etc.) | already passing | unchanged | these books have no chapter intros |
+| EN Gospels (Matthew, Mark, Luke, John, Revelation) | 38-57% | 38-57% | chapter stripping did not help — root cause is different (possibly edition/ASR quality) |
+
+**EN Narrative root-cause is NOT fully explained by announcements.** After clean stripping, coverage on most EN novels is still 50-80%, not 90%+. Run the decision tree (§11) against exception phrases before assuming more pattern work will help.
+
+**Critical implementation rule — do not drop all-caps chapter-title remainders.** The current `CHAPTER_HEADING_PREFIX` logic keeps the remainder if it has ANY lowercase letter, and drops if it's empty OR all-caps. The all-caps case should be KEPT (not dropped), because Victorian novel chapter titles like "JONATHAN HARKER'S JOURNAL" or "MENA HARKER'S JOURNAL" ARE in the book text and serve as valid alignment anchors. Dropping them loses those alignment points and reduces coverage. If you ever revisit this logic, test against Dracula before shipping.
+
 **Worked example (Pepita Jiménez, Gutenberg #17223):** front/back matter and
 illustrations/footnotes were already confirmed clean (this book has almost
 none). The residual problem was entirely missed announcement vocabulary:
@@ -627,6 +670,29 @@ These aren't sync-quality bugs, but will burn an hour if you don't know them:
   Selva for the story-order bug) before being applied across a batch. This
   caught the CRLF pattern-matching bug (§3) before it shipped silently
   broken to 12 books.
+
+- **`lastEndTime` must use `rawCues`, not stripped cues.** In
+  `mergeVttDirectory()`, the chapter-boundary offset is calculated as
+  `offset += last + gapSeconds`, where `last` is the end timestamp of the
+  final cue in the file. If `last = lastEndTime(cues)` (stripped cues)
+  instead of `last = lastEndTime(rawCues)`, stripping an end-of-chapter
+  announcement cue (e.g. "Read by Kevin McLeod." at the tail of a chapter
+  file) shortens `last` by however long that cue was. Every subsequent
+  chapter's offset is then calculated from the wrong boundary, and all their
+  timestamps shift slightly earlier than the actual audio. With 27 chapters
+  in Dracula, this compounded into a **−8.7% regression** (66.1% → 57.4%)
+  when EN chapter announcements were first added (2026-06-27) — because those
+  new patterns started stripping tail cues that the old ES patterns never
+  touched. The fix is one line: `const last = lastEndTime(rawCues)`. Always
+  use the raw pre-strip boundary so audio timing is preserved regardless of
+  what's stripped. The bug is fixed in `merge-transcriptions.ts` as of
+  2026-06-27; this note exists so you never re-introduce it.
+
+- **After any `merge-transcriptions.ts` logic change, spot-check a book
+  that has many tail-stripped cues.** Dracula (27 chapters, each ending with
+  "Read by X.") is the canonical regression detector — run it through merge
+  and check that its merged VTT's total duration matches the sum of the raw
+  chapter durations ± 2s-per-chapter gap before aligning anything.
 
 ---
 

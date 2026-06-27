@@ -119,7 +119,7 @@ Avg confidence:  46.0%
 
 ## 3. Sync Quality Status
 
-*Last audited: 2026-06-26. Standard: `syncCoverage` ≥ 90%.*
+*Last audited: 2026-06-27. Standard: `syncCoverage` ≥ 90%.*
 
 Refresh numbers any time with the diagnostic SQL (see troubleshooting §9):
 
@@ -198,25 +198,35 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 
 **10 of 17 ES Bible at ≥ 90%.** Hechos (89.8%) and Juan (89.7%) are on the cusp — re-run after any VTT improvement may tip them over.
 
-### English Narrative (13 books)
+### English Narrative (14 books)
+
+> ⚠️ **Numbers below reflect a re-merge on 2026-06-27 that introduced then fixed a `lastEndTime` bug in `merge-transcriptions.ts`** (see troubleshooting §10). Dracula's number is lower than it should be; all 14 books need a clean re-merge and re-align once the fix is confirmed. The Treasure Island win (+15.9%) is real and stable.
 
 | Book | Coverage | Notes |
 |------|----------|-------|
-| Frankenstein | 80.5% | |
+| Frankenstein | 80.6% | |
 | Alice's Adventures in Wonderland | 77.3% | |
-| The Time Machine | 76.0% | |
-| The Strange Case of Dr Jekyll and Mr Hyde | 70.2% | |
-| The Adventures of Tom Sawyer | 67.2% | |
-| The Scarlet Letter | 66.5% | |
-| Dracula | 66.1% | |
+| The Time Machine | 76.1% | |
+| Treasure Island | 71.3% | was 55.4% — chapter announcement stripping 2026-06-27 +15.9% |
+| The Strange Case of Dr Jekyll and Mr Hyde | 70.2% | re-align pending (file copy failed in batch) |
+| The Adventures of Tom Sawyer | 67.6% | |
+| The Scarlet Letter | 65.9% | |
 | Jane Eyre | 60.5% | |
-| Anne of Green Gables | 56.7% | |
-| The Picture of Dorian Gray | 54.4% | |
-| Pride and Prejudice | 53.2% | |
-| Meditations | 45.1% | likely translation mismatch (Gutenberg #2680 = George Long) |
+| Dracula | 57.4% | ⚠️ regressed from 66.1% due to `lastEndTime` bug — re-align pending |
+| Mark | 57.3% | chapter stripping did not help — different root cause |
+| Anne of Green Gables | 56.9% | |
+| The Picture of Dorian Gray | 54.5% | |
 | Walden | 53.6% | ingested + aligned 2026-06-26 |
+| Pride and Prejudice | 53.3% | |
+| Luke | 48.4% | |
+| Meditations | 45.1% | likely translation mismatch (Gutenberg #2680 = George Long) |
+| Matthew | 44.7% | |
+| John | 43.6% | |
+| Revelation | 38.6% | |
 
-**0 of 13 EN Narrative at ≥ 90%.** Low coverage across the board is consistent with EN LibriVox chapter intro announcements not yet stripped (new pattern needed in `merge-transcriptions.ts`).
+**0 of 14 EN Narrative at ≥ 90%.** EN chapter announcement stripping (§2b in troubleshooting) helped Treasure Island significantly but the rest of EN Narrative needs §3-8 investigation — announcement stripping alone is not enough.
+
+**5 EN books with no sync map yet (NULL coverage):** Ephesians, The Call of the Wild, Genesis (EN), Exodus (EN), Philippians — need VTT files.
 
 ### English Bible (13 books)
 
@@ -228,15 +238,15 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | 1 Corinthians | 95.4% ✅ | |
 | Hebrews | 94.7% ✅ | |
 | James | 93.3% ✅ | |
-| Psalms | 88.9% | |
-| Isaiah | 87.4% | |
-| Mark | 57.6% | |
-| Luke | 50.4% | likely chapter-intro announcements not stripped |
-| John | 45.8% | likely chapter-intro announcements not stripped |
-| Matthew | 44.6% | likely chapter-intro announcements not stripped |
-| Revelation | 38.6% | likely chapter-intro announcements not stripped |
+| Psalms | 89.0% | |
+| Isaiah | 87.3% | |
+| Mark | 57.3% | |
+| Luke | 48.4% | chapter stripping applied 2026-06-27 — no gain; investigate §6 |
+| Matthew | 44.7% | chapter stripping applied — no gain; investigate §6 |
+| John | 43.6% | chapter stripping applied — no gain; investigate §6 |
+| Revelation | 38.6% | |
 
-**6 of 13 EN Bible at ≥ 90%.** The Epistles (Acts, Romans, 1 Cor, Hebrews, James, Proverbs) all pass; the Gospels + Revelation are very low. Pattern: "Chapter N" standalone cues are not currently stripped by `ANNOUNCEMENT_WHOLE_CUE` — confirmed next root cause to investigate.
+**6 of 13 EN Bible at ≥ 90%.** The Epistles (Acts, Romans, 1 Cor, Hebrews, James, Proverbs) all pass; the Gospels + Revelation remain very low after chapter stripping — root cause is not announcement noise (stripping is now confirmed clean), likely ASR quality or edition differences.
 
 ---
 

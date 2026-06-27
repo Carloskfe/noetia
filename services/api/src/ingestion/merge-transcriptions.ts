@@ -299,7 +299,7 @@ export function mergeVttDirectory(dir: string, gapSeconds = 2): Cue[] {
     const rawCues  = parseVttCues(content);
     const cues     = rawCues.map(stripAnnouncement).filter((c): c is Cue => c !== null);
     const stripped = rawCues.length - cues.length;
-    const last     = lastEndTime(cues);
+    const last     = lastEndTime(rawCues);  // use raw so stripped tail cues don't shrink the chapter boundary
 
     console.log(
       `  ${basename(file)} → ${cues.length} cues` +
