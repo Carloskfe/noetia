@@ -189,13 +189,13 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | Génesis | 90.3% ✅ | |
 | Hechos | 100.0% ✅ | was 89.8% — Wikisource nav-block fix 2026-06-27 |
 | Juan | 99.9% ✅ | was 89.7% — Wikisource nav-block fix 2026-06-27 |
-| Salmos | 81.0% | verse-number gluing suspected — §4; nav-block fix not yet applied |
-| Éxodo | 84.3% | nav-block fix not yet applied |
-| 1 Corintios | 82.5% | nav-block fix not yet applied |
-| Mateo | 86.0% | nav-block fix not yet applied |
-| Isaías | 76.3% | nav-block fix not yet applied |
+| Éxodo | 100.0% ✅ | was 84.3% — Wikisource nav-block fix 2026-06-27 |
+| Mateo | 99.9% ✅ | was 86.0% — Wikisource nav-block fix 2026-06-27 |
+| 1 Corintios | 99.8% ✅ | was 82.5% — Wikisource nav-block fix 2026-06-27 |
+| Isaías | 87.0% | was 76.3% — nav-block fix +10.7% but 180 exceptions remain; investigate §3/§4 |
+| Salmos | 81.1% | barely moved (was 81.0%) — 546 exceptions; verse-number gluing suspected — §4 |
 
-**12 of 17 ES Bible at ≥ 90%.** Remaining 5 (Mateo, Éxodo, 1 Corintios, Salmos, Isaías) need re-alignment with the Wikisource nav-block fix — expected to improve all of them, potentially pushing Mateo/Éxodo/1 Corintios over 90%.
+**15 of 17 ES Bible at ≥ 90%.** Isaías (87%) and Salmos (81.1%) remain below — the nav-block fix helped Isaías +10.7% but did not clear it; Salmos has a deeper structural issue (546 remaining exceptions after nav-block strip).
 
 ### English Narrative (14 books)
 
