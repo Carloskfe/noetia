@@ -62,6 +62,8 @@ export class PhraseSplitterService {
     if (/artículo enciclopédico/i.test(text)) return true;
     if (/\bmetadatos\b/i.test(text) && text.length < 300) return true;
     if (/otras versiones/i.test(text) && text.length < 300) return true;
+    // Wikisource Bible chapter-navigation block: "Biblia Reina-Valera, Revisión 1909 : Hechos\n1 -\n2 -\n..."
+    if (/^Biblia\s+Reina-Valera[^\n]*Revisión/i.test(text)) return true;
     return false;
   }
 
