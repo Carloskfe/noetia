@@ -265,6 +265,14 @@ describe('PhraseSplitterService', () => {
       expect(phrases.some((p) => p.text.includes('In the beginning'))).toBe(true);
     });
 
+    it('skips OT-edition cross-reference blocks with no single-letter label (↑ John / ↑ Ps.)', () => {
+      const text = '1 In the beginning God created the heaven and the earth.\n\n↑ John 1. 1, 2. Heb. 1. 10.\n\n↑ Ps. 8. 3. & 33. 6. & 89. 11, 12.\n\n2 And the earth was without form, and void.';
+      const phrases = service.split(text);
+      expect(phrases.every((p) => !p.text.startsWith('↑'))).toBe(true);
+      expect(phrases.some((p) => p.text.includes('In the beginning'))).toBe(true);
+      expect(phrases.some((p) => p.text.includes('without form'))).toBe(true);
+    });
+
     it('skips Wikisource KJV editorial annotations and image placeholders', () => {
       const text = 'Anno DOMINI 31.\n\n(Upload an image to replace this placeholder.)\n\n1 And it came to pass in those days.';
       const phrases = service.split(text);

@@ -331,6 +331,14 @@ export class WikisourceFetcherService {
       // Drop the in-text double-vertical-line markers (U+2016) that flag a KJV
       // marginal note; the note span itself is already removed above.
       .replace(/‖/g, ' ')
+      // The KJV Old Testament pages are transcribed from the 1611 facsimile, which
+      // sets medial/initial s as the archaic "long s" (ſ, U+017F) — "ſerpent",
+      // "fleſh", "bleſſed" — plus the long-s ligatures ﬅ (ſt) and ﬆ (st). LibriVox
+      // narrators read these as a normal "s", so fold them to "s" for both reader
+      // display and phrase alignment. (NFKD does not map U+017F → s, so it must be
+      // done explicitly.) NT books use a modern edition and are unaffected.
+      .replace(/ſ/g, 's')
+      .replace(/[ﬅﬆ]/g, 'st')
       // Normalize spacing — preserve paragraph breaks, collapse inline spaces
       .replace(/[ \t]+/g, ' ')
       .replace(/\n[ \t]+/g, '\n')

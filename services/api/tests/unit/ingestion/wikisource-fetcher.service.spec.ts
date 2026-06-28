@@ -145,6 +145,22 @@ describe('WikisourceFetcherService', () => {
       expect(result).not.toContain('‖');
     });
 
+    it('normalizes the archaic long-s (ſ) and long-s ligatures to a modern s', async () => {
+      // KJV Old Testament pages are transcribed from the 1611 facsimile, which sets
+      // medial/initial s as "ſ" (U+017F). The audio reads a normal "s", so the stored
+      // text must fold ſ → s (and the ﬅ/ﬆ ligatures → st) or alignment fails wholesale.
+      const html =
+        '<p>1 Now the ſerpent was more ſubtil than any beaſt of the field, and bleſſed.</p>';
+      mockFetch
+        .mockResolvedValueOnce(LINKS_RESPONSE('Bible (King James)/Genesis', []))
+        .mockResolvedValueOnce(HTML_RESPONSE(html));
+
+      const result = await service.fetch('Bible (King James)/Genesis', 'en');
+
+      expect(result).toContain('Now the serpent was more subtil than any beast of the field, and blessed.');
+      expect(result).not.toContain('ſ');
+    });
+
     it('strips KJV chapter-argument hanging-indent divs (verse-anchor TOC) but keeps poetry', async () => {
       // The chapter "argument" summary is a <div class="wst-hanging-indent"> full
       // of verse-anchor links (href="#1:1") and is never narrated. Poetry uses the
