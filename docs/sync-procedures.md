@@ -211,15 +211,12 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | The Adventures of Tom Sawyer | 64.1% | was 67.6% — regressed -3.5% after lastEndTime re-merge; needs investigation |
 | Jane Eyre | 60.6% | |
 | Anne of Green Gables | 58.3% | +1.4% from lastEndTime fix |
-| Mark | 57.3% | chapter stripping did not help — different root cause |
 | Walden | 55.5% | +1.9% from lastEndTime fix |
 | Pride and Prejudice | 54.7% | +1.4% from lastEndTime fix |
 | The Picture of Dorian Gray | 54.5% | |
-| Luke | 48.4% | |
 | Meditations | 45.0% | likely translation mismatch (Gutenberg #2680 = George Long) |
-| Matthew | 44.7% | |
-| John | 43.6% | |
-| Revelation | 38.6% | |
+
+*(KJV books Matthew, Mark, Luke, John, Revelation moved to the English Bible table below, where they belong.)*
 
 **0 of 14 EN Narrative at ≥ 90%.** EN chapter announcement stripping helped Treasure Island (+15.9%). The `lastEndTime` fix recovered Dracula (+9.1%) but regressed Tom Sawyer (-3.5%) — see troubleshooting for investigation. Most EN Narrative needs §3-8 investigation.
 
@@ -230,20 +227,20 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | Book | Coverage | Notes |
 |------|----------|-------|
 | Acts | 100.0% ✅ | |
+| Revelation | 99.6% ✅ | was 38.6% — digit-token fix 2026-06-27 +61.0% (§2e) |
 | Proverbs | 96.3% ✅ | |
 | Romans | 95.8% ✅ | |
 | 1 Corinthians | 95.4% ✅ | |
 | Hebrews | 94.7% ✅ | |
 | Psalms | 94.3% ✅ | was 89.0% — Wikisource `[ edit ]` + TOC nav-block fix 2026-06-27 +5.3% |
 | James | 93.3% ✅ | |
-| Isaiah | 87.3% | |
-| Mark | 57.3% | |
-| Luke | 48.4% | chapter stripping applied 2026-06-27 — no gain; investigate §6 |
-| Matthew | 44.7% | chapter stripping applied — no gain; investigate §6 |
-| John | 43.6% | chapter stripping applied — no gain; investigate §6 |
-| Revelation | 38.6% | |
+| John | 91.0% ✅ | was 43.6% — digit-token fix 2026-06-27 +47.4% (§2e) |
+| Mark | 90.6% ✅ | was 57.3% — digit-token fix 2026-06-27 +33.3% (§2e) |
+| Luke | 88.8% | was 48.4% — digit-token fix +40.4%; residual = `‖` marginal notes + chronology headers |
+| Matthew | 87.4% | was 44.7% — digit-token fix +42.7%; residual = `‖` marginal notes + chronology headers |
+| Isaiah | 87.3% | §6 edition mismatch |
 
-**7 of 13 EN Bible at ≥ 90%.** The Epistles (Acts, Romans, 1 Cor, Hebrews, James, Proverbs) plus Psalms all pass; the Gospels + Revelation remain very low after chapter stripping — root cause is not announcement noise (stripping is now confirmed clean), likely ASR quality or edition differences.
+**10 of 13 EN Bible at ≥ 90%.** The digit-token alignment fix (§2e) cleared Revelation, John, and Mark off the floor and lifted Matthew/Luke from the mid-40s to ~88% — just shy of the gate. Their residual is unspoken `‖`-marked marginal notes and running chronology headers (real words the digit filter can't catch); a text-level clean would be needed to close the last ~2%. Isaiah (87.3%) is a §6 edition mismatch.
 
 ---
 

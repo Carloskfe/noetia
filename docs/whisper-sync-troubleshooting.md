@@ -205,7 +205,31 @@ The original regex had a `^` anchor so only the first format was caught. Removin
 
 **Result: Psalms 89.0% → 94.3% (+5.3%)** — clears the 90% gate. No VTT change needed, just re-align.
 
-**Did NOT help the Gospels.** The same filters were active for Matthew (44.7%), Mark (57.3%), Luke (48.4%), John (43.6%), Revelation (38.6%) with no gain — their bottleneck is a different, harder problem: embedded marginal verse numbers fused into prose (e.g. `"23 704 Then..."`), which would need text-level preprocessing, not a nav-block filter. Likely ASR-quality or edition divergence too. Run the §11 decision tree against their exception phrases before more pattern work.
+**Did NOT help the Gospels** — but a different fix did. These nav-block filters left Matthew (44.7%), Mark (57.3%), Luke (48.4%), John (43.6%), Revelation (38.6%) untouched because their bottleneck was embedded marginal verse/cross-reference numbers fused into prose (e.g. `"2 4 Abraham begat... and 5 Isaac begat..."`, `"23 704 Then..."`). That turned out to be an alignment-scoring problem, not a text problem — see §2e.
+
+**§2e — Verse/marginal-reference numbers sink KJV alignment scores (English Bible)**
+
+**Symptom:** The KJV Gospels + Revelation aligned at 38–57% despite clean announcement/nav stripping (§2b, §2d). Exception phrases were ordinary verses that clearly ARE read aloud.
+
+**Root cause — the alignment tokenizer, not the text.** The Wikisource KJV edition embeds verse numbers and marginal cross-reference numbers inline:
+```
+2 4 Abraham begat Isaac; and 5 Isaac begat Jacob; and 6 Jacob begat Judas...
+23 704 Then said Mary...
+```
+LibriVox readers speak none of these digits. `normalizeWord()` in `phrase-aligner.ts` kept `[a-z0-9]`, so every number became a token that could only miss. Scoring is `matches / n`, and in Matthew **~20% of all tokens were pure digits** — inflating every verse's denominator and pushing it under `SKIP_THRESHOLD` (0.20).
+
+**Fix:** `tokenize()` now drops pure-digit tokens (`/^\d+$/`). Alignment-only — the stored/displayed `phrase.text` is untouched, so **no re-ingest is needed, just re-align**. A smaller denominator can only raise scores, so already-passing books cannot regress. Mixed alphanumerics (`2nd`) and Roman numerals are preserved.
+
+**Results (2026-06-27, re-align only):**
+| Book | Before | After | Δ |
+|------|--------|-------|---|
+| Revelation | 38.6% | **99.6%** | +61.0 |
+| John | 43.6% | **91.0%** | +47.4 |
+| Mark | 57.3% | **90.6%** | +33.3 |
+| Luke | 48.4% | 88.8% | +40.4 |
+| Matthew | 44.7% | 87.4% | +42.7 |
+
+3 of 5 now pass. **Luke and Matthew remain ~1–2% short** — their residual is unspoken `‖`-marked marginal notes (e.g. `‖ ‖ Or, his name shall be called .`) and running chronology headers (`The Fifth Year before the Common Account called Anno Dom.`). These are real *words*, not numbers, so the tokenizer can't drop them; closing the gap would need a text-level clean that strips `‖ … ` note spans during ingestion. Not pursued yet — both books are already past the practical reading threshold and the free library is not a priority surface (see CLAUDE.md product hierarchy).
 
 ---
 
