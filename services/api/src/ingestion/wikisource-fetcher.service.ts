@@ -304,6 +304,12 @@ export class WikisourceFetcherService {
     // KJV sidenotes: marginal notes ("‖ Some read…") and running chronology
     // headers ("…before the Common Account called Anno Dom.") — never narrated.
     processed = this.removeBalancedTag(processed, 'span', 'class="wst-marginnote"');
+    // KJV inline marginal glosses — the dense "† Heb. expansion.", "Or, creeping.",
+    // "† Gr. Maleleel." translator notes, wrapped in <span class="wst-sidenote
+    // wst-sidenote-right">…</span> (Genesis alone has 146). The narrator skips all
+    // marginalia, so leaving them in caps verse confidence near 30%. Match on the
+    // class prefix (the attribute carries a trailing modifier class).
+    processed = this.removeBalancedTag(processed, 'span', 'class="wst-sidenote');
     // KJV per-chapter argument/TOC summaries — never narrated.
     processed = this.removeArgumentDivs(processed);
 
@@ -339,6 +345,11 @@ export class WikisourceFetcherService {
       // done explicitly.) NT books use a modern edition and are unaffected.
       .replace(/ſ/g, 's')
       .replace(/[ﬅﬆ]/g, 'st')
+      // The inline "†" caret that anchors a KJV sidenote sits just outside the
+      // <span class="wst-sidenote"> (now removed above), so it would otherwise
+      // survive as a stray marker mid-verse ("Let there be a † firmament"). The
+      // dagger is never narrated, so drop any that remain.
+      .replace(/†/g, ' ')
       // Normalize spacing — preserve paragraph breaks, collapse inline spaces
       .replace(/[ \t]+/g, ' ')
       .replace(/\n[ \t]+/g, '\n')

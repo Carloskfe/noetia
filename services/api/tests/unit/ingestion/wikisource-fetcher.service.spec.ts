@@ -145,6 +145,28 @@ describe('WikisourceFetcherService', () => {
       expect(result).not.toContain('‖');
     });
 
+    it('strips KJV wst-sidenote inline glosses and the anchoring † caret', async () => {
+      // Dense inline translator notes ("† Heb. expansion.", "Or, creeping.") are
+      // wrapped in <span class="wst-sidenote wst-sidenote-right"> with a nested inner
+      // span, and anchored by a bare "†" caret sitting just outside the span. None of
+      // it is narrated; leaving it in drags verse alignment confidence to ~30%.
+      const html =
+        '<p>6 And God said, 7 Let there be a †' +
+        '<span class="wst-sidenote wst-sidenote-right"><span class="wst-sidenote-inner">† Heb. <i>expansion.</i></span></span>' +
+        ' firmament in the midst of the waters.</p>';
+      mockFetch
+        .mockResolvedValueOnce(LINKS_RESPONSE('Bible (King James)/Genesis', []))
+        .mockResolvedValueOnce(HTML_RESPONSE(html));
+
+      const result = await service.fetch('Bible (King James)/Genesis', 'en');
+
+      expect(result).toContain('Let there be a');
+      expect(result).toContain('firmament in the midst of the waters.');
+      expect(result).not.toContain('expansion');
+      expect(result).not.toContain('Heb.');
+      expect(result).not.toContain('†');
+    });
+
     it('normalizes the archaic long-s (ſ) and long-s ligatures to a modern s', async () => {
       // KJV Old Testament pages are transcribed from the 1611 facsimile, which sets
       // medial/initial s as "ſ" (U+017F). The audio reads a normal "s", so the stored
