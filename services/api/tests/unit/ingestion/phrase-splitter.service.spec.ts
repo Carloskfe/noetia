@@ -282,5 +282,28 @@ describe('PhraseSplitterService', () => {
       expect(phrases.every((p) => !p.text.includes('Matthew Mark Luke'))).toBe(true);
       expect(phrases.some((p) => p.text.includes('God so loved'))).toBe(true);
     });
+
+    it('skips Wikisource KJV page header/footer nav (cross-edition pointer, chapter strip, layout toggle)', () => {
+      const text =
+        'For other versions of this work, see Matthew (Bible).\n\n' +
+        'Chapters\n1 · 2 · 3 · 4 · 5 · 6 · 7 · 8\n\n' +
+        'Layout 2\n\n' +
+        '1 The book of the generation of Jesus Christ.';
+      const phrases = service.split(text);
+      expect(phrases.every((p) => !p.text.includes('For other versions'))).toBe(true);
+      expect(phrases.every((p) => !/^Chapters/.test(p.text))).toBe(true);
+      expect(phrases.every((p) => !/^Layout \d/.test(p.text))).toBe(true);
+      expect(phrases.some((p) => p.text.includes('book of the generation'))).toBe(true);
+    });
+
+    it('skips Wikisource KJV "image should appear" placeholder notes', () => {
+      const text =
+        'An image should appear at this position in the text.\nIf you are able to provide it, see Wikisource:Image guidelines and Help:Adding images.\n\n' +
+        '1 When the morning was come.';
+      const phrases = service.split(text);
+      expect(phrases.every((p) => !p.text.includes('An image should appear'))).toBe(true);
+      expect(phrases.every((p) => !p.text.includes('Image guidelines'))).toBe(true);
+      expect(phrases.some((p) => p.text.includes('When the morning was come'))).toBe(true);
+    });
   });
 });

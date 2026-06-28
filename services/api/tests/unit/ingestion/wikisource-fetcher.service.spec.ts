@@ -145,6 +145,28 @@ describe('WikisourceFetcherService', () => {
       expect(result).not.toContain('‖');
     });
 
+    it('strips KJV chapter-argument hanging-indent divs (verse-anchor TOC) but keeps poetry', async () => {
+      // The chapter "argument" summary is a <div class="wst-hanging-indent"> full
+      // of verse-anchor links (href="#1:1") and is never narrated. Poetry uses the
+      // same div class but has no verse anchors, so it must survive untouched.
+      const html =
+        '<div class="wst-hanging-indent" style="margin-left:1em"><a href="#1:1">1</a> ' +
+        '<i>The genealogy of Christ from Abraham to Joseph</i>. <a href="#1:18">18</a> ' +
+        '<i>The miraculous conception of Mary</i>.</div>' +
+        '<p>1 The book of the generation of Jesus Christ.</p>' +
+        '<div class="wst-hanging-indent" style="margin-left:1em">The Lord is my shepherd; I shall not want.</div>';
+      mockFetch
+        .mockResolvedValueOnce(LINKS_RESPONSE('Bible (King James)/Matthew', []))
+        .mockResolvedValueOnce(HTML_RESPONSE(html));
+
+      const result = await service.fetch('Bible (King James)/Matthew', 'en');
+
+      expect(result).toContain('The book of the generation of Jesus Christ.');
+      expect(result).toContain('The Lord is my shepherd'); // poetry div kept
+      expect(result).not.toContain('The genealogy of Christ');
+      expect(result).not.toContain('The miraculous conception');
+    });
+
     it('strips HTML tags and decodes entities', async () => {
       mockFetch
         .mockResolvedValueOnce(LINKS_RESPONSE('TestPage', []))

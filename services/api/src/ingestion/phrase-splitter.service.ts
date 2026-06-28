@@ -73,6 +73,13 @@ export class PhraseSplitterService {
     // Wikisource KJV editorial annotations and placeholders
     if (/^Anno DOMINI\b/i.test(text)) return true;
     if (/^\(Upload an image\b/i.test(text)) return true;
+    if (/^An image should appear at this position\b/i.test(text)) return true;
+    if (/If you are able to provide it, see\b/i.test(text)) return true;
+    // Wikisource KJV page header/footer: cross-edition pointer, the per-book
+    // chapter-number nav strip ("Chapters 1 · 2 · 3 · …"), and the layout toggle
+    if (/^For other versions of this work\b/i.test(text)) return true;
+    if (/^Chapters\b/i.test(text) && /\d+\s*·\s*\d+\s*·\s*\d+/.test(text)) return true;
+    if (/^Layout \d+$/i.test(text)) return true;
     // Wikisource KJV Bible table-of-contents navigation block (OT/NT book lists in sequence)
     if (/\bGenesis\b.*\bExodus\b.*\bLeviticus\b/s.test(text)) return true;
     if (/\bMatthew\b.*\bMark\b.*\bLuke\b.*\bJohn\b.*\bActs\b/s.test(text)) return true;

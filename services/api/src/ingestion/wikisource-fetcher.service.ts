@@ -248,6 +248,51 @@ export class WikisourceFetcherService {
     return this.removeBalancedTag(html, 'div', attr);
   }
 
+  /**
+   * Removes the KJV per-chapter "argument" summaries — the table-of-contents
+   * blocks printed under each chapter heading ("1 The genealogy of Christ from
+   * Abraham to Joseph. 18 The miraculous conception of Mary…"). They are never
+   * narrated, so each one becomes an alignment exception (≈40 in Matthew).
+   * They render as <div class="wst-hanging-indent"> whose body holds
+   * verse-anchor links (href="#chapter:verse"). Poetry (Psalms, Proverbs) uses
+   * the same div class but never contains those anchors, so requiring a verse
+   * anchor strips only the arguments and leaves poetic indentation intact.
+   */
+  private removeArgumentDivs(html: string): string {
+    const cls = 'class="wst-hanging-indent"';
+    const verseAnchor = /href="#\d+:\d+"/;
+    let result = html;
+    let from = 0;
+    for (let guard = 0; guard < 5000; guard++) {
+      const clsIdx = result.indexOf(cls, from);
+      if (clsIdx < 0) break;
+      const start = result.lastIndexOf('<div', clsIdx);
+      if (start < 0) break;
+      let depth = 0;
+      let i = start;
+      let end = -1;
+      while (i < result.length) {
+        if (result[i] === '<') {
+          if (result.slice(i, i + 4).toLowerCase() === '<div') depth++;
+          else if (result.slice(i, i + 6).toLowerCase() === '</div>') {
+            depth--;
+            if (depth === 0) { end = i; break; }
+          }
+        }
+        i++;
+      }
+      if (end < 0) break;
+      const blockEnd = end + 6;
+      if (verseAnchor.test(result.slice(start, blockEnd))) {
+        result = result.slice(0, start) + result.slice(blockEnd);
+        from = start;
+      } else {
+        from = blockEnd; // poetry hanging-indent — keep it, scan past
+      }
+    }
+    return result;
+  }
+
   private stripHtml(html: string): string {
     // Strip Wikisource navigation/metadata blocks before extracting text
     let processed = html;
@@ -259,6 +304,8 @@ export class WikisourceFetcherService {
     // KJV sidenotes: marginal notes ("‖ Some read…") and running chronology
     // headers ("…before the Common Account called Anno Dom.") — never narrated.
     processed = this.removeBalancedTag(processed, 'span', 'class="wst-marginnote"');
+    // KJV per-chapter argument/TOC summaries — never narrated.
+    processed = this.removeArgumentDivs(processed);
 
     return processed
       // Remove non-content blocks entirely
