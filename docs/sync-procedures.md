@@ -192,10 +192,10 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | Éxodo | 100.0% ✅ | was 84.3% — Wikisource nav-block fix 2026-06-27 |
 | Mateo | 99.9% ✅ | was 86.0% — Wikisource nav-block fix 2026-06-27 |
 | 1 Corintios | 99.8% ✅ | was 82.5% — Wikisource nav-block fix 2026-06-27 |
-| Isaías | 87.0% | was 76.3% — nav-block fix +10.7% but 180 exceptions remain; §6 edition mismatch — Wikisource ch. 32–66 diverges from LibriVox recording |
+| Isaías | 87.0% | was 76.3% — nav-block fix +10.7%, 180 exceptions remain. "§6 edition mismatch" label **disproven** (see below); true cause still unconfirmed |
 | Salmos | 99.96% ✅ | was 81.1% — §2b Salmos-format nav block ("Salmos de Biblia Reina-Valera, Revisión 1909") fixed 2026-06-27 |
 
-**16 of 17 ES Bible at ≥ 90%.** Isaías (87%) is the only holdout — §6 edition mismatch in Wikisource chapters 32–66 vs. LibriVox recording.
+**16 of 17 ES Bible at ≥ 90%.** Isaías (87%) is the only holdout. Its old "§6 edition mismatch (ch. 32–66)" tag was **never directly evidenced and is now disproven**: the LibriVox reader's source text is BibleGateway `version=RVA` (Reina-Valera Antigua) vs. our Wikisource RV1909 — but the *passing* books Mateo (99.9%) and Salmos (99.96%) were recorded from that **same RVA edition** against the same RV1909 text, so the RVA↔1909 difference cannot be the cause. Real cause unconfirmed — needs a fresh exception-distribution re-test (contiguous chapter range = real divergence; scattered = apparatus/recording).
 
 ### English Narrative (14 books)
 

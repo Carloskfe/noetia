@@ -188,7 +188,7 @@ This entire block arrives as one paragraph and becomes one phrase that never ali
 
 The original regex had a `^` anchor so only the first format was caught. Removing `^` catches both. **Salmos went from 81.1% → 99.96%** after this second fix (2026-06-27).
 
-**Status as of 2026-06-27:** All 16 of 17 ES Bible books at ≥ 90%. Isaías (87%) is the remaining holdout — §6 edition mismatch in Wikisource chapters 32–66, not a nav-block issue.
+**Status as of 2026-06-28:** 16 of 17 ES Bible books at ≥ 90%. Isaías (87%) is the remaining holdout. Its prior "§6 edition mismatch (ch. 32–66)" tag is **disproven** — see §6: the audio's RVA source vs. our RV1909 text is the *same* version pairing that Mateo and Salmos pass on at ~99.9%. True cause unconfirmed; re-test the exception distribution.
 
 **Secondary noise — `"La Biblia\n[BookName]"` headers:** Each chapter page also includes a low-level page-title header "La Biblia / Juan" (rendered as `La Biblia\nJuan`). These DO align (at ~33% confidence) so they don't cause exceptions — but they inflate the total phrase count and drag down avg confidence. Not worth fixing until books are otherwise at 90%+.
 
@@ -257,7 +257,7 @@ LibriVox readers speak none of these digits. `normalizeWord()` in `phrase-aligne
 
 All 13 EN Bible books now pass.
 
-**Isaiah was a mislabel, not a §6 case.** The EN Bible status table had carried Isaiah as a "§6 edition mismatch" — but that label was *inherited/assumed*, never backed by the direct evidence §6 demands (no `url_text_source` translator check, no contiguous-range diagnosis). It carried the same KJV per-chapter argument apparatus as the Gospels; re-ingesting with §2f took it straight to 99.9% (1327/1328 aligned, 96% confidence, 1 stray "Old Testament" nav crumb). **Lesson reinforced: do not trust a "§6 edition mismatch" tag that lacks the direct evidence §6 requires — re-test it against the latest text-clean fixes before accepting it.** (The *Spanish* Isaías §6 case is genuine and separate — directly-evidenced ch. 32–66 divergence — and is unaffected: §2f strips KJV-specific markup that the Reina-Valera 1909 source doesn't have.)
+**Isaiah was a mislabel, not a §6 case.** The EN Bible status table had carried Isaiah as a "§6 edition mismatch" — but that label was *inherited/assumed*, never backed by the direct evidence §6 demands (no `url_text_source` translator check, no contiguous-range diagnosis). It carried the same KJV per-chapter argument apparatus as the Gospels; re-ingesting with §2f took it straight to 99.9% (1327/1328 aligned, 96% confidence, 1 stray "Old Testament" nav crumb). **Lesson reinforced: do not trust a "§6 edition mismatch" tag that lacks the direct evidence §6 requires — re-test it against the latest text-clean fixes before accepting it.** (The *Spanish* Isaías is a separate book — §2f's KJV-specific markup strip does not apply to its Reina-Valera 1909 source — and its own "§6" tag turned out to be a mislabel too; see §6 below.)
 
 **Lesson:** when real, clearly-narrated verses show up as exceptions or low-confidence *in runs*, suspect cursor drift seeded by a nearby block of un-narrated text — not the verses themselves. Strip the apparatus at the chapter boundary and the tail clears with it.
 
@@ -514,6 +514,18 @@ print editions of the same translation, an abridged/revised edition, or
 ASR transcription quality specific to this LibriVox reader. Don't assume
 "same translator named" settles the question — it rules out the easy case
 but the book can still be stuck for an unexplained reason.
+
+**Disproven "§6" labels — were never edition mismatches:**
+- **Isaiah (EN KJV)**: tagged "§6 edition mismatch", actually un-narrated
+  chapter-argument apparatus. Fixed by §2f → 99.9% (2026-06-28).
+- **Isaías (ES RV1909)**: tagged "§6 edition mismatch, ch. 32–66". Direct
+  evidence (2026-06-28) refutes it — the LibriVox reader's source is
+  BibleGateway `version=RVA` (Reina-Valera Antigua), but Mateo (99.9%) and
+  Salmos (99.96%) were recorded from that **same RVA edition** against the
+  same RV1909 Wikisource text and pass cleanly. So RVA↔1909 is not the
+  cause; Isaías's 87% has another, still-unconfirmed cause (re-test the
+  exception distribution — contiguous range = real divergence, scattered =
+  apparatus/recording).
 
 **Status as of 2026-06-24:**
 - **Confirmed via direct evidence** (mismatched translator credit): Viaje
