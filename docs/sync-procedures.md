@@ -227,6 +227,7 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | Book | Coverage | Notes |
 |------|----------|-------|
 | Acts | 100.0% ✅ | |
+| Isaiah | 99.9% ✅ | was 87.3% — chapter-argument + nav strip 2026-06-28 +12.6% (§2f) |
 | Luke | 99.7% ✅ | was 88.8% — chapter-argument + nav strip 2026-06-28 +10.9% (§2f) |
 | Matthew | 99.6% ✅ | was 87.4% — chapter-argument + nav strip 2026-06-28 +12.2% (§2f) |
 | Revelation | 99.6% ✅ | was 38.6% — digit-token fix 2026-06-27 +61.0% (§2e) |
@@ -238,9 +239,8 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | James | 93.3% ✅ | |
 | John | 91.0% ✅ | was 43.6% — digit-token fix 2026-06-27 +47.4% (§2e) |
 | Mark | 90.6% ✅ | was 57.3% — digit-token fix 2026-06-27 +33.3% (§2e) |
-| Isaiah | 87.3% | §6 edition mismatch |
 
-**12 of 13 EN Bible at ≥ 90%.** The digit-token fix (§2e) cleared Revelation, John, and Mark and lifted Matthew/Luke from the mid-40s to ~88%; the chapter-argument + nav strip (§2f) then closed the gap on those two — removing the un-narrated per-chapter "argument" summaries also fixed a cascading cursor drift, taking both to ~99.7%. Isaiah (87.3%) is the only remaining holdout — a §6 edition mismatch.
+**13 of 13 EN Bible at ≥ 90% — all pass.** The digit-token fix (§2e) cleared Revelation, John, and Mark; the chapter-argument + nav strip (§2f) then closed Matthew, Luke, **and Isaiah** — all three carried the same un-narrated per-chapter "argument" summaries. Isaiah's prior "§6 edition mismatch" label was inherited/assumed; re-ingesting with §2f took it to 99.9% (1327/1328 aligned, 96% confidence), so it was apparatus all along, not a real edition divergence. Note: the Spanish *Isaías* (ES Bible, 87%) is a **separate** book with a genuine, directly-evidenced §6 mismatch in ch. 32–66 — KJV-specific markup fixes do not apply to it.
 
 ---
 

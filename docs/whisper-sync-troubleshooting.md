@@ -253,8 +253,11 @@ LibriVox readers speak none of these digits. `normalizeWord()` in `phrase-aligne
 |------|--------------|-------|---|
 | Matthew | 87.4% | **99.6%** | +12.2 |
 | Luke | 88.8% | **99.7%** | +10.9 |
+| Isaiah | 87.3% | **99.9%** | +12.6 |
 
-All 5 KJV Gospels/Revelation now pass; 12 of 13 EN Bible books are ≥ 90% (only Isaiah, a §6 edition mismatch, remains).
+All 13 EN Bible books now pass.
+
+**Isaiah was a mislabel, not a §6 case.** The EN Bible status table had carried Isaiah as a "§6 edition mismatch" — but that label was *inherited/assumed*, never backed by the direct evidence §6 demands (no `url_text_source` translator check, no contiguous-range diagnosis). It carried the same KJV per-chapter argument apparatus as the Gospels; re-ingesting with §2f took it straight to 99.9% (1327/1328 aligned, 96% confidence, 1 stray "Old Testament" nav crumb). **Lesson reinforced: do not trust a "§6 edition mismatch" tag that lacks the direct evidence §6 requires — re-test it against the latest text-clean fixes before accepting it.** (The *Spanish* Isaías §6 case is genuine and separate — directly-evidenced ch. 32–66 divergence — and is unaffected: §2f strips KJV-specific markup that the Reina-Valera 1909 source doesn't have.)
 
 **Lesson:** when real, clearly-narrated verses show up as exceptions or low-confidence *in runs*, suspect cursor drift seeded by a nearby block of un-narrated text — not the verses themselves. Strip the apparatus at the chapter boundary and the tail clears with it.
 
