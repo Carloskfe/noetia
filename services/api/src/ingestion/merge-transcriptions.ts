@@ -115,7 +115,9 @@ export function lastEndTime(cues: Cue[]): number {
 //      ANNOUNCEMENT_TRAILING, READER_CREDIT*)
 
 const ANNOUNCEMENT_WHOLE_CUE: RegExp[] = [
-  /\blibrivox\b/i,
+  // Whisper mis-hears "LibriVox" as "LIBRAVOX" / "Libra Vox" / "Libre Vox" in some
+  // KJV recordings, so tolerate the a/e vowel swap and an optional space.
+  /\blibr[aei]\s?vox\b/i,
   /\bamara\.org\b/i,
   /^subt[ií]tulos realizados por/i,
   /^fin (del|de la)\s+(\S+\s+){0,3}(cap[ií]tulo|canto|parte|libro|volumen|secci[oó]n)\b/i,
@@ -172,6 +174,13 @@ const ANNOUNCEMENT_WHOLE_CUE: RegExp[] = [
   /\bby [A-Z][a-z][\w ]+[.,]\s*chapter\s+\S+\b/i,
   // "John chapter 11." / "John chapter 12" — Bible book name + chapter stub
   /^(?:genesis|exodus|psalms?|proverbs?|isaiah|matthew|mark|luke|john|acts|revelation|romans|corinthians|galatians|ephesians|philippians|colossians|thessalonians|timothy|hebrews|james)\s+chapter\s+\d+\b/i,
+  // Standalone testament-division intro cue — "The Old Testament." / "The New Testament."
+  /^the (old|new) testament\.?\s*$/i,
+  // Bible-book track outros — "End of Genesis 37-41", "End of Genesis chapters 28
+  // through 31.", "End of the Book of Exodus." The book-name anchor is essential:
+  // it must NOT match real verse text that merely contains "end of" mid-sentence
+  // ("when Jacob had made an end of commanding", "the end of all flesh").
+  /^end of (?:the )?(?:book of )?(?:genesis|exodus|leviticus|numbers|deuteronomy|psalms?|proverbs?|isaiah|matthew|mark|luke|john|acts|revelation|romans|corinthians|galatians|ephesians|philippians|colossians|thessalonians|timothy|hebrews|james)\b/i,
 ];
 
 const ANNOUNCEMENT_TRAILING =

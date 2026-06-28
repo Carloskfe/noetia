@@ -159,6 +159,29 @@ describe('stripAnnouncement', () => {
     expect(stripAnnouncement(cue('Fin de la sección 22. Fin de Pepita Jiménez. De Juan Valera.'))).toBeNull();
   });
 
+  it('drops a LibriVox notice even when Whisper mis-hears it as "LIBRAVOX"', () => {
+    expect(stripAnnouncement(cue('THIS IS A LIBRAVOX RECORDING'))).toBeNull();
+    expect(stripAnnouncement(cue('FOR MORE INFORMATION OR TO VOLUNTEER PLEASE VISIT LIBRAVOX DOT ORG'))).toBeNull();
+  });
+
+  it('drops a standalone testament-division intro cue', () => {
+    expect(stripAnnouncement(cue('The Old Testament.'))).toBeNull();
+    expect(stripAnnouncement(cue('The New Testament.'))).toBeNull();
+  });
+
+  it('drops a Bible-book track outro ("End of Genesis 37-41", "End of Genesis chapters 28 through 31.")', () => {
+    expect(stripAnnouncement(cue('End of Genesis 37-41'))).toBeNull();
+    expect(stripAnnouncement(cue('End of Genesis chapters 28 through 31.'))).toBeNull();
+    expect(stripAnnouncement(cue('End of the Book of Exodus.'))).toBeNull();
+  });
+
+  it('keeps verse text that merely contains "end of" mid-sentence (not a book-anchored outro)', () => {
+    const v1 = cue('And when Jacob had made an end of commanding his sons.');
+    expect(stripAnnouncement(v1)).toEqual(v1);
+    const v2 = cue('And God said unto Noah, The end of all flesh is come before me.');
+    expect(stripAnnouncement(v2)).toEqual(v2);
+  });
+
   it('strips a trailing "Fin de la sección N" with no further text', () => {
     const result = stripAnnouncement(cue('sabré resistir y no pecar, Dios me protege. Fin de la sección 12'));
     expect(result).not.toBeNull();
