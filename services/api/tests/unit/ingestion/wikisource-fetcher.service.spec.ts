@@ -305,7 +305,12 @@ describe('WikisourceFetcherService', () => {
       await service.fetch(TITLE);
 
       const expected = ['IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-      const actual = fetchOrder.map((url) => decodeURIComponent(url).split('/').pop()?.split('&')[0]);
+      // fetch() also pulls the bare title page once to compare its length
+      // against the concatenated subpages (incidental-subpage guard); that URL
+      // has no encoded slash, so keep only the subpage fetches for the order check.
+      const actual = fetchOrder
+        .filter((url) => url.includes('%2F'))
+        .map((url) => decodeURIComponent(url).split('/').pop()?.split('&')[0]);
       expect(actual).toEqual(expected);
     }, 10000);
 
@@ -327,7 +332,12 @@ describe('WikisourceFetcherService', () => {
       await service.fetch(TITLE);
 
       const expected = ['Capítulo IV', 'Capítulo V', 'Capítulo VI', 'Capítulo VII', 'Capítulo VIII', 'Capítulo IX', 'Capítulo X'];
-      const actual = fetchOrder.map((url) => decodeURIComponent(url).split('/').pop()?.split('&')[0]);
+      // fetch() also pulls the bare title page once to compare its length
+      // against the concatenated subpages (incidental-subpage guard); that URL
+      // has no encoded slash, so keep only the subpage fetches for the order check.
+      const actual = fetchOrder
+        .filter((url) => url.includes('%2F'))
+        .map((url) => decodeURIComponent(url).split('/').pop()?.split('&')[0]);
       expect(actual).toEqual(expected);
     }, 10000);
 
@@ -349,7 +359,12 @@ describe('WikisourceFetcherService', () => {
       await service.fetch(TITLE);
 
       const expected = ['Tratado primero', 'Tratado segundo', 'Tratado tercero', 'Tratado cuarto', 'Tratado quinto', 'Tratado sexto', 'Tratado séptimo'];
-      const actual = fetchOrder.map((url) => decodeURIComponent(url).split('/').pop()?.split('&')[0]);
+      // fetch() also pulls the bare title page once to compare its length
+      // against the concatenated subpages (incidental-subpage guard); that URL
+      // has no encoded slash, so keep only the subpage fetches for the order check.
+      const actual = fetchOrder
+        .filter((url) => url.includes('%2F'))
+        .map((url) => decodeURIComponent(url).split('/').pop()?.split('&')[0]);
       expect(actual).toEqual(expected);
     }, 10000);
 
@@ -372,7 +387,12 @@ describe('WikisourceFetcherService', () => {
       await service.fetch(TITLE);
 
       const expected = ['Prefacio', 'Capítulo I', 'Capítulo II', 'Capítulo III'];
-      const actual = fetchOrder.map((url) => decodeURIComponent(url).split('/').pop()?.split('&')[0]);
+      // fetch() also pulls the bare title page once to compare its length
+      // against the concatenated subpages (incidental-subpage guard); that URL
+      // has no encoded slash, so keep only the subpage fetches for the order check.
+      const actual = fetchOrder
+        .filter((url) => url.includes('%2F'))
+        .map((url) => decodeURIComponent(url).split('/').pop()?.split('&')[0]);
       expect(actual).toEqual(expected);
     }, 10000);
 
@@ -390,7 +410,12 @@ describe('WikisourceFetcherService', () => {
       await service.fetch(TITLE);
 
       const expected = ['Capítulo I', 'Capítulo II', 'Índice'];
-      const actual = fetchOrder.map((url) => decodeURIComponent(url).split('/').pop()?.split('&')[0]);
+      // fetch() also pulls the bare title page once to compare its length
+      // against the concatenated subpages (incidental-subpage guard); that URL
+      // has no encoded slash, so keep only the subpage fetches for the order check.
+      const actual = fetchOrder
+        .filter((url) => url.includes('%2F'))
+        .map((url) => decodeURIComponent(url).split('/').pop()?.split('&')[0]);
       expect(actual).toEqual(expected);
     }, 10000);
 
@@ -430,6 +455,32 @@ describe('WikisourceFetcherService', () => {
       expect(fetchOrder[0]).toContain('1');
       expect(fetchOrder[2]).toContain('10');
     });
+
+    // Regression: "Bible (King James)/Genesis" is a single page holding all 50
+    // chapters, but it links to only 14 scattered "/Chapter N" subpages. The old
+    // code followed those links and returned a truncated, out-of-order third of
+    // the book (text stopped at chapter 31, alignment confidence ~30%). fetch()
+    // must prefer the longer single page when the subpage set is incidental.
+    it('prefers the full single page over an incidental partial-subpage set', async () => {
+      const BOOK = 'Bible (King James)/Genesis';
+      const fullBook =
+        '<p>' + 'In the beginning God created the heaven and the earth. '.repeat(40) + '</p>';
+      const strayChapter = '<p>' + 'And Laban rose up early in the morning. '.repeat(5) + '</p>';
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.includes('prop=links')) {
+          return LINKS_RESPONSE(BOOK, [`${BOOK}/Chapter 1`, `${BOOK}/Chapter 13`]);
+        }
+        // Subpage URLs carry an encoded slash; the bare title page does not.
+        if (url.includes('%2FChapter')) return HTML_RESPONSE(strayChapter);
+        return HTML_RESPONSE(fullBook);
+      });
+
+      const result = await service.fetch(BOOK);
+
+      expect(result).toContain('In the beginning God created');
+      // The full single page is far longer than the two stray chapters combined.
+      expect(result.length).toBeGreaterThan(strayChapter.length * 3);
+    }, 10000);
 
     it('skips subpages with near-empty text without failing', async () => {
       mockFetch
@@ -478,8 +529,14 @@ describe('WikisourceFetcherService', () => {
 
       await service.fetch(TITLE);
 
-      // Only one subpage fetch should have happened (the /I one)
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      // The cross-book link ("Otro Libro/I") is never fetched; only the direct
+      // "/I" subpage is. (The root title is also fetched once for the
+      // incidental-subpage length comparison, so the count is 3: links + /I +
+      // root, but never "Otro Libro".)
+      const fetchedUrls = mockFetch.mock.calls.map((c) => c[0] as string);
+      expect(fetchedUrls.some((u) => u.includes('Otro%20Libro'))).toBe(false);
+      expect(fetchedUrls.filter((u) => u.includes('%2FI&')).length).toBe(1);
+      expect(mockFetch).toHaveBeenCalledTimes(3);
     });
   });
 

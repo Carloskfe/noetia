@@ -147,8 +147,23 @@ export class WikisourceFetcherService {
         // skip chapters that can't be fetched
       }
     }
+    const concatenated = parts.join('\n\n');
 
-    return parts.length > 0 ? parts.join('\n\n') : this.fetchPageHtml(pageTitle, lang);
+    // Some pages expose incidental wikilinks to a few of their own subpages
+    // without being a real chapter index. "Bible (King James)/Genesis" is a
+    // single page holding all 50 chapters inline, yet it links to only 14
+    // scattered "/Chapter N" subpages (1-9, 13, 15, 25, 29, 31); following
+    // just those yields a truncated, out-of-order third of the book. A genuine
+    // index page holds little prose of its own — the chapters live on the
+    // subpages, so the concatenated subpages dwarf it — whereas an
+    // incidental-link page is the reverse. Fetch the single page too and keep
+    // whichever yields more text. (A failed/empty single-page fetch folds to
+    // '' so the subpage text still wins.)
+    await this.sleep(400);
+    const singlePage = await this.fetchPageHtml(pageTitle, lang).catch(() => '');
+
+    if (concatenated.trim().length === 0) return singlePage;
+    return singlePage.length > concatenated.length ? singlePage : concatenated;
   }
 
   private readonly headers = {
