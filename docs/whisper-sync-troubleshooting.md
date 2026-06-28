@@ -229,7 +229,34 @@ LibriVox readers speak none of these digits. `normalizeWord()` in `phrase-aligne
 | Luke | 48.4% | 88.8% | +40.4 |
 | Matthew | 44.7% | 87.4% | +42.7 |
 
-3 of 5 now pass. **Luke and Matthew remain ~1–2% short** — their residual is unspoken `‖`-marked marginal notes (e.g. `‖ ‖ Or, his name shall be called .`) and running chronology headers (`The Fifth Year before the Common Account called Anno Dom.`). These are real *words*, not numbers, so the tokenizer can't drop them; closing the gap would need a text-level clean that strips `‖ … ` note spans during ingestion. Not pursued yet — both books are already past the practical reading threshold and the free library is not a priority surface (see CLAUDE.md product hierarchy).
+3 of 5 now pass. **Luke and Matthew remained ~1–2% short** after this fix — closed by the text-level clean in §2f below.
+
+---
+
+**§2f — Un-narrated KJV apparatus: marginal notes, chapter "arguments", page nav (English Bible)**
+
+**Symptom:** After §2e, Matthew/Luke sat at 87–89%. The alignment summary showed exceptions dominated not by verse text but by un-narrated *apparatus*, plus an unexpectedly high low-confidence count (Matthew: 139 exceptions, 772 low-confidence at 46% avg).
+
+**Root cause — non-narrated text the tokenizer can't help with, in three forms:**
+1. **Marginal notes** — `<span class="wst-marginnote">` holding `‖ Some read, …` glosses and running chronology headers (`…before the Common Account called Anno Dom.`). Real *words*, so the §2e digit filter can't touch them.
+2. **Per-chapter "argument" summaries** — a `<div class="wst-hanging-indent">` TOC under each chapter heading (`1 The genealogy of Christ from Abraham to Joseph. 18 The miraculous conception of Mary…`). ~40 in Matthew; never read aloud.
+3. **Page nav** — `For other versions of this work…`, the `Chapters 1 · 2 · 3 · …` strip, `Layout 2`, and `An image should appear at this position…` placeholders.
+
+**The multiplier:** each chapter argument is a long un-narrated block sitting at a chapter boundary. Beyond being a guaranteed exception itself, it **drifts the greedy aligner's cursor**, which is what produced the long tail of low-confidence and "real verse" exceptions in later chapters. Removing the arguments fixed the drift too — the gain was far larger than the phrase count removed would predict.
+
+**Fix (ingestion-level → requires re-ingest + re-align):**
+- `wikisource-fetcher.ts`: `removeBalancedTag()` (generalised from `removeDiv`) strips `<span class="wst-marginnote">`; `removeArgumentDivs()` strips `<div class="wst-hanging-indent">` **only when it contains a verse anchor** (`href="#ch:verse"`) — poetry (Psalms, Proverbs) reuses the class but has no such anchors, so it is preserved. Stray in-text `‖` (U+2016) markers are also dropped.
+- `phrase-splitter.ts`: `isNavigationNoise()` extended for the nav/image strings above.
+
+**Results (2026-06-28, re-ingest + re-align):**
+| Book | Before (§2e) | After | Δ |
+|------|--------------|-------|---|
+| Matthew | 87.4% | **99.6%** | +12.2 |
+| Luke | 88.8% | **99.7%** | +10.9 |
+
+All 5 KJV Gospels/Revelation now pass; 12 of 13 EN Bible books are ≥ 90% (only Isaiah, a §6 edition mismatch, remains).
+
+**Lesson:** when real, clearly-narrated verses show up as exceptions or low-confidence *in runs*, suspect cursor drift seeded by a nearby block of un-narrated text — not the verses themselves. Strip the apparatus at the chapter boundary and the tail clears with it.
 
 ---
 

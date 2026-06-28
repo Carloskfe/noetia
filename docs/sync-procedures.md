@@ -227,6 +227,8 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | Book | Coverage | Notes |
 |------|----------|-------|
 | Acts | 100.0% ✅ | |
+| Luke | 99.7% ✅ | was 88.8% — chapter-argument + nav strip 2026-06-28 +10.9% (§2f) |
+| Matthew | 99.6% ✅ | was 87.4% — chapter-argument + nav strip 2026-06-28 +12.2% (§2f) |
 | Revelation | 99.6% ✅ | was 38.6% — digit-token fix 2026-06-27 +61.0% (§2e) |
 | Proverbs | 96.3% ✅ | |
 | Romans | 95.8% ✅ | |
@@ -236,11 +238,9 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | James | 93.3% ✅ | |
 | John | 91.0% ✅ | was 43.6% — digit-token fix 2026-06-27 +47.4% (§2e) |
 | Mark | 90.6% ✅ | was 57.3% — digit-token fix 2026-06-27 +33.3% (§2e) |
-| Luke | 88.8% | was 48.4% — digit-token fix +40.4%; residual = `‖` marginal notes + chronology headers |
-| Matthew | 87.4% | was 44.7% — digit-token fix +42.7%; residual = `‖` marginal notes + chronology headers |
 | Isaiah | 87.3% | §6 edition mismatch |
 
-**10 of 13 EN Bible at ≥ 90%.** The digit-token alignment fix (§2e) cleared Revelation, John, and Mark off the floor and lifted Matthew/Luke from the mid-40s to ~88% — just shy of the gate. Their residual is unspoken `‖`-marked marginal notes and running chronology headers (real words the digit filter can't catch); a text-level clean would be needed to close the last ~2%. Isaiah (87.3%) is a §6 edition mismatch.
+**12 of 13 EN Bible at ≥ 90%.** The digit-token fix (§2e) cleared Revelation, John, and Mark and lifted Matthew/Luke from the mid-40s to ~88%; the chapter-argument + nav strip (§2f) then closed the gap on those two — removing the un-narrated per-chapter "argument" summaries also fixed a cascading cursor drift, taking both to ~99.7%. Isaiah (87.3%) is the only remaining holdout — a §6 edition mismatch.
 
 ---
 
