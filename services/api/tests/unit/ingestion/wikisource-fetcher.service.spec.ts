@@ -121,6 +121,30 @@ describe('WikisourceFetcherService', () => {
       expect(result).not.toContain('La isla del tesoro');
     });
 
+    it('strips KJV wst-marginnote spans (marginal notes + chronology headers) and stray ‖ markers', async () => {
+      // Both the "‖ Some read…" marginal notes and the running chronology headers
+      // are wrapped in a <span class="wst-marginnote"> with a nested inner span;
+      // neither is narrated, so both must be removed (balanced, handling nesting).
+      const html =
+        '<p>11 And ‖<span class="wst-marginnote" style="float:right">' +
+        '<span style="font-size:smaller">‖ Some read, Josias begat Jakim.</span></span>' +
+        ' Josias begat Jechonias and his brethren.</p>' +
+        '<p><span class="wst-marginnote" style="float:right">' +
+        '<span>The Fifth Year before the Common Account called Anno Dom.</span></span>' +
+        '12 Now the birth of Jesus Christ was on this wise.</p>';
+      mockFetch
+        .mockResolvedValueOnce(LINKS_RESPONSE('Bible (King James)/Matthew', []))
+        .mockResolvedValueOnce(HTML_RESPONSE(html));
+
+      const result = await service.fetch('Bible (King James)/Matthew', 'en');
+
+      expect(result).toContain('Josias begat Jechonias and his brethren.');
+      expect(result).toContain('Now the birth of Jesus Christ was on this wise.');
+      expect(result).not.toContain('Some read');
+      expect(result).not.toContain('before the Common Account');
+      expect(result).not.toContain('‖');
+    });
+
     it('strips HTML tags and decodes entities', async () => {
       mockFetch
         .mockResolvedValueOnce(LINKS_RESPONSE('TestPage', []))

@@ -207,25 +207,31 @@ export class WikisourceFetcherService {
   }
 
   /**
-   * Removes a balanced <div> block that contains the given attribute string.
-   * Used to strip Wikisource navigation templates (headertemplate, ws-data, etc.)
-   * that are present in rendered HTML but are not part of the book text.
+   * Removes a balanced <tag>…</tag> block that contains the given attribute
+   * string, handling nested tags of the same name. Used to strip Wikisource
+   * elements that are present in rendered HTML but are not part of the book
+   * text: navigation templates (<div id="headertemplate">, ws-data, …) and
+   * sidenote spans (<span class="wst-marginnote">, which wraps both the
+   * "‖ Some read…" marginal notes and the running "…before the Common Account
+   * called Anno Dom." chronology headers in the KJV edition).
    */
-  private removeDiv(html: string, attr: string): string {
+  private removeBalancedTag(html: string, tag: string, attr: string): string {
+    const open = `<${tag}`;
+    const close = `</${tag}>`;
     let result = html;
-    // Repeat until no more matching blocks (handles duplicates)
-    for (let pass = 0; pass < 10; pass++) {
+    // Loop until no more matching blocks remain (a chapter can hold 100+).
+    for (let guard = 0; guard < 5000; guard++) {
       const attrIdx = result.indexOf(attr);
       if (attrIdx < 0) break;
-      const divStart = result.lastIndexOf('<div', attrIdx);
-      if (divStart < 0) break;
+      const start = result.lastIndexOf(open, attrIdx);
+      if (start < 0) break;
       let depth = 0;
-      let i = divStart;
+      let i = start;
       let found = -1;
       while (i < result.length) {
         if (result[i] === '<') {
-          if (result.slice(i, i + 4).toLowerCase() === '<div') depth++;
-          else if (result.slice(i, i + 6).toLowerCase() === '</div>') {
+          if (result.slice(i, i + open.length).toLowerCase() === open) depth++;
+          else if (result.slice(i, i + close.length).toLowerCase() === close) {
             depth--;
             if (depth === 0) { found = i; break; }
           }
@@ -233,9 +239,13 @@ export class WikisourceFetcherService {
         i++;
       }
       if (found < 0) break;
-      result = result.slice(0, divStart) + result.slice(found + 6);
+      result = result.slice(0, start) + result.slice(found + close.length);
     }
     return result;
+  }
+
+  private removeDiv(html: string, attr: string): string {
+    return this.removeBalancedTag(html, 'div', attr);
   }
 
   private stripHtml(html: string): string {
@@ -246,6 +256,9 @@ export class WikisourceFetcherService {
     processed = this.removeDiv(processed, 'id="ws-data"');
     processed = this.removeDiv(processed, 'class="ws-noexport"');
     processed = this.removeDiv(processed, 'class="notes"');
+    // KJV sidenotes: marginal notes ("‖ Some read…") and running chronology
+    // headers ("…before the Common Account called Anno Dom.") — never narrated.
+    processed = this.removeBalancedTag(processed, 'span', 'class="wst-marginnote"');
 
     return processed
       // Remove non-content blocks entirely
@@ -268,6 +281,9 @@ export class WikisourceFetcherService {
       .replace(/&#32;/g, ' ')
       .replace(/&nbsp;/g, ' ')
       .replace(/&#\d+;/g, ' ')
+      // Drop the in-text double-vertical-line markers (U+2016) that flag a KJV
+      // marginal note; the note span itself is already removed above.
+      .replace(/‖/g, ' ')
       // Normalize spacing — preserve paragraph breaks, collapse inline spaces
       .replace(/[ \t]+/g, ' ')
       .replace(/\n[ \t]+/g, '\n')
