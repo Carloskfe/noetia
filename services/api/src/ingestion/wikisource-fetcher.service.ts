@@ -337,6 +337,14 @@ export class WikisourceFetcherService {
       // Paragraph endings become double newlines
       .replace(/<\/p>/gi, '\n\n')
       .replace(/<br\s*\/?>/gi, '\n')
+      // Unwrap KJV small-caps divine names BEFORE the generic tag strip. The 1611
+      // edition sets "LORD"/"GOD" as a full cap + small-cap remainder:
+      // `L<span class="smallcaps" style="font-size:75%">ORD</span>`. The generic
+      // `<[^>]+>` → ' ' strip below would turn that into "L ORD" (two tokens), so
+      // every one of Genesis's ~165 "LORD"s splits and misses the audio's single
+      // "Lord" — sinking verse confidence across the whole Old Testament. Unwrap the
+      // span (keep its content, add no space) so the letters rejoin into one word.
+      .replace(/<span class="smallcaps"[^>]*>([\s\S]*?)<\/span>/gi, '$1')
       // Strip remaining tags
       .replace(/<[^>]+>/g, ' ')
       // Decode entities

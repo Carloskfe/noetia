@@ -183,6 +183,26 @@ describe('WikisourceFetcherService', () => {
       expect(result).not.toContain('ſ');
     });
 
+    it('rejoins KJV small-caps divine names (L<span>ORD</span> → LORD) into one word', async () => {
+      // The 1611 edition sets "LORD"/"GOD" as a full cap + small-cap remainder:
+      // `L<span class="smallcaps" style="font-size:75%">ORD</span>`. The generic tag
+      // strip would insert a space → "L ORD", splitting it into two tokens that both
+      // miss the audio's single "Lord" and crater verse confidence across the whole OT.
+      const html =
+        '<p>4 These are the generations of the heavens when they were created, in the day ' +
+        'that the L<span class="smallcaps" style="font-size:75%">ORD</span> ' +
+        'G<span class="smallcaps" style="font-size:75%">OD</span> made the earth.</p>';
+      mockFetch
+        .mockResolvedValueOnce(LINKS_RESPONSE('Bible (King James)/Genesis', []))
+        .mockResolvedValueOnce(HTML_RESPONSE(html));
+
+      const result = await service.fetch('Bible (King James)/Genesis', 'en');
+
+      expect(result).toContain('the LORD GOD made the earth.');
+      expect(result).not.toContain('L ORD');
+      expect(result).not.toContain('G OD');
+    });
+
     it('strips KJV chapter-argument hanging-indent divs (verse-anchor TOC) but keeps poetry', async () => {
       // The chapter "argument" summary is a <div class="wst-hanging-indent"> full
       // of verse-anchor links (href="#1:1") and is never narrated. Poetry uses the
