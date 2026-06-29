@@ -271,6 +271,8 @@ Genesis was the last of the 4 Gap A books (Genesis/Exodus/Ephesians/Philippians)
 
 **Result:** Genesis 96.3% → **98.8%** coverage, avg confidence **67% → 95%**, exceptions 49 → 12, low-confidence 651 → 34. The residual 12 exceptions / 34 low are all genuinely un-narrated apparatus (chapter "argument" summaries `CHA P. I. 1 The creation…`, the calendar/`Anno DOMINI` front matter, a TeX brace-matrix crumb) — not verse text.
 
+**Confirmed on a second book — ES Isaías (2026-06-29).** Isaías had been stuck at 87% and mislabelled a "§6 edition mismatch (ch. 32–66)". Re-aligning it with the EMA aligner — no text change, no re-ingest — took it straight to **99.2%** (87% → 99.2%), with scattered (not contiguous) exceptions confirming it was never an edition divergence. This is the proof the fix generalizes beyond Genesis: any long book whose shortfall is drift (not genuine missing/divergent text) recovers from this change alone. **Re-test old "stuck" long books against the new aligner before attempting any text-level fix.**
+
 **Lesson:** confidence (avgConfidence) and coverage (aligned/total) are *separate* signals. A book can clear the 90% coverage gate while most of its aligned phrases are weak matches landing in roughly-right-but-not-exact windows. When low-confidence clusters at the book's *ends* rather than scattering, the cause is positioning drift, not text noise — fixable in the aligner, not the text. The EMA drift correction is now the default for every long Whisper-synced book.
 
 ---
@@ -531,13 +533,19 @@ but the book can still be stuck for an unexplained reason.
 - **Isaiah (EN KJV)**: tagged "§6 edition mismatch", actually un-narrated
   chapter-argument apparatus. Fixed by §2f → 99.9% (2026-06-28).
 - **Isaías (ES RV1909)**: tagged "§6 edition mismatch, ch. 32–66". Direct
-  evidence (2026-06-28) refutes it — the LibriVox reader's source is
-  BibleGateway `version=RVA` (Reina-Valera Antigua), but Mateo (99.9%) and
-  Salmos (99.96%) were recorded from that **same RVA edition** against the
-  same RV1909 Wikisource text and pass cleanly. So RVA↔1909 is not the
-  cause; Isaías's 87% has another, still-unconfirmed cause (re-test the
-  exception distribution — contiguous range = real divergence, scattered =
-  apparatus/recording).
+  evidence (2026-06-28) refuted the RVA↔1909 theory — the LibriVox reader's
+  source is BibleGateway `version=RVA` (Reina-Valera Antigua), but Mateo
+  (99.9%) and Salmos (99.96%) were recorded from that **same RVA edition**
+  against the same RV1909 Wikisource text and pass cleanly. **Root cause
+  found (2026-06-29):** the same nonlinear text↔audio drift as Genesis (§2g).
+  Re-aligning Isaías with the new EMA drift-correction aligner — *no text
+  change, no re-ingest* — took it 87% → **99.2%** (1377/1388 aligned, 90%
+  confidence). The 11 exceptions are scattered single verses, not the
+  contiguous ch. 32–66 block a real edition divergence would produce. The
+  "§6" tag was a mislabel all along. (Residual: ~30 `"La Biblia / Isaías"`
+  page-header crumbs leak in as low-confidence phrases — a minor
+  `isNavigationNoise` candidate, but the book passes comfortably so it was
+  left alone per the free-library "don't over-engineer" rule.)
 
 **Status as of 2026-06-24:**
 - **Confirmed via direct evidence** (mismatched translator credit): Viaje
