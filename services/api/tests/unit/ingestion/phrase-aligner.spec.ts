@@ -226,4 +226,50 @@ describe('alignPhrases', () => {
     expect(stats.exceptions).toBe(2);
     expect(stats.aligned).toBe(2);
   });
+
+  // ── Nonlinear drift correction ────────────────────────────────────────────
+  // A long recording where un-narrated filler accumulates unevenly makes the true
+  // audio position of each verse drift away from the flat proportional estimate.
+  // On real books (Genesis: 4h, 38k words) this reaches ~1100+ words — far past
+  // MAX_DRIFT — and used to sink confidence to ~67%. The EMA drift correction
+  // tracks the smooth drift so phrases beyond MAX_DRIFT of the flat estimate still
+  // align. Construct that signature with quadratically-growing filler gaps.
+  it('follows smooth nonlinear drift beyond MAX_DRIFT via the EMA correction', () => {
+    const N = 30;
+    const words: TimedWord[] = [];
+    const phrases: SyncPhrase[] = [];
+    let t = 0;
+    const truePos: number[] = [];
+    for (let i = 0; i < N; i++) {
+      // Filler before phrase i grows with i → cumulative gap is quadratic, so the
+      // mid-book drift between true position and flat estimate exceeds MAX_DRIFT.
+      const gap = 3 * i;
+      for (let g = 0; g < gap; g++) {
+        words.push(makeWord(`fill_${i}_${g}`, t, t + 0.1));
+        t += 0.1;
+      }
+      truePos.push(words.length);
+      const phraseWords = [`w${i}a`, `w${i}b`, `w${i}c`, `w${i}d`, `w${i}e`];
+      for (const pw of phraseWords) {
+        words.push(makeWord(pw, t, t + 0.1));
+        t += 0.1;
+      }
+      phrases.push(makePhrase(i, phraseWords.join(' ')));
+    }
+
+    const { phrases: result, stats } = alignPhrases(phrases, words);
+
+    // Every phrase must align despite the drift, with high confidence and no exceptions.
+    expect(stats.exceptions).toBe(0);
+    expect(stats.aligned).toBe(N);
+    expect(stats.avgConfidence).toBeGreaterThan(0.95);
+
+    // A mid-book phrase, whose true position is hundreds of words past its flat
+    // proportional estimate, lands within a scoring window of its real audio
+    // timestamp — not in a wrong region (the flat estimate would be ~25s off here).
+    const mid = 15;
+    const trueStart = words[truePos[mid]].start;
+    expect(result[mid].exception).toBe(false);
+    expect(Math.abs(result[mid].startTime - trueStart)).toBeLessThan(1.5);
+  });
 });

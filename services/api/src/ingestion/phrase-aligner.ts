@@ -37,9 +37,10 @@ export interface AlignmentStats {
   exceptionPhrases:     Array<{ index: number; text: string }>;
 }
 
-const MAX_DRIFT      = 150;   // words to search ahead of cursor (covers LibriVox headers + normal drift)
+const MAX_DRIFT      = 150;   // words to search around the estimate (covers LibriVox headers + local drift)
 const SKIP_THRESHOLD = 0.20;  // below this → phrase not in audio → exception=true, cursor not advanced
 const LOW_THRESHOLD  = 0.50;  // flag phrases below this confidence for spot-check (but still aligned)
+const DRIFT_ALPHA    = 0.30;  // EMA weight for the running text↔audio drift correction (see below)
 
 // ── Text normalisation ─────────────────────────────────────────────────────────
 
@@ -105,10 +106,19 @@ function scoreWindow(
 
 // ── Main alignment ─────────────────────────────────────────────────────────────
 //
-// Proportion-based positioning: each phrase independently estimates its target
-// word index from cumulative word count relative to the total. This eliminates
-// cursor drift — a hard phrase near the start cannot push all subsequent phrases
-// to the wrong position.
+// Proportion-based positioning with EMA drift correction: each phrase estimates
+// its target word index from cumulative word count relative to the total. The bare
+// proportion assumes a uniform text↔audio word-density ratio, but that ratio drifts
+// nonlinearly across a long book — Genesis (4h, 38k words) accumulates up to ~1162
+// words of drift between the linear estimate and the true match position, far beyond
+// MAX_DRIFT, which sank every verse outside the book's mid-section to ~20% confidence
+// (avg 67%). The drift is smooth, so we track it with an exponential moving average:
+// each confident match (≥ LOW_THRESHOLD) nudges `driftCorrection` toward its observed
+// offset from the linear estimate, and the next phrase searches around estimate +
+// correction. This keeps the global anchoring (a single bad phrase can't derail the
+// rest — the EMA barely moves and low matches don't update it) while following the
+// slow drift, lifting Genesis to ~95% confidence. Books that already align well have
+// ~0 observed drift, so the correction stays ~0 and behaviour is unchanged.
 //
 // Skip-and-continue: if a phrase scores below SKIP_THRESHOLD it is marked as
 // an exception. wordsSoFar is NOT incremented for exceptions so that subsequent
@@ -132,15 +142,18 @@ export function alignPhrases(
   const totalPhraseWords = textPhrasesWithTokens.reduce((s, x) => s + x.tokens.length, 0);
   const totalWordSlots   = timedWords.length;
 
-  let wordsSoFar = 0;   // only advances for phrases that were successfully aligned
+  let wordsSoFar      = 0;   // only advances for phrases that were successfully aligned
+  let driftCorrection = 0;   // EMA of (matched position − linear estimate); see header
   let aligned    = 0;
   let exceptions = 0;
   let totalConf  = 0;
 
   for (const { i, phrase, tokens } of textPhrasesWithTokens) {
-    // Expected word index based on words aligned so far (not total words processed)
+    // Expected word index based on words aligned so far (not total words processed),
+    // shifted by the running drift correction.
     const fraction    = totalPhraseWords > 0 ? wordsSoFar / totalPhraseWords : 0;
-    const expectedIdx = Math.round(fraction * totalWordSlots);
+    const baseIdx     = Math.round(fraction * totalWordSlots);
+    const expectedIdx = baseIdx + Math.round(driftCorrection);
 
     const searchStart = Math.max(0, expectedIdx - MAX_DRIFT);
     const searchEnd   = Math.min(totalWordSlots - tokens.length, expectedIdx + MAX_DRIFT);
@@ -183,6 +196,13 @@ export function alignPhrases(
     wordsSoFar += tokens.length;
     aligned++;
     totalConf += best.score;
+
+    // Only confident matches steer the drift EMA — low/spurious matches must not
+    // pull the estimate toward a wrong position.
+    if (best.score >= LOW_THRESHOLD) {
+      driftCorrection =
+        DRIFT_ALPHA * (best.pos - baseIdx) + (1 - DRIFT_ALPHA) * driftCorrection;
+    }
 
     if (best.score < LOW_THRESHOLD) {
       lowConfidencePhrases.push({
