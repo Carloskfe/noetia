@@ -158,7 +158,7 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | Cuentos de Amor de Locura y de Muerte | 98.0% ✅ | |
 | Pepita Jiménez | 96.8% ✅ | announcement patterns 2026-06-24 — §2 |
 | La Divina Comedia | 91.4% ✅ | was 66.0% — EMA re-align sweep 2026-06-29 (§2g) +25.4% |
-| La Odisea | 81.5% | was 60.6% — EMA sweep +20.9% but **94% conf / 578 exc** = contiguous chunk missing from audio; needs §3 boundary trim, NOT re-align |
+| La Odisea | 81.5% | was 60.6% — EMA sweep +20.9%; **94% conf / 578 exc = audio missing Cantos XX–XXIV**. Only 19 of 24 cantos were ever transcribed (`odisea_19_homero.vtt` ends "Fin del Canto XIX"; text continues to the real ending at Book XXIV). Hard ceiling ~80% until the final 5 cantos are sourced + Whisper-transcribed + re-merged. NOT a text/trim/align fix |
 | Leyendas | 81.3% | story-order + 5 excluded chapters — §7 |
 | El Sombrero de Tres Picos | 75.0% | low conf (28%), unchanged by EMA sweep — genuine §6 text/edition mismatch |
 | Fábulas y Verdades | 83.1% | 16 audio sections vs. 11 catalogued fables — §7 count mismatch (unchanged by EMA sweep) |
