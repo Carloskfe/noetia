@@ -292,6 +292,22 @@ export const CATALOGUE: CatalogueEntry[] = [
     gutenbergId: 2000,
     librivoxAudioUrl: 'https://librivox.org/don-quijote-vol-1-by-miguel-de-cervantes-saavedra/',
     librivoxSearchTitle: 'Don Quijote',
+    // Gutenberg 2000 is the COMPLETE Don Quijote (Parts I + II in one file), so
+    // BOTH volumes used to fetch the same ~9,340-phrase text and each aligned
+    // against only its own half of the audio → ~55% coverage apiece. We carve the
+    // single text into its two parts here. Part I (1605) = "...ingenioso HIDALGO...";
+    // Part II (1615) = "...ingenioso CABALLERO...". The Part II heading also appears
+    // in the file's table of contents (~index 5,456), so the boundary search starts
+    // past the front matter (offset 50,000) to land on the real structural heading
+    // (~index 1,049,572). Indices verified against pg2000.txt on 2026-06-29.
+    textPostProcess: (text: string) => {
+      const PART2 = 'Segunda parte del ingenioso caballero don Quijote de la Mancha';
+      const boundary = text.indexOf(PART2, 50000);
+      const start = text.indexOf('Primera parte del ingenioso hidalgo don Quijote de la Mancha');
+      return text
+        .slice(start >= 0 ? start : 0, boundary >= 0 ? boundary : text.length)
+        .trim();
+    },
   },
   {
     title: 'Don Quijote de la Mancha — Vol. II',
@@ -301,6 +317,18 @@ export const CATALOGUE: CatalogueEntry[] = [
     gutenbergId: 2000,
     librivoxAudioUrl: 'https://librivox.org/don-quijote-volume-2-by-miguel-de-cervantes-saavedra/',
     librivoxSearchTitle: 'Don Quijote',
+    // See Vol. I note: Gutenberg 2000 holds both parts. Here we keep Part II only,
+    // then skip its ~11.5k chars of unread legal front matter (Tasa, Fee de erratas,
+    // Aprobaciones, Dedicatoria) by starting at the 1615 prologue ("¡Válame Dios..."),
+    // which the recording does read (prologue @ ~index 1,061,059).
+    textPostProcess: (text: string) => {
+      const PART2 = 'Segunda parte del ingenioso caballero don Quijote de la Mancha';
+      const boundary = text.indexOf(PART2, 50000);
+      let part = boundary >= 0 ? text.slice(boundary) : text;
+      const prologue = part.search(/¡?V[aá]lame Dios, y con cu[aá]nta gana/i);
+      if (prologue >= 0) part = part.slice(prologue);
+      return part.trim();
+    },
   },
   {
     title: 'Orgullo y Prejuicio',
