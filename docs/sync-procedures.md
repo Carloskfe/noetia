@@ -220,17 +220,21 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 
 **0 of 14 EN Narrative at ≥ 90%.** EN chapter announcement stripping helped Treasure Island (+15.9%). The `lastEndTime` fix recovered Dracula (+9.1%) but regressed Tom Sawyer (-3.5%) — see troubleshooting for investigation. Most EN Narrative needs §3-8 investigation.
 
-**5 EN books with no sync map yet (NULL coverage):** Ephesians, The Call of the Wild, Genesis (EN), Exodus (EN), Philippians — need VTT files.
+**1 EN book with no sync map yet (NULL coverage):** The Call of the Wild — needs a VTT file. (Ephesians, Genesis, Exodus, Philippians now synced — see English Bible table.)
 
-### English Bible (13 books)
+### English Bible (17 books)
 
 | Book | Coverage | Notes |
 |------|----------|-------|
+| Philippians | 100.0% ✅ | Gap A 2026-06-28 |
 | Acts | 100.0% ✅ | |
 | Isaiah | 99.9% ✅ | was 87.3% — chapter-argument + nav strip 2026-06-28 +12.6% (§2f) |
 | Luke | 99.7% ✅ | was 88.8% — chapter-argument + nav strip 2026-06-28 +10.9% (§2f) |
 | Matthew | 99.6% ✅ | was 87.4% — chapter-argument + nav strip 2026-06-28 +12.2% (§2f) |
 | Revelation | 99.6% ✅ | was 38.6% — digit-token fix 2026-06-27 +61.0% (§2e) |
+| Exodus | 99.3% ✅ | Gap A 2026-06-28 |
+| Genesis | 98.8% ✅ | Gap A 2026-06-28 — first align 96.3%/67% conf; nonlinear-drift EMA aligner fix (§2g) → 98.8%/95% conf |
+| Ephesians | 98.7% ✅ | Gap A 2026-06-28 |
 | Proverbs | 96.3% ✅ | |
 | Romans | 95.8% ✅ | |
 | 1 Corinthians | 95.4% ✅ | |
@@ -240,7 +244,7 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | John | 91.0% ✅ | was 43.6% — digit-token fix 2026-06-27 +47.4% (§2e) |
 | Mark | 90.6% ✅ | was 57.3% — digit-token fix 2026-06-27 +33.3% (§2e) |
 
-**13 of 13 EN Bible at ≥ 90% — all pass.** The digit-token fix (§2e) cleared Revelation, John, and Mark; the chapter-argument + nav strip (§2f) then closed Matthew, Luke, **and Isaiah** — all three carried the same un-narrated per-chapter "argument" summaries. Isaiah's prior "§6 edition mismatch" label was inherited/assumed; re-ingesting with §2f took it to 99.9% (1327/1328 aligned, 96% confidence), so it was apparatus all along, not a real edition divergence. Note: the Spanish *Isaías* (ES Bible, 87%) is a **separate** book with a genuine, directly-evidenced §6 mismatch in ch. 32–66 — KJV-specific markup fixes do not apply to it.
+**17 of 17 EN Bible at ≥ 90% — all pass.** The digit-token fix (§2e) cleared Revelation, John, and Mark; the chapter-argument + nav strip (§2f) then closed Matthew, Luke, **and Isaiah** — all three carried the same un-narrated per-chapter "argument" summaries. Isaiah's prior "§6 edition mismatch" label was inherited/assumed; re-ingesting with §2f took it to 99.9% (1327/1328 aligned, 96% confidence), so it was apparatus all along, not a real edition divergence. **Gap A (2026-06-28):** Genesis, Exodus, Ephesians, Philippians were the last 4 EN Bible books without sync maps; all now pass. Genesis additionally exposed two reusable bugs — the KJV small-caps `L<span>ORD</span>` token split (§2g) and the nonlinear text↔audio drift that the proportion-only aligner couldn't follow on a 4h book (§2g, EMA drift correction). Note: the Spanish *Isaías* (ES Bible, 87%) is a **separate** book with a genuine, directly-evidenced §6 mismatch in ch. 32–66 — KJV-specific markup fixes do not apply to it.
 
 ---
 

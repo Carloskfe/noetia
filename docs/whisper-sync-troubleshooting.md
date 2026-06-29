@@ -255,11 +255,23 @@ LibriVox readers speak none of these digits. `normalizeWord()` in `phrase-aligne
 | Luke | 88.8% | **99.7%** | +10.9 |
 | Isaiah | 87.3% | **99.9%** | +12.6 |
 
-All 13 EN Bible books now pass.
+All 13 EN Bible books known at the time now pass. (Gap A later added Genesis/Exodus/Ephesians/Philippians — see §2g — bringing the EN Bible to 17/17.)
 
 **Isaiah was a mislabel, not a §6 case.** The EN Bible status table had carried Isaiah as a "§6 edition mismatch" — but that label was *inherited/assumed*, never backed by the direct evidence §6 demands (no `url_text_source` translator check, no contiguous-range diagnosis). It carried the same KJV per-chapter argument apparatus as the Gospels; re-ingesting with §2f took it straight to 99.9% (1327/1328 aligned, 96% confidence, 1 stray "Old Testament" nav crumb). **Lesson reinforced: do not trust a "§6 edition mismatch" tag that lacks the direct evidence §6 requires — re-test it against the latest text-clean fixes before accepting it.** (The *Spanish* Isaías is a separate book — §2f's KJV-specific markup strip does not apply to its Reina-Valera 1909 source — and its own "§6" tag turned out to be a mislabel too; see §6 below.)
 
 **Lesson:** when real, clearly-narrated verses show up as exceptions or low-confidence *in runs*, suspect cursor drift seeded by a nearby block of un-narrated text — not the verses themselves. Strip the apparatus at the chapter boundary and the tail clears with it.
+
+**§2g — Genesis (the last EN Bible book): two reusable bugs on a 4-hour recording (2026-06-28)**
+
+Genesis was the last of the 4 Gap A books (Genesis/Exodus/Ephesians/Philippians) to lack a sync map. Its first align passed the coverage gate (96.3%) but with poor **confidence** (avg 67%, 651 low-confidence phrases) — and low-confidence runs clustered at the *front and back* of the book (chapters 1–17 and 36–50 bad, middle fine). That distinctive front-and-back-bad / middle-fine signature is the fingerprint of a **positioning** problem, not a text-noise problem. Two distinct bugs, both fixed and both reusable beyond Genesis:
+
+1. **KJV small-caps divine name split into two tokens.** The 1611 edition sets every `LORD`/`GOD` as a full cap + small-cap remainder: `L<span class="smallcaps" style="font-size:75%">ORD</span>`. The generic `<[^>]+>` → `' '` tag strip in `wikisource-fetcher.stripHtml()` turned that into `L ORD` — two tokens — so each of Genesis's ~165 "LORD"s missed the audio's single spoken "Lord", inflating the `matches/n` denominator. **Fix:** unwrap `<span class="smallcaps">…</span>` (keep content, add no space) *before* the generic tag strip. Affects the whole Old Testament, not just Genesis.
+
+2. **Nonlinear text↔audio drift the proportion-only aligner couldn't follow.** `phrase-aligner.ts` estimated each phrase's audio position as `round(wordsSoFar/totalPhraseWords × totalWordSlots)` — a flat proportion that assumes a uniform text-to-audio word-density ratio. On a 4h / 38k-word book that ratio drifts nonlinearly: the true match position ran up to **~1162 words** away from the linear estimate, far past `MAX_DRIFT` (150). Every phrase outside the mid-section fell outside the ±150 search window and scored ~20%, even though a perfect match existed elsewhere. **Fix:** track the drift with an exponential moving average (`DRIFT_ALPHA = 0.30`). Each confident match (`score ≥ LOW_THRESHOLD`) nudges `driftCorrection` toward its observed offset from the linear estimate; the next phrase searches around `estimate + correction`. This keeps the global anchoring (one bad phrase can't derail the rest — the EMA barely moves, and sub-threshold matches don't update it) while following the slow drift. Books that already align well show ~0 drift, so the correction stays ~0 and behaviour is unchanged — verified no regression across the existing aligner unit tests.
+
+**Result:** Genesis 96.3% → **98.8%** coverage, avg confidence **67% → 95%**, exceptions 49 → 12, low-confidence 651 → 34. The residual 12 exceptions / 34 low are all genuinely un-narrated apparatus (chapter "argument" summaries `CHA P. I. 1 The creation…`, the calendar/`Anno DOMINI` front matter, a TeX brace-matrix crumb) — not verse text.
+
+**Lesson:** confidence (avgConfidence) and coverage (aligned/total) are *separate* signals. A book can clear the 90% coverage gate while most of its aligned phrases are weak matches landing in roughly-right-but-not-exact windows. When low-confidence clusters at the book's *ends* rather than scattering, the cause is positioning drift, not text noise — fixable in the aligner, not the text. The EMA drift correction is now the default for every long Whisper-synced book.
 
 ---
 
