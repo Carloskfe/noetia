@@ -275,6 +275,27 @@ Genesis was the last of the 4 Gap A books (Genesis/Exodus/Ephesians/Philippians)
 
 **Lesson:** confidence (avgConfidence) and coverage (aligned/total) are *separate* signals. A book can clear the 90% coverage gate while most of its aligned phrases are weak matches landing in roughly-right-but-not-exact windows. When low-confidence clusters at the book's *ends* rather than scattering, the cause is positioning drift, not text noise — fixable in the aligner, not the text. The EMA drift correction is now the default for every long Whisper-synced book.
 
+**Full-library re-align sweep (2026-06-29).** Re-aligned all 29 below-gate books against their existing VTTs with the EMA aligner — no text change, no re-ingest, sync_maps only. **18 of 29 crossed 90% from the aligner change alone**, taking the library from 42 → 60 PASS:
+
+| Book | Before → After | Book | Before → After |
+|---|---|---|---|
+| Walden | 55.5% → 99.6% | Crimen y Castigo | 72.9% → 99.8% |
+| Jane Eyre | 60.6% → 99.7% | Doña Perfecta | 71.6% → 99.9% |
+| Anne of Green Gables | 58.3% → 99.6% | Los Cuatro Jinetes | 76.4% → 99.9% |
+| La Isla del Tesoro | 55.4% → 98.7% | El Gaucho Martín Fierro | 82.4% → 99.5% |
+| Treasure Island | 71.3% → 99.8% | Niebla | 88.0% → 100.0% |
+| Dr Jekyll & Mr Hyde | 70.2% → 99.8% | Dracula | 66.5% → 96.7% |
+| Frankenstein | 80.5% → 99.8% | Alice's Adventures | 77.3% → 98.5% |
+| Pride and Prejudice | 54.7% → 94.0% | The Scarlet Letter | 65.8% → 97.4% |
+| La Divina Comedia | 66.0% → 91.4% | Tom Sawyer | 64.1% → 97.4% |
+
+The 11 that did **not** clear the gate split cleanly by the confidence/coverage signature, and this is the triage rule going forward:
+
+- **Low conf + no movement = genuine text/edition mismatch** (not drift; alignment is exhausted): Meditations (45%/25%), Viaje al Centro de la Tierra (68%/29%, confirmed translator mismatch), The Time Machine (76%/35%), El Sombrero de Tres Picos (75%/28%), Fábulas y Verdades (83%/35%), Dorian Gray (72%/58%), Don Quijote Vol I & II (55%/26%, 4k+ exceptions each — deep divergence). → §6 / §3 text work.
+- **High conf + many exceptions = a contiguous chunk is simply absent from the audio** (aligned part is dead-on): La Odisea (81.5% but **94% conf**, 578 exc — untrimmed matter / one missing section, a boundary trim should clear it) and Orgullo y Prejuicio (49.4% but **94% conf**, 2119 exc — its audiobook is partial/abridged; the EN twin hit 94%). → §3 trim / audio-completeness check, **not** re-alignment.
+
+**Takeaway:** before any text-level work on a stuck long book, re-align first — it's free and cleared ~62% of the backlog in one pass. Only after re-alignment leaves it below gate do the exception *content* + the conf/coverage split tell you which text fix (if any) is warranted.
+
 ---
 
 ## 3. Untrimmed front/back matter

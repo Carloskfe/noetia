@@ -119,7 +119,7 @@ Avg confidence:  46.0%
 
 ## 3. Sync Quality Status
 
-*Last audited: 2026-06-27. Standard: `syncCoverage` ≥ 90%.*
+*Last audited: 2026-06-29 (post EMA re-align sweep). Standard: `syncCoverage` ≥ 90%.*
 
 Refresh numbers any time with the diagnostic SQL (see troubleshooting §9):
 
@@ -145,33 +145,31 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 
 | Book | Coverage | Notes |
 |------|----------|-------|
-| Cuentos de la Selva | 100.0% ✅ | story-order fix 2026-06-24 — §7 |
-| Lazarillo de Tormes | 100.0% ✅ | Wikisource ordinal-word sort fix 2026-06-25 — §7 |
+| Niebla | 100.0% ✅ | was 88.0% — EMA re-align sweep 2026-06-29 (§2g); prior "§6 edition mismatch" disproven |
+| Doña Perfecta | 99.9% ✅ | was 71.6% — EMA re-align sweep 2026-06-29 (§2g) +28.3% |
+| Los Cuatro Jinetes del Apocalipsis | 99.9% ✅ | was 76.4% — EMA re-align sweep 2026-06-29 (§2g) +23.5%; prior "§6 edition mismatch" disproven |
+| Crimen y Castigo | 99.8% ✅ | was 72.9% — EMA re-align sweep 2026-06-29 (§2g) +26.9% |
 | Marianela | 99.8% ✅ | |
+| El Gaucho Martín Fierro | 99.5% ✅ | was 82.4% — EMA re-align sweep 2026-06-29 (§2g) +17.1% |
 | Romeo y Julieta | 99.1% ✅ | |
+| La Isla del Tesoro | 98.7% ✅ | was 55.4% — EMA re-align sweep 2026-06-29 (§2g) +43.3% |
 | Don Juan Tenorio | 98.6% ✅ | |
 | Platero y yo | 98.2% ✅ | "Grabado por" pattern + ÍNDICE trim 2026-06-25 — §2/§3 |
 | Cuentos de Amor de Locura y de Muerte | 98.0% ✅ | |
 | Pepita Jiménez | 96.8% ✅ | announcement patterns 2026-06-24 — §2 |
-| Niebla | 88.0% | §6 edition mismatch — Gutenberg #49836 diverges from LibriVox recording ~57% through (ch. 20+) |
-| Fábulas y Verdades | 85.3% | 16 audio sections vs. 11 catalogued fables — §7 count mismatch |
-| El Gaucho Martín Fierro | 82.4% | stanza-number fix 2026-06-25 — §4; gap unexplained |
-| Leyendas | 80.6% | story-order + 5 excluded chapters — §7 |
-| Los Cuatro Jinetes del Apocalipsis | 76.4% | edition mismatch — §6 |
-| El Sombrero de Tres Picos | 75.2% | sort fix applied — gap unexplained |
-| Crimen y Castigo | 72.9% | same translator confirmed; root cause unexplained |
-| Doña Perfecta | 71.6% | sort fix applied — gap unexplained |
-| Viaje al Centro de la Tierra | 67.5% | edition mismatch confirmed — Anónimo vs. Ribot y Fonseré |
-| La Divina Comedia | 66.0% | front/back-matter trim applied — still needs more |
-| Orgullo y Prejuicio | 64.4% | sort fix correct; flat — unexplained |
-| La Odisea | 60.6% | CRLF glossary fix applied — modest gain only |
-| Don Quijote de la Mancha — Vol. II | 56.4% | shared `gutenbergId: 2000` with Vol. I — §8, not yet fixed |
-| La Isla del Tesoro | 55.4% | sort fix correct; flat — unexplained |
-| Don Quijote de la Mancha — Vol. I | 54.4% | shared `gutenbergId: 2000` with Vol. II — §8, not yet fixed |
+| La Divina Comedia | 91.4% ✅ | was 66.0% — EMA re-align sweep 2026-06-29 (§2g) +25.4% |
+| La Odisea | 81.5% | was 60.6% — EMA sweep +20.9% but **94% conf / 578 exc** = contiguous chunk missing from audio; needs §3 boundary trim, NOT re-align |
+| Leyendas | 81.3% | story-order + 5 excluded chapters — §7 |
+| El Sombrero de Tres Picos | 75.0% | low conf (28%), unchanged by EMA sweep — genuine §6 text/edition mismatch |
+| Fábulas y Verdades | 83.1% | 16 audio sections vs. 11 catalogued fables — §7 count mismatch (unchanged by EMA sweep) |
+| Viaje al Centro de la Tierra | 68.4% | edition mismatch confirmed — Anónimo vs. Ribot y Fonseré (unchanged by EMA sweep, §6) |
+| Don Quijote de la Mancha — Vol. II | 55.6% | shared `gutenbergId: 2000` with Vol. I — §8; deep divergence (4k+ exc, unchanged by EMA sweep) |
+| Don Quijote de la Mancha — Vol. I | 55.1% | shared `gutenbergId: 2000` with Vol. II — §8; deep divergence (4k+ exc, unchanged by EMA sweep) |
+| Orgullo y Prejuicio | 49.4% | **94% conf / 2119 exc** — ES audiobook is partial/abridged (EN twin passes at 94%); needs audio-completeness check, NOT re-align |
 
-**8 of 23 ES Narrative at ≥ 90%.** (Salmos is categorised as ES Bible — see table below.)
+**15 of 23 ES Narrative at ≥ 90%** (was 8 — the EMA re-align sweep added Niebla, Doña Perfecta, Los Cuatro Jinetes, Crimen y Castigo, El Gaucho Martín Fierro, La Isla del Tesoro, La Divina Comedia). Cuentos de la Selva and Lazarillo de Tormes are ES but tracked elsewhere; Salmos is ES Bible. The remaining 8 below-gate did **not** move on re-align (or need text, not alignment) — see notes.
 
-**Before investigating any < 90% book**, read the troubleshooting guide. Most have a documented next step — do not assume edition mismatch without ruling out §2-5 and §7-8 first.
+**Before investigating any < 90% book**, read the troubleshooting guide. The EMA sweep (§2g) already cleared every drift case — what's left is genuine text/edition/audio work. Use the conf/coverage split: high-conf + many exceptions = missing/abridged audio (trim or re-source), not re-alignment.
 
 ### Spanish Bible (17 books)
 
@@ -201,24 +199,24 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 
 | Book | Coverage | Notes |
 |------|----------|-------|
-| Frankenstein | 80.5% | |
-| Alice's Adventures in Wonderland | 77.3% | |
-| The Time Machine | 76.1% | |
-| Treasure Island | 71.3% | was 55.4% — chapter announcement stripping 2026-06-27 +15.9% |
-| The Strange Case of Dr Jekyll and Mr Hyde | 70.2% | first clean align 2026-06-27 |
-| Dracula | 66.5% | was 57.4% (lastEndTime bug) → recovered +9.1% after fix 2026-06-27 |
-| The Scarlet Letter | 65.8% | |
-| The Adventures of Tom Sawyer | 64.1% | was 67.6% — regressed -3.5% after lastEndTime re-merge; needs investigation |
-| Jane Eyre | 60.6% | |
-| Anne of Green Gables | 58.3% | +1.4% from lastEndTime fix |
-| Walden | 55.5% | +1.9% from lastEndTime fix |
-| Pride and Prejudice | 54.7% | +1.4% from lastEndTime fix |
-| The Picture of Dorian Gray | 54.5% | |
-| Meditations | 45.0% | likely translation mismatch (Gutenberg #2680 = George Long) |
+| The Strange Case of Dr Jekyll and Mr Hyde | 99.8% ✅ | was 70.2% — EMA re-align sweep 2026-06-29 (§2g) +29.6% |
+| Treasure Island | 99.8% ✅ | was 71.3% — EMA re-align sweep 2026-06-29 (§2g) +28.5% |
+| Frankenstein | 99.8% ✅ | was 80.5% — EMA re-align sweep 2026-06-29 (§2g) +19.3% |
+| Jane Eyre | 99.7% ✅ | was 60.6% — EMA re-align sweep 2026-06-29 (§2g) +39.1% |
+| Anne of Green Gables | 99.6% ✅ | was 58.3% — EMA re-align sweep 2026-06-29 (§2g) +41.3% |
+| Walden | 99.6% ✅ | was 55.5% — EMA re-align sweep 2026-06-29 (§2g) +44.1% |
+| Alice's Adventures in Wonderland | 98.5% ✅ | was 77.3% — EMA re-align sweep 2026-06-29 (§2g) +21.2% |
+| Tom Sawyer | 97.4% ✅ | was 64.1% — EMA re-align sweep 2026-06-29 (§2g) +33.3% |
+| The Scarlet Letter | 97.4% ✅ | was 65.8% — EMA re-align sweep 2026-06-29 (§2g) +31.6% |
+| Dracula | 96.7% ✅ | was 66.5% — EMA re-align sweep 2026-06-29 (§2g) +30.2% |
+| Pride and Prejudice | 94.0% ✅ | was 54.7% — EMA re-align sweep 2026-06-29 (§2g) +39.3% |
+| The Time Machine | 75.6% | low conf (35%), unchanged by EMA sweep — genuine §6 text/edition mismatch |
+| The Picture of Dorian Gray | 71.6% | was 54.5% — EMA sweep +17.1% but stalls at 58% conf; partial mismatch, needs §6 |
+| Meditations | 45.4% | translation mismatch (Gutenberg #2680 = George Long); unchanged by EMA sweep |
 
 *(KJV books Matthew, Mark, Luke, John, Revelation moved to the English Bible table below, where they belong.)*
 
-**0 of 14 EN Narrative at ≥ 90%.** EN chapter announcement stripping helped Treasure Island (+15.9%). The `lastEndTime` fix recovered Dracula (+9.1%) but regressed Tom Sawyer (-3.5%) — see troubleshooting for investigation. Most EN Narrative needs §3-8 investigation.
+**11 of 14 EN Narrative at ≥ 90%** (was 0 — the EMA re-align sweep 2026-06-29 cleared all of them in one pass). The 3 remaining are genuine text/edition cases the aligner can't fix: The Time Machine and Meditations (low-conf mismatch), Dorian Gray (partial, 58% conf).
 
 **1 EN book with no sync map yet (NULL coverage):** The Call of the Wild — needs a VTT file. (Ephesians, Genesis, Exodus, Philippians now synced — see English Bible table.)
 
