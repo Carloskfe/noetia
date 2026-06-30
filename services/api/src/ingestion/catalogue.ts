@@ -701,6 +701,71 @@ export const CATALOGUE: CatalogueEntry[] = [
     librivoxSearchTitle: 'Jane Eyre',
   },
 
+  // ── English self-development / leadership (first wave) ─────────────────────
+  // Public-domain business & personal-growth classics. Gutenberg IDs + LibriVox
+  // recordings verified 2026-06-30. isFree stays false until each clears the 90%
+  // sync gate. NOTE: for translated works (Art of War = Giles), the LibriVox
+  // reader must use the SAME translation as the Gutenberg text or the aligner
+  // hits an edition mismatch (see troubleshooting §6).
+  {
+    title: 'As a Man Thinketh',
+    author: 'James Allen',
+    description: 'A short, enduring meditation on how thought shapes character, circumstance, and destiny — the seed text of the modern self-development movement.',
+    source: 'gutenberg',
+    gutenbergId: 4507,
+    librivoxAudioUrl: 'https://librivox.org/as-a-man-thinketh-by-james-allen/',
+    language: 'en',
+  },
+  {
+    title: 'The Art of War',
+    author: 'Sun Tzu',
+    description: 'The oldest treatise on strategy, leadership, and competition — Lionel Giles’ classic translation, read for centuries by generals and now by founders.',
+    source: 'gutenberg',
+    gutenbergId: 132,
+    librivoxAudioUrl: 'https://librivox.org/the-art-of-war-by-sun-tzu/',
+    librivoxSearchTitle: 'Art of War',
+    language: 'en',
+  },
+  {
+    title: 'The Science of Getting Rich',
+    author: 'Wallace D. Wattles',
+    description: 'The 1910 classic on purposeful action and the mindset of wealth that inspired a century of prosperity writing, from Napoleon Hill to modern coaches.',
+    source: 'gutenberg',
+    gutenbergId: 59844,
+    librivoxAudioUrl: 'https://librivox.org/the-science-of-getting-rich-by-wallace-d-wattles/',
+    language: 'en',
+  },
+  {
+    title: 'The Game of Life and How to Play It',
+    author: 'Florence Scovel Shinn',
+    description: 'A practical guide to the laws of intuition, faith, and the spoken word — one of the most quoted texts on mindset and manifestation.',
+    source: 'gutenberg',
+    gutenbergId: 74878,
+    librivoxAudioUrl: 'https://librivox.org/the-game-of-life-and-how-to-play-it-by-florence-scovel-shinn/',
+    librivoxSearchTitle: 'Game of Life and How to Play It',
+    language: 'en',
+  },
+  {
+    title: 'How to Live on 24 Hours a Day',
+    author: 'Arnold Bennett',
+    description: 'A brisk, witty manual on reclaiming your time and living deliberately — the original productivity classic, as sharp now as in 1908.',
+    source: 'gutenberg',
+    gutenbergId: 2274,
+    librivoxAudioUrl: 'https://librivox.org/how-to-live-on-twenty-four-hours-a-day-by-arnold-bennett/',
+    librivoxSearchTitle: 'Twenty-Four Hours a Day',
+    language: 'en',
+  },
+  {
+    title: 'Up from Slavery',
+    author: 'Booker T. Washington',
+    description: 'Washington’s landmark autobiography — rising from enslavement to found Tuskegee — a defining American story of self-reliance, education, and leadership.',
+    source: 'gutenberg',
+    gutenbergId: 2376,
+    librivoxAudioUrl: 'https://librivox.org/up-from-slavery-from-booker-t-washington/',
+    librivoxSearchTitle: 'Up from Slavery',
+    language: 'en',
+  },
+
   // ── English Bible (KJV) — collection: 'Bible' ─────────────────────────────
 
   {

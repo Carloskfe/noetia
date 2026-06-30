@@ -109,3 +109,28 @@ describe('Don Quijote catalogue entries', () => {
     expect(out).toContain('CUERPO sin prologo');
   });
 });
+
+// ── English self-development first wave (added 2026-06-30) ───────────────────
+describe('English self-development first-wave entries', () => {
+  const firstWave: Array<[string, number]> = [
+    ['As a Man Thinketh', 4507],
+    ['The Art of War', 132],
+    ['The Science of Getting Rich', 59844],
+    ['The Game of Life and How to Play It', 74878],
+    ['How to Live on 24 Hours a Day', 2274],
+    ['Up from Slavery', 2376],
+  ];
+
+  it.each(firstWave)('%s is a Gutenberg #%i English entry with a LibriVox URL', (title, id) => {
+    const e = CATALOGUE.find((c) => c.title === title);
+    expect(e).toBeDefined();
+    expect(e!.source).toBe('gutenberg');
+    expect(e!.gutenbergId).toBe(id);
+    expect(e!.language).toBe('en');
+    expect(e!.librivoxAudioUrl).toMatch(/^https:\/\/librivox\.org\//);
+  });
+
+  it.each(firstWave)('%s appears exactly once in the catalogue', (title) => {
+    expect(CATALOGUE.filter((c) => c.title === title)).toHaveLength(1);
+  });
+});
