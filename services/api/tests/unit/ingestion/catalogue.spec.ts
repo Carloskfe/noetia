@@ -16,14 +16,19 @@ const find = (title: string): CatalogueEntry => {
 };
 
 // Synthetic text reproducing the real pg2000.txt structure: a TOC copy of the
-// Part II heading near the top, then the real Part I heading, the Part I body,
-// the real Part II heading well past offset 50,000, the unread legal front matter,
-// and finally the 1615 prologue + Part II body.
+// Part II heading near the top, then the Part I "TASA" legal front matter (which the
+// recording reads, so Vol I must include it), the real Part I heading, the Part I
+// body, the real Part II heading well past offset 50,000, the unread Part II legal
+// front matter, and finally the 1615 prologue + Part II body.
 function buildCombinedText(): string {
   const PART2_HEADING = 'Segunda parte del ingenioso caballero don Quijote de la Mancha';
   const toc = `CONTENIDO\n${PART2_HEADING}\nTasa\nFee de erratas\nAprobaciones\n\n`;
   const filler = 'relleno preliminar del libro '.repeat(2500); // pushes the real boundary past 50,000
+  const part1FrontMatter =
+    'TASA\nYo, Juan Gallo de Andrada, FRONT_MATTER_LEIDA por el narrador.\n' +
+    'Testimonio de las erratas. El Rey. Prólogo. Versos preliminares.\n\n';
   const part1 =
+    part1FrontMatter +
     'Primera parte del ingenioso hidalgo don Quijote de la Mancha\n\n' +
     'Capítulo primero.\nEN_UN_LUGAR_DE_LA_MANCHA — cuerpo de la primera parte.\n';
   const endOfPart1 = '...canterà con miglior plectio.\n\nFinis\n\n\n';
@@ -47,20 +52,24 @@ describe('Don Quijote catalogue entries', () => {
     expect(typeof volII.textPostProcess).toBe('function');
   });
 
-  describe('Vol. I = Part I only', () => {
+  describe('Vol. I = Part I, including the Tasa front matter the recording reads', () => {
     const out = volI.textPostProcess!(combined);
 
-    it('begins at the real Part I heading', () => {
-      expect(out.startsWith('Primera parte del ingenioso hidalgo don Quijote de la Mancha')).toBe(true);
+    it('begins at the TASA front matter, not the "Primera parte" heading', () => {
+      expect(out.startsWith('TASA')).toBe(true);
     });
-    it('keeps the Part I body (proves the TOC copy of the Part II heading was skipped)', () => {
+    it('includes the legal front matter the narrator reads (proves it is no longer dropped)', () => {
+      expect(out).toContain('FRONT_MATTER_LEIDA');
+    });
+    it('still contains the Part I structural heading and body', () => {
+      expect(out).toContain('Primera parte del ingenioso hidalgo don Quijote de la Mancha');
       expect(out).toContain('EN_UN_LUGAR_DE_LA_MANCHA');
     });
     it('excludes Part II content and its heading', () => {
       expect(out).not.toContain('CUERPO_DE_LA_SEGUNDA_PARTE');
       expect(out).not.toContain('ingenioso caballero');
     });
-    it('excludes the preliminary front matter before Part I', () => {
+    it('excludes the unread title page + TOC before the Tasa', () => {
       expect(out).not.toContain('relleno preliminar');
       expect(out).not.toContain('CONTENIDO');
     });

@@ -300,13 +300,22 @@ export const CATALOGUE: CatalogueEntry[] = [
     // in the file's table of contents (~index 5,456), so the boundary search starts
     // past the front matter (offset 50,000) to land on the real structural heading
     // (~index 1,049,572). Indices verified against pg2000.txt on 2026-06-29.
+    //
+    // We start at the Tasa front matter (the "TASA" section heading, ~index 13,399),
+    // NOT at the "Primera parte" structural heading (~index 39,983): the recording
+    // opens by reading the entire legal front matter (Tasa, Testimonio de erratas, El
+    // Rey privilegio, Prólogo, verses). Anchoring at "Primera parte" dropped all of
+    // that, leaving ~hundreds of leading audio cues with no text — past the aligner's
+    // MAX_DRIFT window, so it never locked on (52% coverage, 25% confidence). Starting
+    // at TASA skips only the unread title page + TOC and aligns from cue 0.
     textPostProcess: (text: string) => {
       const PART2 = 'Segunda parte del ingenioso caballero don Quijote de la Mancha';
       const boundary = text.indexOf(PART2, 50000);
-      const start = text.indexOf('Primera parte del ingenioso hidalgo don Quijote de la Mancha');
-      return text
-        .slice(start >= 0 ? start : 0, boundary >= 0 ? boundary : text.length)
-        .trim();
+      // Start at the Tasa front matter (the recording reads it), skipping the
+      // unread title page + TOC. Falls back to text start if not found.
+      const tasa = text.indexOf('TASA');
+      const start = tasa >= 0 ? tasa : 0;
+      return text.slice(start, boundary >= 0 ? boundary : text.length).trim();
     },
   },
   {
