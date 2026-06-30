@@ -163,8 +163,8 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T d
 | El Sombrero de Tres Picos | 75.0% | low conf (28%), unchanged by EMA sweep — genuine §6 text/edition mismatch |
 | Fábulas y Verdades | 83.1% | 16 audio sections vs. 11 catalogued fables — §7 count mismatch (unchanged by EMA sweep) |
 | Viaje al Centro de la Tierra | 68.4% | edition mismatch confirmed — Anónimo vs. Ribot y Fonseré (unchanged by EMA sweep, §6) |
-| Don Quijote de la Mancha — Vol. II | 55.6% | shared `gutenbergId: 2000` with Vol. I — §8; deep divergence (4k+ exc, unchanged by EMA sweep) |
-| Don Quijote de la Mancha — Vol. I | 55.1% | shared `gutenbergId: 2000` with Vol. II — §8; deep divergence (4k+ exc, unchanged by EMA sweep) |
+| Don Quijote de la Mancha — Vol. I | 59.5% | **DEFERRED** (2026-06-30). Part I/II split + mirror fallback + front-matter inclusion lifted it 52%→59.5% / 25%→42% conf, but it hits a **phrase-granularity ceiling**: ~43-word Cervantes phrases vs ~13-word cues → uniform ~30% conf even on verbatim text. Only aligner phrase-splitter tuning clears it — §8 |
+| Don Quijote de la Mancha — Vol. II | 55.6% | **DEFERRED** — shared `gutenbergId: 2000`, split applied; same granularity ceiling as Vol. I expected (front-matter fix not separately re-run). §8 |
 | Orgullo y Prejuicio | 49.4% | **94% conf / 2119 exc** — ES audiobook is partial/abridged (EN twin passes at 94%); needs audio-completeness check, NOT re-align |
 
 **15 of 23 ES Narrative at ≥ 90%** (was 8 — the EMA re-align sweep added Niebla, Doña Perfecta, Los Cuatro Jinetes, Crimen y Castigo, El Gaucho Martín Fierro, La Isla del Tesoro, La Divina Comedia). Cuentos de la Selva and Lazarillo de Tormes are ES but tracked elsewhere; Salmos is ES Bible. The remaining 8 below-gate did **not** move on re-align (or need text, not alignment) — see notes.

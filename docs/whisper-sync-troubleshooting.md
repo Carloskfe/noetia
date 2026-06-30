@@ -291,7 +291,8 @@ Genesis was the last of the 4 Gap A books (Genesis/Exodus/Ephesians/Philippians)
 
 The 11 that did **not** clear the gate split cleanly by the confidence/coverage signature, and this is the triage rule going forward:
 
-- **Low conf + no movement = genuine text/edition mismatch** (not drift; alignment is exhausted): Meditations (45%/25%), Viaje al Centro de la Tierra (68%/29%, confirmed translator mismatch), The Time Machine (76%/35%), El Sombrero de Tres Picos (75%/28%), Fábulas y Verdades (83%/35%), Dorian Gray (72%/58%), Don Quijote Vol I & II (55%/26%, 4k+ exceptions each — deep divergence). → §6 / §3 text work.
+- **Low conf + no movement = genuine text/edition mismatch** (not drift; alignment is exhausted): Meditations (45%/25%), Viaje al Centro de la Tierra (68%/29%, confirmed translator mismatch), The Time Machine (76%/35%), El Sombrero de Tres Picos (75%/28%), Fábulas y Verdades (83%/35%), Dorian Gray (72%/58%). → §6 / §3 text work.
+- **Low conf, uniform, even on verbatim text = phrase-granularity ceiling** (text phrases far longer than the audio cues; confidence floors near 1/[cues-per-phrase]): Don Quijote Vol I (59.5%/42% after the split + front-matter fixes; ~43-word phrases vs ~13-word cues). Catalogue/text fixes can't clear it — only aligner phrase-splitter tuning can. **Deferred.** → §8.
 - **High conf + many exceptions = a contiguous chunk is simply absent from the audio** (aligned part is dead-on): La Odisea (81.5% but **94% conf**, 578 exc) and Orgullo y Prejuicio (49.4% but **94% conf**, 2119 exc — its audiobook is partial/abridged; the EN twin hit 94%). → audio-completeness check, **not** re-alignment.
 
 **Worked example — La Odisea = incomplete source, not a trim (2026-06-29).** Investigated the 578-exception tail: a 250-bucket histogram of exception indices showed 572 of 578 packed into indices 3500–4399 (the last ~20%), only 6 scattered before. The first tail exception (idx 3536) is the opening line of Book XX (*"Acostóse á su vez el divinal Ulises en el vestíbulo de la casa"*); the merged VTT's final cue is the "sweet sleep" formula that closes Book XIX, and `odisea_19_homero.vtt` literally ends *"Fin del Canto XIX"*. Source dir held **only 19 of 24 canto VTTs** — Cantos XX–XXIV were never downloaded/transcribed (archive.org 500s). So the audio is genuinely missing the final fifth; the text tail (the real ending, Athena forcing the peace oath at idx 4398) has nowhere to align. **Diagnostic that nailed it:** (1) exception-index histogram → contiguous tail band; (2) compare the merged VTT's *last cue text* against the *last text exception* — if the audio's end ≠ the book's true end, the audio is short/mis-ordered, not the text long. **This caps coverage at ~80%; only sourcing + transcribing the missing cantos fixes it — no text/align change can.** A `narrativeEndPattern` trim would "pass" the gate only by amputating the climax (suitor-slaying, reunion) — never do this to clear a gate.
@@ -752,12 +753,55 @@ is being aligned against the *entire* combined text — coverage caps at ~50%
 by construction, no amount of re-running Whisper fixes this.
 
 **Confirmed case:** Don Quijote Vol. I and Vol. II both use
-`gutenbergId: 2000` (catalogue.ts lines ~216-231). Both sit at ~54-56%
-coverage, consistent with each volume's audio covering roughly half of the
-combined text. **Not yet fixed** — requires either finding separate
-Gutenberg IDs for each volume, or splitting Gutenberg #2000's text by volume
-boundary and using `narrativeStartPattern`/`EndPattern` per catalogue entry
-to slice out just that volume's portion.
+`gutenbergId: 2000`. Project Gutenberg hosts the complete work (Parts I + II)
+as one combined ebook, so each volume was fetching the full ~9,340-phrase text
+and aligning against only its own half of the audio → ~54-56% by construction.
+
+**Fix applied (2026-06-30) — split + mirror + front matter, in three commits:**
+1. **Volume split** (catalogue `textPostProcess`): Part I = 1605 *"...ingenioso
+   HIDALGO..."*, Part II = 1615 *"...ingenioso CABALLERO..."*. The Part II
+   heading also appears in the file's table of contents (~idx 5,456), so the
+   boundary search starts past offset 50,000 to land on the real structural
+   heading (~idx 1,049,572).
+2. **Mirror fallback** (`gutenberg-fetcher.service.ts`): Contabo's datacenter IP
+   gets `ETIMEDOUT` from `www.gutenberg.org`; added `gutenberg.pglaf.org`
+   mirror fallback (path scheme `/2/0/0/2000/2000-0.txt`) with a per-attempt
+   abort timeout. **This benefits every server-side re-ingestion, not just DQ.**
+3. **Front-matter inclusion** (catalogue): the split alone left Vol I at 52%/25%.
+   Root cause was a *front-matter offset*, NOT an edition mismatch — the recording
+   opens by reading the entire legal front matter (Tasa, Testimonio de erratas,
+   El Rey privilegio, Prólogo, verses), but the text anchored at the *"Primera
+   parte"* heading (~idx 39,983), dropping ~40k chars the audio reads. With
+   hundreds of leading audio cues having no text (past `MAX_DRIFT=150`), the
+   aligner never locked on. Anchoring at the `TASA` section (~idx 13,399) instead
+   includes the front matter and skips only the unread title page + TOC.
+
+**Result: lifted but still below gate — DEFERRED.** Vol I went 52%→**59.5%**
+coverage, 25%→**42%** confidence after the front-matter fix (`[1] "Yo, Juan Gallo
+de Andrada…"` now aligns at 34%, proving the window is correct). It still misses
+90% for a reason that is **no longer a catalogue/text problem**:
+
+- **Uniform low confidence across all 52 chapters** (idx 1 → 2196+), not regional.
+  Even dead-verbatim short lines score ~30% (`"— Sí que me faltan —respondió
+  Sancho." 33%`, `"— Yo valgo por ciento —replicó don Quijote." 29%`). Verbatim
+  text at 30% = a systematic scoring artifact, not missing audio.
+- **Phrase-granularity mismatch is the signature.** Cervantes' text averages ~43
+  words/phrase (very long sentences); the Whisper cues average ~13 words
+  (186,316 words ÷ 14,778 cues). One text phrase spans ~3.4 cues, and the
+  confidence floor of ~1/3.4 ≈ **29%** is exactly what we observe — the aligner
+  matches the first chunk of each long phrase and scores the rest as miss.
+- **Plus genuine exception clusters:** Latin epigraphs (*"Pallida mors…"*), every
+  poem/song (Antonio's song, Grisóstomo's *Canción desesperada*, the *versos de
+  cabo roto*), and `"Capítulo X."` headings the narrator reads as *"Capítulo
+  diez."*
+
+Pushing past 59.5% would require tuning the core phrase-splitter/aligner for
+long-sentence prose (clause-level phrasing to match ~13-word cues) — which
+touches **every** book. Disproportionate for a priority-#3 free-library title
+("do not over-engineer free-library ingestion"). **Deferred like La Odisea: the
+three fixes above stay, `isFree` remains false, no further work until/unless the
+aligner is improved for its own sake.** This is the long-sentence analogue of the
+La Odisea lesson — when the aligner (not the text) is the ceiling, stop.
 
 ---
 
