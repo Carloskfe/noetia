@@ -466,6 +466,33 @@
 
 ---
 
+## Spike Sprint — Launch Readiness Audit (backlog, added 2026-06-30)
+
+> **Goal:** a time-boxed spike to verify the whole project is launch-ready end to end — exercise the real flows, refresh every doc/report, re-run project-management and risk artifacts (incl. the premortem), and produce a single up-to-date readiness report listing all remaining pending tasks before go-live.
+
+**Why now:** Production is live and feature work has largely landed (Stages 0–5 + clubs/persona/stats). Before promoting launch we need one consolidated pass that confirms nothing critical is stale, untested, or undocumented — and surfaces the true remaining backlog in one place.
+
+### A. End-to-end verification
+- [ ] Full E2E run against production: auth (email + Google/Facebook), reader + Escucha Activa sync, fragments, sharing (all 4 platforms), subscriptions/tokens checkout, clubs, mobile offline sync — extend the Playwright suite (`services/web/`) where gaps exist
+- [ ] Mobile E2E smoke (iOS + Android): login → paywall → read → sync → share → offline download
+- [ ] Cross-check unit/coverage gates still green across all services (api, worker, web, mobile, image-gen ≥ 80%)
+- [ ] Re-run load test (k6, 500 VUs) and DRM/access audit against current prod config
+
+### B. Documentation & reports refresh
+- [ ] Reconcile CLAUDE.md + PRD.md + sync-procedures.md against actual prod state (migrations count, book counts, sync coverage table, OAuth status)
+- [ ] Refresh `docs/business/` PM + technical-architecture docs (EN + ES) to current reality
+- [ ] Update incident-response and secrets-rotation docs if anything changed since 2026-06-25
+
+### C. Project management & risk
+- [ ] Re-run the **premortem** — review existing assumptions, mark which risks materialized / were mitigated / are still open; capture new risks discovered since
+- [ ] Risk register pass: severity × likelihood for each open risk + owner + mitigation status
+- [ ] Reconcile backlog: every `[ ]` item across TASKS.md confirmed still-relevant, de-duplicated, and prioritized by the product hierarchy
+
+### D. Deliverable
+- [ ] **Launch-Readiness Report** — single up-to-date document: E2E results, coverage/perf numbers, doc-refresh status, premortem outcomes, open risks, and the consolidated remaining-pending-tasks list with a go / no-go recommendation
+
+---
+
 ## Summary
 
 | Stage | Name                        | Sprints | Estimated Weeks | Testing overhead |
