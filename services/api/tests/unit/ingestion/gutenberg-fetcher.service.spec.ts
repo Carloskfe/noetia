@@ -34,7 +34,7 @@ describe('GutenbergFetcherService', () => {
 
       const result = await service.fetch(320);
 
-      expect(mockFetch).toHaveBeenCalledWith(
+      expect(mockFetch.mock.calls[0][0]).toBe(
         'https://www.gutenberg.org/cache/epub/320/pg320.txt',
       );
       expect(result).toBe('Chapter 1. The beginning.');
@@ -71,6 +71,45 @@ describe('GutenbergFetcherService', () => {
       mockFetch.mockRejectedValue(new Error('network error'));
 
       await expect(service.fetch(320)).rejects.toThrow('network error');
+    });
+
+    it('falls back to the pglaf mirror when the primary source times out', async () => {
+      const raw =
+        '*** START OF THE PROJECT GUTENBERG EBOOK FOO ***\n' +
+        'Mirror body.\n' +
+        '*** END OF THE PROJECT GUTENBERG EBOOK FOO ***';
+      const timeout = Object.assign(new Error('aborted'), { cause: { code: 'ETIMEDOUT' } });
+      mockFetch
+        .mockRejectedValueOnce(timeout)
+        .mockResolvedValueOnce({ ok: true, text: async () => raw });
+
+      const result = await service.fetch(2000);
+
+      expect(mockFetch.mock.calls[0][0]).toBe(
+        'https://www.gutenberg.org/cache/epub/2000/pg2000.txt',
+      );
+      expect(mockFetch.mock.calls[1][0]).toBe(
+        'https://gutenberg.pglaf.org/2/0/0/2000/2000-0.txt',
+      );
+      expect(result).toBe('Mirror body.');
+    });
+
+    it('tries every source before giving up', async () => {
+      const timeout = Object.assign(new Error('boom'), { cause: { code: 'ETIMEDOUT' } });
+      mockFetch.mockRejectedValue(timeout);
+
+      await expect(service.fetch(2000)).rejects.toThrow('boom');
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
+
+    it('passes an abort signal so a hung host fails fast', async () => {
+      mockFetch.mockResolvedValue({ ok: true, text: async () => 'Plain.' });
+
+      await service.fetch(1232);
+
+      expect(mockFetch.mock.calls[0][1]).toEqual(
+        expect.objectContaining({ signal: expect.anything() }),
+      );
     });
 
     it('strips preamble when narrativeStartPattern is provided', async () => {
