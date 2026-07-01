@@ -466,6 +466,26 @@
 
 ---
 
+## Session pause — resume here (2026-06-30, quote-card assets)
+
+**Shipped & deployed today** (pushed to `main`, CD rebuilt web + image-gen — both `Up`/healthy on the server):
+- `d865b64` — Noetia **logo watermark** on quote cards (light/dark variant auto-picked by background; replaces plain "Noetia" text; assets in `services/image-gen/assets/`).
+- `945a39a` — **18-image Noetia background gallery** in the picker (`services/web/public/backgrounds/imagen-1..18.jpg`, optimized 35MB→3MB; `BG_PRESETS` now in `lib/share-utils`).
+- `61247d0` — quote-card **horizontal flip** backend (`bgFlip` in image-gen). *UI still pending.*
+
+**Uncommitted local changes (ready to commit tomorrow — a `fix:` for stale tests):**
+- `services/image-gen/tests/unit/scripts/test_generate_presets.py` (5→7 fonts, renamed test)
+- `services/image-gen/scripts/generate_presets.py` (docstring 5→7)
+- `services/web/tests/unit/components/ShareModal.spec.ts` (FONTS registry lato/lora/raleway → the actual 7)
+- Both suites verified green locally: image-gen **144 passed**, web ShareModal **34 passed**. Just needs `git commit` + `git push`.
+
+**Next up (not started):**
+1. **Flip toggle UI** — web (`ShareModal` toggle, image backgrounds only) + mobile (camera+gallery) + i18n (all 4 files) + tests, then wire `bgFlip` through.
+2. **Mobile** 18-image gallery in the mobile share flow.
+3. **EN/ES free-library sync** — overnight Whisper batch → Phase A ingest → Phase C per-book `isFree` flip at ≥90%. EN 12→18 (6 self-dev), ES 13→18 (5 of 6 second-wave).
+
+---
+
 ## Backlog — Quote card: flip/mirror background image (added 2026-06-30)
 
 > **Goal:** In the quote-card image generator, let the user horizontally flip (mirror) the **background image** — so a subject/composition can face the other way — for the two image-background sources: (1) a preset from the free **Noetia images collection** (`imagen-1..5`, `services/web/public/backgrounds/`), and (2) an image the user **uploads or captures with the mobile camera**. The quote text/citation must stay upright and readable (only the background is mirrored, not the composited text).

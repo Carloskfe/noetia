@@ -3,7 +3,7 @@
 Run from services/image-gen/:
     python3 scripts/generate_presets.py
 
-Outputs 5 PNGs to services/web/public/presets/{font-id}.png
+Outputs 7 PNGs to services/web/public/presets/{font-id}.png
 """
 import os
 import sys

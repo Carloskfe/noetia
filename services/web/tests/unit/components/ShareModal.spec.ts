@@ -30,7 +30,7 @@ beforeEach(() => {
 // ── FONTS registry ────────────────────────────────────────────────────────────
 
 describe('FONTS registry', () => {
-  const REQUIRED_FONT_IDS = ['lato', 'playfair', 'lora', 'merriweather', 'dancing', 'montserrat', 'raleway'];
+  const REQUIRED_FONT_IDS = ['playfair', 'montserrat', 'merriweather', 'oswald', 'baskerville', 'dancing', 'pacifico'];
 
   it('contains all 7 required fonts', () => {
     const ids = FONTS.map((f) => f.id);
@@ -49,19 +49,21 @@ describe('FONTS registry', () => {
     });
   });
 
-  it('lora and raleway are in the registry', () => {
+  it('baskerville, oswald and pacifico are in the registry', () => {
     const ids = FONTS.map((f) => f.id);
-    expect(ids).toContain('lora');
-    expect(ids).toContain('raleway');
+    expect(ids).toContain('baskerville');
+    expect(ids).toContain('oswald');
+    expect(ids).toContain('pacifico');
   });
 
   it('GOOGLE_FONTS_URL includes all font family names', () => {
-    expect(GOOGLE_FONTS_URL).toContain('Lora');
-    expect(GOOGLE_FONTS_URL).toContain('Raleway');
     expect(GOOGLE_FONTS_URL).toContain('Playfair');
-    expect(GOOGLE_FONTS_URL).toContain('Merriweather');
-    expect(GOOGLE_FONTS_URL).toContain('Dancing');
     expect(GOOGLE_FONTS_URL).toContain('Montserrat');
+    expect(GOOGLE_FONTS_URL).toContain('Merriweather');
+    expect(GOOGLE_FONTS_URL).toContain('Oswald');
+    expect(GOOGLE_FONTS_URL).toContain('Libre+Baskerville');
+    expect(GOOGLE_FONTS_URL).toContain('Dancing');
+    expect(GOOGLE_FONTS_URL).toContain('Pacifico');
   });
 });
 

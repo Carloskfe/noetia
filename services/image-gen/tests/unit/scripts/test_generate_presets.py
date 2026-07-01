@@ -9,7 +9,7 @@ import pytest
 from PIL import Image
 
 
-FONTS = ['playfair', 'montserrat', 'merriweather', 'oswald', 'dancing']
+FONTS = ['playfair', 'montserrat', 'merriweather', 'oswald', 'baskerville', 'dancing', 'pacifico']
 
 
 def _png_dimensions(data: bytes):
@@ -19,14 +19,14 @@ def _png_dimensions(data: bytes):
     return w, h
 
 
-def test_generate_presets_creates_five_pngs():
+def test_generate_presets_creates_seven_pngs():
     with tempfile.TemporaryDirectory() as tmpdir:
         with patch('scripts.generate_presets.OUTPUT_DIR', tmpdir):
             import scripts.generate_presets as gp
             gp.OUTPUT_DIR = tmpdir
             gp.main()
         files = os.listdir(tmpdir)
-        assert len(files) == 5
+        assert len(files) == 7
         for font_id in FONTS:
             assert f"{font_id}.png" in files, f"Missing {font_id}.png"
 
