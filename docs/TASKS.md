@@ -486,11 +486,12 @@
 > **Goal:** In the quote-card background picker, a user can choose from **18 Noetia-provided gallery images**, in addition to the existing **solid** background and their **own camera/uploaded** images. Today only ~5 presets (`imagen-1..5`) ship — grow the curated set to 18.
 
 **Scope:**
-- [ ] Produce/curate **18 background images** (Noetia collection) — generate via `services/image-gen/scripts/generate_bg_presets.py` (extend from 5 → 18) or add curated art; store in MinIO `images/backgrounds/presets/` and mirror to `services/web/public/backgrounds/`.
-- [ ] **web:** background picker (`(social)` / `ShareModal.tsx`) shows all 18 as a scrollable/selectable grid alongside **solid** and **upload/camera**; selecting one sets `bgType='image'` + `bgImage` (preset URL). Tests.
+- [x] Produce/curate **18 background images** (Noetia collection) — delivered by user, downscaled to 1200px + optimized JPEG (35MB→3MB), committed to `services/web/public/backgrounds/imagen-1..18.jpg` (945a39a).
+- [x] **web:** background picker (`ShareModal.tsx`) shows all 18 alongside **solid** and **upload/camera**; `BG_PRESETS` moved to `lib/share-utils` (exported + unit-tested).
 - [ ] **mobile:** same 18-image gallery in the mobile share flow, alongside solid + camera capture + gallery upload. Tests.
-- [ ] Confirm the **flip toggle** (see flip backlog item) works across all 18 presets and user images.
-- [ ] Keep payloads lean — presets referenced by URL (not base64); only user camera/upload images sent as data URIs.
+- [ ] Confirm the **flip toggle** (see flip backlog item) works across all 18 presets and user images (web/mobile flip toggle UI still pending).
+
+> **Also delivered alongside this:** the Noetia **logo watermark** (d865b64) — quote cards now stamp the brand logo (light/dark variant by background) instead of plain "Noetia" text.
 
 **Note:** pairs with the flip/mirror feature — both live in the same background picker. Reader/sharing UX (hierarchy #1–2).
 
