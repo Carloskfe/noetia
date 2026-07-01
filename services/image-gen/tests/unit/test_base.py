@@ -1,11 +1,15 @@
 """Tests for templates/base.py — colour helpers, font registry, and render_card."""
+import base64
+import io
 import struct
 from unittest.mock import MagicMock, patch
 
 import pytest
+from PIL import Image
 
 from templates.base import (
     VALID_FONTS,
+    _render_image_bg,
     parse_hex_color,
     relative_luminance,
     render_card,
@@ -18,6 +22,16 @@ def _png_dimensions(data: bytes):
     w = struct.unpack('>I', data[16:20])[0]
     h = struct.unpack('>I', data[20:24])[0]
     return w, h
+
+
+def _asymmetric_bg_data_uri(size: int = 800) -> str:
+    """Data URI for a bg whose left half is red and right half is blue —
+    lets a horizontal mirror be detected by inspecting corner pixels."""
+    src = Image.new('RGB', (size, size), (255, 0, 0))
+    src.paste((0, 0, 255), [size // 2, 0, size, size])  # right half blue
+    buf = io.BytesIO()
+    src.save(buf, format='PNG')
+    return 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode()
 
 
 # ── parse_hex_color ───────────────────────────────────────────────────────────
@@ -189,6 +203,51 @@ def test_render_card_no_override_preserves_auto_luminance_dark():
 def test_render_card_no_override_preserves_auto_luminance_light():
     result = render_card(_FRAGMENT, 800, 800, bg_colors=['#FFFFFF'], text_color_override=None)
     assert _png_dimensions(result) == (800, 800)
+
+
+# ── background image horizontal flip (mirror) ─────────────────────────────────
+
+def test_render_image_bg_no_flip_keeps_orientation():
+    img = Image.new('RGB', (800, 800), (0, 0, 0))
+    _render_image_bg(img, _asymmetric_bg_data_uri(), bg_flip=False)
+    # left half stays red, right half stays blue
+    assert img.getpixel((10, 400))[0] > 200      # left is red
+    assert img.getpixel((790, 400))[2] > 200     # right is blue
+
+
+def test_render_image_bg_flip_mirrors_horizontally():
+    img = Image.new('RGB', (800, 800), (0, 0, 0))
+    _render_image_bg(img, _asymmetric_bg_data_uri(), bg_flip=True)
+    # after horizontal mirror the halves swap: left blue, right red
+    assert img.getpixel((10, 400))[2] > 200      # left is now blue
+    assert img.getpixel((790, 400))[0] > 200     # right is now red
+
+
+def test_render_image_bg_flip_only_swaps_horizontally_not_vertically():
+    img = Image.new('RGB', (800, 800), (0, 0, 0))
+    _render_image_bg(img, _asymmetric_bg_data_uri(), bg_flip=True)
+    # top and bottom of a given column share the same colour (no vertical flip)
+    assert img.getpixel((10, 20)) == img.getpixel((10, 780))
+
+
+def test_render_card_image_bg_flip_returns_valid_png():
+    result = render_card(_FRAGMENT, 800, 800, bg_type='image',
+                         bg_image=_asymmetric_bg_data_uri(), bg_flip=True)
+    assert _png_dimensions(result) == (800, 800)
+
+
+def test_render_card_image_flip_differs_from_no_flip():
+    uri = _asymmetric_bg_data_uri()
+    flipped = render_card(_FRAGMENT, 800, 800, bg_type='image', bg_image=uri, bg_flip=True)
+    normal  = render_card(_FRAGMENT, 800, 800, bg_type='image', bg_image=uri, bg_flip=False)
+    assert flipped != normal
+
+
+def test_render_card_flip_is_noop_on_solid_bg():
+    # bg_flip only affects image backgrounds — solid renders identically
+    flipped = render_card(_FRAGMENT, 800, 800, bg_type='solid', bg_colors=['#FF6B6B'], bg_flip=True)
+    normal  = render_card(_FRAGMENT, 800, 800, bg_type='solid', bg_colors=['#FF6B6B'], bg_flip=False)
+    assert flipped == normal
 
 
 def test_render_card_falls_back_to_default_font_on_missing_file():

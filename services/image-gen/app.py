@@ -98,6 +98,7 @@ def generate():
     text_italic   = bool(body.get("textItalic", False))
     gradient_dir  = body.get("gradientDir") or "to-bottom"
     bg_image      = body.get("bgImage")     or None
+    bg_flip       = bool(body.get("bgFlip", False))
 
     fragment = {
         "text":         body["text"],
@@ -113,7 +114,7 @@ def generate():
                              bg_type=bg_type, bg_colors=bg_colors,
                              text_color_override=text_color,
                              bg_gradient_dir=gradient_dir,
-                             bg_image=bg_image)
+                             bg_image=bg_image, bg_flip=bg_flip)
         client = MinioClient()
         url = client.upload(png_bytes)
     except Exception:

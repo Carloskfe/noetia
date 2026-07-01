@@ -109,7 +109,7 @@ def test_generate_valid_font_returns_200(client):
 
 def test_generate_font_case_insensitive(client):
     with patch("app.MinioClient", return_value=_patched_minio()):
-        resp = client.post("/generate", json={**_VALID_BODY, "font": "LATO"})
+        resp = client.post("/generate", json={**_VALID_BODY, "font": "PLAYFAIR"})
     assert resp.status_code == 200
 
 
@@ -237,6 +237,26 @@ def test_generate_without_text_color_passes_none(client):
         client.post("/generate", json=_VALID_BODY)
     _, kwargs = mock_render.call_args
     assert kwargs["text_color_override"] is None
+
+
+# ── /generate — bgFlip param ─────────────────────────────────────────────────
+
+def test_generate_bg_flip_forwarded_to_renderer(client):
+    mock_render = MagicMock(return_value=b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+    with patch("app.MinioClient", return_value=_patched_minio()), \
+         patch.dict("app._RENDERERS", {"linkedin": mock_render}):
+        client.post("/generate", json={**_VALID_BODY, "bgFlip": True})
+    _, kwargs = mock_render.call_args
+    assert kwargs["bg_flip"] is True
+
+
+def test_generate_bg_flip_defaults_to_false(client):
+    mock_render = MagicMock(return_value=b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+    with patch("app.MinioClient", return_value=_patched_minio()), \
+         patch.dict("app._RENDERERS", {"linkedin": mock_render}):
+        client.post("/generate", json=_VALID_BODY)
+    _, kwargs = mock_render.call_args
+    assert kwargs["bg_flip"] is False
 
 
 # ── /generate — error handling ────────────────────────────────────────────────

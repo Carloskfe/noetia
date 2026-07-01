@@ -72,6 +72,20 @@ def test_render_gradient_background():
     assert result[:8] == b'\x89PNG\r\n\x1a\n'
 
 
+def test_render_forwards_bg_flip_to_render_card():
+    with patch("templates.linkedin.render_card", return_value=b"png") as mock_card:
+        render({}, bg_type='image', bg_image='data:image/png;base64,AAAA', bg_flip=True)
+    _, kwargs = mock_card.call_args
+    assert kwargs["bg_flip"] is True
+
+
+def test_render_bg_flip_defaults_to_false():
+    with patch("templates.linkedin.render_card", return_value=b"png") as mock_card:
+        render({})
+    _, kwargs = mock_card.call_args
+    assert kwargs["bg_flip"] is False
+
+
 def test_render_draws_quote_text():
     fragment = {"text": "Texto de prueba", "author": "Autor", "title": "Libro"}
     with patch("templates.base.ImageDraw") as mock_draw_module:

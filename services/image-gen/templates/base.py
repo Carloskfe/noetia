@@ -4,7 +4,7 @@ import os
 import textwrap
 import urllib.request
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 # ── Font registry ─────────────────────────────────────────────────────────────
 
@@ -88,8 +88,13 @@ def _render_gradient(img: Image.Image, color1: tuple, color2: tuple, direction: 
             )
 
 
-def _render_image_bg(img: Image.Image, bg_image: str) -> None:
-    """Fill the card with a background image (URL or base64 data URI, cover-scaled)."""
+def _render_image_bg(img: Image.Image, bg_image: str, bg_flip: bool = False) -> None:
+    """Fill the card with a background image (URL or base64 data URI, cover-scaled).
+
+    When bg_flip is True the background is mirrored horizontally (left↔right).
+    Only the image is flipped — the quote text is composited afterwards and
+    stays upright and readable.
+    """
     try:
         if bg_image.startswith('data:'):
             _, data = bg_image.split(',', 1)
@@ -108,6 +113,8 @@ def _render_image_bg(img: Image.Image, bg_image: str) -> None:
         offset_x = (new_w - card_w) // 2
         offset_y = (new_h - card_h) // 2
         bg = bg.crop((offset_x, offset_y, offset_x + card_w, offset_y + card_h))
+        if bg_flip:
+            bg = ImageOps.mirror(bg)  # horizontal mirror only
         img.paste(bg)
     except Exception:
         # Fallback to dark navy if image can't be loaded
@@ -132,17 +139,18 @@ def render_card(
     fragment: dict,
     width: int,
     height: int,
-    font: str = 'lato',
+    font: str = 'playfair',
     bg_type: str = 'solid',
     bg_colors: list | None = None,
     text_color_override: str | None = None,
     bg_gradient_dir: str = 'to-bottom',
     bg_image: str | None = None,
+    bg_flip: bool = False,
 ) -> bytes:
     if bg_colors is None:
         bg_colors = ['#0D1B2A']
 
-    font_path = FONT_REGISTRY.get(font, FONT_REGISTRY['lato'])
+    font_path = FONT_REGISTRY.get(font, FONT_REGISTRY['playfair'])
     text_color = parse_hex_color(text_color_override) if text_color_override else text_color_for_bg(bg_colors)
     attr_color = tuple(min(255, c + 60) for c in text_color) if text_color == _DARK_NAVY \
         else (176, 186, 197)
@@ -158,7 +166,7 @@ def render_card(
 
     # ── Background ──────────────────────────────────────────────────────────
     if bg_type == 'image' and bg_image:
-        _render_image_bg(img, bg_image)
+        _render_image_bg(img, bg_image, bg_flip=bg_flip)
         # Semi-transparent dark overlay for text readability on photo backgrounds
         overlay = Image.new('RGBA', (width, height), (0, 0, 0, 100))
         img_rgba = img.convert('RGBA')
