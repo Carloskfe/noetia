@@ -466,6 +466,21 @@
 
 ---
 
+## Backlog — Quote card: flip/mirror background image (added 2026-06-30)
+
+> **Goal:** In the quote-card image generator, let the user horizontally flip (mirror) the **background image** — so a subject/composition can face the other way — for the two image-background sources: (1) a preset from the free **Noetia images collection** (`imagen-1..5`, `services/web/public/backgrounds/`), and (2) an image the user **uploads or captures with the mobile camera**. The quote text/citation must stay upright and readable (only the background is mirrored, not the composited text).
+
+**Scope:**
+- [ ] **image-gen:** add a `bgFlip` (bool) param to `POST /generate` (`app.py`, alongside `bgImage`); thread it into the renderer and apply `ImageOps.mirror()` to the background in `templates/base.py` (the cover-scaled bg fill, ~L92) **before** text is composited. No-op when `bgImage` is absent (solid/gradient backgrounds). Mirror unit tests under `tests/unit/templates/`.
+- [ ] **web:** add a flip toggle in the share/quote-card preview (`ShareModal.tsx` / `(social)`), enabled only when `bgType` is an image source (preset collection or user upload); pass `bgFlip` through the generate call. Tests.
+- [ ] **mobile:** same toggle in the mobile share flow, covering camera-captured and gallery-uploaded images. Tests.
+- [ ] **i18n:** flip-control label + a11y string in all 4 files (`web/lib/i18n/{en,es}`, `mobile/src/i18n/{en,es}`) — sentence case, tú form.
+- [ ] Confirm behavior for both sources: preset Noetia background **and** user upload/camera image; verify text remains un-mirrored.
+
+**Note:** flip applies to raster **image** backgrounds only — solid/gradient backgrounds are unaffected. Priority is Reader/sharing UX (product hierarchy #1–2), above free-library work.
+
+---
+
 ## Spike Sprint — Launch Readiness Audit (backlog, added 2026-06-30)
 
 > **Goal:** a time-boxed spike to verify the whole project is launch-ready end to end — exercise the real flows, refresh every doc/report, re-run project-management and risk artifacts (incl. the premortem), and produce a single up-to-date readiness report listing all remaining pending tasks before go-live.
