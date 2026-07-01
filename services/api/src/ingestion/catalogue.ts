@@ -348,6 +348,64 @@ export const CATALOGUE: CatalogueEntry[] = [
     librivoxAudioUrl: 'https://librivox.org/orgullo-y-prejuicio1-by-jane-austen/',
     librivoxSearchTitle: 'Orgullo Prejuicio',
   },
+  // ── Spanish free-library second wave (added 2026-06-30; isFree pending sync) ──
+  // Six Spanish titles toward the 18-ES target. All text is Spanish Wikisource
+  // (no Gutenberg ES exists for any). THREE are translations — El Príncipe
+  // (Italian), Meditaciones + Cartas a Lucilio (Latin) — and therefore carry the
+  // #1 sync-failure risk (translation mismatch): the Wikisource edition must line
+  // up with the exact translation the LibriVox narrator read, else coverage falls
+  // below the 90% gate and the title stays isFree=false. Cartas a Lucilio is a
+  // *selección* on LibriVox, so also expect text/audio length mismatch. The other
+  // three (María, Rimas, La Edad de Oro) are original Spanish — low sync risk.
+  {
+    title: 'El Príncipe',
+    author: 'Nicolás Maquiavelo',
+    description: 'Tratado político del Renacimiento sobre el poder, el liderazgo y el arte de gobernar.',
+    source: 'wikisource',
+    wikisourceTitle: 'El príncipe',
+    librivoxAudioUrl: 'https://librivox.org/el-principe-by-niccolo-machiavelli/',
+  },
+  {
+    title: 'María',
+    author: 'Jorge Isaacs',
+    description: 'Novela romántica del escritor colombiano sobre un amor trágico en el Valle del Cauca del siglo XIX.',
+    source: 'wikisource',
+    wikisourceTitle: 'María',
+    librivoxAudioUrl: 'https://librivox.org/maria-by-jorge-isaacs/',
+  },
+  {
+    title: 'Rimas',
+    author: 'Gustavo Adolfo Bécquer',
+    description: 'Colección de poemas del poeta romántico sevillano sobre el amor, la soledad y la poesía misma.',
+    source: 'wikisource',
+    wikisourceTitle: 'Rimas (Bécquer)',
+    librivoxAudioUrl: 'https://librivox.org/rimas-by-gustavo-adolfo-becquer/',
+  },
+  {
+    title: 'Meditaciones',
+    author: 'Marco Aurelio',
+    description: 'Reflexiones estoicas del emperador romano sobre la virtud, el deber y la serenidad ante la vida.',
+    source: 'wikisource',
+    wikisourceTitle: 'Meditaciones',
+    librivoxAudioUrl: 'https://librivox.org/meditaciones-by-marcus-aurelius/',
+  },
+  {
+    title: 'Cartas a Lucilio',
+    author: 'Séneca',
+    description: 'Cartas del filósofo estoico a su amigo Lucilio sobre cómo vivir con sabiduría y templanza.',
+    source: 'wikisource',
+    wikisourceTitle: 'Cartas a Lucilio',
+    librivoxAudioUrl: 'https://librivox.org/cartas-a-lucilio-seleccionadas-by-lucius-annaeus-seneca/',
+    librivoxSearchTitle: 'Cartas a Lucilio',
+  },
+  {
+    title: 'La Edad de Oro',
+    author: 'José Martí',
+    description: 'Revista para niños del héroe cubano: cuentos, poemas y ensayos sobre la libertad y el saber.',
+    source: 'wikisource',
+    wikisourceTitle: 'La Edad de Oro',
+    librivoxAudioUrl: 'https://librivox.org/la-edad-de-oro-by-jose-marti/',
+  },
   {
     title: 'Génesis',
     author: 'Anónimo',

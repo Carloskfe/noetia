@@ -134,3 +134,30 @@ describe('English self-development first-wave entries', () => {
     expect(CATALOGUE.filter((c) => c.title === title)).toHaveLength(1);
   });
 });
+
+// ── Spanish free-library second wave (added 2026-06-30) ──────────────────────
+describe('Spanish free-library second-wave entries', () => {
+  // [title, wikisourceTitle, librivoxAudioUrl slug fragment]
+  const secondWave: Array<[string, string, string]> = [
+    ['El Príncipe', 'El príncipe', 'el-principe-by-niccolo-machiavelli'],
+    ['María', 'María', 'maria-by-jorge-isaacs'],
+    ['Rimas', 'Rimas (Bécquer)', 'rimas-by-gustavo-adolfo-becquer'],
+    ['Meditaciones', 'Meditaciones', 'meditaciones-by-marcus-aurelius'],
+    ['Cartas a Lucilio', 'Cartas a Lucilio', 'cartas-a-lucilio-seleccionadas-by-lucius-annaeus-seneca'],
+    ['La Edad de Oro', 'La Edad de Oro', 'la-edad-de-oro-by-jose-marti'],
+  ];
+
+  it.each(secondWave)('%s is a Spanish Wikisource entry with a LibriVox URL', (title, ws, slug) => {
+    const e = CATALOGUE.find((c) => c.title === title);
+    expect(e).toBeDefined();
+    expect(e!.source).toBe('wikisource');
+    expect(e!.wikisourceTitle).toBe(ws);
+    // language defaults to 'es' when omitted — none of these set it
+    expect(e!.language).toBeUndefined();
+    expect(e!.librivoxAudioUrl).toBe(`https://librivox.org/${slug}/`);
+  });
+
+  it.each(secondWave)('%s appears exactly once in the catalogue', (title) => {
+    expect(CATALOGUE.filter((c) => c.title === title)).toHaveLength(1);
+  });
+});
