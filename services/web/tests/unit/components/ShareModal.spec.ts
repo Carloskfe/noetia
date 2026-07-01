@@ -5,6 +5,7 @@
  * and tested via the share-utils logic it depends on.
  */
 import {
+  BG_PRESETS,
   FORMAT_PLATFORM_MAP,
   FONTS,
   GOOGLE_FONTS_URL,
@@ -61,6 +62,24 @@ describe('FONTS registry', () => {
     expect(GOOGLE_FONTS_URL).toContain('Merriweather');
     expect(GOOGLE_FONTS_URL).toContain('Dancing');
     expect(GOOGLE_FONTS_URL).toContain('Montserrat');
+  });
+});
+
+// ── BG_PRESETS (Noetia background gallery) ───────────────────────────────────
+
+describe('BG_PRESETS', () => {
+  it('offers exactly 18 Noetia gallery backgrounds', () => {
+    expect(BG_PRESETS).toHaveLength(18);
+  });
+
+  it('every preset points at a /backgrounds/imagen-N.jpg static asset', () => {
+    BG_PRESETS.forEach((url, i) => {
+      expect(url).toBe(`/backgrounds/imagen-${i + 1}.jpg`);
+    });
+  });
+
+  it('has no duplicate entries', () => {
+    expect(new Set(BG_PRESETS).size).toBe(BG_PRESETS.length);
   });
 });
 

@@ -23,6 +23,32 @@ export type FontId = (typeof FONTS)[number]['id'];
 export const GOOGLE_FONTS_URL =
   'https://fonts.googleapis.com/css2?family=Playfair+Display&family=Montserrat&family=Merriweather&family=Oswald&family=Libre+Baskerville&family=Dancing+Script&family=Pacifico&display=swap';
 
+// ── Noetia background image gallery ───────────────────────────────────────────
+// 18 curated Noetia-provided backgrounds served statically from web/public.
+// Offered in the quote-card picker alongside a solid background and the user's
+// own camera/uploaded images. Selecting one is fetched + base64-encoded client
+// side (see ShareModal urlToBase64) before it's sent to image-gen.
+export const BG_PRESETS: readonly string[] = [
+  '/backgrounds/imagen-1.jpg',
+  '/backgrounds/imagen-2.jpg',
+  '/backgrounds/imagen-3.jpg',
+  '/backgrounds/imagen-4.jpg',
+  '/backgrounds/imagen-5.jpg',
+  '/backgrounds/imagen-6.jpg',
+  '/backgrounds/imagen-7.jpg',
+  '/backgrounds/imagen-8.jpg',
+  '/backgrounds/imagen-9.jpg',
+  '/backgrounds/imagen-10.jpg',
+  '/backgrounds/imagen-11.jpg',
+  '/backgrounds/imagen-12.jpg',
+  '/backgrounds/imagen-13.jpg',
+  '/backgrounds/imagen-14.jpg',
+  '/backgrounds/imagen-15.jpg',
+  '/backgrounds/imagen-16.jpg',
+  '/backgrounds/imagen-17.jpg',
+  '/backgrounds/imagen-18.jpg',
+] as const;
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type SharePlatform = 'linkedin' | 'instagram' | 'facebook' | 'pinterest';

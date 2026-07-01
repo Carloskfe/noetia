@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useId } from 'react';
 import { apiFetch } from '@/lib/api';
 import {
+  BG_PRESETS,
   FORMAT_PLATFORM_MAP,
   FONTS,
   FontId,
@@ -37,14 +38,7 @@ function gradientCss(dir: GradientDirId, c1: string, c2: string): string {
 }
 
 // ── Background image presets ──────────────────────────────────────────────────
-
-const BG_PRESETS = [
-  '/backgrounds/imagen-1.png',
-  '/backgrounds/imagen-2.png',
-  '/backgrounds/imagen-3.png',
-  '/backgrounds/imagen-4.png',
-  '/backgrounds/imagen-5.png',
-];
+// BG_PRESETS (18 Noetia gallery images) is defined in lib/share-utils.
 
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
