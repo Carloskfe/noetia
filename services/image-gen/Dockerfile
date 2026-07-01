@@ -16,6 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Bundle open-source TTF fonts (Lato, Playfair Display, Merriweather, Dancing Script, Montserrat)
 COPY fonts/ /app/fonts/
 
+# Bundle brand assets (Noetia logo watermark — light + dark variants)
+COPY assets/ /app/assets/
+
 COPY . .
 EXPOSE 5000
 CMD ["python", "app.py"]

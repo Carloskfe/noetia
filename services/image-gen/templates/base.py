@@ -27,6 +27,15 @@ VALID_BG_TYPES = {'solid', 'gradient', 'image'}
 _DARK_NAVY = (13, 27, 42)
 _WHITE = (255, 255, 255)
 
+# ── Watermark logo assets ───────────────────────────────────────────────────────
+# Two monochrome, transparent variants of the Noetia logo (N + open book +
+# wordmark). The light (white) one reads on dark/photo backgrounds; the dark
+# (navy) one reads on light backgrounds. If the files are missing the renderer
+# falls back to a plain "Noetia" text watermark.
+_ASSET_DIR = os.path.join(os.path.dirname(__file__), '..', 'assets')
+_LOGO_LIGHT = os.path.join(_ASSET_DIR, 'noetia-logo-light.png')
+_LOGO_DARK = os.path.join(_ASSET_DIR, 'noetia-logo-dark.png')
+
 # Gradient direction → (dx_start, dy_start) normalised vectors used to compute t
 _GRADIENT_DIRS = {
     'to-bottom':       lambda x, y, w, h: y / max(h - 1, 1),
@@ -133,6 +142,42 @@ def _draw_text(draw: ImageDraw.ImageDraw, pos: tuple, text: str, font, fill: tup
         draw.text((x, y), text, font=font, fill=fill)
 
 
+# ── Watermark ─────────────────────────────────────────────────────────────────
+
+def _watermark_logo_path(text_color: tuple) -> str:
+    """White logo on dark backgrounds, dark-navy logo on light backgrounds.
+
+    text_color is already computed to contrast with the background, so we reuse
+    that decision: white text ⇒ dark bg ⇒ white logo; otherwise dark logo.
+    """
+    return _LOGO_LIGHT if text_color == _WHITE else _LOGO_DARK
+
+
+def _draw_watermark(img, draw, text_color: tuple, attr_color: tuple, font_wm, margin: int) -> None:
+    """Composite the Noetia logo watermark in the bottom-right corner.
+
+    Falls back to a plain "Noetia" text watermark if the logo asset is missing
+    or can't be loaded.
+    """
+    try:
+        logo = Image.open(_watermark_logo_path(text_color)).convert('RGBA')
+        target_h = max(24, int(img.width * 0.06))
+        target_w = max(1, int(target_h * logo.width / logo.height))
+        logo = logo.resize((target_w, target_h), Image.LANCZOS)
+        # Slightly translucent so it reads as a watermark, not a sticker
+        alpha = logo.split()[3].point(lambda a: int(a * 0.9))
+        logo.putalpha(alpha)
+        pos = (img.width - margin - target_w, img.height - margin - target_h)
+        img.paste(logo, pos, logo)
+    except (OSError, IOError, ValueError):
+        wm = "Noetia"
+        bb = draw.textbbox((0, 0), wm, font=font_wm)
+        draw.text(
+            (img.width - margin - (bb[2] - bb[0]), img.height - margin - (bb[3] - bb[1])),
+            wm, font=font_wm, fill=attr_color,
+        )
+
+
 # ── Card renderer ─────────────────────────────────────────────────────────────
 
 def render_card(
@@ -236,12 +281,7 @@ def render_card(
         bb = draw.textbbox((0, 0), citation, font=font_cite)
         draw.text(((width - (bb[2] - bb[0])) / 2, cite_y), citation, font=font_cite, fill=cite_color)
 
-    wm = "Noetia"
-    bb = draw.textbbox((0, 0), wm, font=font_wm)
-    draw.text(
-        (width - margin - (bb[2] - bb[0]), height - margin - (bb[3] - bb[1])),
-        wm, font=font_wm, fill=attr_color,
-    )
+    _draw_watermark(img, draw, text_color, attr_color, font_wm, margin)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")

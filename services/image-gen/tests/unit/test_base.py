@@ -7,9 +7,16 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PIL import Image
 
+import os
+
 from templates.base import (
+    _DARK_NAVY,
+    _LOGO_DARK,
+    _LOGO_LIGHT,
+    _WHITE,
     VALID_FONTS,
     _render_image_bg,
+    _watermark_logo_path,
     parse_hex_color,
     relative_luminance,
     render_card,
@@ -248,6 +255,45 @@ def test_render_card_flip_is_noop_on_solid_bg():
     flipped = render_card(_FRAGMENT, 800, 800, bg_type='solid', bg_colors=['#FF6B6B'], bg_flip=True)
     normal  = render_card(_FRAGMENT, 800, 800, bg_type='solid', bg_colors=['#FF6B6B'], bg_flip=False)
     assert flipped == normal
+
+
+# ── watermark logo ────────────────────────────────────────────────────────────
+
+def test_watermark_logo_assets_exist():
+    assert os.path.exists(_LOGO_LIGHT), "light logo watermark asset missing"
+    assert os.path.exists(_LOGO_DARK), "dark logo watermark asset missing"
+
+
+def test_watermark_light_logo_for_dark_bg():
+    # white text ⇒ dark background ⇒ white (light) logo
+    assert _watermark_logo_path(_WHITE) == _LOGO_LIGHT
+
+
+def test_watermark_dark_logo_for_light_bg():
+    # dark-navy text ⇒ light background ⇒ dark logo
+    assert _watermark_logo_path(_DARK_NAVY) == _LOGO_DARK
+
+
+def test_render_card_composites_logo_watermark_dark_bg():
+    result = render_card(_FRAGMENT, 800, 800, bg_colors=['#000000'])
+    assert result[:8] == b'\x89PNG\r\n\x1a\n'
+
+
+def test_render_card_composites_logo_watermark_light_bg():
+    result = render_card(_FRAGMENT, 800, 800, bg_colors=['#FFFFFF'])
+    assert result[:8] == b'\x89PNG\r\n\x1a\n'
+
+
+def test_render_card_watermark_falls_back_to_text_when_asset_missing():
+    from templates import base as base_module
+    orig_light, orig_dark = base_module._LOGO_LIGHT, base_module._LOGO_DARK
+    base_module._LOGO_LIGHT = '/nonexistent/logo-light.png'
+    base_module._LOGO_DARK = '/nonexistent/logo-dark.png'
+    try:
+        result = render_card(_FRAGMENT, 800, 800, bg_colors=['#000000'])
+        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+    finally:
+        base_module._LOGO_LIGHT, base_module._LOGO_DARK = orig_light, orig_dark
 
 
 def test_render_card_falls_back_to_default_font_on_missing_file():
