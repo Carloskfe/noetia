@@ -70,7 +70,7 @@ export const es: MobileTranslations = {
     errorBook: 'No se pudo cargar el libro.',
     audioMode: 'Modo escucha activa',
     selectionMode: 'Seleccionar texto',
-    selectionModeHint: 'Mantén presionado cualquier frase para copiar',
+    selectionModeHint: 'Toca frases para crear una cita y guárdala',
   },
   fragments: {
     title: 'Fragmentos',

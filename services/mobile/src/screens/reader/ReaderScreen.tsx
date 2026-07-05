@@ -12,6 +12,7 @@ import { DownloadButton } from '../../components/DownloadButton';
 import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import { useTranslation } from '../../i18n';
 import { saveFragment } from '../../offline/fragment-storage';
+import { toggleSelection, buildFragmentFromSelection } from '../../lib/fragment-selection';
 import { saveProgress } from '../../offline/progress-storage';
 import { loadChapter } from '../../offline/book-storage';
 import type { LibraryStackParamList } from '../../navigation/types';
@@ -51,6 +52,7 @@ export function ReaderScreen() {
   const { t } = useTranslation();
   const [audioMode, setAudioMode] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [savedIndex, setSavedIndex] = useState(0);
   const [selectedPhrase, setSelectedPhrase] = useState<SyncPhrase | null>(null);
   const [savingFragment, setSavingFragment]   = useState(false);
@@ -84,7 +86,7 @@ export function ReaderScreen() {
       headerRight: () => (
         <View style={styles.headerRight}>
           <TouchableOpacity
-            onPress={() => setSelectionMode((prev) => !prev)}
+            onPress={() => setSelectionMode((prev) => { if (prev) setSelectedIndices([]); return !prev; })}
             style={[styles.headerBtn, selectionMode && styles.headerBtnActive]}
             accessibilityLabel={t.reader.selectionMode}
           >
@@ -215,6 +217,29 @@ export function ReaderScreen() {
     }
   }, [bookId, selectedPhrase]);
 
+  const handleSaveSelection = useCallback(async () => {
+    const source = phrases.length > 0
+      ? phrases
+      : rawParagraphs.map((text, index) => ({ index, text, type: 'text' as const }));
+    const frag = buildFragmentFromSelection(source, selectedIndices);
+    if (!frag) return;
+    setSavingFragment(true);
+    const body = { text: frag.text, startPhraseIndex: frag.startPhraseIndex, endPhraseIndex: frag.endPhraseIndex };
+    try {
+      const res = await apiClient.post<{ id: string }>(`/books/${bookId}/fragments`, body);
+      selectedIndices.forEach((i) => savedPhraseIds.current.add(i));
+      await saveFragment({ localId: res.id, serverId: res.id, bookId, text: frag.text, chapterIndex: 0, createdAt: Date.now(), synced: true });
+    } catch {
+      const localId = `local_${Date.now()}`;
+      selectedIndices.forEach((i) => savedPhraseIds.current.add(i));
+      await saveFragment({ localId, bookId, text: frag.text, chapterIndex: 0, createdAt: Date.now(), synced: false }).catch(() => {});
+    } finally {
+      setSavingFragment(false);
+      setSelectedIndices([]);
+      setSelectionMode(false);
+    }
+  }, [bookId, phrases, rawParagraphs, selectedIndices]);
+
   const handlePhrasePress = useCallback((item: SyncPhrase) => {
     if (audioMode && audio.isLoaded) {
       audio.seekToPhrase(item);
@@ -236,7 +261,16 @@ export function ReaderScreen() {
       isActive && styles.active,
     ];
     if (selectionMode) {
-      return <Text selectable style={textStyle}>{item.text}</Text>;
+      if (isHeading) return <Text style={textStyle}>{item.text}</Text>;
+      const isSelected = selectedIndices.includes(item.index);
+      return (
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => setSelectedIndices((s) => toggleSelection(s, item.index))}
+        >
+          <Text style={[textStyle, isSelected && styles.selecting]}>{item.text}</Text>
+        </TouchableOpacity>
+      );
     }
     return (
       <TouchableOpacity
@@ -248,11 +282,19 @@ export function ReaderScreen() {
         <Text style={textStyle}>{item.text}</Text>
       </TouchableOpacity>
     );
-  }, [audioMode, audio.activePhraseIndex, audio.isLoaded, handlePhrasePress, selectionMode]);
+  }, [audioMode, audio.activePhraseIndex, audio.isLoaded, handlePhrasePress, selectionMode, selectedIndices]);
 
   const renderParagraph = useCallback(({ item, index }: { item: string; index: number }) => {
     if (selectionMode) {
-      return <Text selectable style={[styles.phrase, styles.gap]}>{item}</Text>;
+      const isSelected = selectedIndices.includes(index);
+      return (
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => setSelectedIndices((s) => toggleSelection(s, index))}
+        >
+          <Text style={[styles.phrase, styles.gap, isSelected && styles.selecting]}>{item}</Text>
+        </TouchableOpacity>
+      );
     }
     return (
       <TouchableOpacity
@@ -263,7 +305,7 @@ export function ReaderScreen() {
         <Text style={[styles.phrase, styles.gap]}>{item}</Text>
       </TouchableOpacity>
     );
-  }, [selectionMode]);
+  }, [selectionMode, selectedIndices]);
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#4F46E5" /></View>;
 
@@ -336,6 +378,27 @@ export function ReaderScreen() {
             setAudioMode(false);
           }}
         />
+      )}
+
+      {/* Multi-phrase selection bar — replaces the OS selection menu */}
+      {selectionMode && selectedIndices.length > 0 && (
+        <View style={styles.selectionBar}>
+          <View style={styles.selectionCount}>
+            <Text style={styles.selectionCountText}>{selectedIndices.length}</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.selectionSaveBtn, savingFragment && styles.saveBtnOff]}
+            onPress={handleSaveSelection}
+            disabled={savingFragment}
+          >
+            {savingFragment
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Text style={styles.saveBtnText}>{t.reader.saveFragment}</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.selectionClearBtn} onPress={() => setSelectedIndices([])}>
+            <Text style={styles.selectionClearText}>{t.reader.cancel}</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Fragment save modal */}
@@ -430,6 +493,13 @@ const styles = StyleSheet.create({
   heading:           { fontSize: 20, fontWeight: '700', color: '#0D1B2A', marginTop: 20, marginBottom: 4 },
   saved:             { backgroundColor: '#EDE9FE' },
   active:            { backgroundColor: '#DBEAFE', borderRadius: 4 },
+  selecting:         { backgroundColor: '#C7D2FE', borderRadius: 4 },
+  selectionBar:      { position: 'absolute', left: 16, right: 16, bottom: 24, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#0D1B2A', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 6 },
+  selectionCount:    { minWidth: 28, height: 28, borderRadius: 14, backgroundColor: '#4F46E5', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  selectionCountText:{ color: '#fff', fontSize: 14, fontWeight: '700' },
+  selectionSaveBtn:  { flex: 1, backgroundColor: '#4F46E5', borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  selectionClearBtn: { paddingHorizontal: 8, paddingVertical: 12 },
+  selectionClearText:{ color: '#9CA3AF', fontSize: 14, fontWeight: '600' },
   gap:               { marginBottom: 16 },
   errorText:         { fontSize: 15, color: '#EF4444', textAlign: 'center', marginBottom: 16 },
   backBtn:           { paddingHorizontal: 20, paddingVertical: 10 },

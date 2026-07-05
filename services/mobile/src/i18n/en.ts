@@ -68,7 +68,7 @@ export const en = {
     errorBook: 'Could not load the book.',
     audioMode: 'Active listening mode',
     selectionMode: 'Select text',
-    selectionModeHint: 'Long-press any phrase to copy text',
+    selectionModeHint: 'Tap phrases to build a quote, then save it',
   },
   fragments: {
     title: 'Fragments',
