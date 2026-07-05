@@ -2,17 +2,20 @@
 
 import { useState } from 'react';
 import { apiFetch, clearToken } from '@/lib/api';
+import { useTranslation } from '@/lib/i18n';
 
 interface Props {
   onClose: () => void;
 }
 
 export default function DeleteAccountModal({ onClose }: Props) {
+  const { t } = useTranslation();
+  const dm = t.account.deleteModal;
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const confirmed = input === 'ELIMINAR';
+  const confirmed = input === dm.confirmWord;
 
   async function handleDelete() {
     if (!confirmed) return;
@@ -24,7 +27,7 @@ export default function DeleteAccountModal({ onClose }: Props) {
       localStorage.clear();
       window.location.href = '/';
     } catch {
-      setError('Algo salió mal. Por favor intenta de nuevo.');
+      setError(dm.error);
       setLoading(false);
     }
   }
@@ -34,7 +37,7 @@ export default function DeleteAccountModal({ onClose }: Props) {
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 px-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Eliminar cuenta"
+      aria-label={dm.ariaLabel}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
         <div className="flex items-center gap-3 mb-4">
@@ -44,30 +47,30 @@ export default function DeleteAccountModal({ onClose }: Props) {
             </svg>
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">Eliminar cuenta</h2>
-            <p className="text-xs text-gray-500">Esta acción no se puede deshacer</p>
+            <h2 className="text-base font-bold text-gray-900">{dm.title}</h2>
+            <p className="text-xs text-gray-500">{dm.warning}</p>
           </div>
         </div>
 
         <p className="text-sm text-gray-600 leading-relaxed mb-4">
-          Se eliminarán permanentemente tu perfil, biblioteca, fragmentos, historial de lectura y todas tus preferencias. No podremos recuperar estos datos.
+          {dm.body}
         </p>
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5">
           <p className="text-xs text-amber-800 leading-relaxed">
-            Si tienes una suscripción activa, cancélala primero desde <strong>Facturación</strong> para evitar cargos futuros.
+            {dm.warningBox}
           </p>
         </div>
 
         <div className="mb-5">
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Escribe <strong>ELIMINAR</strong> para confirmar
+            {dm.label}
           </label>
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="ELIMINAR"
+            placeholder={dm.placeholder}
             className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
             autoComplete="off"
           />
@@ -81,14 +84,14 @@ export default function DeleteAccountModal({ onClose }: Props) {
             disabled={loading}
             className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
           >
-            Cancelar
+            {dm.cancel}
           </button>
           <button
             onClick={handleDelete}
             disabled={!confirmed || loading}
             className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-40 transition"
           >
-            {loading ? 'Eliminando…' : 'Eliminar mi cuenta'}
+            {loading ? dm.deleting : dm.confirm}
           </button>
         </div>
       </div>

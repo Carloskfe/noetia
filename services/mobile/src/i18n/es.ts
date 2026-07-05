@@ -185,6 +185,7 @@ export const es: MobileTranslations = {
       placeholder: 'Tu reflexión sobre este pasaje…',
       phraseLabel: 'Frase #',
     },
+    tokenRequired: '1 token',
     commentInClub: 'Comentar en club',
     selectClub: 'Selecciona un club',
     noClubs: 'No eres miembro de ningún club que esté leyendo este libro.',

@@ -183,6 +183,7 @@ export const en = {
       placeholder: 'Your thoughts on this passage…',
       phraseLabel: 'Phrase #',
     },
+    tokenRequired: '1 token',
     commentInClub: 'Comment in club',
     selectClub: 'Select a club',
     noClubs: 'You are not a member of any club reading this book.',

@@ -39,7 +39,7 @@ function ClubRow({ club, onPress }: { club: Club; onPress: () => void }) {
         {club.description && <Text style={styles.rowDesc} numberOfLines={1}>{club.description}</Text>}
         <Text style={styles.rowMeta}>{club.type === 'public' ? '🌐' : '🔒'} {club.owner?.name}</Text>
       </View>
-      {club.tokenRequired && <Text style={styles.tokenBadge}>1 token</Text>}
+      {club.tokenRequired && <Text style={styles.tokenBadge}>{t.clubs.tokenRequired}</Text>}
     </TouchableOpacity>
   );
 }

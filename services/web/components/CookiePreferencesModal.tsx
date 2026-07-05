@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { CONSENT_VERSION, loadConsent, saveConsent } from '@/lib/consent-utils';
+import { useTranslation } from '@/lib/i18n';
 
 type Props = {
   onClose: () => void;
@@ -9,6 +10,8 @@ type Props = {
 };
 
 export default function CookiePreferencesModal({ onClose, onSave }: Props) {
+  const { t } = useTranslation();
+  const c = t.cookies.preferences;
   const existing = loadConsent();
   const [analytics, setAnalytics] = useState(existing?.analytics ?? false);
   const [marketing, setMarketing] = useState(existing?.marketing ?? false);
@@ -26,9 +29,9 @@ export default function CookiePreferencesModal({ onClose, onSave }: Props) {
       >
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900">
-            Gestionar cookies / Manage cookies
+            {c.title}
           </h2>
-          <button onClick={onClose} aria-label="Cerrar" className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
+          <button onClick={onClose} aria-label={c.close} className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
             <XIcon aria-hidden="true" />
           </button>
         </div>
@@ -37,14 +40,13 @@ export default function CookiePreferencesModal({ onClose, onSave }: Props) {
           {/* Essential — always on */}
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-gray-900">Cookies esenciales / Essential cookies</p>
+              <p className="text-sm font-medium text-gray-900">{c.essential}</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                Necesarias para el funcionamiento de la plataforma. No pueden desactivarse. /
-                Required for the platform to function. Cannot be disabled.
+                {c.essentialDesc}
               </p>
             </div>
             <div className="mt-0.5 flex-shrink-0">
-              <span className="text-xs text-gray-400 font-medium">Siempre activas / Always on</span>
+              <span className="text-xs text-gray-400 font-medium">{c.alwaysOn}</span>
             </div>
           </div>
 
@@ -53,10 +55,9 @@ export default function CookiePreferencesModal({ onClose, onSave }: Props) {
           {/* Analytics */}
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-gray-900">Cookies analíticas / Analytics cookies</p>
+              <p className="text-sm font-medium text-gray-900">{c.analytics}</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                Nos ayudan a mejorar la plataforma midiendo cómo se usa. /
-                Help us improve the platform by measuring how it is used.
+                {c.analyticsDesc}
               </p>
             </div>
             <button
@@ -83,10 +84,9 @@ export default function CookiePreferencesModal({ onClose, onSave }: Props) {
           {/* Marketing */}
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-gray-900">Cookies de marketing / Marketing cookies</p>
+              <p className="text-sm font-medium text-gray-900">{c.marketing}</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                Reservadas para uso futuro en esta versión. /
-                Reserved for future use in this version.
+                {c.marketingDesc}
               </p>
             </div>
             <button
@@ -113,7 +113,7 @@ export default function CookiePreferencesModal({ onClose, onSave }: Props) {
           onClick={handleSave}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2.5 rounded-xl transition"
         >
-          Guardar preferencias / Save preferences
+          {c.save}
         </button>
       </div>
     </div>

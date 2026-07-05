@@ -1,31 +1,11 @@
+'use client';
+
 import Link from 'next/link';
-
-const CORPORATE = [
-  { href: '/about', label: 'Sobre Noetia' },
-  { href: '/company', label: 'Empresa' },
-  { href: '/how-we-build', label: 'Cómo construimos' },
-  { href: '/team', label: 'Equipo' },
-  { href: '/careers', label: 'Carreras' },
-  { href: '/milestones', label: 'Hitos' },
-  { href: '/contact', label: 'Contacto' },
-];
-
-const PRODUCT = [
-  { href: '/library', label: 'Biblioteca' },
-  { href: '/clubs', label: 'Clubes de lectura' },
-  { href: '/causas', label: 'Causas Noetia' },
-  { href: '/pricing', label: 'Planes' },
-  { href: '/upload-guide', label: 'Para autores' },
-];
-
-const LEGAL = [
-  { href: '/legal/privacy', label: 'Privacidad' },
-  { href: '/legal/terms', label: 'Términos de uso' },
-  { href: '/legal/cookies', label: 'Cookies' },
-  { href: '/trust', label: 'Confianza y seguridad' },
-];
+import { useTranslation } from '@/lib/i18n';
 
 export default function Footer() {
+  const { t } = useTranslation();
+  const f = t.footer;
   return (
     <footer className="border-t border-gray-100 bg-white mt-auto">
       <div className="max-w-6xl mx-auto px-6 py-12">
@@ -39,7 +19,7 @@ export default function Footer() {
               NOETIA
             </Link>
             <p className="text-xs text-gray-400 leading-relaxed mb-4">
-              Where knowledge becomes visible.
+              {f.tagline}
             </p>
             <a
               href="mailto:info@noetia.app"
@@ -52,10 +32,10 @@ export default function Footer() {
           {/* Plataforma */}
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
-              Plataforma
+              {f.platform}
             </p>
             <ul className="space-y-2.5">
-              {PRODUCT.map(({ href, label }) => (
+              {f.links.platform.map(({ href, label }) => (
                 <li key={href}>
                   <Link href={href} className="text-xs text-gray-500 hover:text-[#0D1B2A] transition">
                     {label}
@@ -68,10 +48,10 @@ export default function Footer() {
           {/* Empresa */}
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
-              Empresa
+              {f.company}
             </p>
             <ul className="space-y-2.5">
-              {CORPORATE.map(({ href, label }) => (
+              {f.links.company.map(({ href, label }) => (
                 <li key={href}>
                   <Link href={href} className="text-xs text-gray-500 hover:text-[#0D1B2A] transition">
                     {label}
@@ -84,10 +64,10 @@ export default function Footer() {
           {/* Legal */}
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
-              Legal
+              {f.legal}
             </p>
             <ul className="space-y-2.5">
-              {LEGAL.map(({ href, label }) => (
+              {f.links.legal.map(({ href, label }) => (
                 <li key={href}>
                   <Link href={href} className="text-xs text-gray-500 hover:text-[#0D1B2A] transition">
                     {label}

@@ -6,9 +6,12 @@ import {
   needsConsent,
   saveConsent,
 } from '@/lib/consent-utils';
+import { useTranslation } from '@/lib/i18n';
 import CookiePreferencesModal from './CookiePreferencesModal';
 
 export default function CookieBanner() {
+  const { t } = useTranslation();
+  const c = t.cookies.banner;
   const [visible, setVisible] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
@@ -39,11 +42,10 @@ export default function CookieBanner() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <div className="flex-1 min-w-0">
             <p className="text-sm text-gray-700">
-              <span className="font-medium">Usamos cookies / We use cookies.</span>{' '}
-              Utilizamos cookies esenciales para el funcionamiento de la plataforma y, con tu consentimiento, cookies analíticas para mejorar tu experiencia.{' '}
-              We use essential cookies to operate the platform and, with your consent, analytics cookies to improve your experience.{' '}
+              <span className="font-medium">{c.title}</span>{' '}
+              {c.body}{' '}
               <a href="/legal/cookies" className="underline text-blue-600 hover:text-blue-800 whitespace-nowrap">
-                Más info / Learn more
+                {c.learnMore}
               </a>
             </p>
           </div>
@@ -52,19 +54,19 @@ export default function CookieBanner() {
               onClick={acceptAll}
               className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
             >
-              Aceptar todo / Accept all
+              {c.acceptAll}
             </button>
             <button
               onClick={acceptEssentials}
               className="border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition"
             >
-              Solo esenciales / Essentials only
+              {c.essentialsOnly}
             </button>
             <button
               onClick={() => setShowModal(true)}
               className="text-gray-500 hover:text-gray-700 text-sm underline px-2 py-2 transition"
             >
-              Gestionar / Manage
+              {c.manage}
             </button>
           </div>
         </div>
