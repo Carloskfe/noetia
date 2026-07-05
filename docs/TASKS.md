@@ -491,6 +491,58 @@
 
 ---
 
+## Backlog — User bug report batch (added 2026-07-03, from Carlos)
+
+> Field-testing feedback. Ordered by product hierarchy: **Reader experience (#1) first**, then sharing (#2), then content/catalogue. Most reader items are mobile unless noted. None triaged/reproduced yet — each needs an owner + repro.
+
+### A. Reader — narration & phrase sync (product hierarchy #1, highest priority)
+- [ ] **Phrase highlight unreliable during narration** — the active-phrase highlight does not always fire while audio plays. (mobile + possibly web)
+- [ ] **Highlight is off-by-one (shows the NEXT phrase, not the current one)** — the highlighted phrase leads the audio by one. Likely the same root cause as the two below; fix together.
+- [ ] **Starting narration begins one phrase early** — choosing "start narration here" (the "done"/confirm action) starts from the *previous* phrase.
+- [ ] **Hybrid/mixed reading mode: text does not advance with the audio** — auto-scroll/active-phrase tracking not working in hybrid mode (web `'hybrid'` + mobile equivalent).
+- [ ] **Resume is slow and loses text position** — "continue where you left off" takes a long time to seek to the saved position, and the *text* is not restored to that spot (renders from the beginning of the book).
+- [ ] **After full-screen narration, returning to reading does not reposition the text** — on mobile, when narration occupies the whole screen, going back to reading should scroll to the active phrase.
+- [ ] **Confirm before moving the audio start point mid-playback** — once narration has started, if the user taps a new location, Noetia should confirm they want to re-seek the audio there (avoid accidental jumps).
+- [ ] **Playback speed should persist across sessions** — after restarting a book, restore the speed selected in the last session.
+
+### B. Reader — fragments & highlighting UX (#1)
+- [ ] **Mobile text selection is hijacked by the OS menu** — selecting text shows the phone's default selection actions and never surfaces Noetia's "save fragment / guardar cita" option. (needs a custom selection handler / disable native menu on mobile reader)
+- [ ] **Second highlight color for light mode** — yellow works well in dark reading mode but is poor for the "clear"/light theme; add a distinct highlight color per theme.
+
+### C. Reader — web/desktop (#1)
+- [ ] **Desktop: Don Quijote does not play audio** — no audio playback for Quijote on web (check audio stream URL / MP3 presence for that title).
+- [ ] **Library nav bar disappears** — inside the library the top navigation bar vanishes; only the bottom nav remains.
+- [ ] **Font size: only 2 sizes offered, need 4** — expand the reader font-size control to 4 steps.
+- [ ] **Language-aware library ordering** — once the user picks a language, show that language's titles first, then other languages.
+
+### D. Sharing — quote-card image generation (#2)
+- [ ] **Image generator not working correctly (web download)** — the download-image path of the generator is broken. (relates to `MINIO_PUBLIC_URL` presigned rewrite / ShareModal download)
+- [ ] **Downloaded image is wrong format for FB/IG upload** — the exported file isn't in a format/spec the platforms accept for upload; verify dimensions + file type per platform.
+- [ ] **Bold / italic missing in image customization** — present in web `ShareModal` (`textBold`/`textItalic`) but **absent in the mobile ShareSheet**; add to mobile (and confirm web works).
+- [ ] **Text alignment options missing in image customization** — add left/center/right alignment to the quote-card text controls (web + mobile; needs image-gen `textAlign` param).
+
+### E. Content / catalogue (#3, but Bible is a stated priority)
+- [ ] **No covers for Bible books, and no collection cover** — Bible titles + the Bible collection show no cover art. (generate themed covers via `image-gen/scripts/generate_themed_covers.py`)
+- [ ] **"Platero y yo" shows empty** — text appears empty in the app despite being ingested + 98.2% sync per records; likely a prod ingestion/display regression — needs prod check.
+- [ ] **Reina-Valera / KJV Bible is incomplete — 17 of 66 books** — see canon gap below; complete the canon (49 missing) → catalogue entries + LibriVox audio + Colab batch.
+
+#### Bible canon gap (2026-07-05 audit)
+
+Protestant canon = **66 books** (39 OT + 27 NT). Catalogue has **17 per language** (ES `Biblia Reina-Valera`, EN `Bible`): **5 OT** (Génesis, Éxodo, Salmos, Proverbios, Isaías) + **12 NT** (Mateo, Marcos, Lucas, Juan, Hechos, Romanos, 1 Corintios, Efesios, Filipenses, Hebreos, Santiago, Apocalipsis). **Missing 49** (34 OT + 15 NT):
+
+- **OT missing (34):** Levítico, Números, Deuteronomio, Josué, Jueces, Rut, 1 Samuel, 2 Samuel, 1 Reyes, 2 Reyes, 1 Crónicas, 2 Crónicas, Esdras, Nehemías, Ester, Job, Eclesiastés, Cantares, Jeremías, Lamentaciones, Ezequiel, Daniel, Oseas, Joel, Amós, Abdías, Jonás, Miqueas, Nahúm, Habacuc, Sofonías, Hageo, Zacarías, Malaquías.
+- **NT missing (15):** 2 Corintios, Gálatas, Colosenses, 1 Tesalonicenses, 2 Tesalonicenses, 1 Timoteo, 2 Timoteo, Tito, Filemón, 1 Pedro, 2 Pedro, 1 Juan, 2 Juan, 3 Juan, Judas.
+
+**Path to "Colab instructions" (must be built in this order — the batch can't exist until entries do):**
+1. **Text sources** — verify each missing book's Wikisource page. ES pattern is `Biblia Reina-Valera 1909/<Book>` with per-chapter subpages the fetcher auto-crawls; but the self-index page is thin (e.g. `/Levítico` renders 544 chars), so each must be confirmed to have real `/N` chapter subpages, not a stub (same disambig/thin-index trap as troubleshooting §5b). EN pattern is `Bible (King James)/<Book>`.
+2. **Audio** — find the LibriVox recording per book (Reina-Valera + KJV have full multi-volume projects); capture `librivoxAudioUrl` / `librivoxSearchTitle`.
+3. **Catalogue** — add 49 (×2 languages if completing both) entries with the verified text + audio.
+4. **Colab batch** — append the new books to `scripts/whisper-colab.ipynb`; then the run + align + `isFree` flow is the standard pipeline.
+
+> Scope note: per CLAUDE.md the free library isn't expanded long-term, **but the Bible is a stated priority** (see memory `project_library_reorganization`). Confirm whether to complete ES only, or ES + EN, before building 49–98 entries.
+
+---
+
 ## Backlog — Quote card: flip/mirror background image (added 2026-06-30)
 
 > **Goal:** In the quote-card image generator, let the user horizontally flip (mirror) the **background image** — so a subject/composition can face the other way — for the two image-background sources: (1) a preset from the free **Noetia images collection** (`imagen-1..5`, `services/web/public/backgrounds/`), and (2) an image the user **uploads or captures with the mobile camera**. The quote text/citation must stay upright and readable (only the background is mirrored, not the composited text).
