@@ -496,10 +496,10 @@
 > Field-testing feedback. Ordered by product hierarchy: **Reader experience (#1) first**, then sharing (#2), then content/catalogue. Most reader items are mobile unless noted. None triaged/reproduced yet — each needs an owner + repro.
 
 ### A. Reader — narration & phrase sync (product hierarchy #1, highest priority)
-- [ ] **Phrase highlight unreliable during narration** — the active-phrase highlight does not always fire while audio plays. (mobile + possibly web)
-- [ ] **Highlight is off-by-one (shows the NEXT phrase, not the current one)** — the highlighted phrase leads the audio by one. Likely the same root cause as the two below; fix together.
-- [ ] **Starting narration begins one phrase early** — choosing "start narration here" (the "done"/confirm action) starts from the *previous* phrase.
-- [ ] **Hybrid/mixed reading mode: text does not advance with the audio** — auto-scroll/active-phrase tracking not working in hybrid mode (web `'hybrid'` + mobile equivalent).
+- [x] **Phrase highlight unreliable during narration** — FIXED (`0eeb531`). Root cause: `heading`/`paragraph-break` phrases carry `startTime===endTime===0` and are interleaved with timed phrases, breaking `phraseAt` (web binary search returned wrong phrase/-1) and `findActivePhraseIndex` (mobile drifted onto the zero-timed marker). Both now skip zero-duration markers + are gap-tolerant.
+- [x] **Highlight is off-by-one (shows the NEXT phrase, not the current one)** — FIXED with the same change (`0eeb531`); the wrong-neighbour result came from the non-monotonic array.
+- [x] **Hybrid/mixed reading mode: text does not advance with the audio** — FIXED (`0eeb531`); auto-scroll was gated on `activePhraseIndex >= 0`, which the broken lookup kept returning -1. Verify on-device once deployed.
+- [ ] **Starting narration begins one phrase early** — choosing "start narration here" starts from the *previous* phrase. Partly related to the above (mis-highlight made users tap the wrong phrase); the residual is audio **seek precision** — `seekToPhrase` targets `startTime` and MP3 seeking can land a hair earlier. Needs on-device tuning (seek to `startTime + ε` and/or optimistic active-index on tap). Re-test after `0eeb531` deploys.
 - [ ] **Resume is slow and loses text position** — "continue where you left off" takes a long time to seek to the saved position, and the *text* is not restored to that spot (renders from the beginning of the book).
 - [ ] **After full-screen narration, returning to reading does not reposition the text** — on mobile, when narration occupies the whole screen, going back to reading should scroll to the active phrase.
 - [ ] **Confirm before moving the audio start point mid-playback** — once narration has started, if the user taps a new location, Noetia should confirm they want to re-seek the audio there (avoid accidental jumps).
