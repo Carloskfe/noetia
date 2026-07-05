@@ -362,7 +362,11 @@ export const CATALOGUE: CatalogueEntry[] = [
     author: 'Nicolás Maquiavelo',
     description: 'Tratado político del Renacimiento sobre el poder, el liderazgo y el arte de gobernar.',
     source: 'wikisource',
-    wikisourceTitle: 'El príncipe',
+    // 'El príncipe' is an editions disambiguation page (no text). Real text lives
+    // in the Sánchez Rojas translation (26 chapters as /Capítulo N subpages, auto-
+    // crawled). Translation → match must be confirmed by Whisper alignment; if it
+    // falls below 90% try 'El príncipe (1854)' instead.
+    wikisourceTitle: 'El príncipe (Sánchez Rojas tr.)',
     librivoxAudioUrl: 'https://librivox.org/el-principe-by-niccolo-machiavelli/',
   },
   {
@@ -370,7 +374,9 @@ export const CATALOGUE: CatalogueEntry[] = [
     author: 'Jorge Isaacs',
     description: 'Novela romántica del escritor colombiano sobre un amor trágico en el Valle del Cauca del siglo XIX.',
     source: 'wikisource',
-    wikisourceTitle: 'María',
+    // 'María' is a disambiguation page (5 works share the title). The Isaacs novel
+    // is 'María (Isaacs)' — 65 chapters (/I…/LXV) auto-crawled.
+    wikisourceTitle: 'María (Isaacs)',
     librivoxAudioUrl: 'https://librivox.org/maria-by-jorge-isaacs/',
   },
   {
@@ -378,7 +384,10 @@ export const CATALOGUE: CatalogueEntry[] = [
     author: 'Gustavo Adolfo Bécquer',
     description: 'Colección de poemas del poeta romántico sevillano sobre el amor, la soledad y la poesía misma.',
     source: 'wikisource',
-    wikisourceTitle: 'Rimas (Bécquer)',
+    // 'Rimas (Bécquer)' is an index of individual 'Rima N' pages (no /subpages).
+    // The 1885 edition holds all 75 rimas as /Rima I…/Rima LXXV subpages, auto-
+    // crawled and Roman-numeral sorted.
+    wikisourceTitle: 'Rimas (Bécquer, 1885)',
     librivoxAudioUrl: 'https://librivox.org/rimas-by-gustavo-adolfo-becquer/',
   },
   {
@@ -386,7 +395,10 @@ export const CATALOGUE: CatalogueEntry[] = [
     author: 'Marco Aurelio',
     description: 'Reflexiones estoicas del emperador romano sobre la virtud, el deber y la serenidad ante la vida.',
     source: 'wikisource',
-    wikisourceTitle: 'Meditaciones',
+    // Marco Aurelio's Meditations is on es.wikisource as 'Soliloquios' (12 books as
+    // /Libro I…/Libro XII subpages + Biografía/Prefacio front matter, auto-crawled).
+    // Translation → confirm the match via Whisper alignment.
+    wikisourceTitle: 'Soliloquios',
     librivoxAudioUrl: 'https://librivox.org/meditaciones-by-marcus-aurelius/',
   },
   {
@@ -394,7 +406,78 @@ export const CATALOGUE: CatalogueEntry[] = [
     author: 'Séneca',
     description: 'Cartas del filósofo estoico a su amigo Lucilio sobre cómo vivir con sabiduría y templanza.',
     source: 'wikisource',
-    wikisourceTitle: 'Cartas a Lucilio',
+    // 'Cartas a Lucilio' is a disambiguation page; the real text is the Wikisource
+    // translation, whose 63 available letters live at '(Wikisource tr.)/Carta N'
+    // (the '… - Carta N' names are redirects, so they must be listed explicitly —
+    // the index links to the redirects, not the /subpages, so auto-crawl finds 0).
+    // NOTE: Wikisource has only 63 of the 124 letters AND the LibriVox recording is
+    // a *selección* — the two subsets won't line up, so this title is expected to
+    // stay below the 90% gate (isFree=false); the text is at least correct/readable.
+    wikisourceTitles: [
+      'Cartas a Lucilio (Wikisource tr.)/Carta 1',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 2',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 3',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 4',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 5',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 6',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 7',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 8',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 9',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 10',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 11',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 12',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 13',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 14',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 15',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 16',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 17',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 19',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 20',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 21',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 23',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 24',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 25',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 26',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 27',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 29',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 30',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 31',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 32',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 33',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 34',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 35',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 36',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 37',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 38',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 39',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 40',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 41',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 43',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 44',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 45',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 46',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 47',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 48',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 49',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 50',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 51',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 52',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 53',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 54',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 55',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 56',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 57',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 58',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 59',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 60',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 61',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 62',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 63',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 64',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 65',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 67',
+      'Cartas a Lucilio (Wikisource tr.)/Carta 68',
+    ],
     librivoxAudioUrl: 'https://librivox.org/cartas-a-lucilio-seleccionadas-by-lucius-annaeus-seneca/',
     librivoxSearchTitle: 'Cartas a Lucilio',
   },
@@ -403,7 +486,37 @@ export const CATALOGUE: CatalogueEntry[] = [
     author: 'José Martí',
     description: 'Revista para niños del héroe cubano: cuentos, poemas y ensayos sobre la libertad y el saber.',
     source: 'wikisource',
-    wikisourceTitle: 'La Edad de Oro',
+    // 'La Edad de Oro' is an index; its ~23 pieces are standalone pages (not
+    // /subpages), so they're listed explicitly in the magazine's reading order
+    // (4 números; Prólogo first, 'La última página' closes número 1). Original
+    // Spanish — low translation risk.
+    wikisourceTitles: [
+      'La Edad de Oro/Prólogo',
+      'Tres héroes',
+      'Dos milagros (Martí)',
+      'Meñique',
+      'Cada uno a su oficio',
+      'La Ilíada de Homero',
+      'Un juego nuevo y otros viejos',
+      'Bebé y el señor don Pomposo',
+      'La Edad de Oro/La última página',
+      'La historia del hombre, contada por sus casas',
+      'Los dos príncipes',
+      'Nené traviesa',
+      'La perla de la mora',
+      'Las ruinas indias',
+      'Músicos, poetas y pintores',
+      'La exposición de París',
+      'El camarón encantado',
+      'El Padre las Casas',
+      'Los zapaticos de rosa',
+      'Un paseo por la tierra de los anamitas',
+      'Historia de la cuchara y el tenedor',
+      'La muñeca negra',
+      'Cuentos de elefantes',
+      'Los dos ruiseñores',
+      'La galería de las máquinas',
+    ],
     librivoxAudioUrl: 'https://librivox.org/la-edad-de-oro-by-jose-marti/',
   },
   {
