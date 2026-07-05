@@ -479,10 +479,15 @@
 - `services/web/tests/unit/components/ShareModal.spec.ts` (FONTS registry lato/lora/raleway → the actual 7)
 - Both suites verified green locally: image-gen **144 passed**, web ShareModal **34 passed**. Just needs `git commit` + `git push`.
 
-**Next up (not started):**
-1. **Flip toggle UI** — web (`ShareModal` toggle, image backgrounds only) + mobile (camera+gallery) + i18n (all 4 files) + tests, then wire `bgFlip` through.
-2. **Mobile** 18-image gallery in the mobile share flow.
-3. **EN/ES free-library sync** — overnight Whisper batch → Phase A ingest → Phase C per-book `isFree` flip at ≥90%. EN 12→18 (6 self-dev), ES 13→18 (5 of 6 second-wave).
+**Next up:**
+1. [x] **Flip toggle UI** — web `ShareModal` toggle + preview mirror, `bgFlip` threaded through api/share-utils (`7e4167d`); mobile flip Switch in ShareSheet (`fb3bd4b`). Camera/upload flip deferred to the native upload picker.
+2. [x] **Mobile 18-image gallery** — preset picker in ShareSheet (Default + 18 presets, OTA-safe via preset URLs); `src/lib/share-backgrounds.ts` + tests (`fb3bd4b`). Camera/gallery upload deferred (needs `expo-image-picker` / eas build).
+3. [~] **EN/ES free-library sync** — in progress:
+   - Catalogue + Colab batch list complete for all 12 (6 EN self-dev + 6 ES second-wave).
+   - **EN half (6 Gutenberg self-dev):** sources verified (all 200), clean and ready.
+   - **ES half (6 second-wave):** all 6 `wikisourceTitle`s pointed at disambiguation/index pages — **fixed** (`06fecff`), validated 40k–533k chars each through the real fetcher. See troubleshooting §5b.
+   - **Remaining (external / user):** run the overnight Whisper batch on Colab GPU → commit VTTs → prod Phase A ingest (`seed-ingestion` + `seed-audio-stream`) → align per book (`seed-sync-whisper`) → flip `isFree` at ≥90%.
+   - **Known won't-clear-gate:** Cartas a Lucilio (Wikisource has 63/124 letters, LibriVox is a *selección*); the 3 translations (El Príncipe, Meditaciones, Cartas) need alignment to confirm the edition matches the narration.
 
 ---
 

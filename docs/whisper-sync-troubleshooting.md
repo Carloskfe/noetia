@@ -508,6 +508,40 @@ sometimes eating the first letter of the opening word (e.g. "abía una vez"
 instead of "Había una vez") — cosmetic, costs at most one phrase per
 occurrence, not worth fixing.
 
+### §5b. The disambiguation / index-page trap (validate the source BEFORE Whisper)
+
+**Symptom:** a `wikisourceTitle` resolves to a real page, but Phase A ingests
+almost nothing — the book has a handful of phrases and sync sits at ~0%. This
+is *not* a sync bug; the catalogue points at the wrong page. es.wikisource
+routinely puts a **disambiguation / editions landing page** at the bare work
+title (e.g. `El príncipe`, `María`, `Cartas a Lucilio` are "Ediciones de…"
+hubs), and the actual text lives in a specific edition (`El príncipe (Sánchez
+Rojas tr.)`, `María (Isaacs)`) or under a different title entirely (Marco
+Aurelio's *Meditaciones* is published as **`Soliloquios`**). Two more traps:
+the chapters may be **standalone pages, not `Title/` subpages** (so the
+fetcher's auto-crawl finds 0 and needs an explicit `wikisourceTitles` list —
+La Edad de Oro's 25 stories, Rimas' individual poems), and the index may link
+to **redirects** rather than the real subpages (`Cartas a Lucilio - Carta N`
+→ `Cartas a Lucilio (Wikisource tr.)/Carta N`), which `action=parse&prop=links`
+won't follow.
+
+**Pre-flight check (cheap, catches this before an overnight Colab run):** for
+each new Wikisource title, hit the live API and confirm the fetcher will get
+real text — the authoritative test replicates `fetch()`:
+- `action=parse&page=<T>&prop=links&formatversion=2` → count links starting
+  with `<T>/`. Zero subpages + a tiny page = disambig/index → wrong source.
+- If zero, run `action=parse&page=<T>&prop=text` and eyeball the rendered
+  size; anything under ~8k chars for a full book is a landing page.
+- To find the real edition: `list=search&srsearch=intitle:<work>` and
+  `list=allpages&apprefix=<T>/` for the true subpages.
+
+Best of all, validate through the **actual service** (it exercises subpage
+crawl + `fetchMultiple` + `stripHtml` together): instantiate
+`new WikisourceFetcherService()` in a throwaway script and print
+`(await svc.fetch(title)).length` per entry — expect tens/hundreds of
+thousands of chars. The 2026-07-05 ES second-wave fix used exactly this and
+turned six ~1.5k-char index pages into 40k–533k-char books.
+
 ---
 
 ## 6. Edition/translation mismatch (hardest to fix)
