@@ -494,7 +494,7 @@
 - [x] **image-gen:** `bgFlip` (bool) param on `POST /generate`; `ImageOps.mirror()` applied to the bg fill in `templates/base.py` before text is composited; no-op when `bgImage` absent. Mirror tests present (`61247d0`).
 - [x] **api:** `SharingService.ShareOptions.bgFlip` + controller `@Body('bgFlip')`, forwarded to image-gen only when true. Tests (`7e4167d`).
 - [x] **web:** flip toggle in `ShareModal.tsx` preview, shown only when an image background is active (preset or upload/camera); `bgFlip` threaded through `share-utils` + payload; preview mirrors the bg on its own layer so text stays upright. Tests (`7e4167d`).
-- [~] **mobile:** **blocked** — the mobile `ShareSheet` has no image-background picker (fixed gradient only); nothing to attach a flip control to. Depends on the mobile 18-image gallery / camera-upload picker (separate backlog item). i18n keys already in place.
+- [x] **mobile:** flip Switch in the ShareSheet, shown only when a preset image background is selected; `bgFlip` threaded via `buildSharePayload` (`fb3bd4b`). *(Flip on camera/upload images still pending with the native upload picker.)*
 - [x] **i18n:** `t.shareCard.flip`/`flipAria` (web en/es) + `sharing.flip`/`flipAria` (mobile en/es) — all 4 files.
 - [x] Confirmed: preset **and** upload/camera image sources; quote text remains un-mirrored (separate CSS/render layer).
 
@@ -509,8 +509,8 @@
 **Scope:**
 - [x] Produce/curate **18 background images** (Noetia collection) — delivered by user, downscaled to 1200px + optimized JPEG (35MB→3MB), committed to `services/web/public/backgrounds/imagen-1..18.jpg` (945a39a).
 - [x] **web:** background picker (`ShareModal.tsx`) shows all 18 alongside **solid** and **upload/camera**; `BG_PRESETS` moved to `lib/share-utils` (exported + unit-tested).
-- [ ] **mobile:** same 18-image gallery in the mobile share flow, alongside solid + camera capture + gallery upload. Tests.
-- [ ] Confirm the **flip toggle** (see flip backlog item) works across all 18 presets and user images (web/mobile flip toggle UI still pending).
+- [x] **mobile:** 18-image preset gallery in the ShareSheet (Default gradient + 18 presets), OTA-safe via preset URLs fetched server-side by image-gen; `src/lib/share-backgrounds.ts` + tests (`fb3bd4b`). **Camera capture / gallery upload deferred** — needs native `expo-image-picker` (full eas build, not OTA).
+- [x] Confirm the **flip toggle** works across the 18 presets: web ✅ (`7e4167d`) and mobile ✅ (`fb3bd4b`). Flip on **user upload/camera** images pending with the mobile upload picker (native/eas build).
 
 > **Also delivered alongside this:** the Noetia **logo watermark** (d865b64) — quote cards now stamp the brand logo (light/dark variant by background) instead of plain "Noetia" text.
 
