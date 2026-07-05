@@ -491,13 +491,14 @@
 > **Goal:** In the quote-card image generator, let the user horizontally flip (mirror) the **background image** — so a subject/composition can face the other way — for the two image-background sources: (1) a preset from the free **Noetia images collection** (`imagen-1..5`, `services/web/public/backgrounds/`), and (2) an image the user **uploads or captures with the mobile camera**. The quote text/citation must stay upright and readable (only the background is mirrored, not the composited text).
 
 **Scope:**
-- [ ] **image-gen:** add a `bgFlip` (bool) param to `POST /generate` (`app.py`, alongside `bgImage`); thread it into the renderer and apply `ImageOps.mirror()` to the background in `templates/base.py` (the cover-scaled bg fill, ~L92) **before** text is composited. No-op when `bgImage` is absent (solid/gradient backgrounds). Mirror unit tests under `tests/unit/templates/`.
-- [ ] **web:** add a flip toggle in the share/quote-card preview (`ShareModal.tsx` / `(social)`), enabled only when `bgType` is an image source (preset collection or user upload); pass `bgFlip` through the generate call. Tests.
-- [ ] **mobile:** same toggle in the mobile share flow, covering camera-captured and gallery-uploaded images. Tests.
-- [ ] **i18n:** flip-control label + a11y string in all 4 files (`web/lib/i18n/{en,es}`, `mobile/src/i18n/{en,es}`) — sentence case, tú form.
-- [ ] Confirm behavior for both sources: preset Noetia background **and** user upload/camera image; verify text remains un-mirrored.
+- [x] **image-gen:** `bgFlip` (bool) param on `POST /generate`; `ImageOps.mirror()` applied to the bg fill in `templates/base.py` before text is composited; no-op when `bgImage` absent. Mirror tests present (`61247d0`).
+- [x] **api:** `SharingService.ShareOptions.bgFlip` + controller `@Body('bgFlip')`, forwarded to image-gen only when true. Tests (`7e4167d`).
+- [x] **web:** flip toggle in `ShareModal.tsx` preview, shown only when an image background is active (preset or upload/camera); `bgFlip` threaded through `share-utils` + payload; preview mirrors the bg on its own layer so text stays upright. Tests (`7e4167d`).
+- [~] **mobile:** **blocked** — the mobile `ShareSheet` has no image-background picker (fixed gradient only); nothing to attach a flip control to. Depends on the mobile 18-image gallery / camera-upload picker (separate backlog item). i18n keys already in place.
+- [x] **i18n:** `t.shareCard.flip`/`flipAria` (web en/es) + `sharing.flip`/`flipAria` (mobile en/es) — all 4 files.
+- [x] Confirmed: preset **and** upload/camera image sources; quote text remains un-mirrored (separate CSS/render layer).
 
-**Note:** flip applies to raster **image** backgrounds only — solid/gradient backgrounds are unaffected. Priority is Reader/sharing UX (product hierarchy #1–2), above free-library work.
+**Note:** flip applies to raster **image** backgrounds only — solid/gradient backgrounds are unaffected. Priority is Reader/sharing UX (product hierarchy #1–2), above free-library work. **Remaining:** mobile toggle, gated on the mobile image-background picker landing first.
 
 ---
 
