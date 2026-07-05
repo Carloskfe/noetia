@@ -127,6 +127,8 @@ export const es: MobileTranslations = {
     openImage: 'Abrir imagen',
     tryAgain: 'Intentar de nuevo',
     error: 'No se pudo generar la imagen. Inténtalo de nuevo.',
+    flip: 'Reflejar fondo',
+    flipAria: 'Reflejar la imagen de fondo horizontalmente',
     platforms: {
       instagram: 'Instagram',
       facebook: 'Facebook',

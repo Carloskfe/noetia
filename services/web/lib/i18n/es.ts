@@ -640,6 +640,10 @@ export const es: Translations = {
       save: 'Guardar preferencias',
     },
   },
+  shareCard: {
+    flip: 'Reflejar fondo',
+    flipAria: 'Reflejar la imagen de fondo horizontalmente',
+  },
   giftCard: {
     send: {
       title: 'Regala Noetia',

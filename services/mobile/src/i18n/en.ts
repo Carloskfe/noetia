@@ -125,6 +125,8 @@ export const en = {
     openImage: 'Open image',
     tryAgain: 'Try again',
     error: 'Could not generate the image. Try again.',
+    flip: 'Mirror background',
+    flipAria: 'Mirror the background image horizontally',
     platforms: {
       instagram: 'Instagram',
       facebook: 'Facebook',

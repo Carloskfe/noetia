@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useId } from 'react';
 import { apiFetch } from '@/lib/api';
+import { useTranslation } from '@/lib/i18n';
 import {
   BG_PRESETS,
   FORMAT_PLATFORM_MAP,
@@ -87,6 +88,7 @@ type Props = {
 export default function ShareModal({
   fragmentId, fragmentText, author, bookTitle, bookCollection, note, onClose,
 }: Props) {
+  const { t } = useTranslation();
   const fileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -98,6 +100,7 @@ export default function ShareModal({
   const [gradientDir, setGradientDir] = useState<GradientDirId>('to-bottom');
   const [bgImage, setBgImage] = useState<string | null>(null);
   const [bgImageLoading, setBgImageLoading] = useState(false);
+  const [bgFlip, setBgFlip] = useState(false);
   const [textColorOverride, setTextColorOverride] = useState<string | null>(null);
   const [textBold, setTextBold] = useState(false);
   const [textItalic, setTextItalic] = useState(false);
@@ -126,6 +129,8 @@ export default function ShareModal({
   const [publishToast, setPublishToast] = useState<{ platform: string; postUrl: string } | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  // Flip (mirror) applies to raster image backgrounds only — no-op for solid/gradient.
+  const imageActive = bgType === 'image' && !!bgImage;
   const activeBgColors = bgType === 'gradient' ? [bgColors[0], bgColors[1]] : [bgColors[0]];
   const autoTextColor = bgType === 'image' ? '#FFFFFF' : getTextColor(activeBgColors);
   const textColor = textColorOverride ?? autoTextColor;
@@ -150,6 +155,7 @@ export default function ShareModal({
     ...(textItalic                      ? { textItalic:  true }              : {}),
     ...(bgType === 'gradient'           ? { gradientDir }                    : {}),
     ...(bgType === 'image' && bgImage   ? { bgImage }                        : {}),
+    ...(imageActive && bgFlip           ? { bgFlip: true }                   : {}),
   };
 
   const handleSelectPreset = useCallback(async (url: string) => {
@@ -317,10 +323,18 @@ export default function ShareModal({
 
           <div className="p-5 space-y-5">
             {/* ── Live CSS Preview ──────────────────────────────────────── */}
-            <div className={`w-full ${FORMAT_ASPECT[selectedFormat]} rounded-xl overflow-hidden shadow-md mx-auto max-w-[260px]`}>
+            <div className={`relative w-full ${FORMAT_ASPECT[selectedFormat]} rounded-xl overflow-hidden shadow-md mx-auto max-w-[260px]`}>
+              {/* Background layer — mirrored independently so the quote text stays upright */}
               <div
-                className="w-full h-full flex flex-col items-center justify-center p-4 gap-2"
-                style={{ background: previewBg, fontFamily: fontCss }}
+                className="absolute inset-0"
+                style={{
+                  background: previewBg,
+                  ...(imageActive && bgFlip ? { transform: 'scaleX(-1)' } : {}),
+                }}
+              />
+              <div
+                className="relative w-full h-full flex flex-col items-center justify-center p-4 gap-2"
+                style={{ fontFamily: fontCss }}
               >
                 <p
                   className="text-center text-sm leading-snug line-clamp-6"
@@ -604,6 +618,32 @@ export default function ShareModal({
                     >
                       Quitar imagen
                     </button>
+                  )}
+
+                  {/* Flip (mirror) — image backgrounds only */}
+                  {imageActive && (
+                    <label className="mt-3 flex items-center justify-between gap-3 cursor-pointer">
+                      <span className="text-sm text-gray-700">{t.shareCard.flip}</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={bgFlip}
+                        aria-label={t.shareCard.flipAria}
+                        onClick={() => setBgFlip((v) => !v)}
+                        className={[
+                          'relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200',
+                          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+                          bgFlip ? 'bg-blue-600' : 'bg-gray-200',
+                        ].join(' ')}
+                      >
+                        <span
+                          className={[
+                            'inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200',
+                            bgFlip ? 'translate-x-5' : 'translate-x-0',
+                          ].join(' ')}
+                        />
+                      </button>
+                    </label>
                   )}
                 </div>
               )}

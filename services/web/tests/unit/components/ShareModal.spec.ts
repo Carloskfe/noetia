@@ -376,3 +376,51 @@ describe('shareFragment', () => {
     expect(result).toBe(url);
   });
 });
+
+// ── shareFragment: bgFlip (mirror background) ─────────────────────────────────
+
+describe('shareFragment bgFlip', () => {
+  const imageParams = {
+    format: 'ig-post' as ShareFormat,
+    font: 'playfair',
+    bgType: 'image' as const,
+    bgColors: ['#000000'],
+    bgImage: 'data:image/png;base64,AAAA',
+  };
+
+  afterEach(() => jest.restoreAllMocks());
+
+  function mockOk() {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ url: 'http://example.com/card.png' }),
+    } as Response);
+  }
+
+  it('sends bgFlip=true when the mirror toggle is on', async () => {
+    mockOk();
+    await shareFragment('frag-1', { ...imageParams, bgFlip: true });
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.bgFlip).toBe(true);
+  });
+
+  it('omits bgFlip when the toggle is off', async () => {
+    mockOk();
+    await shareFragment('frag-1', { ...imageParams, bgFlip: false });
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body).not.toHaveProperty('bgFlip');
+  });
+
+  it('omits bgFlip when not specified', async () => {
+    mockOk();
+    await shareFragment('frag-1', imageParams);
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body).not.toHaveProperty('bgFlip');
+  });
+});

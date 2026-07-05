@@ -92,6 +92,7 @@ export interface ShareParams {
   textItalic?: boolean;
   gradientDir?: string;
   bgImage?: string;
+  bgFlip?: boolean;
 }
 
 export async function shareFragment(fragmentId: string, params: ShareParams): Promise<string> {
@@ -111,6 +112,7 @@ export async function shareFragment(fragmentId: string, params: ShareParams): Pr
       ...(params.textItalic  ? { textItalic:  true }               : {}),
       ...(params.gradientDir ? { gradientDir: params.gradientDir } : {}),
       ...(params.bgImage     ? { bgImage:     params.bgImage }     : {}),
+      ...(params.bgFlip      ? { bgFlip:      true }               : {}),
     }),
   });
   return data.url as string;

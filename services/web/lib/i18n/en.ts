@@ -643,6 +643,10 @@ export const en = {
       save: 'Save preferences',
     },
   },
+  shareCard: {
+    flip: 'Mirror background',
+    flipAria: 'Mirror the background image horizontally',
+  },
   giftCard: {
     send: {
       title: 'Gift Noetia',

@@ -151,6 +151,42 @@ describe('SharingService', () => {
       expect(body).not.toHaveProperty('textColor');
     });
 
+    it('sends bgFlip=true when the mirror option is set', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ url: 'http://example.com/img.png' }),
+      } as Response);
+
+      await service.generateShareUrl(
+        mockFragment() as Fragment,
+        mockBook() as Book,
+        'instagram',
+        { bgType: 'image', bgImage: 'data:image/png;base64,AAAA', bgFlip: true },
+      );
+
+      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
+      const body = JSON.parse(options.body);
+      expect(body.bgFlip).toBe(true);
+    });
+
+    it('omits bgFlip from payload when not set', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ url: 'http://example.com/img.png' }),
+      } as Response);
+
+      await service.generateShareUrl(
+        mockFragment() as Fragment,
+        mockBook() as Book,
+        'instagram',
+        { bgType: 'image', bgImage: 'data:image/png;base64,AAAA' },
+      );
+
+      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
+      const body = JSON.parse(options.body);
+      expect(body).not.toHaveProperty('bgFlip');
+    });
+
     it('throws BadGatewayException when image-gen returns non-200', async () => {
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: false,
