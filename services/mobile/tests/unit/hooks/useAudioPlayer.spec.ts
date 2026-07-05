@@ -1,15 +1,7 @@
-// Tests for pure logic extracted from the hook — no expo-av dependency
-import type { SyncPhrase } from '../../../src/hooks/useAudioPlayer';
-
-// findActivePhraseIndex — reimplemented here for isolated testing
-function findActivePhraseIndex(phrases: SyncPhrase[], positionSecs: number): number {
-  let idx = 0;
-  for (let i = 0; i < phrases.length; i++) {
-    if ((phrases[i].startTime ?? 0) <= positionSecs) idx = i;
-    else break;
-  }
-  return idx;
-}
+// Tests for pure logic extracted from the hook — no expo-av dependency.
+// Import the REAL findActivePhraseIndex (previously reimplemented here, which
+// hid the interleaved zero-duration marker bug from the test suite).
+import { findActivePhraseIndex, type SyncPhrase } from '../../../src/hooks/useAudioPlayer';
 
 const PHRASES: SyncPhrase[] = [
   { index: 0, startTime: 0,  endTime: 5  },
@@ -46,6 +38,32 @@ describe('findActivePhraseIndex', () => {
   it('returns 0 for single phrase', () => {
     const single = [{ index: 0, startTime: 0, endTime: 100 }];
     expect(findActivePhraseIndex(single, 50)).toBe(0);
+  });
+
+  // Regression: heading / paragraph-break markers carry startTime===endTime===0
+  // and are interleaved with timed phrases. Their startTime (0) always satisfies
+  // "startTime <= position", so the old logic drifted the active index onto the
+  // marker after the real phrase — highlighting the wrong/empty phrase.
+  it('ignores interleaved zero-duration markers (heading / paragraph-break)', () => {
+    const mixed: SyncPhrase[] = [
+      { index: 0, startTime: 0,  endTime: 5,  type: 'text' },
+      { index: 1, startTime: 0,  endTime: 0,  type: 'heading' },
+      { index: 2, startTime: 5,  endTime: 12, type: 'text' },
+      { index: 3, startTime: 0,  endTime: 0,  type: 'paragraph-break' },
+      { index: 4, startTime: 12, endTime: 20, type: 'text' },
+    ];
+    expect(findActivePhraseIndex(mixed, 2)).toBe(0);  // inside first text phrase
+    expect(findActivePhraseIndex(mixed, 8)).toBe(2);  // inside second — NOT the break at idx 3
+    expect(findActivePhraseIndex(mixed, 15)).toBe(4);
+  });
+
+  it('keeps the current phrase highlighted through an inter-phrase gap', () => {
+    const gapped: SyncPhrase[] = [
+      { index: 0, startTime: 0, endTime: 2, type: 'text' },
+      { index: 1, startTime: 5, endTime: 7, type: 'text' }, // 3s gap after phrase 0
+    ];
+    expect(findActivePhraseIndex(gapped, 3.5)).toBe(0); // in the gap → stay on 0
+    expect(findActivePhraseIndex(gapped, 5)).toBe(1);
   });
 });
 

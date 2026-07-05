@@ -80,13 +80,42 @@ describe('phraseAt', () => {
     expect(phraseAt(phrases, 11.99)).toBe(3);
   });
 
-  it('returns -1 when currentTime equals or exceeds the last phrase endTime', () => {
-    expect(phraseAt(phrases, 12.0)).toBe(-1);
-    expect(phraseAt(phrases, 100)).toBe(-1);
+  it('stays on the last phrase once its endTime passes (gap-tolerant, no blink to -1)', () => {
+    // Whisper leaves trailing silence after the last phrase; the highlight should
+    // remain on the last sentence rather than clearing.
+    expect(phraseAt(phrases, 12.0)).toBe(3);
+    expect(phraseAt(phrases, 100)).toBe(3);
   });
 
   it('returns correct index at phrase boundary (endTime of one = startTime of next)', () => {
     expect(phraseAt(phrases, 5.0)).toBe(2);
+  });
+
+  // Regression: heading / paragraph-break markers carry startTime===endTime===0
+  // (phrase-splitter.service.ts) and are interleaved with timed text phrases,
+  // making the array non-monotonic. The old binary search returned the wrong
+  // phrase or -1 here.
+  it('ignores interleaved zero-duration markers (heading / paragraph-break)', () => {
+    const mixed: Phrase[] = [
+      { index: 0, text: 'First.',  startTime: 0,   endTime: 3.5, type: 'text' },
+      { index: 1, text: 'PARTE I', startTime: 0,   endTime: 0,   type: 'heading' },
+      { index: 2, text: '',        startTime: 0,   endTime: 0,   type: 'paragraph-break' },
+      { index: 3, text: 'Second.', startTime: 3.5, endTime: 7.2, type: 'text' },
+      { index: 4, text: 'Third.',  startTime: 7.2, endTime: 11,  type: 'text' },
+    ];
+    expect(phraseAt(mixed, 2.0)).toBe(0);   // inside First. — old search returned -1
+    expect(phraseAt(mixed, 5.0)).toBe(3);   // inside Second. — array index, not timed-order
+    expect(phraseAt(mixed, 9.0)).toBe(4);
+    expect(phraseAt(mixed, -1)).toBe(-1);   // before the first timed phrase
+  });
+
+  it('keeps the current phrase highlighted through an inter-phrase gap', () => {
+    const gapped: Phrase[] = [
+      { index: 0, text: 'A.', startTime: 0, endTime: 2, type: 'text' },
+      { index: 1, text: 'B.', startTime: 5, endTime: 7, type: 'text' }, // 3s gap after A
+    ];
+    expect(phraseAt(gapped, 3.5)).toBe(0); // in the gap → stay on A, not -1
+    expect(phraseAt(gapped, 5.0)).toBe(1);
   });
 });
 

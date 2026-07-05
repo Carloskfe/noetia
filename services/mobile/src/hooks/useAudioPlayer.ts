@@ -19,13 +19,26 @@ export interface AudioPlayerState {
   error: string | null;
 }
 
-function findActivePhraseIndex(phrases: SyncPhrase[], positionSecs: number): number {
-  let idx = 0;
+/**
+ * Array index of the phrase being narrated at `positionSecs`.
+ *
+ * 'heading' / 'paragraph-break' phrases carry startTime === endTime === 0 and
+ * are interleaved with the timed text phrases. Because their startTime is 0 they
+ * always satisfy `startTime <= position`, so the naive "last index with
+ * startTime <= position" drifts onto the marker sitting after the real phrase —
+ * the highlight lands on the next/empty phrase or blinks. Skip zero-duration
+ * markers so only timed phrases are considered; "last started" keeps the current
+ * phrase highlighted through inter-phrase gaps. Exported for unit testing.
+ */
+export function findActivePhraseIndex(phrases: SyncPhrase[], positionSecs: number): number {
+  let idx = -1;
   for (let i = 0; i < phrases.length; i++) {
-    if ((phrases[i].startTime ?? 0) <= positionSecs) idx = i;
-    else break;
+    const p = phrases[i];
+    if ((p.endTime ?? 0) <= (p.startTime ?? 0)) continue; // skip zero-duration markers
+    if ((p.startTime ?? 0) > positionSecs) break;         // timed phrases are sorted
+    idx = i;                                              // last timed phrase started
   }
-  return idx;
+  return idx < 0 ? 0 : idx;
 }
 
 export function useAudioPlayer(audioUrl: string | null, phrases: SyncPhrase[]) {
