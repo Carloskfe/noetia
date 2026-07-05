@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import {
-  ActivityIndicator, Linking, Modal, Share,
-  StyleSheet, Text, TouchableOpacity, View,
+  ActivityIndicator, Image, Linking, Modal, ScrollView, Share,
+  StyleSheet, Switch, Text, TouchableOpacity, View,
 } from 'react-native';
 import { apiClient } from '../api/client';
 import { useTranslation } from '../i18n';
-
-type Platform = 'instagram' | 'facebook' | 'linkedin' | 'pinterest';
+import { BG_PRESETS, buildSharePayload, Platform } from '../lib/share-backgrounds';
 
 const PLATFORMS: Array<{ id: Platform; color: string; icon: string }> = [
   { id: 'instagram', color: '#E1306C', icon: '📸' },
@@ -14,20 +13,6 @@ const PLATFORMS: Array<{ id: Platform; color: string; icon: string }> = [
   { id: 'linkedin', color: '#0A66C2', icon: '💼' },
   { id: 'pinterest', color: '#E60023', icon: '📌' },
 ];
-
-const FORMAT: Record<Platform, string> = {
-  instagram: 'ig-post',
-  facebook: 'fb-post',
-  linkedin: 'li-post',
-  pinterest: 'pin-post',
-};
-
-const DEFAULT_STYLE = {
-  font: 'playfair',
-  bgType: 'gradient',
-  bgColors: ['#0D1B2A', '#1E3A5F'],
-  textColor: '#FFFFFF',
-};
 
 interface Props {
   fragmentId: string;
@@ -39,12 +24,18 @@ interface Props {
 export function ShareSheet({ fragmentId, fragmentText, visible, onClose }: Props) {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<Platform | null>(null);
+  const [presetIdx, setPresetIdx] = useState<number | null>(null);
+  const [flip, setFlip] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const isImageBg = presetIdx !== null;
+
   function reset() {
     setSelected(null);
+    setPresetIdx(null);
+    setFlip(false);
     setImageUrl(null);
     setLoading(false);
     setError('');
@@ -61,11 +52,12 @@ export function ShareSheet({ fragmentId, fragmentText, visible, onClose }: Props
     setError('');
     setImageUrl(null);
     try {
-      const res = await apiClient.post<{ url: string }>(`/fragments/${fragmentId}/share`, {
-        platform: selected,
-        format: FORMAT[selected],
-        ...DEFAULT_STYLE,
+      const payload = buildSharePayload(selected, {
+        type: presetIdx !== null ? 'preset' : 'default',
+        presetUrl: presetIdx !== null ? BG_PRESETS[presetIdx] : undefined,
+        flip,
       });
+      const res = await apiClient.post<{ url: string }>(`/fragments/${fragmentId}/share`, payload);
       setImageUrl(res.url);
     } catch {
       setError(t.sharing.error);
@@ -110,6 +102,43 @@ export function ShareSheet({ fragmentId, fragmentText, visible, onClose }: Props
                     </TouchableOpacity>
                   ))}
                 </View>
+
+                {/* Background picker: default gradient + 18 Noetia presets */}
+                <Text style={styles.sectionLabel}>{t.sharing.background}</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.bgRow}
+                >
+                  <TouchableOpacity
+                    style={[styles.bgDefault, !isImageBg && styles.bgSelected]}
+                    onPress={() => setPresetIdx(null)}
+                  >
+                    <Text style={styles.bgDefaultText} numberOfLines={1}>{t.sharing.bgDefault}</Text>
+                  </TouchableOpacity>
+                  {BG_PRESETS.map((url, i) => (
+                    <TouchableOpacity
+                      key={url}
+                      style={[styles.bgThumb, presetIdx === i && styles.bgSelected]}
+                      onPress={() => setPresetIdx(i)}
+                    >
+                      <Image source={{ uri: url }} style={styles.bgThumbImg} />
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                {/* Mirror toggle — image backgrounds only */}
+                {isImageBg && (
+                  <View style={styles.flipRow}>
+                    <Text style={styles.flipLabel}>{t.sharing.flip}</Text>
+                    <Switch
+                      value={flip}
+                      onValueChange={setFlip}
+                      accessibilityLabel={t.sharing.flipAria}
+                      trackColor={{ true: '#0D1B2A', false: '#E5E7EB' }}
+                    />
+                  </View>
+                )}
 
                 {error !== '' && <Text style={styles.error}>{error}</Text>}
 
@@ -161,6 +190,14 @@ const styles = StyleSheet.create({
   preview:             { fontSize: 13, color: '#6B7280', fontStyle: 'italic', lineHeight: 19, marginBottom: 20, borderLeftWidth: 3, borderLeftColor: '#E5E7EB', paddingLeft: 10 },
   sectionLabel:        { fontSize: 12, fontWeight: '600', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
   platforms:           { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  bgRow:               { gap: 8, paddingRight: 8, marginBottom: 16 },
+  bgDefault:           { width: 52, height: 52, borderRadius: 10, borderWidth: 2, borderColor: '#E5E7EB', backgroundColor: '#0D1B2A', alignItems: 'center', justifyContent: 'center', padding: 4 },
+  bgDefaultText:       { color: '#fff', fontSize: 9, fontWeight: '600', textAlign: 'center' },
+  bgThumb:             { width: 52, height: 52, borderRadius: 10, borderWidth: 2, borderColor: '#E5E7EB', overflow: 'hidden' },
+  bgThumbImg:          { width: '100%', height: '100%' },
+  bgSelected:          { borderColor: '#0D1B2A' },
+  flipRow:             { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  flipLabel:           { fontSize: 14, color: '#374151' },
   platformBtn:         { flex: 1, alignItems: 'center', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB' },
   platformIcon:        { fontSize: 22, marginBottom: 4 },
   platformLabel:       { fontSize: 11, color: '#374151', fontWeight: '500' },
