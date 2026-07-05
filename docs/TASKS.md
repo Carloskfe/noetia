@@ -506,7 +506,7 @@
 - [ ] **Playback speed should persist across sessions** — after restarting a book, restore the speed selected in the last session.
 
 ### B. Reader — fragments & highlighting UX (#1)
-- [ ] **Mobile text selection is hijacked by the OS menu** — selecting text shows the phone's default selection actions and never surfaces Noetia's "save fragment / guardar cita" option. (needs a custom selection handler / disable native menu on mobile reader)
+- [x] **Mobile text selection is hijacked by the OS menu** — FIXED (`f5ff624`). The ✎ mode used `<Text selectable>` (native OS menu, no save). Replaced with Noetia's own tap-to-select multi-phrase flow + floating "Guardar fragmento" bar (OTA-safe, no native module); logic in `src/lib/fragment-selection.ts` + tests. Verify on-device once the OTA ships.
 - [ ] **Second highlight color for light mode** — yellow works well in dark reading mode but is poor for the "clear"/light theme; add a distinct highlight color per theme.
 
 ### C. Reader — web/desktop (#1)
