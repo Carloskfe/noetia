@@ -491,6 +491,17 @@
 
 ---
 
+## Backlog — Self-host ALL audio in MinIO (added 2026-07-05)
+
+> **Decision (Carlos):** own/control all audio — no third-party streaming — the same model for future author/publisher audio. Scope: every book, all sources. Runs on prod via SSH (Carlos).
+
+- [x] **Tool built** (`a22169e`) — `migrate-audio-to-minio.ts` + `audio-source-resolver.ts` (17 tests). Idempotent; resolves archive.org (direct) or LibriVox page → archive.org; downloads chapter MP3s → one progressive MP3 in MinIO → sets `audioStreamKey`. Nothing deleted. Validated on dev (dry run 38/39 resolved; Filipenses real run OK).
+- [ ] **Run on prod** (Carlos, after CD builds this commit): `--dry-run` first, then for real, then verify no `audioStreamKey` still starts with `http`. See runbook below / file header.
+- [ ] **Follow-on (better sync):** once a book is served from MinIO, re-run Whisper against *that exact file* for drift-free phrase timing (transcription source == playback source).
+- [ ] Note: `El Líder que No Tenía Cargo` is a Noetia original with no external audio — correctly skipped (needs its own recording when available).
+
+---
+
 ## Backlog — User bug report batch (added 2026-07-03, from Carlos)
 
 > Field-testing feedback. Ordered by product hierarchy: **Reader experience (#1) first**, then sharing (#2), then content/catalogue. Most reader items are mobile unless noted. None triaged/reproduced yet — each needs an owner + repro.
