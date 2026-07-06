@@ -15,7 +15,7 @@ docker compose --env-file .env.production -f docker-compose.server.yml exec -T -
 
 # Verify the last migrations ran
 docker compose exec -T db psql -U noetia -d noetia \
-  -c "SELECT name, timestamp FROM typeorm_migrations ORDER BY timestamp DESC LIMIT 5;"
+  -c "SELECT name, timestamp FROM migrations ORDER BY timestamp DESC LIMIT 5;"
 ```
 
 ## Creating a new migration
@@ -31,7 +31,7 @@ TypeORM auto-diffs the entity definitions against the live schema and generates 
 ## Golden rules
 
 - **Never edit a migration that has been deployed.** TypeORM stores a checksum per migration; editing a shipped file causes `migration:run` to fail on all other environments. If a migration has a bug, write a new one to fix it (see migrations 060 → 061 for the canonical example).
-- **Every schema change must be a migration.** Do not run raw `ALTER TABLE` on production. The `typeorm_migrations` table is the source of truth for what schema is in place.
+- **Every schema change must be a migration.** Do not run raw `ALTER TABLE` on production. The `migrations` table is the source of truth for what schema is in place.
 - **Test the migration on a local `docker compose` environment** before pushing. Include rollback (`down()`) logic for any destructive change.
 - **Migrations that seed data** (`SeedPlans`, `SeedCollectionsFromBookField`) must be idempotent — use `INSERT ... ON CONFLICT DO NOTHING` or check existence first.
 

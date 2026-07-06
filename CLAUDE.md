@@ -487,7 +487,7 @@ docker ps                               # all containers (healthy)?
 # Check last migration applied:
 docker compose -f docker-compose.server.yml exec -T db \
   psql -U noetia -d noetia \
-  -c "SELECT name FROM typeorm_migrations ORDER BY timestamp DESC LIMIT 3;"
+  -c "SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 3;"
 ```
 Spot-test one key endpoint (login, book list, or audio stream) before closing the deploy.
 

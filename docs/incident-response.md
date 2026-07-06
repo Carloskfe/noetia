@@ -188,7 +188,7 @@ Check the Actions tab on GitHub for the specific error. Common causes:
 |-------|-----|
 | `Permission denied (publickey)` | `DEPLOY_SSH_KEY` secret expired or rotated — re-add at `/root/.ssh/deploy_key` and update GitHub secret |
 | `docker compose: command not found` | Docker or compose plugin version issue on server — check `docker compose version` |
-| Migration fails with `relation "X" already exists` | Migration was partially applied — check `typeorm_migrations` table, remove the stuck row, retry |
+| Migration fails with `relation "X" already exists` | Migration was partially applied — check `migrations` table, remove the stuck row, retry |
 | Container exits immediately after build | Check `docker logs <container>` for startup errors; often a missing env var |
 
 Manual deploy (same steps as CI):
