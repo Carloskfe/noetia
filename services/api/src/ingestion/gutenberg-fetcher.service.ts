@@ -56,15 +56,21 @@ export class GutenbergFetcherService {
 
   /**
    * Candidate URLs in priority order: the primary cache/epub plain-text file,
-   * then the pglaf mirror's UTF-8 (`-0.txt`) and ASCII (`.txt`) variants. The
-   * mirror path follows Gutenberg's directory scheme: every digit of the id
-   * except the last, slash-separated, then the id directory.
+   * then the canonical UTF-8 download endpoint, then the pglaf mirror's UTF-8
+   * (`-0.txt`) and ASCII (`.txt`) variants. The `.txt.utf-8` endpoint is the
+   * fallback that matters for older Latin-1 texts (e.g. Platero y yo, id 39209)
+   * whose cache/epub file 404s/times out and which only ship a `-8.txt` on the
+   * mirror — reading that as UTF-8 would mojibake the Spanish accents, whereas
+   * `.txt.utf-8` always serves clean UTF-8. The mirror path follows Gutenberg's
+   * directory scheme: every digit of the id except the last, slash-separated,
+   * then the id directory.
    */
   private buildUrls(gutenbergId: number): string[] {
     const id = String(gutenbergId);
     const dir = id.slice(0, -1).split('').join('/') || '0';
     return [
       `https://www.gutenberg.org/cache/epub/${gutenbergId}/pg${gutenbergId}.txt`,
+      `https://www.gutenberg.org/ebooks/${gutenbergId}.txt.utf-8`,
       `https://gutenberg.pglaf.org/${dir}/${gutenbergId}/${gutenbergId}-0.txt`,
       `https://gutenberg.pglaf.org/${dir}/${gutenbergId}/${gutenbergId}.txt`,
     ];

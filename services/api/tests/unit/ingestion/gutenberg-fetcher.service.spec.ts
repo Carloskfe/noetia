@@ -73,7 +73,28 @@ describe('GutenbergFetcherService', () => {
       await expect(service.fetch(320)).rejects.toThrow('network error');
     });
 
-    it('falls back to the pglaf mirror when the primary source times out', async () => {
+    it('falls back to the canonical .txt.utf-8 endpoint when cache/epub fails', async () => {
+      const raw =
+        '*** START OF THE PROJECT GUTENBERG EBOOK FOO ***\n' +
+        'UTF-8 body.\n' +
+        '*** END OF THE PROJECT GUTENBERG EBOOK FOO ***';
+      const timeout = Object.assign(new Error('aborted'), { cause: { code: 'ETIMEDOUT' } });
+      mockFetch
+        .mockRejectedValueOnce(timeout)
+        .mockResolvedValueOnce({ ok: true, text: async () => raw });
+
+      const result = await service.fetch(39209);
+
+      expect(mockFetch.mock.calls[0][0]).toBe(
+        'https://www.gutenberg.org/cache/epub/39209/pg39209.txt',
+      );
+      expect(mockFetch.mock.calls[1][0]).toBe(
+        'https://www.gutenberg.org/ebooks/39209.txt.utf-8',
+      );
+      expect(result).toBe('UTF-8 body.');
+    });
+
+    it('falls back to the pglaf mirror when both gutenberg.org sources fail', async () => {
       const raw =
         '*** START OF THE PROJECT GUTENBERG EBOOK FOO ***\n' +
         'Mirror body.\n' +
@@ -81,14 +102,12 @@ describe('GutenbergFetcherService', () => {
       const timeout = Object.assign(new Error('aborted'), { cause: { code: 'ETIMEDOUT' } });
       mockFetch
         .mockRejectedValueOnce(timeout)
+        .mockRejectedValueOnce(timeout)
         .mockResolvedValueOnce({ ok: true, text: async () => raw });
 
       const result = await service.fetch(2000);
 
-      expect(mockFetch.mock.calls[0][0]).toBe(
-        'https://www.gutenberg.org/cache/epub/2000/pg2000.txt',
-      );
-      expect(mockFetch.mock.calls[1][0]).toBe(
+      expect(mockFetch.mock.calls[2][0]).toBe(
         'https://gutenberg.pglaf.org/2/0/0/2000/2000-0.txt',
       );
       expect(result).toBe('Mirror body.');
@@ -99,7 +118,7 @@ describe('GutenbergFetcherService', () => {
       mockFetch.mockRejectedValue(timeout);
 
       await expect(service.fetch(2000)).rejects.toThrow('boom');
-      expect(mockFetch).toHaveBeenCalledTimes(3);
+      expect(mockFetch).toHaveBeenCalledTimes(4);
     });
 
     it('passes an abort signal so a hung host fails fast', async () => {
