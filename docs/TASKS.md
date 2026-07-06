@@ -522,8 +522,8 @@
 - [ ] **Text alignment options missing in image customization** — add left/center/right alignment to the quote-card text controls (web + mobile; needs image-gen `textAlign` param).
 
 ### E. Content / catalogue (#3, but Bible is a stated priority)
-- [ ] **No covers for Bible books, and no collection cover** — Bible titles + the Bible collection show no cover art. (generate themed covers via `image-gen/scripts/generate_themed_covers.py`)
-- [ ] **"Platero y yo" shows empty** — text appears empty in the app despite being ingested + 98.2% sync per records; likely a prod ingestion/display regression — needs prod check.
+- [x] **No covers for Bible books, and no collection cover** — FIXED (`459b400`). All 34 Bible entries + both collection seeds pointed at a blank Open Library placeholder (1.7KB). Now ES→`/covers/biblia-reina-valera.png`, EN→ new `/covers/bible-kjv.png`. Re-run `seed-covers`/`seed-collections` on prod to apply.
+- [x] **"Platero y yo" shows empty** — root cause FIXED (`92d5d54`): Gutenberg 39209 has no working cache/epub or `-0.txt` (only a Latin-1 `-8.txt`), so the fetcher got empty text. Added the `.txt.utf-8` canonical fallback. **Needs a prod re-ingest of Platero** to repopulate.
 - [ ] **Reina-Valera / KJV Bible is incomplete — 17 of 66 books** — see canon gap below; complete the canon (49 missing) → catalogue entries + LibriVox audio + Colab batch.
 
 #### Bible canon gap (2026-07-05 audit)
