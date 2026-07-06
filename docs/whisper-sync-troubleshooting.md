@@ -97,6 +97,15 @@ takeaway: don't conclude "announcements aren't the problem for this book"
 until you've confirmed §2's residual-noise grep is clean. If it isn't, fix
 the pattern gap before moving on to §3-8.
 
+**§2 addendum (2026-07-05):** El Príncipe (Sánchez Rojas tr.) surfaced a
+closing-credit variant Whisper renders as one **period-less** trailing cue:
+`"...de Maquiavelo leído por <narrator> narrada en Málaga a 4 de enero de 2026"`.
+`READER_CREDIT` (`/\s*(le[ií]do|grabado) por [^.]*\.\s*/`) requires a trailing
+period, so it missed it. Added a whole-cue drop pattern to
+`ANNOUNCEMENT_WHOLE_CUE`: `"leído por"` adjacent to a 4-digit year
+(`/\ble[ií]do por\b.*\b(?:19|20)\d{2}\b/i`) — a signal that never appears in
+narrative prose. Re-merge and confirm the residual-noise grep is clean.
+
 ### §2b. English LibriVox chapter announcements (different pattern vocabulary)
 
 English LibriVox readers use a completely different announcement vocabulary

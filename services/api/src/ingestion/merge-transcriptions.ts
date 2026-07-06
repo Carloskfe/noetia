@@ -181,6 +181,11 @@ const ANNOUNCEMENT_WHOLE_CUE: RegExp[] = [
   // it must NOT match real verse text that merely contains "end of" mid-sentence
   // ("when Jacob had made an end of commanding", "the end of all flesh").
   /^end of (?:the )?(?:book of )?(?:genesis|exodus|leviticus|numbers|deuteronomy|psalms?|proverbs?|isaiah|matthew|mark|luke|john|acts|revelation|romans|corinthians|galatians|ephesians|philippians|colossians|thessalonians|timothy|hebrews|james)\b/i,
+  // Spanish LibriVox closing-credit cue — "...de <Author>, leído por <narrator>,
+  // narrada en <place> a <date>". Whisper renders it as one trailing cue with no
+  // period, so READER_CREDIT (which needs a trailing '.') misses it. "leído por"
+  // next to a 4-digit year is a safe signal that never appears in narrative prose.
+  /\ble[ií]do por\b.*\b(?:19|20)\d{2}\b/i,
 ];
 
 const ANNOUNCEMENT_TRAILING =

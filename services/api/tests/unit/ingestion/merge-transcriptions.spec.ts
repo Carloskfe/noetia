@@ -114,6 +114,15 @@ describe('stripAnnouncement', () => {
     expect(stripAnnouncement(cue('Esta es una grabación de LibriVox. Todas las grabaciones de LibriVox son de dominio público.'))).toBeNull();
   });
 
+  it('drops a Spanish closing-credit cue with no trailing period ("leído por … 2026")', () => {
+    // El Príncipe: Whisper rendered the closing credit as one period-less cue.
+    expect(stripAnnouncement(cue('de maquiavelo leído por ficción narrada en málaga a 4 de enero de 2026'))).toBeNull();
+  });
+
+  it('keeps narrative prose that merely contains "por" and a year', () => {
+    expect(stripAnnouncement(cue('En el año 2026 el mundo había cambiado por completo.'))).not.toBeNull();
+  });
+
   it('drops a translator-credit cue (Spanish)', () => {
     expect(stripAnnouncement(cue('Orgullo y Prejuicio, primer volumen, de Jane Austen. Traducido por José Jordán de Urríez y Azara.'))).toBeNull();
   });
@@ -316,10 +325,12 @@ describe('mergeVttDirectory', () => {
 
     expect(merged).toHaveLength(2);
     expect(merged[0].payload).toBe('En un lugar de la Mancha.');
-    // file2's announcement cue (its first cue) is stripped, leaving only the
-    // real second cue; offset is based on file1's cleaned last end (5s), not
-    // the stripped announcement's end time (7s): 3 (original start) + 5 + 2 = 10
-    expect(merged[1].startTime).toBeCloseTo(10);
+    // file2's announcement cue (its first cue) is stripped from the TEXT, leaving
+    // only the real second cue. The chapter offset uses file1's RAW last end (7s)
+    // — the announcement's audio still plays in the concatenated file, so the next
+    // chapter's audio (and thus its cues) starts after it; using the cleaned end
+    // (5s) would drift the text ahead of the audio. 3 (original start) + 7 + 2 = 12.
+    expect(merged[1].startTime).toBeCloseTo(12);
     expect(merged[1].payload).toBe('De cuyo nombre no quiero acordarme.');
   });
 });
