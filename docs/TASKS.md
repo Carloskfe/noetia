@@ -529,7 +529,7 @@
 ### D. Sharing — quote-card image generation (#2)
 - [ ] **Image generator not working correctly (web download)** — the download-image path of the generator is broken. (relates to `MINIO_PUBLIC_URL` presigned rewrite / ShareModal download)
 - [ ] **Downloaded image is wrong format for FB/IG upload** — the exported file isn't in a format/spec the platforms accept for upload; verify dimensions + file type per platform.
-- [ ] **Bold / italic missing in image customization** — present in web `ShareModal` (`textBold`/`textItalic`) but **absent in the mobile ShareSheet**; add to mobile (and confirm web works).
+- [x] **Bold / italic missing in image customization** — FIXED for mobile: added a "Text style" Bold/Italic row to the ShareSheet, threaded `textBold`/`textItalic` via `buildSharePayload` (backend already supported). Web `ShareModal` already had it. (mobile OTA)
 - [ ] **Text alignment options missing in image customization** — add left/center/right alignment to the quote-card text controls (web + mobile; needs image-gen `textAlign` param).
 
 ### E. Content / catalogue (#3, but Bible is a stated priority)
