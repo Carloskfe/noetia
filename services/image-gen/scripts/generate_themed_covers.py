@@ -67,6 +67,16 @@ def _save(img, slug):
 # ── Individual cover generators ───────────────────────────────────────────────
 
 def make_biblia_reina_valera():
+    """Spanish Reina-Valera edition cover."""
+    _make_bible_cover('biblia-reina-valera', 'SANTA BIBLIA', 'Reina-Valera')
+
+
+def make_bible_kjv():
+    """English King James Version cover — same art, English text."""
+    _make_bible_cover('bible-kjv', 'HOLY BIBLE', 'King James Version')
+
+
+def _make_bible_cover(slug: str, title: str, subtitle: str):
     """Gold & cream — celestial light rays + cross silhouette."""
     img = Image.new('RGB', (W, H))
     _gradient(img, (20, 15, 40), (100, 75, 20))
@@ -101,10 +111,10 @@ def make_biblia_reina_valera():
 
     # Text
     y = H // 2 + 40
-    y = _center_text(draw, 'SANTA BIBLIA', _font('playfair', 32), y, W, (255, 230, 140))
-    y = _center_text(draw, 'Reina-Valera', _font('lato', 18), y + 6, W, (220, 190, 100))
+    y = _center_text(draw, title, _font('playfair', 32), y, W, (255, 230, 140))
+    y = _center_text(draw, subtitle, _font('lato', 18), y + 6, W, (220, 190, 100))
 
-    _save(img, 'biblia-reina-valera')
+    _save(img, slug)
 
 
 def make_quijote(volume: int):
@@ -609,6 +619,7 @@ def make_literatura_infantil_collection():
 if __name__ == '__main__':
     print('Generating themed book covers...')
     make_biblia_reina_valera()
+    make_bible_kjv()
     make_quijote(1)
     make_quijote(2)
     make_don_juan_tenorio()

@@ -125,7 +125,7 @@ async function bootstrap() {
     'biblia-reina-valera',
     'Biblia Reina-Valera',
     'La Sagrada Biblia en la traducción clásica Reina-Valera 1909. Libros del Antiguo y Nuevo Testamento disponibles como texto sincronizado con audio.',
-    'https://covers.openlibrary.org/b/id/12324628-L.jpg',
+    '/covers/biblia-reina-valera.png',
     biblePositions,
   );
   console.log(`  ✓ ${biblePositions.length} books in canonical order`);
@@ -137,7 +137,7 @@ async function bootstrap() {
     'bible-kjv',
     'Bible (King James Version)',
     'The Holy Bible in the classic King James Version. Books of the Old and New Testament available as text synchronized with audio.',
-    'https://covers.openlibrary.org/b/id/12324628-L.jpg',
+    '/covers/bible-kjv.png',
     kjvPositions,
   );
   console.log(`  ✓ ${kjvPositions.length} books in canonical order`);
