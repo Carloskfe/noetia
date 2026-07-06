@@ -129,6 +129,9 @@ export const en = {
     flipAria: 'Mirror the background image horizontally',
     background: 'Background',
     bgDefault: 'Default',
+    textStyle: 'Text style',
+    bold: 'Bold',
+    italic: 'Italic',
     platforms: {
       instagram: 'Instagram',
       facebook: 'Facebook',

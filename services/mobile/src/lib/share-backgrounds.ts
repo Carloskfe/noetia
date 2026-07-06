@@ -53,6 +53,11 @@ export interface BgSelection {
   flip?: boolean;
 }
 
+export interface TextStyle {
+  bold?: boolean;
+  italic?: boolean;
+}
+
 /**
  * Build the POST body for `/fragments/:id/share`.
  *
@@ -60,15 +65,19 @@ export interface BgSelection {
  * `bgImage`, and `bgFlip: true` only when the mirror toggle is on. A missing or
  * empty preset URL falls back to the default gradient (never emits a broken
  * image payload). `flip` is ignored for the default background (no-op).
+ * `textBold`/`textItalic` are sent only when enabled (image-gen defaults false).
  */
 export function buildSharePayload(
   platform: Platform,
   bg: BgSelection,
+  text: TextStyle = {},
 ): Record<string, unknown> {
   const base = {
     platform,
     format: SHARE_FORMAT[platform],
     font: DEFAULT_STYLE.font,
+    ...(text.bold ? { textBold: true } : {}),
+    ...(text.italic ? { textItalic: true } : {}),
   };
 
   if (bg.type === 'preset' && bg.presetUrl) {

@@ -26,6 +26,8 @@ export function ShareSheet({ fragmentId, fragmentText, visible, onClose }: Props
   const [selected, setSelected] = useState<Platform | null>(null);
   const [presetIdx, setPresetIdx] = useState<number | null>(null);
   const [flip, setFlip] = useState(false);
+  const [bold, setBold] = useState(false);
+  const [italic, setItalic] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -36,6 +38,8 @@ export function ShareSheet({ fragmentId, fragmentText, visible, onClose }: Props
     setSelected(null);
     setPresetIdx(null);
     setFlip(false);
+    setBold(false);
+    setItalic(false);
     setImageUrl(null);
     setLoading(false);
     setError('');
@@ -52,11 +56,15 @@ export function ShareSheet({ fragmentId, fragmentText, visible, onClose }: Props
     setError('');
     setImageUrl(null);
     try {
-      const payload = buildSharePayload(selected, {
-        type: presetIdx !== null ? 'preset' : 'default',
-        presetUrl: presetIdx !== null ? BG_PRESETS[presetIdx] : undefined,
-        flip,
-      });
+      const payload = buildSharePayload(
+        selected,
+        {
+          type: presetIdx !== null ? 'preset' : 'default',
+          presetUrl: presetIdx !== null ? BG_PRESETS[presetIdx] : undefined,
+          flip,
+        },
+        { bold, italic },
+      );
       const res = await apiClient.post<{ url: string }>(`/fragments/${fragmentId}/share`, payload);
       setImageUrl(res.url);
     } catch {
@@ -140,6 +148,31 @@ export function ShareSheet({ fragmentId, fragmentText, visible, onClose }: Props
                   </View>
                 )}
 
+                {/* Text style — bold / italic */}
+                <Text style={styles.sectionLabel}>{t.sharing.textStyle}</Text>
+                <View style={styles.styleRow}>
+                  <TouchableOpacity
+                    style={[styles.styleBtn, bold && styles.styleBtnActive]}
+                    onPress={() => setBold((v) => !v)}
+                    accessibilityLabel={t.sharing.bold}
+                    accessibilityState={{ selected: bold }}
+                  >
+                    <Text style={[styles.styleBtnText, { fontWeight: '700' }, bold && styles.styleBtnTextActive]}>
+                      {t.sharing.bold}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.styleBtn, italic && styles.styleBtnActive]}
+                    onPress={() => setItalic((v) => !v)}
+                    accessibilityLabel={t.sharing.italic}
+                    accessibilityState={{ selected: italic }}
+                  >
+                    <Text style={[styles.styleBtnText, { fontStyle: 'italic' }, italic && styles.styleBtnTextActive]}>
+                      {t.sharing.italic}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
                 {error !== '' && <Text style={styles.error}>{error}</Text>}
 
                 <TouchableOpacity
@@ -198,6 +231,11 @@ const styles = StyleSheet.create({
   bgSelected:          { borderColor: '#0D1B2A' },
   flipRow:             { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   flipLabel:           { fontSize: 14, color: '#374151' },
+  styleRow:            { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  styleBtn:            { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB' },
+  styleBtnActive:      { borderColor: '#0D1B2A', backgroundColor: '#0D1B2A' },
+  styleBtnText:        { fontSize: 15, color: '#374151' },
+  styleBtnTextActive:  { color: '#fff' },
   platformBtn:         { flex: 1, alignItems: 'center', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB' },
   platformIcon:        { fontSize: 22, marginBottom: 4 },
   platformLabel:       { fontSize: 11, color: '#374151', fontWeight: '500' },

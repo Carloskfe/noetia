@@ -131,6 +131,9 @@ export const es: MobileTranslations = {
     flipAria: 'Reflejar la imagen de fondo horizontalmente',
     background: 'Fondo',
     bgDefault: 'Predeterminado',
+    textStyle: 'Estilo de texto',
+    bold: 'Negrita',
+    italic: 'Cursiva',
     platforms: {
       instagram: 'Instagram',
       facebook: 'Facebook',

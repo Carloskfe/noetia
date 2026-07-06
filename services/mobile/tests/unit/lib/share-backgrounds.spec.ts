@@ -85,3 +85,26 @@ describe('buildSharePayload — preset (image) background', () => {
     expect(body).not.toHaveProperty('bgFlip');
   });
 });
+
+describe('buildSharePayload — text style (bold / italic)', () => {
+  it('omits textBold/textItalic when neither is set', () => {
+    const body = buildSharePayload('instagram', { type: 'default' });
+    expect(body).not.toHaveProperty('textBold');
+    expect(body).not.toHaveProperty('textItalic');
+  });
+
+  it('sends textBold/textItalic only when enabled', () => {
+    const body = buildSharePayload('instagram', { type: 'default' }, { bold: true, italic: false });
+    expect(body.textBold).toBe(true);
+    expect(body).not.toHaveProperty('textItalic');
+  });
+
+  it('carries text style through on an image background too', () => {
+    const body = buildSharePayload(
+      'linkedin',
+      { type: 'preset', presetUrl: BG_PRESETS[0], flip: true },
+      { bold: true, italic: true },
+    );
+    expect(body).toMatchObject({ bgType: 'image', bgFlip: true, textBold: true, textItalic: true });
+  });
+});
