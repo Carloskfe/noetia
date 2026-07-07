@@ -486,8 +486,12 @@
    - Catalogue + Colab batch list complete for all 12 (6 EN self-dev + 6 ES second-wave).
    - **EN half (6 Gutenberg self-dev):** sources verified (all 200), clean and ready.
    - **ES half (6 second-wave):** all 6 `wikisourceTitle`s pointed at disambiguation/index pages — **fixed** (`06fecff`), validated 40k–533k chars each through the real fetcher. See troubleshooting §5b.
-   - **Remaining (external / user):** run the overnight Whisper batch on Colab GPU → commit VTTs → prod Phase A ingest (`seed-ingestion` + `seed-audio-stream`) → align per book (`seed-sync-whisper`) → flip `isFree` at ≥90%.
-   - **Known won't-clear-gate:** Cartas a Lucilio (Wikisource has 63/124 letters, LibriVox is a *selección*); the 3 translations (El Príncipe, Meditaciones, Cartas) need alignment to confirm the edition matches the narration.
+   - **Batch 1 aligned on prod (2026-07-06):** 5 titles ingested + aligned →
+     - ✅ **How to Live on 24 Hours a Day 99.8%**, **As a Man Thinketh 98.7%** (EN), **La Edad de Oro 91.3%** (ES) — flipped `isFree=true`, audio in MinIO.
+     - ❌ **El Príncipe 60.2%** — translation mismatch: the LibriVox audio (`elprincipe_2601_librivox`, PDF-sourced) uses a translation not on es.wikisource (neither Sánchez Rojas nor 1854 match "Costumbre es de cuantos…"). Held back; text readable via Sánchez Rojas. See troubleshooting §6. Options: source the exact translation (Gutenberg/archive.org PDF) or leave text-only.
+     - ❌ **Cartas a Lucilio 56.6%** — as predicted (63/124 letters + *selección* audio). Held back.
+   - **Still to transcribe (Colab) + align:** María, Rimas, Meditaciones (ES second-wave), + the other EN self-dev/second-wave titles.
+   - **Doc bug fixed alongside:** CLAUDE.md deploy-verify query used `typeorm_migrations`; real table is `migrations` (`data-source.ts` sets no custom name).
 
 ---
 

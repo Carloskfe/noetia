@@ -628,6 +628,20 @@ but the book can still be stuck for an unexplained reason.
   stuck flat at 25%, translator not yet checked against the English
   LibriVox reader).
 
+**Worked example (El Príncipe, 2026-07-06) — the translation isn't on
+Wikisource at all.** Aligned at **60.2%**, avg confidence 25%, 326/821
+phrases "not found". Proof it's a translation divergence, not noise: the
+audio's dedication opens *"Costumbre es de cuantos se proponen alcanzar el
+favor de un príncipe…"* while our Sánchez Rojas text reads *"Los que quieren
+lograr…"*. Checked **both** candidate es.wikisource editions — Sánchez Rojas
+tr. and El príncipe (1854) — and a phrase-search for the narrated wording:
+**zero matches**. LibriVox (`elprincipe_2601_librivox`) sourced its text from
+a **PDF on archive.org**, not any Wikisource edition. Outcome: kept the
+readable Sánchez Rojas text but left `isFree=false` (no synced audio) — a
+title whose recording's exact translation isn't available as public-domain
+text is simply not a phrase-sync candidate until that text is sourced
+(Gutenberg / the archive.org PDF) or a different recording exists.
+
 ---
 
 ## 7. Story-order mismatch in multi-piece collections
