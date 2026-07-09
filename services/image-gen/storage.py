@@ -1,7 +1,6 @@
 import io
 import os
 import uuid
-from datetime import timedelta
 
 from minio import Minio
 
@@ -36,12 +35,10 @@ class MinioClient:
             length=len(data),
             content_type="image/png",
         )
-        url = self._client.presigned_get_object(
-            bucket,
-            object_name,
-            expires=timedelta(days=7),
-        )
-        # Replace internal Docker hostname with browser-reachable public URL.
-        if self._public_origin:
-            url = url.replace(self._internal_origin, self._public_origin, 1)
-        return url
+        # The images/ bucket is public-read, so return a permanent public URL —
+        # NOT a presigned one. Presigned URLs expire (7-day cards shared to social
+        # would break) and, signed against the internal host then rewritten, get
+        # rejected by MinIO behind the proxy (SignatureDoesNotMatch → broken
+        # download/preview). A plain public URL avoids both and is cacheable.
+        base = self._public_origin or self._internal_origin
+        return f"{base}/{bucket}/{object_name}"
