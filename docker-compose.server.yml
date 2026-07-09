@@ -255,6 +255,11 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+      # Public URL MinIO is reached at through Traefik. Required behind a reverse
+      # proxy so MinIO validates presigned-URL signatures against this host —
+      # without it, newer MinIO rejects proxied presigned requests with
+      # SignatureDoesNotMatch even when the signature is correct.
+      MINIO_SERVER_URL: ${MINIO_PUBLIC_URL:-https://storage.noetia.app}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
