@@ -68,4 +68,32 @@ describe('StorageService', () => {
       );
     });
   });
+
+  // Regression: presigned URLs must be SIGNED against the public host, not signed
+  // internally then host-rewritten (that invalidates the SigV4 signature → MinIO
+  // returns SignatureDoesNotMatch and all audio/text URLs 403).
+  describe('presign — public-host signing', () => {
+    const OLD = process.env.MINIO_PUBLIC_URL;
+    afterEach(() => {
+      if (OLD === undefined) delete process.env.MINIO_PUBLIC_URL;
+      else process.env.MINIO_PUBLIC_URL = OLD;
+    });
+
+    it('builds a signing client against MINIO_PUBLIC_URL when set', () => {
+      process.env.MINIO_PUBLIC_URL = 'https://storage.noetia.app';
+      jest.clearAllMocks();
+      new StorageService();
+      expect(S3Client).toHaveBeenCalledWith(
+        expect.objectContaining({ endpoint: 'https://storage.noetia.app', forcePathStyle: true }),
+      );
+    });
+
+    it('returns the signed URL unchanged — no post-sign host rewrite', async () => {
+      process.env.MINIO_PUBLIC_URL = 'https://storage.noetia.app';
+      const signed = 'https://storage.noetia.app/audio/books/x.mp3?X-Amz-Signature=abc';
+      (getSignedUrl as jest.Mock).mockResolvedValue(signed);
+      const svc = new StorageService();
+      expect(await svc.presign('audio', 'books/x.mp3', 900)).toBe(signed);
+    });
+  });
 });

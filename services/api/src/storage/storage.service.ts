@@ -5,22 +5,38 @@ import { Readable } from 'stream';
 
 @Injectable()
 export class StorageService {
+  /** Internal client — reaches MinIO over the Docker network for uploads/reads. */
   private readonly client: S3Client;
+  /** Client used only to SIGN presigned URLs, configured with the public host. */
+  private readonly presignClient: S3Client;
 
   constructor() {
     const endpoint = process.env.MINIO_ENDPOINT ?? 'storage';
     const port = parseInt(process.env.MINIO_PORT ?? '9000', 10);
     const useSsl = process.env.MINIO_USE_SSL === 'true';
+    const credentials = {
+      accessKeyId: process.env.MINIO_ACCESS_KEY ?? 'minioadmin',
+      secretAccessKey: process.env.MINIO_SECRET_KEY ?? 'minioadmin',
+    };
 
     this.client = new S3Client({
       endpoint: `${useSsl ? 'https' : 'http'}://${endpoint}:${port}`,
       region: 'us-east-1',
-      credentials: {
-        accessKeyId: process.env.MINIO_ACCESS_KEY ?? 'minioadmin',
-        secretAccessKey: process.env.MINIO_SECRET_KEY ?? 'minioadmin',
-      },
+      credentials,
       forcePathStyle: true,
     });
+
+    // Presigned URLs are fetched by browsers at the PUBLIC host, so they must be
+    // SIGNED against that host. SigV4 signs the Host header, so signing against the
+    // internal host and string-rewriting it afterwards invalidates the signature —
+    // MinIO (≥ 2025 releases) rejects it with SignatureDoesNotMatch, breaking every
+    // presigned audio/text URL. Presigning is offline (no network call), so signing
+    // with the public endpoint here is safe even though the api reaches MinIO
+    // internally for real uploads/reads.
+    const publicBase = process.env.MINIO_PUBLIC_URL;
+    this.presignClient = publicBase
+      ? new S3Client({ endpoint: publicBase, region: 'us-east-1', credentials, forcePathStyle: true })
+      : this.client;
   }
 
   async upload(bucket: string, key: string, buffer: Buffer, mimetype: string): Promise<void> {
@@ -30,16 +46,10 @@ export class StorageService {
   }
 
   async presign(bucket: string, key: string, ttlSeconds: number): Promise<string> {
+    // Sign with the public-host client so the signed Host matches what the browser
+    // requests (no post-sign host rewrite — that breaks the SigV4 signature).
     const command = new GetObjectCommand({ Bucket: bucket, Key: key });
-    const signed = await getSignedUrl(this.client, command, { expiresIn: ttlSeconds });
-    // Rewrite internal Docker hostname to the public URL so browsers can reach MinIO
-    const publicBase = process.env.MINIO_PUBLIC_URL;
-    if (publicBase) {
-      const url = new URL(signed);
-      const internal = `${url.protocol}//${url.host}`;
-      return signed.replace(internal, publicBase);
-    }
-    return signed;
+    return getSignedUrl(this.presignClient, command, { expiresIn: ttlSeconds });
   }
 
   async getText(key: string, bucket = 'books'): Promise<string> {
