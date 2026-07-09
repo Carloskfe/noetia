@@ -224,11 +224,26 @@ export default function ReaderPage() {
 
   // ── Controls ──────────────────────────────────────────────────────────────
 
-  const seekToIndex = useCallback((idx: number) => {
+  // Seek to `target` seconds, then optionally play. Defers the seek until the
+  // audio has metadata: setting currentTime on an element that hasn't loaded is
+  // silently discarded by the browser, so playback would start at 0 — the
+  // "resume jumps back to the beginning" bug, especially on a freshly-loaded
+  // MinIO MP3 whose metadata is still in flight when the user taps resume.
+  const seekAndMaybePlay = useCallback((target: number, play: boolean) => {
     const audio = audioRef.current;
-    if (!audio || !phrases.length) return;
-    audio.currentTime = seekToPhrase(phrases, idx);
-  }, [phrases]);
+    if (!audio) return;
+    const apply = () => {
+      audio.currentTime = target;
+      if (play) void audio.play();
+    };
+    if (audio.readyState >= 1 /* HAVE_METADATA */) apply();
+    else audio.addEventListener('loadedmetadata', apply, { once: true });
+  }, []);
+
+  const seekToIndex = useCallback((idx: number) => {
+    if (!phrases.length) return;
+    seekAndMaybePlay(seekToPhrase(phrases, idx), false);
+  }, [phrases, seekAndMaybePlay]);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
@@ -265,9 +280,9 @@ export default function ReaderPage() {
 
   const handlePlayFromProgress = useCallback(() => {
     setShowPlayConfirm(false);
-    seekToIndex(savedPhraseIndex);
-    audioRef.current?.play();
-  }, [savedPhraseIndex, seekToIndex]);
+    if (!phrases.length) return;
+    seekAndMaybePlay(seekToPhrase(phrases, savedPhraseIndex), true);
+  }, [savedPhraseIndex, phrases, seekAndMaybePlay]);
 
   const handlePlayFromStart = useCallback(() => {
     setShowPlayConfirm(false);
@@ -288,9 +303,9 @@ export default function ReaderPage() {
   const handleTapToSync = useCallback((idx: number) => {
     setTapToSyncActive(false);
     setMode('escucha-activa');
-    seekToIndex(idx);
-    audioRef.current?.play();
-  }, [seekToIndex]);
+    if (!phrases.length) return;
+    seekAndMaybePlay(seekToPhrase(phrases, idx), true);
+  }, [phrases, seekAndMaybePlay]);
 
   const handleScrub = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const audio = audioRef.current;
@@ -333,12 +348,12 @@ export default function ReaderPage() {
   }, []);
 
   const handleResumeAudio = useCallback(() => {
-    if (!audioBookmark) return;
-    seekToIndex(audioBookmark.phraseIndex);
+    if (!audioBookmark || !phrases.length) return;
     setMode('escucha-activa');
+    const target = seekToPhrase(phrases, audioBookmark.phraseIndex);
     setAudioBookmark(null);
-    audioRef.current?.play();
-  }, [audioBookmark, seekToIndex]);
+    seekAndMaybePlay(target, true);
+  }, [audioBookmark, phrases, seekAndMaybePlay]);
 
   // ── Text selection handler ────────────────────────────────────────────────
 
