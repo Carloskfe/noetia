@@ -506,6 +506,17 @@
 
 ---
 
+## Backlog — User bug report batch 2 (added 2026-07-09, from Carlos) — narration/player
+
+> Field-testing after the audio→MinIO migration. All **Reader #1** priority. Several likely connect to the sync-map vs served-audio timing and the audio-mode UX.
+
+- [ ] **Highlight leads the narration by ~5 phrases (audio runs behind)** — the highlighted phrase is well ahead of what's being spoken, and the lag looks cumulative. Prime suspect: the served MinIO concatenated MP3's timeline no longer matches the sync-map (merged-VTT) timeline it was aligned to — the merge offsets chapters by their raw end + a 2s gap, which the gap-less concatenated audio doesn't have (drift grows per chapter), and/or the M4B the VTT was aligned against differed from the concatenated MP3. **Needs measuring the sync-map timestamps against the actual MinIO audio on one multi-chapter book.** This is the priority of the batch.
+- [ ] **Narration starts over from the beginning** — may be the resume-from-position race already fixed in `c12f1ff` (not yet deployed) — **verify after the web deploy**; if it persists it's a separate "restarts on chapter/segment boundary or on audio reload" bug.
+- [ ] **Can't get back to the correct audio position** — "narration shows only the active part of the audio and cannot come back." In audio/Escucha Activa mode the user can't scrub/scroll back to a prior point and resume there. (reader audio-mode navigation)
+- [ ] **Player should show all parts together** — the reader should present the full text (all phrases) with the highlight moving through it, so the user can see context and track along — not just the active fragment in isolation. (audio-mode layout: full text + moving highlight)
+
+---
+
 ## Backlog — User bug report batch (added 2026-07-03, from Carlos)
 
 > Field-testing feedback. Ordered by product hierarchy: **Reader experience (#1) first**, then sharing (#2), then content/catalogue. Most reader items are mobile unless noted. None triaged/reproduced yet — each needs an owner + repro.
