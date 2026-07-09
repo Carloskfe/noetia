@@ -53,8 +53,18 @@ function groupLibrary(
   return { groups: Array.from(map.values()), standalone };
 }
 
+/** Order books so the user's current language comes first, others after —
+ *  stable, so relative order within each language group is preserved. Since
+ *  groupLibrary keeps book order, this also surfaces the user's-language
+ *  collections ahead of the rest. */
+function orderByLanguage(books: Book[], language: string): Book[] {
+  return [...books].sort(
+    (a, b) => (a.language === language ? 0 : 1) - (b.language === language ? 0 : 1),
+  );
+}
+
 export default function LibraryPage() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [collectionMeta, setCollectionMeta] = useState<Map<string, CollectionMeta>>(new Map());
   const [searchHits, setSearchHits] = useState<Book[] | null>(null);
@@ -104,7 +114,12 @@ export default function LibraryPage() {
     };
   }, [query]);
 
-  const { groups, standalone } = groupLibrary(searchHits ?? allBooks, collectionMeta);
+  // Search results keep their relevance order; the browsed library is ordered
+  // with the user's language first.
+  const { groups, standalone } = groupLibrary(
+    searchHits ?? orderByLanguage(allBooks, language),
+    collectionMeta,
+  );
   const isSearching = Boolean(query.trim());
 
   return (
