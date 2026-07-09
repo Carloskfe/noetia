@@ -1,4 +1,4 @@
-import { loadPreferences, savePreferences, FONT_SIZES } from '../../../lib/reader-preferences';
+import { loadPreferences, savePreferences, FONT_SIZES, SPEEDS } from '../../../lib/reader-preferences';
 
 const mockStorage: Record<string, string> = {};
 const localStorageMock = {
@@ -16,15 +16,39 @@ beforeEach(() => {
 });
 
 describe('FONT_SIZES', () => {
-  it('contains exactly sm, md, lg in order', () => {
-    expect(FONT_SIZES).toEqual(['sm', 'md', 'lg']);
+  it('contains four steps sm, md, lg, xl in order', () => {
+    expect(FONT_SIZES).toEqual(['sm', 'md', 'lg', 'xl']);
   });
 });
 
 describe('loadPreferences', () => {
   it('returns defaults when no values are stored', () => {
     const prefs = loadPreferences();
-    expect(prefs).toEqual({ fontSize: 'md', darkMode: false });
+    expect(prefs).toEqual({ fontSize: 'md', darkMode: false, speed: 1 });
+  });
+
+  it('restores a stored playback speed', () => {
+    mockStorage['reader-speed'] = '1.5';
+    expect(loadPreferences().speed).toBe(1.5);
+  });
+
+  it('falls back to speed 1 for an unknown/invalid stored speed', () => {
+    mockStorage['reader-speed'] = '3.7';
+    expect(loadPreferences().speed).toBe(1);
+    mockStorage['reader-speed'] = 'abc';
+    expect(loadPreferences().speed).toBe(1);
+  });
+
+  it('accepts every offered speed step', () => {
+    for (const s of SPEEDS) {
+      mockStorage['reader-speed'] = String(s);
+      expect(loadPreferences().speed).toBe(s);
+    }
+  });
+
+  it('reads the new xl font size', () => {
+    mockStorage['reader-font-size'] = 'xl';
+    expect(loadPreferences().fontSize).toBe('xl');
   });
 
   it('returns stored font size and darkMode when both are present', () => {
@@ -58,37 +82,42 @@ describe('loadPreferences', () => {
   it('returns defaults without throwing when window is undefined', () => {
     Object.defineProperty(global, 'window', { value: undefined, writable: true });
     expect(() => loadPreferences()).not.toThrow();
-    expect(loadPreferences()).toEqual({ fontSize: 'md', darkMode: false });
+    expect(loadPreferences()).toEqual({ fontSize: 'md', darkMode: false, speed: 1 });
   });
 });
 
 describe('savePreferences', () => {
   it('writes font size to localStorage', () => {
-    savePreferences({ fontSize: 'lg', darkMode: false });
+    savePreferences({ fontSize: 'lg', darkMode: false, speed: 1 });
     expect(localStorageMock.setItem).toHaveBeenCalledWith('reader-font-size', 'lg');
   });
 
   it('writes dark mode to localStorage as string', () => {
-    savePreferences({ fontSize: 'md', darkMode: true });
+    savePreferences({ fontSize: 'md', darkMode: true, speed: 1 });
     expect(localStorageMock.setItem).toHaveBeenCalledWith('reader-dark-mode', 'true');
   });
 
-  it('writes both keys in a single call', () => {
-    savePreferences({ fontSize: 'sm', darkMode: false });
-    expect(localStorageMock.setItem).toHaveBeenCalledTimes(2);
+  it('writes the playback speed', () => {
+    savePreferences({ fontSize: 'md', darkMode: false, speed: 1.25 });
+    expect(localStorageMock.setItem).toHaveBeenCalledWith('reader-speed', '1.25');
+  });
+
+  it('writes all three keys in a single call', () => {
+    savePreferences({ fontSize: 'sm', darkMode: false, speed: 2 });
+    expect(localStorageMock.setItem).toHaveBeenCalledTimes(3);
     expect(localStorageMock.setItem).toHaveBeenCalledWith('reader-font-size', 'sm');
     expect(localStorageMock.setItem).toHaveBeenCalledWith('reader-dark-mode', 'false');
+    expect(localStorageMock.setItem).toHaveBeenCalledWith('reader-speed', '2');
   });
 
   it('does not throw when window is undefined', () => {
     Object.defineProperty(global, 'window', { value: undefined, writable: true });
-    expect(() => savePreferences({ fontSize: 'md', darkMode: false })).not.toThrow();
+    expect(() => savePreferences({ fontSize: 'md', darkMode: false, speed: 1 })).not.toThrow();
   });
 
   it('saved values are recoverable by loadPreferences', () => {
-    savePreferences({ fontSize: 'lg', darkMode: true });
+    savePreferences({ fontSize: 'xl', darkMode: true, speed: 1.5 });
     const prefs = loadPreferences();
-    expect(prefs.fontSize).toBe('lg');
-    expect(prefs.darkMode).toBe(true);
+    expect(prefs).toEqual({ fontSize: 'xl', darkMode: true, speed: 1.5 });
   });
 });

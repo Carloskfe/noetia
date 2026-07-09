@@ -26,6 +26,7 @@ const FONT_SIZE_CLASSES: Record<FontSize, string> = {
   sm: 'text-base',
   md: 'text-lg',
   lg: 'text-xl',
+  xl: 'text-2xl',
 };
 
 type Book = {
@@ -106,11 +107,23 @@ export default function ReaderPage() {
     const prefs = loadPreferences();
     setFontSize(prefs.fontSize);
     setDarkMode(prefs.darkMode);
+    setSpeed(prefs.speed);
+    if (audioRef.current) audioRef.current.playbackRate = prefs.speed;
   }, []);
 
   useEffect(() => {
-    savePreferences({ fontSize, darkMode });
-  }, [fontSize, darkMode]);
+    savePreferences({ fontSize, darkMode, speed });
+  }, [fontSize, darkMode, speed]);
+
+  // Re-apply the restored speed whenever the audio element (re)loads its source,
+  // since a fresh HTMLAudioElement resets playbackRate to 1.
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const apply = () => { audio.playbackRate = speed; };
+    audio.addEventListener('loadedmetadata', apply);
+    return () => audio.removeEventListener('loadedmetadata', apply);
+  }, [speed]);
 
   // ── Data fetching ─────────────────────────────────────────────────────────
 
@@ -455,11 +468,14 @@ export default function ReaderPage() {
   // ── Span CSS helper ───────────────────────────────────────────────────────
 
   const getSpanClass = useCallback((i: number) => {
-    if (activePhraseIndex === i) return 'bg-yellow-200 text-gray-900';
+    // Yellow reads well on the dark reading background but washes out on the light
+    // one — use a clear blue highlight in light mode.
+    if (activePhraseIndex === i)
+      return darkMode ? 'bg-yellow-200 text-gray-900' : 'bg-sky-300 text-gray-900';
     if (audioBookmark?.phraseIndex === i) return 'ring-2 ring-orange-400 rounded';
     if (tapToSyncActive) return 'cursor-pointer hover:bg-blue-100 hover:text-blue-900 transition-colors';
     return '';
-  }, [activePhraseIndex, audioBookmark, tapToSyncActive]);
+  }, [activePhraseIndex, audioBookmark, tapToSyncActive, darkMode]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
