@@ -96,6 +96,9 @@ def generate():
     citation      = body.get("citation")      or None
     text_bold     = bool(body.get("textBold",   False))
     text_italic   = bool(body.get("textItalic", False))
+    text_align    = body.get("textAlign") or "center"
+    if text_align not in ("left", "center", "right"):
+        text_align = "center"
     gradient_dir  = body.get("gradientDir") or "to-bottom"
     bg_image      = body.get("bgImage")     or None
     bg_flip       = bool(body.get("bgFlip", False))
@@ -107,6 +110,7 @@ def generate():
         "citation":     citation,
         "bold":         text_bold,
         "italic":       text_italic,
+        "textAlign":    text_align,
     }
 
     try:

@@ -15,6 +15,7 @@ export interface ShareOptions {
   gradientDir?: string;
   bgImage?: string;
   bgFlip?: boolean;
+  textAlign?: string;
 }
 
 @Injectable()
@@ -46,6 +47,7 @@ export class SharingService {
         ...(options.gradientDir && { gradientDir: options.gradientDir }),
         ...(options.bgImage     && { bgImage:     options.bgImage }),
         ...(options.bgFlip      && { bgFlip:      true }),
+        ...(options.textAlign   && { textAlign:   options.textAlign }),
       }),
     });
 

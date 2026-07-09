@@ -104,6 +104,7 @@ export default function ShareModal({
   const [textColorOverride, setTextColorOverride] = useState<string | null>(null);
   const [textBold, setTextBold] = useState(false);
   const [textItalic, setTextItalic] = useState(false);
+  const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
   const [captionEnabled, setCaptionEnabled] = useState(false);
 
   // E1 — editable fragment text
@@ -153,6 +154,7 @@ export default function ShareModal({
     ...(citationEnabled && citationText ? { citation:    citationText }      : {}),
     ...(textBold                        ? { textBold:    true }              : {}),
     ...(textItalic                      ? { textItalic:  true }              : {}),
+    ...(textAlign !== 'center'          ? { textAlign }                      : {}),
     ...(bgType === 'gradient'           ? { gradientDir }                    : {}),
     ...(bgType === 'image' && bgImage   ? { bgImage }                        : {}),
     ...(imageActive && bgFlip           ? { bgFlip: true }                   : {}),
@@ -337,11 +339,12 @@ export default function ShareModal({
                 style={{ fontFamily: fontCss }}
               >
                 <p
-                  className="text-center text-sm leading-snug line-clamp-6"
+                  className="text-sm leading-snug line-clamp-6 w-full"
                   style={{
                     color: textColor,
                     fontWeight: textBold ? 'bold' : 'normal',
                     fontStyle: textItalic ? 'italic' : 'normal',
+                    textAlign,
                   }}
                 >
                   "{editedText}"
@@ -480,6 +483,24 @@ export default function ShareModal({
                   title="Cursiva"
                   className={`w-9 h-9 flex-shrink-0 rounded-xl border text-sm italic transition ${textItalic ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}
                 ><em>I</em></button>
+
+                {/* Text alignment */}
+                {(['left', 'center', 'right'] as const).map((a) => (
+                  <button
+                    key={a}
+                    onClick={() => setTextAlign(a)}
+                    title={t.shareCard.align[a]}
+                    aria-label={t.shareCard.align[a]}
+                    aria-pressed={textAlign === a}
+                    className={`w-9 h-9 flex-shrink-0 rounded-xl border flex items-center justify-center transition ${textAlign === a ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                      {a === 'left' && <><path d="M4 6h16M4 12h10M4 18h13" /></>}
+                      {a === 'center' && <><path d="M4 6h16M7 12h10M6 18h12" /></>}
+                      {a === 'right' && <><path d="M4 6h16M10 12h10M7 18h13" /></>}
+                    </svg>
+                  </button>
+                ))}
               </div>
             </div>
 

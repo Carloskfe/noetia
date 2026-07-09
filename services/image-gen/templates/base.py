@@ -206,6 +206,7 @@ def render_card(
     title      = fragment.get("title", "")
     citation   = fragment.get("citation") or ""
     bold       = bool(fragment.get("bold", False))
+    align      = fragment.get("textAlign", "center")
 
     img = Image.new("RGB", (width, height), color=(0, 0, 0))
 
@@ -259,10 +260,17 @@ def render_card(
     total_h = block_h + rule_gap + 2 + rule_gap + attr_h + cite_h
     y = (height - total_h) / 2
 
+    def _line_x(line_w: float) -> float:
+        if align == 'left':
+            return margin
+        if align == 'right':
+            return width - margin - line_w
+        return (width - line_w) / 2
+
     for line in lines:
         bb = draw.textbbox((0, 0), line, font=font_quote)
         lw = bb[2] - bb[0]
-        _draw_text(draw, ((width - lw) / 2, y), line, font_quote, text_color, bold=bold)
+        _draw_text(draw, (_line_x(lw), y), line, font_quote, text_color, bold=bold)
         y += line_h
 
     rule_y = int(y + rule_gap)

@@ -424,3 +424,23 @@ describe('shareFragment bgFlip', () => {
     expect(body).not.toHaveProperty('bgFlip');
   });
 });
+
+describe('shareFragment textAlign', () => {
+  const base = { format: 'ig-post' as ShareFormat, font: 'playfair', bgType: 'solid' as const, bgColors: ['#000'] };
+  afterEach(() => jest.restoreAllMocks());
+  function mockOk() {
+    global.fetch = jest.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ url: 'x' }) } as Response);
+  }
+
+  it('sends textAlign when left/right', async () => {
+    mockOk();
+    await shareFragment('frag-1', { ...base, textAlign: 'left' });
+    expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body).textAlign).toBe('left');
+  });
+
+  it('omits textAlign when center (the default)', async () => {
+    mockOk();
+    await shareFragment('frag-1', { ...base, textAlign: 'center' });
+    expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)).not.toHaveProperty('textAlign');
+  });
+});

@@ -643,6 +643,7 @@ export const es: Translations = {
   shareCard: {
     flip: 'Reflejar fondo',
     flipAria: 'Reflejar la imagen de fondo horizontalmente',
+    align: { left: 'Alinear a la izquierda', center: 'Centrar', right: 'Alinear a la derecha' },
   },
   giftCard: {
     send: {

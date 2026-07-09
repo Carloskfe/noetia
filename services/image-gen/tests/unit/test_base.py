@@ -155,6 +155,26 @@ def test_render_card_story_dimensions():
     assert _png_dimensions(result) == (1080, 1920)
 
 
+def test_render_card_respects_text_align():
+    # A quote long enough to wrap, so alignment visibly shifts the text pixels.
+    frag = {"text": "El liderazgo es una práctica constante y diaria de servicio a los demás.",
+            "author": "R", "title": "T"}
+    left = render_card({**frag, "textAlign": "left"}, 800, 800)
+    right = render_card({**frag, "textAlign": "right"}, 800, 800)
+    center = render_card({**frag, "textAlign": "center"}, 800, 800)
+    for img in (left, right, center):
+        assert img[:8] == b'\x89PNG\r\n\x1a\n'
+    # Alignment must actually move the text.
+    assert left != right
+    assert left != center
+
+
+def test_render_card_defaults_to_center_align():
+    frag = {"text": "El liderazgo es una práctica constante y diaria de servicio.",
+            "author": "R", "title": "T"}
+    assert render_card(frag, 800, 800) == render_card({**frag, "textAlign": "center"}, 800, 800)
+
+
 def test_render_card_solid_background():
     result = render_card(_FRAGMENT, 800, 800, bg_type='solid', bg_colors=['#FF6B6B'])
     assert result[:8] == b'\x89PNG\r\n\x1a\n'

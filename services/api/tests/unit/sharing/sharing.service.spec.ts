@@ -187,6 +187,35 @@ describe('SharingService', () => {
       expect(body).not.toHaveProperty('bgFlip');
     });
 
+    it('forwards textAlign when set', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ url: 'http://example.com/img.png' }),
+      } as Response);
+
+      await service.generateShareUrl(
+        mockFragment() as Fragment,
+        mockBook() as Book,
+        'instagram',
+        { textAlign: 'left' },
+      );
+
+      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(JSON.parse(options.body).textAlign).toBe('left');
+    });
+
+    it('omits textAlign when not set', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ url: 'http://example.com/img.png' }),
+      } as Response);
+
+      await service.generateShareUrl(mockFragment() as Fragment, mockBook() as Book, 'instagram');
+
+      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(JSON.parse(options.body)).not.toHaveProperty('textAlign');
+    });
+
     it('throws BadGatewayException when image-gen returns non-200', async () => {
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: false,

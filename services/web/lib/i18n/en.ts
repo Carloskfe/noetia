@@ -646,6 +646,7 @@ export const en = {
   shareCard: {
     flip: 'Mirror background',
     flipAria: 'Mirror the background image horizontally',
+    align: { left: 'Align left', center: 'Align center', right: 'Align right' },
   },
   giftCard: {
     send: {

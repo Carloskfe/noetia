@@ -43,6 +43,7 @@ export class SharingController {
     @Body('gradientDir') gradientDir: string | undefined,
     @Body('bgImage') bgImage: string | undefined,
     @Body('bgFlip') bgFlip: boolean | undefined,
+    @Body('textAlign') textAlign: string | undefined,
     @Request() req: { user: { id: string } },
   ) {
     const fragment = await this.fragmentRepo.findOneBy({ id });
@@ -53,7 +54,7 @@ export class SharingController {
 
     const url = await this.sharingService.generateShareUrl(fragment, book, platform, {
       format, font, bgType, bgColors, textColor, textOverride, citation,
-      textBold, textItalic, gradientDir, bgImage, bgFlip,
+      textBold, textItalic, gradientDir, bgImage, bgFlip, textAlign,
     });
 
     book.shareCount = (book.shareCount ?? 0) + 1;

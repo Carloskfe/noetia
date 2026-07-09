@@ -93,6 +93,7 @@ export interface ShareParams {
   gradientDir?: string;
   bgImage?: string;
   bgFlip?: boolean;
+  textAlign?: 'left' | 'center' | 'right';
 }
 
 export async function shareFragment(fragmentId: string, params: ShareParams): Promise<string> {
@@ -113,6 +114,7 @@ export async function shareFragment(fragmentId: string, params: ShareParams): Pr
       ...(params.gradientDir ? { gradientDir: params.gradientDir } : {}),
       ...(params.bgImage     ? { bgImage:     params.bgImage }     : {}),
       ...(params.bgFlip      ? { bgFlip:      true }               : {}),
+      ...(params.textAlign && params.textAlign !== 'center' ? { textAlign: params.textAlign } : {}),
     }),
   });
   return data.url as string;
