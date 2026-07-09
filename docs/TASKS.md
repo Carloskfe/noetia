@@ -515,20 +515,20 @@
 - [x] **Highlight is off-by-one (shows the NEXT phrase, not the current one)** — FIXED with the same change (`0eeb531`); the wrong-neighbour result came from the non-monotonic array.
 - [x] **Hybrid/mixed reading mode: text does not advance with the audio** — FIXED (`0eeb531`); auto-scroll was gated on `activePhraseIndex >= 0`, which the broken lookup kept returning -1. Verify on-device once deployed.
 - [ ] **Starting narration begins one phrase early** — choosing "start narration here" starts from the *previous* phrase. Partly related to the above (mis-highlight made users tap the wrong phrase); the residual is audio **seek precision** — `seekToPhrase` targets `startTime` and MP3 seeking can land a hair earlier. Needs on-device tuning (seek to `startTime + ε` and/or optimistic active-index on tap). Re-test after `0eeb531` deploys.
-- [ ] **Resume is slow and loses text position** — "continue where you left off" takes a long time to seek to the saved position, and the *text* is not restored to that spot (renders from the beginning of the book).
+- [~] **Resume is slow and loses text position** — audio resume-to-position FIXED (`c12f1ff`, seek-before-loaded race); text already scrolls to saved phrase on load. Re-verify "slow" after deploy. — "continue where you left off" takes a long time to seek to the saved position, and the *text* is not restored to that spot (renders from the beginning of the book).
 - [ ] **After full-screen narration, returning to reading does not reposition the text** — on mobile, when narration occupies the whole screen, going back to reading should scroll to the active phrase.
 - [ ] **Confirm before moving the audio start point mid-playback** — once narration has started, if the user taps a new location, Noetia should confirm they want to re-seek the audio there (avoid accidental jumps).
-- [ ] **Playback speed should persist across sessions** — after restarting a book, restore the speed selected in the last session.
+- [x] **Playback speed should persist across sessions** — FIXED (`0e88519`): stored in reader preferences, restored on load + re-applied on loadedmetadata. — after restarting a book, restore the speed selected in the last session.
 
 ### B. Reader — fragments & highlighting UX (#1)
 - [x] **Mobile text selection is hijacked by the OS menu** — FIXED (`f5ff624`). The ✎ mode used `<Text selectable>` (native OS menu, no save). Replaced with Noetia's own tap-to-select multi-phrase flow + floating "Guardar fragmento" bar (OTA-safe, no native module); logic in `src/lib/fragment-selection.ts` + tests. Verify on-device once the OTA ships.
-- [ ] **Second highlight color for light mode** — yellow works well in dark reading mode but is poor for the "clear"/light theme; add a distinct highlight color per theme.
+- [x] **Second highlight color for light mode** — FIXED (`0e88519`): active-phrase highlight is theme-aware (yellow on dark, sky-blue on light). — yellow works well in dark reading mode but is poor for the "clear"/light theme; add a distinct highlight color per theme.
 
 ### C. Reader — web/desktop (#1)
 - [ ] **Desktop: Don Quijote does not play audio** — no audio playback for Quijote on web (check audio stream URL / MP3 presence for that title).
 - [ ] **Library nav bar disappears** — inside the library the top navigation bar vanishes; only the bottom nav remains.
-- [ ] **Font size: only 2 sizes offered, need 4** — expand the reader font-size control to 4 steps.
-- [ ] **Language-aware library ordering** — once the user picks a language, show that language's titles first, then other languages.
+- [x] **Font size: 4 sizes** — FIXED (`0e88519`): added `xl` step (sm/md/lg/xl); the +/- control iterates FONT_SIZES. — expand the reader font-size control to 4 steps.
+- [x] **Language-aware library ordering** — FIXED (`cc1f645`): browsed library orders the user's-language titles first (search keeps relevance order). — once the user picks a language, show that language's titles first, then other languages.
 
 ### D. Sharing — quote-card image generation (#2)
 - [ ] **Image generator not working correctly (web download)** — the download-image path of the generator is broken. (relates to `MINIO_PUBLIC_URL` presigned rewrite / ShareModal download)
