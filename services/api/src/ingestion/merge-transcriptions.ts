@@ -25,6 +25,8 @@
 
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
 import { join, extname, basename } from 'path';
+import { execFileSync } from 'child_process';
+import { pickChapterMp3s } from './audio-source-resolver';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -299,64 +301,125 @@ function sortedVttFiles(dir: string): string[] {
 
 // ── Main merge ─────────────────────────────────────────────────────────────────
 
-export function mergeVttDirectory(dir: string, gapSeconds = 2): Cue[] {
+/**
+ * @param chapterDurations Real per-chapter audio durations (seconds), one per VTT
+ *   file in sorted order. When provided (and the count matches), each chapter is
+ *   offset by its true audio length so the merged timeline lines up exactly with
+ *   the gap-less concatenated MP3. Without it, offsets fall back to
+ *   last-cue-end + gapSeconds — which drifts ~3s/chapter ahead of the audio,
+ *   because each LibriVox chapter has several seconds of audio after its last cue.
+ */
+export function mergeVttDirectory(dir: string, gapSeconds = 2, chapterDurations?: number[]): Cue[] {
   const files = sortedVttFiles(dir);
   if (files.length === 0) throw new Error(`No .vtt files found in: ${dir}`);
 
-  console.log(`Found ${files.length} files (sorted by sequence number):`);
+  const useAudio = chapterDurations != null && chapterDurations.length === files.length;
+  if (chapterDurations != null && !useAudio) {
+    console.warn(
+      `  ⚠ ${chapterDurations.length} audio chapter(s) vs ${files.length} VTT file(s) — ` +
+      `cannot pair 1:1; falling back to gap-based offsets (timeline may drift).`,
+    );
+  }
+
+  console.log(
+    `Found ${files.length} files (sorted by sequence number)` +
+    (useAudio ? ' — offsetting by real audio durations' : '') + ':',
+  );
 
   const merged: Cue[] = [];
   let offset = 0;
 
-  for (const file of files) {
+  for (let i = 0; i < files.length; i++) {
+    const file     = files[i];
     const content  = readFileSync(file, 'utf-8');
     const rawCues  = parseVttCues(content);
     const cues     = rawCues.map(stripAnnouncement).filter((c): c is Cue => c !== null);
     const stripped = rawCues.length - cues.length;
-    const last     = lastEndTime(rawCues);  // use raw so stripped tail cues don't shrink the chapter boundary
+    const last     = lastEndTime(rawCues);
+
+    // Advance to the next chapter's start in the concatenated audio. That audio
+    // has NO inter-chapter gap, so use the real chapter audio duration when known.
+    const advance = useAudio ? chapterDurations![i] : last + gapSeconds;
 
     console.log(
       `  ${basename(file)} → ${cues.length} cues` +
       (stripped > 0 ? ` (${stripped} announcement${stripped > 1 ? 's' : ''} stripped)` : '') +
-      `, ends at ${formatTimestamp(last)}, offset ${formatTimestamp(offset)}`,
+      `, offset ${formatTimestamp(offset)}` +
+      (useAudio ? `, audio ${formatTimestamp(advance)}` : `, ends ${formatTimestamp(last)}`),
     );
 
     for (const cue of cues) {
       merged.push(shiftCue(cue, offset));
     }
 
-    offset += last + gapSeconds;
+    offset += advance;
   }
 
   return merged;
 }
 
+/**
+ * Probe the real per-chapter audio durations for a book from its archive.org
+ * item, in the same chapter order the audio migrator concatenates them. Uses
+ * ffprobe over HTTP (fast — reads headers only, no full download).
+ */
+async function fetchChapterDurations(identifier: string): Promise<number[]> {
+  const listUrl = `https://archive.org/download/${identifier}/`;
+  const res = await globalThis.fetch(listUrl, { headers: { 'User-Agent': 'Noetia/1.0' } });
+  if (!res.ok) throw new Error(`archive.org listing failed: HTTP ${res.status}`);
+  const chapters = pickChapterMp3s(await res.text());
+  if (chapters.length === 0) throw new Error(`No chapter MP3s found for ${identifier}`);
+
+  const durations: number[] = [];
+  for (const filename of chapters) {
+    const url = `https://archive.org/download/${identifier}/${filename}`;
+    const out = execFileSync(
+      'ffprobe',
+      ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', url],
+      { encoding: 'utf-8' },
+    );
+    durations.push(parseFloat(out.trim()));
+  }
+  return durations;
+}
+
 // ── CLI entry ──────────────────────────────────────────────────────────────────
 
-function parseArgs(): { dir: string; out: string; gap: number } {
+function parseArgs(): { dir: string; out: string; gap: number; audioId?: string } {
   const args = process.argv.slice(2);
   const get = (flag: string) => { const i = args.indexOf(flag); return i !== -1 ? args[i + 1] : undefined; };
   const dir = get('--dir');
   if (!dir) {
-    console.error('Usage: merge-transcriptions.ts --dir <directory> [--out <file>] [--gap <seconds>]');
+    console.error('Usage: merge-transcriptions.ts --dir <directory> [--out <file>] [--gap <seconds>] [--audio-id <archive.org identifier>]');
     process.exit(1);
   }
   const gap  = parseFloat(get('--gap') ?? '2');
   const out  = get('--out') ?? join(dir, '..', `${basename(dir)}.merged.vtt`);
-  return { dir, out, gap };
+  return { dir, out, gap, audioId: get('--audio-id') };
 }
 
 if (require.main === module) {
-  const { dir, out, gap } = parseArgs();
+  void (async () => {
+    const { dir, out, gap, audioId } = parseArgs();
 
-  console.log(`\nMerging transcriptions from: ${dir}`);
-  console.log(`Gap between files: ${gap}s\n`);
+    console.log(`\nMerging transcriptions from: ${dir}`);
 
-  const cues   = mergeVttDirectory(dir, gap);
-  const output = renderVtt(cues);
-  writeFileSync(out, output, 'utf-8');
+    let chapterDurations: number[] | undefined;
+    if (audioId) {
+      console.log(`Probing chapter audio durations from archive.org/${audioId} …`);
+      chapterDurations = await fetchChapterDurations(audioId);
+      const total = chapterDurations.reduce((a, b) => a + b, 0);
+      console.log(`  ${chapterDurations.length} chapters, total audio ${formatTimestamp(total)}\n`);
+    } else {
+      console.log(`Gap between files: ${gap}s (no --audio-id → timeline may drift vs the audio)\n`);
+    }
 
-  const totalDuration = cues.length > 0 ? cues[cues.length - 1].endTime : 0;
-  console.log(`\n✓ Merged ${cues.length} cues — total duration: ${formatTimestamp(totalDuration)}`);
-  console.log(`✓ Written to: ${out}\n`);
+    const cues   = mergeVttDirectory(dir, gap, chapterDurations);
+    const output = renderVtt(cues);
+    writeFileSync(out, output, 'utf-8');
+
+    const totalDuration = cues.length > 0 ? cues[cues.length - 1].endTime : 0;
+    console.log(`\n✓ Merged ${cues.length} cues — total duration: ${formatTimestamp(totalDuration)}`);
+    console.log(`✓ Written to: ${out}\n`);
+  })();
 }

@@ -333,4 +333,27 @@ describe('mergeVttDirectory', () => {
     expect(merged[1].startTime).toBeCloseTo(12);
     expect(merged[1].payload).toBe('De cuyo nombre no quiero acordarme.');
   });
+
+  it('offsets by real audio durations when provided (no gap drift)', () => {
+    writeVtt('01.vtt', ['WEBVTT', '', '00:00:00.000 --> 00:00:05.000', 'A.', ''].join('\n'));
+    writeVtt('02.vtt', ['WEBVTT', '', '00:00:00.000 --> 00:00:03.000', 'B.', ''].join('\n'));
+
+    // Chapter 1's real audio is 10s (5s of outro/silence after its last cue). The
+    // concatenated audio has no gap, so chapter 2 must start at 10s — not
+    // last_cue_end(5) + gap(2) = 7, which would drift the text 3s ahead.
+    const merged = mergeVttDirectory(tmpDir, 2, [10, 3]);
+
+    expect(merged).toHaveLength(2);
+    expect(merged[1].startTime).toBeCloseTo(10);
+    expect(merged[1].payload).toBe('B.');
+  });
+
+  it('falls back to gap offsets when the duration count does not match', () => {
+    writeVtt('01.vtt', ['WEBVTT', '', '00:00:00.000 --> 00:00:05.000', 'A.', ''].join('\n'));
+    writeVtt('02.vtt', ['WEBVTT', '', '00:00:00.000 --> 00:00:03.000', 'B.', ''].join('\n'));
+
+    // Only one duration for two files → can't pair → gap fallback: 5 + 2 = 7.
+    const merged = mergeVttDirectory(tmpDir, 2, [10]);
+    expect(merged[1].startTime).toBeCloseTo(7);
+  });
 });
