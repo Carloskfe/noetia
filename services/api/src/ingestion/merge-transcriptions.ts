@@ -363,22 +363,37 @@ export function mergeVttDirectory(dir: string, gapSeconds = 2, chapterDurations?
  * item, in the same chapter order the audio migrator concatenates them. Uses
  * ffprobe over HTTP (fast — reads headers only, no full download).
  */
-async function fetchChapterDurations(identifier: string): Promise<number[]> {
+export async function fetchChapterDurations(identifier: string): Promise<number[]> {
   const listUrl = `https://archive.org/download/${identifier}/`;
   const res = await globalThis.fetch(listUrl, { headers: { 'User-Agent': 'Noetia/1.0' } });
   if (!res.ok) throw new Error(`archive.org listing failed: HTTP ${res.status}`);
   const chapters = pickChapterMp3s(await res.text());
   if (chapters.length === 0) throw new Error(`No chapter MP3s found for ${identifier}`);
 
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   const durations: number[] = [];
   for (const filename of chapters) {
     const url = `https://archive.org/download/${identifier}/${filename}`;
-    const out = execFileSync(
-      'ffprobe',
-      ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', url],
-      { encoding: 'utf-8' },
-    );
-    durations.push(parseFloat(out.trim()));
+    // archive.org rate-limits/hiccups (5XX, timeouts) under rapid probing — retry
+    // with backoff and pace requests so a whole book doesn't fail on one blip.
+    let dur: number | null = null;
+    for (let attempt = 1; attempt <= 4 && dur === null; attempt++) {
+      try {
+        const out = execFileSync(
+          'ffprobe',
+          ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', url],
+          { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] },
+        );
+        const v = parseFloat(out.trim());
+        if (Number.isFinite(v) && v > 0) dur = v;
+      } catch {
+        /* retry */
+      }
+      if (dur === null) await sleep(attempt * 1500);
+    }
+    if (dur === null) throw new Error(`ffprobe failed after retries: ${filename}`);
+    durations.push(dur);
+    await sleep(200);
   }
   return durations;
 }
