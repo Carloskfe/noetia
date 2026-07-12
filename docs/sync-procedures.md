@@ -119,6 +119,43 @@ Avg confidence:  46.0%
 
 ## 3. Sync Quality Status
 
+*Last audited: **2026-07-12** (post drift-fix re-align of all 76 multi-chapter books; syncCoverage = aligned/total). Standard: `syncCoverage` ≥ 90%.*
+
+### 2026-07-12 re-align audit (drift fix)
+
+The drift fix (merge now offsets each chapter by its **real ffprobed audio duration**, not `last_cue_end + 2s`) was applied to all 76 books and re-aligned on prod. Because coverage = text↔cue matching, the timeline shift left coverage essentially unchanged **except** where the new merge went wrong — which surfaced a bug:
+
+- **Regression found + fixed — Apocalipsis & Salmos.** The audio-id for these two ES Bible books resolved to a **bundled** archive item, so `fetchChapterDurations` returned undersized per-chapter durations → the merge **compressed** the timeline (Apocalipsis 1h25m→9m52s, Salmos 5h20m→1h22m) → alignment collapsed (91.9%→38.5%, 99.96%→25.0%). Fixed by reverting both to their pre-drift gap-based VTTs (`2a5fa86`) and adding a **merge guardrail** (`01d7a21`): a chapter's audio duration can never be shorter than its own last cue; if it is, the durations are rejected and the whole book falls back to gap offsets. **Detection recipe** for future re-merges: compare each merged VTT's last timestamp before/after — a large drop (`ratio < 70%`) means compression.
+- **Result at the 90% gate: 58 PASS · 18 FAIL** (of 76). The 18 below-gate are demoted from the free library via `sync-quality-report.ts --threshold 0.90 --cull` — never offer broken sync to readers.
+
+**The 18 below 90% (demote), by root-cause class:**
+
+| Book | Cov | Class |
+|------|-----|-------|
+| Salmos | (restored ~99.96% after revert+re-align) | was compression regression — **re-align to recover, do not demote** |
+| Apocalipsis | (restored ~91.9% after revert+re-align) | was compression regression — **re-align to recover, do not demote** |
+| Salmos/Apocalipsis excepted, the genuine fails: | | |
+| Orgullo y Prejuicio | 49.4% | partial/abridged ES audio (EN twin Pride & Prejudice passes 93.9%) |
+| María | 67.5% | partial/abridged ES audio |
+| Cartas a Lucilio | 56.5% | selección — audio covers a subset of the letters |
+| El Príncipe | 60.2% | translation mismatch (audio ≠ Wikisource edition) |
+| Don Quijote Vol. I / II | 59.4% / 56.9% | phrase-granularity ceiling + edition mismatch (deferred, §8) |
+| Meditaciones / Meditations | 50.9% / 45.1% | translation mismatch + verse-number/footnote text noise (both langs) |
+| The Art of War | 66.7% | translator commentary/footnotes interleaved (Giles ed.) |
+| The Picture of Dorian Gray | 71.6% | edition mismatch — 13-ch magazine audio vs 20-ch book text |
+| The Time Machine | 75.6% | low-conf text/edition mismatch |
+| Viaje al Centro de la Tierra | 68.6% | edition mismatch (Anónimo vs Ribot y Fonseré) |
+| El Sombrero de Tres Picos | 75.6% | text/edition mismatch (28% conf) |
+| Rimas | 79.1% | audio is a selección of the Rimas, not all |
+| La Odisea | 81.5% | grouped transcription (24 audio vs 19 VTT) + missing Cantos XX–XXIV |
+| Fábulas y Verdades | 83.3% | 28 audio sections vs 16 catalogued fables — count mismatch |
+
+**Key cross-language tells this audit confirmed:** when a book fails in one language but its twin passes (Orgullo 49% vs Pride 94%; Salmos-was vs Psalms 99.7%), the fault is that language's **audio/text**, not the aligner. When *both* langs fail (Meditaciones 51% / Meditations 45%), suspect shared **text-structural noise** (verse numbers, footnotes) or a translation both editions diverge from.
+
+---
+
+*Historical audit below predates 2026-07-12 for the drift-fixed books; numbers above are authoritative where they differ.*
+
 *Last audited: 2026-06-29 (post EMA re-align sweep). Standard: `syncCoverage` ≥ 90%.*
 
 Refresh numbers any time with the diagnostic SQL (see troubleshooting §9):

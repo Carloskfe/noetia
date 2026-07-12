@@ -990,6 +990,64 @@ issues (§6) since the author controls both the text and the narration.
 
 ---
 
+## 12. Merged-VTT timeline integrity (a code bug, not a text/edition problem)
+
+Everything above §11 is about the **text↔audio content** match. This section
+is about a different failure: the merged VTT's **timestamps** being wrong even
+when the content is perfect. It masquerades as a coverage crash, so it's easy
+to misfile as §6.
+
+**The drift fix (2026-07-05→12):** `mergeVttDirectory` originally offset each
+chapter by `last_cue_end + 2s`. But LibriVox chapters carry several seconds of
+audio *after* the last cue, and the served MP3 is gap-less — so the merged
+timeline ran ~3s short per chapter (cumulative), and the highlight **led** the
+narration by a growing margin. Fix: offset each chapter by its **real ffprobed
+audio duration** (`fetchChapterDurations`, `--audio-id`). Validated drift≈0.
+
+**The regression it introduced (Apocalipsis + Salmos, 2026-07-12):** when a
+book's `--audio-id` resolves to a **bundled** archive item (e.g. several Bible
+books in one LibriVox project), `fetchChapterDurations` probes the wrong /
+undersized files and returns per-chapter durations far shorter than reality.
+The merge then offsets each chapter by too little → all cues **compress toward
+the start** → the sync-map timestamps no longer point at the right audio → most
+phrases fail to align. Symptoms:
+- Coverage **crashes** vs a prior good audit (Apocalipsis 91.9%→38.5%, Salmos
+  99.96%→25.0%) with **no text or catalogue change**.
+- The merged VTT's **last timestamp collapses** (Apocalipsis 1h25m→9m52s) while
+  the **cue count is unchanged** — the tell that it's compression, not content.
+
+**Guardrail (now in code, `01d7a21`):** a chapter's audio duration can never be
+shorter than its own last cue. `mergeVttDirectory` checks this per file; if any
+probed duration violates it, the durations are rejected and the whole book
+falls back to gap offsets (which reproduce the correct full-length timeline).
+So a bad `--audio-id` now degrades gracefully to the old gap behaviour instead
+of silently corrupting the timeline.
+
+**Detection recipe** (run after any re-merge, before trusting it):
+```bash
+# compare last timestamp of each merged VTT before/after; ratio < 70% = compressed
+for f in <changed .merged.vtt files>; do
+  old=$(git show <baseline>:"$f" | grep -oE '^[0-9]{2}:[0-9]{2}:[0-9]{2}' | tail -1)
+  new=$(grep -oE '^[0-9]{2}:[0-9]{2}:[0-9]{2}' "$f" | tail -1)
+  echo "$f  $old -> $new"   # a large drop with unchanged cue count = compression bug
+done
+```
+
+**Recovery:** revert the affected VTT to its last-known-good version (or re-merge
+**without** `--audio-id` for a gap-based timeline), then re-align on prod. Do
+**not** demote the book as a §6 mismatch — the content is fine; only the
+timestamps were wrong.
+
+**Bundled-audio books to watch** (skip `--audio-id`, or expect the guardrail to
+fire): EN Bible sub-books sharing a LibriVox project — Ephesians, Philippians,
+Exodus, Genesis-KJV — and any ES Bible book whose LibriVox item packs multiple
+books (Apocalipsis, Salmos surfaced this). For these, the gap-based timeline is
+correct enough; the per-chapter duration fix needs a **dedicated** (one book per
+item) archive source, or ffprobing the exact per-chapter MP3s on **our MinIO**
+instead of archive.org.
+
+---
+
 ## <a name="why-90"></a>Why 90%, not 85%
 
 Raised from 85% on 2026-06-24 after this investigation showed that most
