@@ -602,6 +602,17 @@ Protestant canon = **66 books** (39 OT + 27 NT). Catalogue has **17 per language
 
 ---
 
+## Backlog — Next mobile EAS build (quote-card native features, added 2026-07-11)
+
+> Grouped here because each needs a **full `eas build` + store submission** (native modules), not an OTA JS update. Keep active for the next native build cycle. Reader/sharing UX (hierarchy #1–2).
+
+- [ ] **Camera capture / gallery upload for quote-card backgrounds (mobile)** — add `expo-image-picker` so users can pick or shoot their own background image, matching web upload. Blocks the two items below.
+- [ ] **Flip/mirror on mobile camera/upload images** — flip already works on the 18 presets; extend `bgFlip` to user-supplied images once the picker lands.
+- [ ] **Text alignment control in the mobile ShareSheet** — image-gen `textAlign` param + web control already ship (`5e6d2ed`); add the left/center/right control to the mobile ShareSheet (this one is OTA-safe, but bundle it with the ShareSheet pass above).
+- [ ] **JPEG export option (if needed)** — only if a platform's native picker rejects the PNG quote-card on upload; see Sharing §D.
+
+---
+
 ## Spike Sprint — Launch Readiness Audit (backlog, added 2026-06-30)
 
 > **Goal:** a time-boxed spike to verify the whole project is launch-ready end to end — exercise the real flows, refresh every doc/report, re-run project-management and risk artifacts (incl. the premortem), and produce a single up-to-date readiness report listing all remaining pending tasks before go-live.
