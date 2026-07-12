@@ -132,8 +132,10 @@ The drift fix (merge now offsets each chapter by its **real ffprobed audio durat
 
 | Book | Cov | Class |
 |------|-----|-------|
-| Salmos | (restored ~99.96% after revert+re-align) | was compression regression — **re-align to recover, do not demote** |
-| Apocalipsis | (restored ~91.9% after revert+re-align) | was compression regression — **re-align to recover, do not demote** |
+| Salmos | **99.96%** ✅ (recovered) | was compression regression; reverted VTT + re-aligned 2026-07-12 → 2734/2735, 92% conf |
+| Apocalipsis | **100.0%** ✅ (recovered) | was compression regression; reverted VTT + re-aligned 2026-07-12 → 436/436, 95% conf |
+
+> **Cosmetic residual (Salmos, Apocalipsis, Isaías):** Wikisource running-header crumbs `"La Biblia / <Book>"` leak in as ~33%-confidence phrases at chapter boundaries — a reader sees a stray header fragment highlight. Doesn't threaten the gate. Optional `isNavigationNoise` cleanup in the splitter if revisited (§2b/§2c pattern).
 | Salmos/Apocalipsis excepted, the genuine fails: | | |
 | Orgullo y Prejuicio | 49.4% | partial/abridged ES audio (EN twin Pride & Prejudice passes 93.9%) |
 | María | 67.5% | partial/abridged ES audio |
