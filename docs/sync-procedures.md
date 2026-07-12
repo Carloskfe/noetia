@@ -126,7 +126,9 @@ Avg confidence:  46.0%
 The drift fix (merge now offsets each chapter by its **real ffprobed audio duration**, not `last_cue_end + 2s`) was applied to all 76 books and re-aligned on prod. Because coverage = text↔cue matching, the timeline shift left coverage essentially unchanged **except** where the new merge went wrong — which surfaced a bug:
 
 - **Regression found + fixed — Apocalipsis & Salmos.** The audio-id for these two ES Bible books resolved to a **bundled** archive item, so `fetchChapterDurations` returned undersized per-chapter durations → the merge **compressed** the timeline (Apocalipsis 1h25m→9m52s, Salmos 5h20m→1h22m) → alignment collapsed (91.9%→38.5%, 99.96%→25.0%). Fixed by reverting both to their pre-drift gap-based VTTs (`2a5fa86`) and adding a **merge guardrail** (`01d7a21`): a chapter's audio duration can never be shorter than its own last cue; if it is, the durations are rejected and the whole book falls back to gap offsets. **Detection recipe** for future re-merges: compare each merged VTT's last timestamp before/after — a large drop (`ratio < 70%`) means compression.
-- **Result at the 90% gate: 58 PASS · 18 FAIL** (of 76). The 18 below-gate are demoted from the free library via `sync-quality-report.ts --threshold 0.90 --cull` — never offer broken sync to readers.
+- **Verified final state (full library, `--all`): 66 PASS · 17 FAIL · 1 no-sync** (84 books). Critically, the **free library (`isFree=true`) is 57 books, 100% passing ≥90%, all synced** — every one of the 17 fails is already `isFree=false`, so no reader is served broken sync. **No cull was needed.**
+  - **9 books pass ≥90% but are held back** (`isFree=false`) — promotion candidates (culled pre-fix, never re-promoted): As a Man Thinketh, How to Live on 24 Hours a Day, The Game of Life, The Science of Getting Rich, Up from Slavery (EN); La Edad de Oro, Lazarillo de Tormes, Pepita Jiménez, Platero y yo (ES).
+  - **The Call of the Wild** — the only free-eligible EN book with no VTT (`auto` source); needs a transcription before it can be synced/offered.
 
 **The 18 below 90% (demote), by root-cause class:**
 
