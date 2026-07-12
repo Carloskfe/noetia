@@ -616,6 +616,25 @@ Protestant canon = **66 books** (39 OT + 27 NT). Catalogue has **17 per language
 
 ---
 
+## Backlog — App-wide illustrated onboarding tours (added 2026-07-12, from Carlos)
+
+> **Goal:** Friendly, **illustrated** guided tours spanning the whole app that teach a new user how Noetia works — reading, Escucha Activa, fragments/quote cards, library, clubs, sharing, tokens. These are **in addition to** the existing inline text explanations, not a replacement: illustration + short copy, in the warmest, simplest form possible (Voice & Style guide, "tú" form).
+
+**Hard requirements (from Carlos):**
+- The **first / primary welcome tour must auto-pop the very first time a new user creates an account and opens a session.** Not on later logins, not on every device refresh — the genuine first session.
+- It **remains available until the user themselves either _skips_ or _completes_ it.** If they close the app mid-tour, it comes back next session (resumable) until one of those two terminal states is recorded. No silent permanent dismissal.
+
+**Scope:**
+- [ ] **Tour framework** — a reusable illustrated step component (image/animation + copy + Prev/Next/Skip + progress dots), web + mobile, i18n (all 4 files: web+mobile × en/es).
+- [ ] **Welcome tour (first-run)** — the primary end-to-end walkthrough that auto-launches on first session after signup.
+- [ ] **Per-surface tours** — reader/Escucha Activa, fragments + quote-card creator, library/Mi Biblioteca, Clubes de Lectura, sharing, tokens — launchable on demand and optionally auto-shown the first time each surface is opened.
+- [ ] **Illustrations** — commission/produce the tour artwork (consistent Noetia visual language).
+- [ ] **State model — the key design decision:** the current `services/web/lib/tutorial-flags.ts` is **localStorage-only** (`welcome`/`fragments`/`audio`/`clubs`), which is per-device and can't reliably detect a true first-account-session or survive a cache clear. The first-run welcome tour needs a **server-persisted per-user flag** (e.g. `users.onboardingState`: `not_started` | `in_progress@step` | `skipped` | `completed`) so it (a) fires exactly once on the first real session, (b) resumes until skipped/completed, and (c) follows the user across devices. Per-surface tours can stay client-side or also move server-side for consistency.
+
+**Notes:** builds on the existing one-off tutorials (`hasSeenAudioTutorial`, welcome/fragments/clubs flags) — extend/unify rather than duplicate. Reader/onboarding UX is hierarchy #1 (new-user activation). Mobile tour changes that add native deps require an EAS build; a pure JS/RN tour is OTA-safe.
+
+---
+
 ## Spike Sprint — Launch Readiness Audit (backlog, added 2026-06-30)
 
 > **Goal:** a time-boxed spike to verify the whole project is launch-ready end to end — exercise the real flows, refresh every doc/report, re-run project-management and risk artifacts (incl. the premortem), and produce a single up-to-date readiness report listing all remaining pending tasks before go-live.
