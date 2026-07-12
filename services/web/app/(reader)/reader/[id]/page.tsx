@@ -96,6 +96,9 @@ export default function ReaderPage() {
 
   // Tap-to-sync — user taps a phrase to set audio start position
   const [tapToSyncActive, setTapToSyncActive] = useState(false);
+  // Phrase the user tapped while narration is playing — pending a confirm so an
+  // accidental tap doesn't yank them away from their place (null = no pending).
+  const [pendingJumpIndex, setPendingJumpIndex] = useState<number | null>(null);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -410,8 +413,23 @@ export default function ReaderPage() {
       handleTapToSync(idx);
       return;
     }
+    // Once narration is playing, confirm before jumping — an accidental tap
+    // shouldn't move the listener away from where they are.
+    if (audioRef.current && !audioRef.current.paused) {
+      setPendingJumpIndex(idx);
+      return;
+    }
     seekToIndex(idx);
   }, [tapToSyncActive, handleTapToSync, seekToIndex]);
+
+  const handleConfirmJump = useCallback(() => {
+    if (pendingJumpIndex !== null) {
+      seekAndMaybePlay(seekToPhrase(phrases, pendingJumpIndex), true);
+    }
+    setPendingJumpIndex(null);
+  }, [pendingJumpIndex, phrases, seekAndMaybePlay]);
+
+  const handleCancelJump = useCallback(() => setPendingJumpIndex(null), []);
 
   const handleStartSelection = useCallback((idx: number, e: React.MouseEvent) => {
     e.preventDefault();
@@ -685,6 +703,30 @@ export default function ReaderPage() {
                   className="text-gray-400 hover:text-gray-600 text-xs py-1 transition"
                 >
                   Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Confirm before jumping the narration mid-playback */}
+          {pendingJumpIndex !== null && (
+            <div className="fixed bottom-24 right-4 z-50 bg-white rounded-2xl shadow-2xl border border-gray-100 w-72 p-4">
+              <p className="text-sm font-semibold text-gray-900 mb-1">¿Mover la narración aquí?</p>
+              <p className="text-xs text-gray-500 mb-4">
+                Vas por la frase {activePhraseIndex >= 0 ? activePhraseIndex + 1 : 1}. Saltarás a la frase {pendingJumpIndex + 1}.
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={handleConfirmJump}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-medium transition"
+                >
+                  Mover aquí
+                </button>
+                <button
+                  onClick={handleCancelJump}
+                  className="text-gray-400 hover:text-gray-600 text-xs py-1 transition"
+                >
+                  Seguir escuchando
                 </button>
               </div>
             </div>
