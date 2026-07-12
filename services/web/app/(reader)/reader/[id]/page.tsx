@@ -326,13 +326,21 @@ export default function ReaderPage() {
     audio.currentTime = Number(e.target.value);
   }, []);
 
-  // Nav bar button: dedicated to Modo Audio (background/earbuds, no text).
-  // From reading → audio; from any audio mode → back to reading.
+  // Nav bar button: opens the audio experience. Defaults to Escucha Activa
+  // (full text + moving highlight) — readers reported the old text-hidden
+  // "Now Playing" default was disorienting ("shows only the active part, can't
+  // come back"). The text-hidden player is still available via the "Solo audio"
+  // toggle inside the Escucha Activa panel. From any audio mode → back to reading.
   const handleNavAudioButton = useCallback(() => {
     if (mode === 'reading') {
-      setPlayConfirmTargetMode('audio');
-      setMode('audio');
-      if (audioRef.current?.paused) setShowPlayConfirm(true);
+      if (audioRef.current && !audioRef.current.paused) audioRef.current.pause();
+      setPlayConfirmTargetMode('escucha-activa');
+      setMode('escucha-activa');
+      if (!hasSeenAudioTutorial()) {
+        setShowAudioTutorial(true);
+      } else {
+        setShowPlayConfirm(true);
+      }
     } else {
       setMode('reading');
     }
@@ -795,6 +803,15 @@ export default function ReaderPage() {
               >
                 <QuoteIcon />
                 Crear cita
+              </button>
+
+              {/* Solo audio: hide the text for screen-off / earbud listening.
+                  Audio keeps playing; "Ver texto" in that mode brings it back. */}
+              <button
+                onClick={() => setMode('audio')}
+                className="mt-3 w-full text-xs text-gray-500 hover:text-blue-600 py-1.5 transition"
+              >
+                Solo audio — ocultar texto
               </button>
             </div>
           </aside>
