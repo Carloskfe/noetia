@@ -313,12 +313,33 @@ export function mergeVttDirectory(dir: string, gapSeconds = 2, chapterDurations?
   const files = sortedVttFiles(dir);
   if (files.length === 0) throw new Error(`No .vtt files found in: ${dir}`);
 
-  const useAudio = chapterDurations != null && chapterDurations.length === files.length;
+  let useAudio = chapterDurations != null && chapterDurations.length === files.length;
   if (chapterDurations != null && !useAudio) {
     console.warn(
       `  ⚠ ${chapterDurations.length} audio chapter(s) vs ${files.length} VTT file(s) — ` +
       `cannot pair 1:1; falling back to gap-based offsets (timeline may drift).`,
     );
+  }
+
+  // Guardrail: a chapter's audio can never be SHORTER than its own last cue.
+  // If any probed duration is, the durations are unreliable (wrong/bundled
+  // archive item) — using them compresses the merged timeline and destroys
+  // alignment (see Apocalipsis/Salmos regression, 2026-07-12). Fall back to
+  // gap-based offsets, which reproduce the correct full-length timeline.
+  if (useAudio) {
+    const TOL = 1; // seconds — cues can end a hair past the encoder's last frame
+    for (let i = 0; i < files.length; i++) {
+      const lastCue = lastEndTime(parseVttCues(readFileSync(files[i], 'utf-8')));
+      if (chapterDurations![i] + TOL < lastCue) {
+        console.warn(
+          `  ⚠ ${basename(files[i])}: audio duration ${formatTimestamp(chapterDurations![i])} ` +
+          `< last cue ${formatTimestamp(lastCue)} — durations unreliable; ` +
+          `falling back to gap-based offsets for the whole book.`,
+        );
+        useAudio = false;
+        break;
+      }
+    }
   }
 
   console.log(

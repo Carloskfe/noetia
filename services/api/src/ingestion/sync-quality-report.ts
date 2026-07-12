@@ -6,7 +6,8 @@
  *     src/ingestion/sync-quality-report.ts
  *
  * Options:
- *   --threshold 0.85   Minimum syncCoverage to pass (default: 0.85)
+ *   --threshold 0.90   Minimum syncCoverage to pass (default: 0.90 — the project
+ *                      standard; see CLAUDE.md §Sync Quality Status)
  *   --cull             Set isFree=false on books that FAIL or have no sync data
  *   --all              Include non-free books in the report
  */
@@ -30,7 +31,7 @@ function parseArgs(): { threshold: number; cull: boolean; all: boolean } {
     return i !== -1 ? args[i + 1] : undefined;
   };
   return {
-    threshold: parseFloat(get('--threshold') ?? '0.85'),
+    threshold: parseFloat(get('--threshold') ?? '0.90'),
     cull: args.includes('--cull'),
     all: args.includes('--all'),
   };

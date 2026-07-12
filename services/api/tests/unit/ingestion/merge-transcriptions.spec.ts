@@ -356,4 +356,19 @@ describe('mergeVttDirectory', () => {
     const merged = mergeVttDirectory(tmpDir, 2, [10]);
     expect(merged[1].startTime).toBeCloseTo(7);
   });
+
+  it('rejects durations shorter than a chapter\'s own cues (compression guard)', () => {
+    // Chapter 1's last cue ends at 30s, but the probed "duration" is only 4s —
+    // impossible (audio can't be shorter than its cues). This is the
+    // Apocalipsis/Salmos failure mode: a wrong/bundled archive item returns
+    // undersized durations that compress the timeline. Must fall back to gap
+    // offsets, NOT trust the durations.
+    writeVtt('01.vtt', ['WEBVTT', '', '00:00:00.000 --> 00:00:30.000', 'A.', ''].join('\n'));
+    writeVtt('02.vtt', ['WEBVTT', '', '00:00:00.000 --> 00:00:03.000', 'B.', ''].join('\n'));
+
+    const merged = mergeVttDirectory(tmpDir, 2, [4, 3]);
+    // gap fallback: chapter 2 starts at last_cue_end(30) + gap(2) = 32,
+    // NOT the compressed audio offset of 4.
+    expect(merged[1].startTime).toBeCloseTo(32);
+  });
 });
