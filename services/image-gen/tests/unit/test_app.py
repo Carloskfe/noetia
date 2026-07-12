@@ -201,6 +201,30 @@ def test_generate_passes_all_params_to_renderer(client):
     assert kwargs["bg_colors"] == ["#0D1B2A", "#1A4A4A"]
 
 
+def test_generate_renderer_failure_returns_500_and_logs(client):
+    boom = MagicMock(side_effect=RuntimeError("render blew up"))
+    with patch("app.MinioClient", return_value=_patched_minio()), \
+         patch.dict("app._RENDERERS", {"instagram": boom}), \
+         patch("app.app.logger.exception") as log_exc:
+        resp = client.post("/generate", json={**_VALID_BODY, "platform": "instagram"})
+    assert resp.status_code == 500
+    assert resp.get_json()["error"] == "image generation failed"
+    # the real cause must be logged, not swallowed silently
+    log_exc.assert_called_once()
+
+
+def test_generate_upload_failure_returns_500_and_logs(client):
+    failing_minio = MagicMock()
+    failing_minio.upload.side_effect = OSError("minio unreachable")
+    ok_render = MagicMock(return_value=b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+    with patch("app.MinioClient", return_value=failing_minio), \
+         patch.dict("app._RENDERERS", {"instagram": ok_render}), \
+         patch("app.app.logger.exception") as log_exc:
+        resp = client.post("/generate", json={**_VALID_BODY, "platform": "instagram"})
+    assert resp.status_code == 500
+    log_exc.assert_called_once()
+
+
 def test_generate_defaults_applied_when_optional_params_omitted(client):
     mock_render = MagicMock(return_value=b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
     with patch("app.MinioClient", return_value=_patched_minio()), \

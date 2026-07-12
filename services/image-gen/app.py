@@ -122,6 +122,9 @@ def generate():
         client = MinioClient()
         url = client.upload(png_bytes)
     except Exception:
+        # Log the real cause — a bare 500 with no server-side traceback made a
+        # prod render failure impossible to diagnose (2026-07-12).
+        app.logger.exception("image generation failed (platform=%s format=%s)", platform, fmt)
         return jsonify({"error": "image generation failed"}), 500
 
     return jsonify({"url": url}), 200
