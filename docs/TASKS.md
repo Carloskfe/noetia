@@ -151,8 +151,8 @@
 - [x] Configure GitHub Actions: deploy to staging on merge to main — 1d _(SSH deploy to Contabo VPS via DEPLOY_SSH_KEY secret; triggers on push to main)_
 
 **Design System**
-- [ ] Define color palette, typography, and spacing tokens — 1d
-- [ ] Create base component library (Button, Card, Typography, Input) — 1.5d
+- [x] Define color palette, typography, and spacing tokens — done-in-practice (Tailwind config + design tokens ship in the live web/mobile apps)
+- [x] Create base component library (Button, Card, Typography, Input) — done-in-practice (component library built out across the live app)
 
 **Sprint 0.1 total: 11.5d** _(1.5d added for test framework setup across all services)_
 
@@ -500,8 +500,8 @@
 > **Decision (Carlos):** own/control all audio — no third-party streaming — the same model for future author/publisher audio. Scope: every book, all sources. Runs on prod via SSH (Carlos).
 
 - [x] **Tool built** (`a22169e`) — `migrate-audio-to-minio.ts` + `audio-source-resolver.ts` (17 tests). Idempotent; resolves archive.org (direct) or LibriVox page → archive.org; downloads chapter MP3s → one progressive MP3 in MinIO → sets `audioStreamKey`. Nothing deleted. Validated on dev (dry run 38/39 resolved; Filipenses real run OK).
-- [ ] **Run on prod** (Carlos, after CD builds this commit): `--dry-run` first, then for real, then verify no `audioStreamKey` still starts with `http`. See runbook below / file header.
-- [ ] **Follow-on (better sync):** once a book is served from MinIO, re-run Whisper against *that exact file* for drift-free phrase timing (transcription source == playback source).
+- [x] **Run on prod** — DONE. All book audio self-hosted in MinIO: **81 books on MinIO, 0 external**, 3 with no external audio (El Príncipe, Cartas a Lucilio, El Líder que No Tenía Cargo). No `audioStreamKey` starts with `http`.
+- [ ] **Follow-on (better sync):** re-run Whisper against the *exact MinIO file* for drift-free timing. Mostly superseded by the 2026-07-12 drift fix (real audio-duration merge offsets); still the correct fix for the grouped-transcription holdouts — La Odisea, Fábulas y Verdades, Acts (per-chapter counts don't pair 1:1 with the concatenated audio).
 - [ ] Note: `El Líder que No Tenía Cargo` is a Noetia original with no external audio — correctly skipped (needs its own recording when available).
 
 ---
