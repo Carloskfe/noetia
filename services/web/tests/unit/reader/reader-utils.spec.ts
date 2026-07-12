@@ -120,10 +120,26 @@ describe('phraseAt', () => {
 });
 
 describe('seekToPhrase', () => {
-  it('returns the startTime of the phrase at the given index', () => {
-    expect(seekToPhrase(phrases, 0)).toBe(0);
-    expect(seekToPhrase(phrases, 1)).toBe(2.5);
-    expect(seekToPhrase(phrases, 3)).toBe(8.0);
+  it('returns a time nudged just INTO the phrase (not its exact startTime)', () => {
+    // +0.15s so MP3 seek imprecision doesn't land before startTime and highlight
+    // the previous phrase ("starts one phrase early").
+    expect(seekToPhrase(phrases, 0)).toBeCloseTo(0.15);
+    expect(seekToPhrase(phrases, 1)).toBeCloseTo(2.65);
+    expect(seekToPhrase(phrases, 3)).toBeCloseTo(8.15);
+  });
+
+  it('the nudged seek target resolves back to the SAME phrase via phraseAt', () => {
+    // The whole point: seeking to start phrase i must keep phrase i active.
+    for (let i = 0; i < phrases.length; i++) {
+      expect(phraseAt(phrases, seekToPhrase(phrases, i))).toBe(i);
+    }
+  });
+
+  it('never nudges past a short phrase\'s own endTime', () => {
+    const short: Phrase[] = [{ index: 0, text: 'Hi.', startTime: 10, endTime: 10.1, type: 'text' }];
+    // duration 0.1 → nudge capped at half (0.05), so target 10.05 stays inside
+    expect(seekToPhrase(short, 0)).toBeCloseTo(10.05);
+    expect(phraseAt(short, seekToPhrase(short, 0))).toBe(0);
   });
 
   it('returns 0 for a negative index', () => {

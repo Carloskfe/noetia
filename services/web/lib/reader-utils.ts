@@ -60,7 +60,18 @@ export function phraseAt(phrases: Phrase[], currentTime: number): number {
   return active;
 }
 
+/**
+ * Small forward offset (seconds) so a seek lands INSIDE the target phrase.
+ * MP3 seeking snaps to the nearest frame — often a hair before startTime — which
+ * makes phraseAt() resolve to the PREVIOUS phrase, i.e. narration "starts one
+ * phrase early". Nudging past startTime (but never past the phrase's own end)
+ * keeps the intended phrase active. 150ms is imperceptible.
+ */
+export const SEEK_NUDGE_SECONDS = 0.15;
+
 export function seekToPhrase(phrases: Phrase[], index: number): number {
   if (index < 0 || index >= phrases.length) return 0;
-  return phrases[index].startTime;
+  const p = phrases[index];
+  const nudge = Math.min(SEEK_NUDGE_SECONDS, Math.max(0, (p.endTime - p.startTime) / 2));
+  return p.startTime + nudge;
 }
