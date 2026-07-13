@@ -553,7 +553,7 @@
 - [x] **Bold / italic missing in image customization** — FIXED for mobile (`3865eec`): added a "Text style" Bold/Italic row to the ShareSheet, threaded `textBold`/`textItalic` via `buildSharePayload` (backend already supported). Web `ShareModal` already had it. (mobile OTA)
 - [x] **Text alignment options missing in image customization** — FIXED (`5e6d2ed`). image-gen `textAlign` (left/center/right) param + `_line_x()` helper in `templates/base.py`; wired through `app.py`; web `ShareModal` alignment buttons + live preview. (mobile alignment control still to add with the next ShareSheet pass.)
 - [ ] **Quote-card text size must be customizable (added 2026-07-12, from Carlos)** — let the user adjust the quote text size on the card (e.g. S/M/L or a slider). Today the font size is auto-fit per template only. Scope: image-gen `templates/base.py` `render_card` — accept a `textScale`/`fontSize` param and apply it to the quote font sizing (keep auto-fit as the default/bounds so long quotes still fit); thread through `app.py` (`POST /generate`) + api `SharingService`/controller; add the control to web `ShareModal` (with live preview) and the mobile ShareSheet; i18n all 4 files. Sharing #2.
-- [ ] **Free-image gallery backgrounds fail to download (added 2026-07-12, from Carlos)** — cards built on one of the 18 **gallery/free** background images can't be downloaded (solid/gradient still work). **Strong hypothesis:** `ShareModal` fetches the preset and inlines it as a **base64 data URI** into the `POST /fragments/:id/share` JSON body; a ~1200px JPEG base64-encodes to ~200–300 KB, which blows past the **Express/NestJS default 100 kb JSON body limit** (and possibly the Traefik/proxy limit) → the api rejects the request (413/400) → download fails. This is why solid/gradient (no image payload) work and a *small* image might sometimes work (contradicting the earlier "working" pass — likely size-dependent). **Diagnose:** reproduce with a gallery bg and read the `/share` response status (expect 413/400) + `docker logs noetia-image-gen-1` (now logs the real cause since `c548138`). **Preferred fix (architectural):** stop inlining presets as base64 — send only the preset **reference** and have image-gen fetch it from an **internal URL** (`http://web:3000/backgrounds/imagen-N.jpg`) or from **MinIO** (`images/backgrounds/presets/`); keep base64 only for genuine user uploads (better: upload those to MinIO first too). **Quick mitigation:** raise the api JSON body limit (`app.use(json({ limit: '10mb' }))`) + confirm proxy body-size. Sharing #2, but a live download failure — high priority within #2.
+- [x] **Free-image gallery backgrounds fail to download (added 2026-07-12, from Carlos)** — FIXED (`e9ce350`). Confirmed root cause: `ShareModal` inlines the preset (`urlToBase64`) — and user uploads (`fileToBase64`) — as a **base64 data URI** in the `/fragments/:id/share` JSON body; a ~1200px JPEG (~200–300 KB base64) exceeded Express's **default 100 KB JSON limit**, so the api rejected the request and the image couldn't be downloaded (solid/gradient carry no image payload → worked). Fix: `main.ts` now sets `useBodyParser('json'/'urlencoded', { limit: '10mb' })`. Also fixes user-upload backgrounds (same base64 path). **Verify on prod after api deploy.** *Optional follow-up (payload optimization, not required):* stop inlining **presets** as base64 — send a preset reference and have image-gen fetch it internally (`http://web:3000/backgrounds/…` or MinIO `images/backgrounds/presets/`); keep base64 only for genuine uploads.
 
 ### E. Content / catalogue (#3, but Bible is a stated priority)
 - [x] **No covers for Bible books, and no collection cover** — FIXED (`459b400`). All 34 Bible entries + both collection seeds pointed at a blank Open Library placeholder (1.7KB). Now ES→`/covers/biblia-reina-valera.png`, EN→ new `/covers/bible-kjv.png`. Re-run `seed-covers`/`seed-collections` on prod to apply.
@@ -636,6 +636,24 @@ Protestant canon = **66 books** (39 OT + 27 NT). Catalogue has **17 per language
 - [ ] **State model — the key design decision:** the current `services/web/lib/tutorial-flags.ts` is **localStorage-only** (`welcome`/`fragments`/`audio`/`clubs`), which is per-device and can't reliably detect a true first-account-session or survive a cache clear. The first-run welcome tour needs a **server-persisted per-user flag** (e.g. `users.onboardingState`: `not_started` | `in_progress@step` | `skipped` | `completed`) so it (a) fires exactly once on the first real session, (b) resumes until skipped/completed, and (c) follows the user across devices. Per-surface tours can stay client-side or also move server-side for consistency.
 
 **Notes:** builds on the existing one-off tutorials (`hasSeenAudioTutorial`, welcome/fragments/clubs flags) — extend/unify rather than duplicate. Reader/onboarding UX is hierarchy #1 (new-user activation). Mobile tour changes that add native deps require an EAS build; a pure JS/RN tour is OTA-safe.
+
+---
+
+## Backlog — Keep users signed in on the same device (added 2026-07-12, from Carlos)
+
+> **Report:** the app doesn't remember a returning user on the same device — they have to log in again each session. **Goal:** persistent session per user/device — stay signed in until explicit logout.
+
+**What already exists (so this is mostly client wiring, not new infra):**
+- API sets an httpOnly `refresh_token` cookie with `maxAge` **7 days** (`auth.controller.ts` `setRefreshCookie`) and exposes **`POST /auth/refresh`** (access token is short-lived, `JWT_EXPIRES_IN=15m`).
+- Mobile has `src/auth/token-storage.ts` (secure/async storage) + `src/api/client.ts`.
+
+**Likely gaps to fix:**
+- [ ] **Web silent refresh on load** — when the 15m access token has expired but the 7-day refresh cookie is still valid, the app treats the user as logged out instead of calling `/auth/refresh` on boot (and on a 401 → retry once). Add a session bootstrap that silently refreshes before deciding the user is signed out.
+- [ ] **Extend the remember window** — 7 days is short for "remember me"; bump the refresh cookie to ~30–90 days (and rotate the refresh token on each use for security).
+- [ ] **Mobile auto-restore** — on app launch, restore tokens from `token-storage` and silently refresh; make sure the post-login paywall/subscription check doesn't force a re-login.
+- [ ] Confirm cookie attributes survive prod (SameSite/secure/domain across `noetia.app`) so the refresh cookie is actually sent back on return visits.
+
+**Note:** reader/auth is hierarchy #1 (activation + retention). Verify the fix on both web and the installed mobile app after deploy.
 
 ---
 
