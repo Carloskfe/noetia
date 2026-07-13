@@ -41,6 +41,20 @@ export function findActivePhraseIndex(phrases: SyncPhrase[], positionSecs: numbe
   return idx < 0 ? 0 : idx;
 }
 
+/**
+ * True full-book audio length for the progress bar and seek clamps.
+ *
+ * Multi-chapter audio is byte-concatenated from per-chapter MP3s, so the merged
+ * file keeps the FIRST chapter's VBR/Xing duration header — expo-av then reports
+ * durationMillis as ~one chapter. That both shrinks the scrubber AND (via the
+ * seekTo/skipForward clamps) blocks seeking past chapter 1. The sync map's last
+ * phrase end is the real length, so use whichever is larger.
+ */
+export function effectiveDuration(rawDuration: number, phrases: SyncPhrase[]): number {
+  const lastEnd = phrases.length ? (phrases[phrases.length - 1].endTime ?? 0) : 0;
+  return Math.max(rawDuration || 0, lastEnd);
+}
+
 export function useAudioPlayer(audioUrl: string | null, phrases: SyncPhrase[]) {
   const soundRef = useRef<Audio.Sound | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -112,18 +126,22 @@ export function useAudioPlayer(audioUrl: string | null, phrases: SyncPhrase[]) {
     await soundRef.current?.pauseAsync();
   }, []);
 
+  // audio.durationMillis under-reports on concatenated multi-chapter MP3s — use
+  // the true full-book length for the bar and the seek clamps.
+  const effDuration = effectiveDuration(duration, phrases);
+
   const seekTo = useCallback(async (secs: number) => {
-    const clamped = Math.max(0, Math.min(secs, duration));
+    const clamped = Math.max(0, Math.min(secs, effDuration));
     await soundRef.current?.setPositionAsync(clamped * 1000);
-  }, [duration]);
+  }, [effDuration]);
 
   const skipBack = useCallback(async () => {
     await soundRef.current?.setPositionAsync(Math.max(0, (position - 15)) * 1000);
   }, [position]);
 
   const skipForward = useCallback(async () => {
-    await soundRef.current?.setPositionAsync(Math.min(position + 15, duration) * 1000);
-  }, [position, duration]);
+    await soundRef.current?.setPositionAsync(Math.min(position + 15, effDuration) * 1000);
+  }, [position, effDuration]);
 
   const setSpeed = useCallback(async (rate: number) => {
     setSpeedState(rate);
@@ -135,7 +153,7 @@ export function useAudioPlayer(audioUrl: string | null, phrases: SyncPhrase[]) {
   }, []);
 
   return {
-    isLoaded, isLoading, isPlaying, position, duration, speed,
+    isLoaded, isLoading, isPlaying, position, duration: effDuration, speed,
     activePhraseIndex, error,
     play, pause, seekTo, skipBack, skipForward, setSpeed, seekToPhrase,
   };

@@ -1,7 +1,7 @@
 // Tests for pure logic extracted from the hook — no expo-av dependency.
 // Import the REAL findActivePhraseIndex (previously reimplemented here, which
 // hid the interleaved zero-duration marker bug from the test suite).
-import { findActivePhraseIndex, type SyncPhrase } from '../../../src/hooks/useAudioPlayer';
+import { findActivePhraseIndex, effectiveDuration, type SyncPhrase } from '../../../src/hooks/useAudioPlayer';
 
 const PHRASES: SyncPhrase[] = [
   { index: 0, startTime: 0,  endTime: 5  },
@@ -116,5 +116,29 @@ describe('seek-on-load: phrase selection logic', () => {
   it('seeks to position 1 (first non-start phrase) correctly', () => {
     const result = pickSeekTarget(PHRASES, 1);
     expect(result?.startTime).toBe(5);
+  });
+});
+
+describe('effectiveDuration', () => {
+  it('uses the last phrase end when durationMillis under-reports (concatenated MP3)', () => {
+    // Header reports ~one chapter (10s) but the book runs to 30s (PHRASES end).
+    expect(effectiveDuration(10, PHRASES)).toBe(30);
+  });
+
+  it('uses the raw duration when it already exceeds the sync map (single-file book)', () => {
+    expect(effectiveDuration(3600, PHRASES)).toBe(3600);
+  });
+
+  it('falls back to the raw duration when there are no phrases', () => {
+    expect(effectiveDuration(500, [])).toBe(500);
+  });
+
+  it('handles NaN/0 raw duration via the sync map', () => {
+    expect(effectiveDuration(NaN, PHRASES)).toBe(30);
+    expect(effectiveDuration(0, PHRASES)).toBe(30);
+  });
+
+  it('returns 0 with neither a duration nor phrases', () => {
+    expect(effectiveDuration(0, [])).toBe(0);
   });
 });
