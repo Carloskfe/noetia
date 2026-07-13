@@ -75,3 +75,18 @@ export function seekToPhrase(phrases: Phrase[], index: number): number {
   const nudge = Math.min(SEEK_NUDGE_SECONDS, Math.max(0, (p.endTime - p.startTime) / 2));
   return p.startTime + nudge;
 }
+
+/**
+ * The true full-book audio length to drive the progress bar.
+ *
+ * Multi-chapter audio is byte-concatenated from per-chapter MP3s, so the merged
+ * file keeps the FIRST chapter's VBR/Xing duration header — browsers then report
+ * `audio.duration` as roughly one chapter, making the scrubber fill up within
+ * the first chapter instead of tracking the whole book. The sync map's last
+ * phrase end time is the real full-book length, so use whichever is larger
+ * (falls back cleanly to audio.duration for single-file / un-synced books).
+ */
+export function effectiveDuration(audioDuration: number, phrases: Phrase[]): number {
+  const lastEnd = phrases.length ? phrases[phrases.length - 1].endTime : 0;
+  return Math.max(audioDuration || 0, lastEnd);
+}

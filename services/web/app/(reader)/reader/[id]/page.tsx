@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
-import { phraseAt, seekToPhrase, Phrase, Fragment, extractChapters } from '@/lib/reader-utils';
+import { phraseAt, seekToPhrase, effectiveDuration, Phrase, Fragment, extractChapters } from '@/lib/reader-utils';
 import {
   applyTextSelection,
   addFragment,
@@ -511,6 +511,9 @@ export default function ReaderPage() {
   const audioUrl = book.audioStreamUrl ?? book.audioFileUrl;
   const hasAudio = Boolean(audioUrl);
   const hasSync = phrases.length > 0;
+  // audio.duration under-reports on byte-concatenated multi-chapter MP3s (stale
+  // header) — drive the progress bar off the true full-book length instead.
+  const effDuration = effectiveDuration(duration, phrases);
   const fontSizeClass = FONT_SIZE_CLASSES[fontSize];
 
   return (
@@ -598,15 +601,15 @@ export default function ReaderPage() {
               <button onClick={togglePlay} className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-md transition" aria-label={playing ? 'Pausar' : 'Reproducir'}>
                 {playing ? <PauseIcon /> : <PlayIcon />}
               </button>
-              <button onClick={() => { if (audioRef.current) audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 10); }}
+              <button onClick={() => { if (audioRef.current) audioRef.current.currentTime = Math.min(effDuration, audioRef.current.currentTime + 10); }}
                 aria-label="Avanzar 10 segundos" className="flex flex-col items-center gap-0.5 text-gray-500 hover:text-blue-600 transition">
                 <ForwardIcon /><span className="text-[10px]">10s</span>
               </button>
             </div>
             <div className="mb-5">
-              <input type="range" min={0} max={duration || 0} value={currentTime} step={0.1} onChange={handleScrub} className="w-full accent-blue-600" />
+              <input type="range" min={0} max={effDuration || 0} value={currentTime} step={0.1} onChange={handleScrub} className="w-full accent-blue-600" />
               <div className="flex justify-between text-xs text-gray-400 mt-1">
-                <span>{formatTime(currentTime)}</span><span>{formatTime(duration)}</span>
+                <span>{formatTime(currentTime)}</span><span>{formatTime(effDuration)}</span>
               </div>
             </div>
             <button onClick={() => setMode('escucha-activa')}
@@ -812,7 +815,7 @@ export default function ReaderPage() {
 
                 <button
                   onClick={() => {
-                    if (audioRef.current) audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 10);
+                    if (audioRef.current) audioRef.current.currentTime = Math.min(effDuration, audioRef.current.currentTime + 10);
                   }}
                   aria-label="Avanzar 10 segundos"
                   className="flex flex-col items-center gap-0.5 text-gray-500 hover:text-blue-600 transition"
@@ -826,7 +829,7 @@ export default function ReaderPage() {
                 <input
                   type="range"
                   min={0}
-                  max={duration || 0}
+                  max={effDuration || 0}
                   value={currentTime}
                   step={0.1}
                   onChange={handleScrub}
@@ -834,7 +837,7 @@ export default function ReaderPage() {
                 />
                 <div className="flex justify-between text-xs text-gray-400 mt-1">
                   <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(duration)}</span>
+                  <span>{formatTime(effDuration)}</span>
                 </div>
               </div>
 

@@ -1,4 +1,4 @@
-import { phraseAt, seekToPhrase, extractChapters, Phrase } from '../../../lib/reader-utils';
+import { phraseAt, seekToPhrase, effectiveDuration, extractChapters, Phrase } from '../../../lib/reader-utils';
 
 const phrases: Phrase[] = [
   { index: 0, text: 'Hello world.', startTime: 0, endTime: 2.5 },
@@ -152,5 +152,30 @@ describe('seekToPhrase', () => {
 
   it('returns 0 for an empty phrases array', () => {
     expect(seekToPhrase([], 0)).toBe(0);
+  });
+});
+
+describe('effectiveDuration', () => {
+  it('uses the last phrase end when audio.duration under-reports (concatenated MP3 header)', () => {
+    // Byte-concatenated multi-chapter MP3: the header reports only chapter 1
+    // (here 5s) but the sync map runs to 12s → the bar must span the whole book.
+    expect(effectiveDuration(5, phrases)).toBe(12.0); // phrases fixture ends at 12.0
+  });
+
+  it('uses audio.duration when it already exceeds the sync map (single-file book)', () => {
+    expect(effectiveDuration(3600, phrases)).toBe(3600);
+  });
+
+  it('falls back to audio.duration when there are no phrases', () => {
+    expect(effectiveDuration(500, [])).toBe(500);
+  });
+
+  it('handles NaN/0 audio.duration by using the sync map', () => {
+    expect(effectiveDuration(NaN, phrases)).toBe(12.0);
+    expect(effectiveDuration(0, phrases)).toBe(12.0);
+  });
+
+  it('returns 0 when there is neither audio duration nor phrases', () => {
+    expect(effectiveDuration(0, [])).toBe(0);
   });
 });
