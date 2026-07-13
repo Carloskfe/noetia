@@ -132,13 +132,22 @@ describe('SearchService', () => {
       expect(call.filter).toContain('category = "classic"');
     });
 
-    it('appends isFree filter when provided', async () => {
+    it('defaults to isFree = true — never offers below-standard (culled) titles', async () => {
       mockIndex.search.mockResolvedValue({ hits: [] });
 
-      await service.search('', { isFree: true });
+      await service.search('quijote', {}); // no isFree specified
 
       const call = mockIndex.search.mock.calls[0][1];
       expect(call.filter).toContain('isFree = true');
+    });
+
+    it('allows an explicit isFree = false override (e.g. admin/internal)', async () => {
+      mockIndex.search.mockResolvedValue({ hits: [] });
+
+      await service.search('', { isFree: false });
+
+      const call = mockIndex.search.mock.calls[0][1];
+      expect(call.filter).toContain('isFree = false');
     });
 
     it('returns the raw Meilisearch result', async () => {

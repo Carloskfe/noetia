@@ -65,7 +65,7 @@ describe('BooksService', () => {
       expect(result).toEqual(books);
     });
 
-    it('applies quality gate — free books must have syncCoverage >= 0.90', async () => {
+    it('applies quality gate — ingested books need syncCoverage >= 0.90; only author uploads bypass it', async () => {
       const qb = makeQb([]);
       mockRepo.createQueryBuilder.mockReturnValue(qb);
 
@@ -76,7 +76,10 @@ describe('BooksService', () => {
       );
       expect(qualityCall).toBeDefined();
       expect(qualityCall![0]).toContain('0.90');
-      expect(qualityCall![0]).toContain('isFree');
+      // Bypass is for genuine author uploads, NOT for isFree=false — culled
+      // below-standard titles (isFree=false) must stay hidden.
+      expect(qualityCall![0]).toContain('uploadedById');
+      expect(qualityCall![0]).not.toContain('isFree');
     });
 
     it('includes collection books when standalone=false', async () => {

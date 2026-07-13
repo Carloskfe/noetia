@@ -61,7 +61,12 @@ export class SearchService implements OnModuleInit {
   async search(q: string, options: { category?: string; isFree?: boolean }) {
     const filter: string[] = ['isPublished = true'];
     if (options.category) filter.push(`category = "${options.category}"`);
-    if (options.isFree !== undefined) filter.push(`isFree = ${options.isFree}`);
+    // Only offer books that meet the standard. Culled below-standard titles are
+    // isFree=false, so default the public search to free-only — never surface a
+    // title that would error when opened. (The index lacks uploadedById/sync
+    // coverage; when author books enter search, index a `meetsStandard` flag and
+    // filter on that instead so paid-but-complete author titles remain findable.)
+    filter.push(`isFree = ${options.isFree ?? true}`);
 
     return this.index.search(q, {
       filter: filter.join(' AND '),

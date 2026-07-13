@@ -22,10 +22,15 @@ export class BooksService {
     // Using the join table rather than book.collection VARCHAR so the filter works
     // even when the VARCHAR field was never populated (e.g. books ingested after migrations).
     if (standalone) qb.andWhere('NOT EXISTS (SELECT 1 FROM book_collections bc WHERE bc."bookId" = book.id)');
-    // Quality gate: free-library books must have a Whisper sync map with ≥ 90% coverage.
-    // Paid/author books bypass the gate — authors manage their own quality through the admin flow.
+    // Quality gate: never surface a title we can't offer cleanly (incomplete /
+    // no audio / poor sync produces errors in front of the user). An INGESTED
+    // (free-library) book must have a Whisper sync map ≥ 90% coverage; if it was
+    // culled below the gate it stays hidden — being isFree=false is NOT a pass
+    // (that previously let culled books like Don Quijote leak into discovery).
+    // Only genuine AUTHOR/publisher uploads (uploadedById set) bypass the gate —
+    // authors manage their own quality through the admin flow.
     qb.andWhere(`(
-      book."isFree" = false
+      book."uploadedById" IS NOT NULL
       OR EXISTS (
         SELECT 1 FROM sync_maps sm
         WHERE sm."bookId" = book.id
