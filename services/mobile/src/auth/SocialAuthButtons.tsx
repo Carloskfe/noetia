@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import { apiClient } from '../api/client';
-import { saveToken, saveUserType } from './token-storage';
+import { saveToken, saveRefreshToken, saveUserType } from './token-storage';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -51,11 +51,12 @@ export function SocialAuthButtons({ onSuccess, onError }: Props) {
   async function handleGoogleToken(idToken: string | undefined) {
     if (!idToken) { setLoading(null); onError('No se recibió token de Google.'); return; }
     try {
-      const data = await apiClient.post<{ accessToken: string; user: { userType?: string } }>(
+      const data = await apiClient.post<{ accessToken: string; refreshToken?: string; user: { userType?: string } }>(
         '/auth/google/mobile',
         { idToken },
       );
       await saveToken(data.accessToken);
+      if (data.refreshToken) await saveRefreshToken(data.refreshToken);
       if (data.user?.userType) await saveUserType(data.user.userType);
       onSuccess();
     } catch {
@@ -100,11 +101,12 @@ export function SocialAuthButtons({ onSuccess, onError }: Props) {
   async function handleFacebookToken(accessToken: string | undefined) {
     if (!accessToken) { setLoading(null); onError('No se recibió token de Facebook.'); return; }
     try {
-      const data = await apiClient.post<{ accessToken: string; user: { userType?: string } }>(
+      const data = await apiClient.post<{ accessToken: string; refreshToken?: string; user: { userType?: string } }>(
         '/auth/facebook/mobile',
         { accessToken },
       );
       await saveToken(data.accessToken);
+      if (data.refreshToken) await saveRefreshToken(data.refreshToken);
       if (data.user?.userType) await saveUserType(data.user.userType);
       onSuccess();
     } catch {
@@ -133,11 +135,12 @@ export function SocialAuthButtons({ onSuccess, onError }: Props) {
       const fullName = credential.fullName
         ? [credential.fullName.givenName, credential.fullName.familyName].filter(Boolean).join(' ')
         : undefined;
-      const data = await apiClient.post<{ accessToken: string; user: { userType?: string } }>(
+      const data = await apiClient.post<{ accessToken: string; refreshToken?: string; user: { userType?: string } }>(
         '/auth/apple/mobile',
         { identityToken: credential.identityToken, fullName },
       );
       await saveToken(data.accessToken);
+      if (data.refreshToken) await saveRefreshToken(data.refreshToken);
       if (data.user?.userType) await saveUserType(data.user.userType);
       onSuccess();
     } catch (err: any) {

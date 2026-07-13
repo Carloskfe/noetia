@@ -1,5 +1,6 @@
 import {
   saveToken, getToken, clearToken,
+  saveRefreshToken, getRefreshToken,
   saveUserType, getUserType, isLoggedIn,
 } from '../../../src/auth/token-storage';
 
@@ -28,6 +29,23 @@ describe('token-storage', () => {
       await saveUserType('personal');
       await clearToken();
       expect(await getUserType()).toBeNull();
+    });
+
+    it('also removes the refresh token', async () => {
+      await saveRefreshToken('refresh-xyz');
+      await clearToken();
+      expect(await getRefreshToken()).toBeNull();
+    });
+  });
+
+  describe('saveRefreshToken / getRefreshToken', () => {
+    it('saves and retrieves the refresh token', async () => {
+      await saveRefreshToken('refresh-abc');
+      expect(await getRefreshToken()).toBe('refresh-abc');
+    });
+
+    it('returns null when no refresh token is saved', async () => {
+      expect(await getRefreshToken()).toBeNull();
     });
   });
 

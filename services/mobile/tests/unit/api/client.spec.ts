@@ -1,4 +1,5 @@
 import { apiClient } from '../../../src/api/client';
+import { saveToken, saveRefreshToken, getRefreshToken, clearToken } from '../../../src/auth/token-storage';
 
 const mockOk = (body: unknown) => {
   global.fetch = jest.fn().mockResolvedValue({
@@ -89,5 +90,42 @@ describe('apiClient.delete', () => {
       expect.stringContaining('/books/1'),
       expect.objectContaining({ method: 'DELETE' }),
     );
+  });
+});
+
+describe('apiClient silent token refresh on 401', () => {
+  beforeEach(async () => { await clearToken(); });
+
+  it('refreshes once and retries, de-duping concurrent 401s, and stores the rotated token', async () => {
+    await saveToken('expired');
+    await saveRefreshToken('refresh-1');
+
+    let refreshCalls = 0;
+    global.fetch = jest.fn((url: string, init?: any) => {
+      if (typeof url === 'string' && url.includes('/auth/refresh')) {
+        refreshCalls++;
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ accessToken: 'fresh', refreshToken: 'refresh-2' }) });
+      }
+      // Protected endpoint: 401 with the stale token, 200 once refreshed.
+      if (init?.headers?.Authorization === 'Bearer fresh') {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: 1 }) });
+      }
+      return Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) });
+    }) as unknown as typeof fetch;
+
+    const results = await Promise.all([apiClient.get('/a'), apiClient.get('/b'), apiClient.get('/c')]);
+
+    expect(refreshCalls).toBe(1);                        // one shared refresh
+    results.forEach((r) => expect(r).toEqual({ ok: 1 })); // all retried OK
+    expect(await getRefreshToken()).toBe('refresh-2');    // rotated token persisted
+  });
+
+  it('rejects with 401 when there is no stored refresh token (no retry)', async () => {
+    await saveToken('expired'); // no refresh token
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false, status: 401, json: () => Promise.resolve({ message: 'nope' }),
+    } as unknown as Response);
+
+    await expect(apiClient.get('/x')).rejects.toMatchObject({ status: 401 });
   });
 });

@@ -43,6 +43,24 @@ function safeUser(user: any) {
   return { id: user.id, email: user.email, name: user.name, userType: user.userType ?? null, emailConfirmed: user.emailConfirmed ?? true };
 }
 
+// Native apps have no cookie jar, so they identify themselves with this header
+// and receive the (rotating) refresh token in the response BODY instead of an
+// httpOnly cookie. Web clients omit the header and keep using the secure cookie
+// (never exposing the refresh token to browser JS).
+function isMobileClient(req: any): boolean {
+  return String(req?.headers?.['x-client-type'] ?? '').toLowerCase() === 'mobile';
+}
+
+// Build the token response: refresh token in the body for mobile, httpOnly
+// cookie for web.
+function authResponse(req: any, res: Response, accessToken: string, refreshTokenId: string, user: any) {
+  if (isMobileClient(req)) {
+    return { accessToken, refreshToken: `${user.id}:${refreshTokenId}`, user: safeUser(user) };
+  }
+  setRefreshCookie(res, refreshTokenId, user.id);
+  return { accessToken, user: safeUser(user) };
+}
+
 @Controller('auth')
 @Throttle({ default: { ttl: 60_000, limit: 20 } })
 export class AuthController {
@@ -53,14 +71,13 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+  async register(@Body() dto: RegisterDto, @Request() req: any, @Res({ passthrough: true }) res: Response) {
     const { accessToken, refreshTokenId, user } = await this.authService.register(
       dto.name,
       dto.email,
       dto.password,
     );
-    setRefreshCookie(res, refreshTokenId, user.id);
-    return { accessToken, user: safeUser(user) };
+    return authResponse(req, res, accessToken, refreshTokenId, user);
   }
 
   @Post('login')
@@ -68,19 +85,20 @@ export class AuthController {
   @UseGuards(AuthGuard('local'))
   async login(@Request() req: any, @Res({ passthrough: true }) res: Response) {
     const { accessToken, refreshTokenId, user } = await this.authService.issueTokens(req.user);
-    setRefreshCookie(res, refreshTokenId, user.id);
-    return { accessToken, user: safeUser(user) };
+    return authResponse(req, res, accessToken, refreshTokenId, user);
   }
 
   @Post('refresh')
   @HttpCode(200)
   async refresh(@Request() req: any, @Res({ passthrough: true }) res: Response) {
-    const raw = req.cookies?.refresh_token as string | undefined;
+    // Mobile sends the refresh token in the body; web sends it as a cookie.
+    const bodyToken = req.body?.refreshToken as string | undefined;
+    const raw = bodyToken ?? (req.cookies?.refresh_token as string | undefined);
     if (!raw) throw new UnauthorizedException();
     const [userId, tokenId] = raw.split(':');
     const valid = await this.tokenService.validateRefreshToken(userId, tokenId);
     if (!valid) {
-      res.clearCookie('refresh_token', { path: '/' });
+      if (!bodyToken) res.clearCookie('refresh_token', { path: '/' });
       throw new UnauthorizedException();
     }
     await this.tokenService.deleteRefreshToken(userId, tokenId);
@@ -88,6 +106,10 @@ export class AuthController {
     if (!user) throw new UnauthorizedException();
     const accessToken = this.tokenService.generateAccessToken({ sub: user.id, email: user.email });
     const newTokenId = await this.tokenService.generateRefreshToken(user.id);
+    if (bodyToken) {
+      // Native client: return the rotated refresh token in the body (no cookie).
+      return { accessToken, refreshToken: `${user.id}:${newTokenId}`, user: safeUser(user) };
+    }
     setRefreshCookie(res, newTokenId, user.id);
     return { accessToken, user: safeUser(user) };
   }
@@ -96,7 +118,9 @@ export class AuthController {
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
   async logout(@Request() req: any, @Res({ passthrough: true }) res: Response) {
-    const raw = req.cookies?.refresh_token as string | undefined;
+    // Delete the refresh token server-side — from the cookie (web) or the body
+    // (mobile, which has no cookie) — so a logged-out token can't be reused.
+    const raw = (req.body?.refreshToken as string | undefined) ?? (req.cookies?.refresh_token as string | undefined);
     if (raw) {
       const [userId, tokenId] = raw.split(':');
       await this.tokenService.deleteRefreshToken(userId, tokenId);
@@ -192,8 +216,8 @@ export class AuthController {
   async googleMobile(@Body() body: { idToken: string }) {
     if (!body.idToken) throw new UnauthorizedException('idToken required');
     const user = await this.authService.verifyGoogleIdToken(body.idToken);
-    const { accessToken, user: safeU } = await this.authService.issueTokens(user);
-    return { accessToken, user: safeUser(safeU) };
+    const { accessToken, refreshTokenId, user: safeU } = await this.authService.issueTokens(user);
+    return { accessToken, refreshToken: `${safeU.id}:${refreshTokenId}`, user: safeUser(safeU) };
   }
 
   @Post('facebook/mobile')
@@ -202,8 +226,8 @@ export class AuthController {
   async facebookMobile(@Body() body: { accessToken: string }) {
     if (!body.accessToken) throw new UnauthorizedException('accessToken required');
     const user = await this.authService.verifyFacebookToken(body.accessToken);
-    const { accessToken: jwt, user: safeU } = await this.authService.issueTokens(user);
-    return { accessToken: jwt, user: safeUser(safeU) };
+    const { accessToken: jwt, refreshTokenId, user: safeU } = await this.authService.issueTokens(user);
+    return { accessToken: jwt, refreshToken: `${safeU.id}:${refreshTokenId}`, user: safeUser(safeU) };
   }
 
   @Post('apple/mobile')
@@ -212,7 +236,7 @@ export class AuthController {
   async appleMobile(@Body() body: { identityToken: string; fullName?: string }) {
     if (!body.identityToken) throw new UnauthorizedException('identityToken required');
     const user = await this.authService.verifyAppleIdentityToken(body.identityToken, body.fullName);
-    const { accessToken, user: safeU } = await this.authService.issueTokens(user);
-    return { accessToken, user: safeUser(safeU) };
+    const { accessToken, refreshTokenId, user: safeU } = await this.authService.issueTokens(user);
+    return { accessToken, refreshToken: `${safeU.id}:${refreshTokenId}`, user: safeUser(safeU) };
   }
 }

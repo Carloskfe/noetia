@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { apiClient } from '../../api/client';
-import { saveToken, saveUserType } from '../../auth/token-storage';
+import { saveToken, saveRefreshToken, saveUserType } from '../../auth/token-storage';
 import { SocialAuthButtons } from '../../auth/SocialAuthButtons';
 import { useTranslation } from '../../i18n';
 
@@ -25,10 +25,11 @@ export function LoginScreen({ onLogin, onRegister }: Props) {
     setLoading(true);
     setError('');
     try {
-      const data = await apiClient.post<{ accessToken: string; userType?: string }>(
+      const data = await apiClient.post<{ accessToken: string; refreshToken?: string; userType?: string }>(
         '/auth/login', { email: email.trim().toLowerCase(), password },
       );
       await saveToken(data.accessToken);
+      if (data.refreshToken) await saveRefreshToken(data.refreshToken);
       if (data.userType) await saveUserType(data.userType);
       onLogin();
     } catch (err: unknown) {
