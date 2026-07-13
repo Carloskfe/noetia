@@ -648,12 +648,12 @@ Protestant canon = **66 books** (39 OT + 27 NT). Catalogue has **17 per language
 - Mobile has `src/auth/token-storage.ts` (secure/async storage) + `src/api/client.ts`.
 
 **Likely gaps to fix:**
-- [ ] **Web silent refresh on load** — when the 15m access token has expired but the 7-day refresh cookie is still valid, the app treats the user as logged out instead of calling `/auth/refresh` on boot (and on a 401 → retry once). Add a session bootstrap that silently refreshes before deciding the user is signed out.
-- [ ] **Extend the remember window** — 7 days is short for "remember me"; bump the refresh cookie to ~30–90 days (and rotate the refresh token on each use for security).
-- [ ] **Mobile auto-restore** — on app launch, restore tokens from `token-storage` and silently refresh; make sure the post-login paywall/subscription check doesn't force a re-login.
-- [ ] Confirm cookie attributes survive prod (SameSite/secure/domain across `noetia.app`) so the refresh cookie is actually sent back on return visits.
+- [x] **Web session refresh race** — FIXED (`78492eb`). The real bug wasn't a missing refresh (apiFetch already refreshed on 401) — it was a **concurrent-refresh race**: on load many requests 401 at once; each called `/auth/refresh` independently, and refresh-token rotation (old deleted, new issued) made every call after the first send an invalidated cookie → 401 → forced logout. Now a single in-flight `/auth/refresh` is shared across callers (`lib/api.ts` `refreshAccessToken`). +concurrency test.
+- [x] **Extend the remember window** — FIXED (`78492eb`). 7 → **30 days** on BOTH the cookie `maxAge` (`auth.controller.ts`) and the Redis refresh TTL (`token.service.ts` — the real cap; they must match). Refresh token already rotates on each use.
+- [ ] **Mobile auto-restore** — on app launch, restore tokens from `src/auth/token-storage.ts` and silently refresh; ensure the post-login paywall/subscription check doesn't force a re-login. (web done; mobile still pending)
+- [ ] Confirm cookie attributes survive prod (SameSite `strict`/secure/domain) — web + api are same-origin (`noetia.app` + `noetia.app/api`) so `strict` should be sent on same-site fetches; **verify on prod** the refresh cookie comes back on a return visit after the deploy.
 
-**Note:** reader/auth is hierarchy #1 (activation + retention). Verify the fix on both web and the installed mobile app after deploy.
+**Note:** reader/auth is hierarchy #1 (activation + retention). **Verify on prod:** log in, close the tab, return later (past 15 min) — should stay signed in. Mobile auto-restore still to do.
 
 ---
 
