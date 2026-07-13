@@ -24,12 +24,17 @@ import { UsersService } from '../users/users.service';
 const isProd = process.env.NODE_ENV === 'production';
 const WEB_URL = process.env.WEB_URL ?? 'http://localhost:3000';
 
+// 30-day "remember me" window so returning users on the same device stay
+// signed in (the access token is short-lived; this cookie silently re-issues it
+// via /auth/refresh). Rotated on every refresh — see AuthController.refresh.
+const REFRESH_COOKIE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30;
+
 function setRefreshCookie(res: Response, tokenId: string, userId: string) {
   res.cookie('refresh_token', `${userId}:${tokenId}`, {
     httpOnly: true,
     sameSite: 'strict',
     secure: isProd,
-    maxAge: 1000 * 60 * 60 * 24 * 7,
+    maxAge: REFRESH_COOKIE_MAX_AGE_MS,
     path: '/',
   });
 }

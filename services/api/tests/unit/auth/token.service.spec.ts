@@ -43,14 +43,14 @@ describe('TokenService', () => {
   });
 
   describe('generateRefreshToken', () => {
-    it('stores a key in Redis with 7-day TTL and returns a UUID', async () => {
+    it('stores a key in Redis with 30-day TTL and returns a UUID', async () => {
       mockRedis.set.mockResolvedValue('OK');
       const tokenId = await service.generateRefreshToken('user-1');
       expect(mockRedis.set).toHaveBeenCalledWith(
         expect.stringMatching(/^refresh:user-1:/),
         '1',
         'EX',
-        60 * 60 * 24 * 7,
+        60 * 60 * 24 * 30,
       );
       expect(typeof tokenId).toBe('string');
       expect(tokenId).toMatch(/^[0-9a-f-]{36}$/);

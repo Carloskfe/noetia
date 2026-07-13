@@ -13,18 +13,37 @@ async function fetchWithToken(path: string, init: RequestInit = {}) {
   });
 }
 
+// A single shared in-flight refresh. On app load, many requests 401 at once
+// (the 15-min access token has expired but the refresh cookie is still valid).
+// If each request hit /auth/refresh independently, the refresh-token ROTATION
+// (server deletes the old token and issues a new one) would make every call
+// after the first send an already-invalidated cookie → 401 → the user is
+// bounced to /login despite a valid session. De-duping fixes that "app forgets
+// me on return" bug: exactly one /auth/refresh runs, everyone else awaits it.
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshAccessToken(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' })
+      .then(async (r) => {
+        if (!r.ok) return false;
+        const d = await r.json().catch(() => null);
+        if (!d?.accessToken) return false;
+        saveToken(d.accessToken);
+        return true;
+      })
+      .catch(() => false)
+      .finally(() => { refreshInFlight = null; });
+  }
+  return refreshInFlight;
+}
+
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<any> {
   let res = await fetchWithToken(path, init);
 
-  // Auto-refresh expired access token once, then retry
+  // Auto-refresh expired access token once (shared/de-duped), then retry.
   if (res.status === 401 && !path.startsWith('/auth/')) {
-    const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    if (refreshRes.ok) {
-      const refreshData = await refreshRes.json();
-      saveToken(refreshData.accessToken);
+    if (await refreshAccessToken()) {
       res = await fetchWithToken(path, init);
     } else {
       if (typeof window !== 'undefined') window.location.href = '/login';

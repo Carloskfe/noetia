@@ -140,4 +140,31 @@ describe('apiFetch', () => {
 
     await expect(apiFetch('/secure')).rejects.toMatchObject({ status: 401 });
   });
+
+  it('de-dupes concurrent refreshes — one /auth/refresh for many simultaneous 401s', async () => {
+    // Reset the module so the shared in-flight refresh state starts clean.
+    jest.resetModules();
+    const { apiFetch } = await import('../../../lib/api');
+    localStorageMock.getItem.mockImplementation((k: string) => mockStorage[k] ?? null);
+    mockStorage['access_token'] = 'expired';
+
+    let refreshCalls = 0;
+    global.fetch = jest.fn((url: string, init?: any) => {
+      if (typeof url === 'string' && url.includes('/auth/refresh')) {
+        refreshCalls++;
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ accessToken: 'fresh' }) });
+      }
+      // Protected endpoint: 401 with the stale token, 200 once refreshed.
+      const auth = init?.headers?.Authorization;
+      if (auth === 'Bearer fresh') {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: 1 }) });
+      }
+      return Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) });
+    }) as unknown as typeof fetch;
+
+    const results = await Promise.all([apiFetch('/a'), apiFetch('/b'), apiFetch('/c'), apiFetch('/d')]);
+
+    expect(refreshCalls).toBe(1);                       // the whole point
+    results.forEach((r) => expect(r).toEqual({ ok: 1 })); // all retried successfully
+  });
 });

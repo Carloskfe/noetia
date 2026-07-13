@@ -5,7 +5,10 @@ import Redis from 'ioredis';
 import { randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 
-const REFRESH_TTL = 60 * 60 * 24 * 7;
+// 30 days — the "remember me" window. Must match the refresh_token cookie
+// maxAge in auth.controller.ts; whichever is shorter caps how long a returning
+// user stays signed in. Rotated (deleted + reissued) on every /auth/refresh.
+const REFRESH_TTL = 60 * 60 * 24 * 30;
 const PWD_RESET_TTL = 60 * 60; // 1 hour
 const EMAIL_CONFIRM_TTL = 60 * 60 * 24; // 24 hours
 
