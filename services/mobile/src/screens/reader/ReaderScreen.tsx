@@ -374,8 +374,20 @@ export function ReaderScreen() {
           onSeek={audio.seekTo}
           onSetSpeed={audio.setSpeed}
           onClose={() => {
+            // Capture where narration is BEFORE tearing down the audio hook, then
+            // return the reader to that phrase — otherwise the list stays wherever
+            // it happened to be (paused, manually scrolled, or reflowed when the
+            // player bar's padding is removed).
+            const idx = audio.activePhraseIndex;
             audio.pause();
             setAudioMode(false);
+            if (idx > 0 && idx < phrases.length) {
+              lastScrolledIndex.current = -1; // let the next audio session re-scroll
+              setTimeout(
+                () => listRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.3 }),
+                300,
+              );
+            }
           }}
         />
       )}
