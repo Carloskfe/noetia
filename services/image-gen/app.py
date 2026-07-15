@@ -102,6 +102,10 @@ def generate():
     gradient_dir  = body.get("gradientDir") or "to-bottom"
     bg_image      = body.get("bgImage")     or None
     bg_flip       = bool(body.get("bgFlip", False))
+    try:
+        text_scale = float(body.get("textScale", 1.0))
+    except (TypeError, ValueError):
+        text_scale = 1.0
 
     fragment = {
         "text":         body["text"],
@@ -111,6 +115,7 @@ def generate():
         "bold":         text_bold,
         "italic":       text_italic,
         "textAlign":    text_align,
+        "textScale":    text_scale,
     }
 
     try:

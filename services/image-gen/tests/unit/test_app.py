@@ -283,6 +283,41 @@ def test_generate_bg_flip_defaults_to_false(client):
     assert kwargs["bg_flip"] is False
 
 
+# ── /generate — textScale param ──────────────────────────────────────────────
+
+def test_generate_with_text_scale_returns_200(client):
+    with patch("app.MinioClient", return_value=_patched_minio()):
+        resp = client.post("/generate", json={**_VALID_BODY, "textScale": 1.5})
+    assert resp.status_code == 200
+
+
+def test_generate_text_scale_forwarded_in_fragment(client):
+    mock_render = MagicMock(return_value=b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+    with patch("app.MinioClient", return_value=_patched_minio()), \
+         patch.dict("app._RENDERERS", {"linkedin": mock_render}):
+        client.post("/generate", json={**_VALID_BODY, "textScale": 1.3})
+    args, _ = mock_render.call_args
+    assert args[0]["textScale"] == 1.3
+
+
+def test_generate_without_text_scale_defaults_to_one(client):
+    mock_render = MagicMock(return_value=b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+    with patch("app.MinioClient", return_value=_patched_minio()), \
+         patch.dict("app._RENDERERS", {"linkedin": mock_render}):
+        client.post("/generate", json=_VALID_BODY)
+    args, _ = mock_render.call_args
+    assert args[0]["textScale"] == 1.0
+
+
+def test_generate_invalid_text_scale_defaults_to_one(client):
+    mock_render = MagicMock(return_value=b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+    with patch("app.MinioClient", return_value=_patched_minio()), \
+         patch.dict("app._RENDERERS", {"linkedin": mock_render}):
+        client.post("/generate", json={**_VALID_BODY, "textScale": "big"})
+    args, _ = mock_render.call_args
+    assert args[0]["textScale"] == 1.0
+
+
 # ── /generate — error handling ────────────────────────────────────────────────
 
 def test_generate_minio_error_returns_500(client):

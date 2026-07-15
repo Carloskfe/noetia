@@ -277,6 +277,60 @@ def test_render_card_flip_is_noop_on_solid_bg():
     assert flipped == normal
 
 
+# ── quote text scale (S/M/L) ──────────────────────────────────────────────────
+
+_LONG_FRAGMENT = {
+    "text": "El liderazgo es una práctica constante y diaria de servicio a los demás.",
+    "author": "Robin Sharma", "title": "El Líder",
+}
+
+
+def test_render_card_default_scale_matches_explicit_one():
+    # Omitting textScale must behave identically to textScale == 1.0
+    assert render_card(_LONG_FRAGMENT, 800, 800) == \
+        render_card({**_LONG_FRAGMENT, "textScale": 1.0}, 800, 800)
+
+
+def test_render_card_larger_scale_changes_output():
+    small = render_card({**_LONG_FRAGMENT, "textScale": 0.7}, 800, 800)
+    large = render_card({**_LONG_FRAGMENT, "textScale": 1.5}, 800, 800)
+    assert small[:8] == b'\x89PNG\r\n\x1a\n'
+    assert large[:8] == b'\x89PNG\r\n\x1a\n'
+    assert small != large
+
+
+def test_render_card_scale_clamped_below_minimum():
+    # 0.1 is below the 0.7 floor → must render as if clamped to 0.7
+    clamped = render_card({**_LONG_FRAGMENT, "textScale": 0.1}, 800, 800)
+    floor   = render_card({**_LONG_FRAGMENT, "textScale": 0.7}, 800, 800)
+    assert clamped == floor
+
+
+def test_render_card_scale_clamped_above_maximum():
+    # 5.0 is above the 1.5 ceiling → must render as if clamped to 1.5
+    clamped = render_card({**_LONG_FRAGMENT, "textScale": 5.0}, 800, 800)
+    ceiling = render_card({**_LONG_FRAGMENT, "textScale": 1.5}, 800, 800)
+    assert clamped == ceiling
+
+
+def test_render_card_scale_invalid_falls_back_to_one():
+    bad = render_card({**_LONG_FRAGMENT, "textScale": "huge"}, 800, 800)
+    default = render_card(_LONG_FRAGMENT, 800, 800)
+    assert bad == default
+
+
+def test_render_card_scale_none_falls_back_to_one():
+    none_scale = render_card({**_LONG_FRAGMENT, "textScale": None}, 800, 800)
+    default = render_card(_LONG_FRAGMENT, 800, 800)
+    assert none_scale == default
+
+
+def test_render_card_scale_produces_valid_png_at_extremes():
+    for scale in (0.7, 1.0, 1.5):
+        result = render_card({**_LONG_FRAGMENT, "textScale": scale}, 1080, 1920)
+        assert _png_dimensions(result) == (1080, 1920), f"scale {scale} failed"
+
+
 # ── watermark logo ────────────────────────────────────────────────────────────
 
 def test_watermark_logo_assets_exist():

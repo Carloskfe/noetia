@@ -208,6 +208,15 @@ def render_card(
     bold       = bool(fragment.get("bold", False))
     align      = fragment.get("textAlign", "center")
 
+    # Quote text size multiplier (user-adjustable S/M/L). Only the quote scales;
+    # attribution/citation/watermark stay fixed. Clamped so extreme values can't
+    # blow the text off the card.
+    try:
+        text_scale = float(fragment.get("textScale", 1.0))
+    except (TypeError, ValueError):
+        text_scale = 1.0
+    text_scale = max(0.7, min(1.5, text_scale))
+
     img = Image.new("RGB", (width, height), color=(0, 0, 0))
 
     # ── Background ──────────────────────────────────────────────────────────
@@ -232,7 +241,7 @@ def render_card(
     margin = int(width * 0.08)
     text_area_w = width - 2 * margin
 
-    quote_size = max(16, int(width * 0.026))
+    quote_size = max(16, int(width * 0.026 * text_scale))
     attr_size  = max(12, int(width * 0.018))
     cite_size  = max(10, int(width * 0.014))
     wm_size    = max(10, int(width * 0.015))
