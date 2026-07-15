@@ -14,7 +14,10 @@
 > - [x] **OAuth email-confirmation fix (migration 063)** — Google/FB/Apple users created before emailConfirmed-on-create were trapped behind the confirmation gate with no email; `upsertOAuthUser` now heals on login, migration confirms the backlog ✅
 > - [x] **Reader audio timeline — full-book HH:MM:SS** — `formatTimecode` in reader-utils; timeline already used `effectiveDuration` (full book, not one chapter) ✅
 > - [x] **Quote card text size (S/M/L)** — `textScale` param in image-gen + ShareModal control + scaled preview ✅
-> - [ ] **Whisper maps for the ~26 culled `auto` books** *(carry-over — the one open sync item)* — Crimen y Castigo, Viaje al Centro de la Tierra, Niebla, most Bible books, etc. Run the §2 Colab pipeline; they stay culled until ≥90% coverage
+> - [x] **Whisper maps for the culled `auto` books — DONE (verified on prod 2026-07-15)** — the merged VTTs were already aligned via `seed-sync-whisper`; a live audit (`SELECT title, syncSource, syncCoverage, isFree` across all 84 books) confirms **the free library is 66/66 `whisper` ≥ 90%** (Filipenses 90.7% → 100%). Every book the old note listed as culled `auto` (Crimen y Castigo 99.8%, Niebla 100%, all Bible books 99–100%, Doña Perfecta 99.9%…) is now `whisper` and passing. **No free-library book is on `auto` or culled.** ✅
+>   - **Remaining sync work is a long tail on 18 non-free books, none reader-facing:**
+>     - **The Call of the Wild** — the only true `auto`/no-map book, and the only one with **no committed VTT**; needs a fresh Colab transcription before it can ship.
+>     - **17 `whisper` books below 90%** (Meditations 45%, Orgullo y Prejuicio 49%, Meditaciones 51%, Cartas a Lucilio 57%, Don Quijote I/II, El Príncipe, The Art of War, María, Viaje al Centro 69%, Dorian Gray, El Sombrero, The Time Machine, Rimas, Leyendas, La Odisea 82%, Fábulas y Verdades) — **content problems, not alignment problems** (abridged/selección audio, edition/translation mismatch, verse-number/footnote noise per whisper-sync-troubleshooting.md). Re-running Whisper won't move them; each needs targeted per-book work. All `isFree=false`, so no reader is served broken sync.
 > - [x] Stripe fully activated — 10 products, webhook live, price IDs in DB ✅
 > - [x] Meilisearch seeded — 67 books indexed, search functional ✅
 > - [x] Google OAuth live — any Google account can log in ✅
@@ -499,6 +502,20 @@
      - ❌ **Cartas a Lucilio 56.6%** — as predicted (63/124 letters + *selección* audio). Held back.
    - **Still to transcribe (Colab) + align:** María, Rimas, Meditaciones (ES second-wave), + the other EN self-dev/second-wave titles.
    - **Doc bug fixed alongside:** CLAUDE.md deploy-verify query used `typeorm_migrations`; real table is `migrations` (`data-source.ts` sets no custom name).
+
+---
+
+## Backlog — Prod sshd reliability (added 2026-07-15, from a live incident)
+
+> **What happened:** SSH to prod was fully unreachable — `Connection refused` on both 222 and 22, while the site (Traefik + all containers) stayed up. Root cause: `ssh.service` was **`disabled` and `inactive (dead)`** (`systemctl status ssh` → `disabled; preset: enabled`). A reboot did **not** bring it back because it was disabled at boot. Recovered only via the **Contabo VNC console** (VNC must be enabled in the panel + a reboot; VNC IP is `161.97.77.108`, *not* the server IP — see incident-response.md once documented). Fix applied in the moment: `systemctl enable --now ssh` → back on 222.
+>
+> **Why this is a real risk:** if the site containers had *also* gone down, there'd be no remote entry at all except VNC — and CI/CD auto-deploy (which SSHes in) is dead whenever sshd is. Needs a complete fix, not just the one-time re-enable.
+
+- [ ] **Root-cause why `ssh.service` got disabled** — check `journalctl -u ssh`, `/var/log/auth.log`, apt history, and any hardening/fail2ban action around the disable. Was it a manual `systemctl disable`, an unattended-upgrade, or a hardening script?
+- [ ] **Confirm the boot-start fix persists** — `systemctl is-enabled ssh` should return `enabled`; verify it survives a reboot (already re-enabled in the incident, but confirm).
+- [ ] **Harden against lockout** — consider (a) a systemd watchdog / periodic check that sshd is up on 222, (b) a second admin entry path (Tailscale SSH is already on the box — verify it stays up independently of `ssh.service`), (c) an alert (Grafana/uptime) when port 222 stops answering.
+- [ ] **Document the recovery path in `docs/incident-response.md`** — "SSH refused / sshd disabled" playbook: Contabo VNC (enable in panel → reboot → `xtigervncviewer 161.97.77.108::<port>`), then `systemctl enable --now ssh`. Update CLAUDE.md's "SSH port 222" note if needed.
+- [ ] **Note:** `.github/workflows/cd.yml` auto-deploy is down whenever sshd is down — deploys silently fail. The alert above would also catch stalled CD.
 
 ---
 

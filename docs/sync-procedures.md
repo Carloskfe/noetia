@@ -128,6 +128,19 @@ Avg confidence:  46.0%
 
 ## 3. Sync Quality Status
 
+*Last audited: **2026-07-15** (full live `books ⋈ sync_maps` query on prod). Standard: `syncCoverage` ≥ 90%.*
+
+### 2026-07-15 live audit — free library fully healthy
+
+Post chapter-linear retirement + units fix, every committed merged VTT has been aligned via `seed-sync-whisper` (real Whisper alignment, not chapter-linear). Live state across all 84 books:
+
+- **Free library: 66 / 66 `whisper`, all ≥ 90%** (Filipenses 90.7% is the floor; most 99–100%). **Zero `auto`, zero culled** in the free catalogue. The "~26 culled `auto` books" backlog item is **closed** — the books it named (Crimen y Castigo 99.8%, Niebla 100%, all ES/EN Bible books 99–100%, Doña Perfecta 99.9%, La Isla del Tesoro 98.7%…) are all `whisper` and passing.
+- **Non-free: 18 books, none reader-facing:**
+  - **The Call of the Wild** — only genuine `auto`/no-map book; **no committed VTT** → needs a Colab transcription before it can ship.
+  - **17 `whisper` books below 90%** — content problems (abridged/selección audio, edition/translation mismatch, verse-number/footnote noise), not alignment problems. Re-running Whisper will not move them; see the per-book root-cause classes below and in `whisper-sync-troubleshooting.md`. All `isFree=false` — the gate is working.
+
+*Historical audits (2026-07-12 drift-fix, 2026-06-29 EMA sweep) retained below for provenance; numbers above are authoritative where they differ.*
+
 *Last audited: **2026-07-12** (post drift-fix re-align of all 76 multi-chapter books; syncCoverage = aligned/total). Standard: `syncCoverage` ≥ 90%.*
 
 ### 2026-07-12 re-align audit (drift fix)
