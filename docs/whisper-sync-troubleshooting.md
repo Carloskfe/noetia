@@ -1048,6 +1048,80 @@ instead of archive.org.
 
 ---
 
+## 13. Phrase-timing units, and why chapter-linear alignment is retired
+
+Another **code bug, not a text problem** — and the reason the whole
+"chapter/parts" alignment strategy should not be used for new titles.
+
+### The unit contract: phrase times are SECONDS
+
+`sync_maps.phrases[].startTime` / `endTime` are **seconds** (floats, e.g.
+`1.267`). The reader compares them directly to `audio.currentTime` (seconds) —
+`reader-utils.ts` `phraseAt`/`seekToPhrase` do no conversion. Every producer
+must emit seconds: `srt-parser.service.ts` (VTT/SRT) and the Whisper aligner
+(`phrase-aligner.ts`, word `.start`/`.end`) already do.
+
+### The bug (fixed 2026-07-14, `844fbe4`)
+
+The legacy chapter-linear path (`alignment.service.ts` `assignTimestamps`)
+distributed phrases across `chapters[].startMs`/`endMs` and stored the result
+**in milliseconds** — a ~1000× unit mismatch. Symptoms on every affected
+`syncSource='auto'` book:
+- Escucha Activa highlight barely advances (it maps a whole hour of narration
+  into the first ~second of the timeline).
+- "Pick where you're reading" seeks **past the end** of the audio (a phrase at
+  `2_224_953` ms is read as 2.2M *seconds* → the browser clamps to the end).
+- Reported first on **Crimen y Castigo**.
+
+Fix: `assignTimestamps` now converts to seconds on write (`msToSeconds`);
+**migration 062** rescales existing rows — non-`whisper` maps whose max
+`endTime > 86_400` (impossible for a seconds timeline, true of every ms map).
+
+**Detection SQL** — any book still in milliseconds:
+```sql
+SELECT b.title, s."syncSource",
+       (SELECT max((p->>'endTime')::float) FROM jsonb_array_elements(s.phrases) p) AS max_end
+FROM sync_maps s JOIN books b ON b.id=s."bookId"
+WHERE (SELECT max((p->>'endTime')::float) FROM jsonb_array_elements(s.phrases) p) > 86400;
+```
+
+### Why chapter-linear is retired (Whisper only for new titles)
+
+Even with correct units, chapter-linear anchors on **structure** (pair text
+headings → audio chapter markers, spread phrases by character count). It has no
+idea where any individual phrase actually sits in the audio, so it fails
+whenever the text's chapter count ≠ the audio's chapter count. Validated on
+Crimen y Castigo (2026-07-15): its text has **55 headings** but the M4B has
+**30 chapter markers** ("Cap. II (A)/(B)" audio splits) → re-running
+`alignBook` fixed the *span* (→ 47 219 s, matching the M4B) but produced
+non-monotonic jumps. Historically this path scored these books **55–76%,
+below the 90% gate**.
+
+**Rule for injecting a new title:** it must get a **Whisper** sync map (§2
+pipeline), phrase-anchored, coverage ≥ 90%. Chapter-linear (`auto`) is a
+deprecated estimate that is **never shippable** — treat any `auto` map as
+"not yet synced." Do not re-run `alignAll` to "fix" a book; produce a Whisper
+map instead.
+
+### The quality gate is enforced in three places — keep them in sync
+
+A free-library title only appears if it has a Whisper map ≥ 90% coverage
+(`sync_maps.syncCoverage >= 0.90`) or is a genuine author upload
+(`uploadedById`). Enforcement points:
+1. **Discovery** — `BooksService.findAll` (SQL gate).
+2. **Collections** — `collections.service.ts` (same SQL gate).
+3. **Search** — `search.service.ts` indexes a `meetsStandard` flag and filters
+   on it (added 2026-07-15, `963313a`; before this, below-standard titles like
+   Crimen still surfaced in search and could be opened into a broken sync).
+   **After any deploy that changes the gate or re-syncs a book, re-run
+   `seed-search`** so the flag repopulates on existing Meili docs.
+
+A book below the gate is culled from *offering* but is still openable by direct
+id (`findById` is ungated) — expected, so existing library/deep-link readers
+aren't broken; it just won't be *discovered*.
+
+---
+
 ## <a name="why-90"></a>Why 90%, not 85%
 
 Raised from 85% on 2026-06-24 after this investigation showed that most

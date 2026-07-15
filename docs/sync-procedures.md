@@ -39,6 +39,15 @@ Name output files with a numeric prefix (`01_prologue.vtt`, `02_chapter.vtt`). T
 
 Use this after you have per-chapter VTT files for a book currently on `syncSource = 'auto'`.
 
+> **Every new title must reach `syncSource = 'whisper'` to ship.** An `auto`
+> (chapter-linear) map is a placeholder, never shippable — it's only a
+> character-count estimate over chapter markers and fails whenever the text's
+> chapter count ≠ the audio's. It is also culled from discovery, collections,
+> **and** search until it has a Whisper map ≥ 90% coverage. Do not try to "fix"
+> an `auto` book by re-running `alignAll`; produce a Whisper map. Background and
+> the phrase-timing unit contract (seconds): [whisper-sync-troubleshooting.md
+> §13](whisper-sync-troubleshooting.md#13-phrase-timing-units-and-why-chapter-linear-alignment-is-retired).
+
 ### Step 1 — Place VTTs in the transcriptions directory
 
 ```
