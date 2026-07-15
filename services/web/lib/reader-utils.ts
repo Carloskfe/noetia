@@ -90,3 +90,20 @@ export function effectiveDuration(audioDuration: number, phrases: Phrase[]): num
   const lastEnd = phrases.length ? phrases[phrases.length - 1].endTime : 0;
   return Math.max(audioDuration || 0, lastEnd);
 }
+
+/**
+ * Format an audio position/length for the player timeline.
+ *
+ * Audiobooks run for hours, so when the reference length has an hours component
+ * we show HH:MM:SS; shorter content stays M:SS. Pass the SAME `withHours` for
+ * the current position and the total so the two labels stay aligned. Guards
+ * against NaN / negative / Infinity (metadata not loaded yet) by clamping to 0.
+ */
+export function formatTimecode(seconds: number, withHours: boolean): string {
+  const total = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return withHours ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
-import { phraseAt, seekToPhrase, effectiveDuration, Phrase, Fragment, extractChapters } from '@/lib/reader-utils';
+import { phraseAt, seekToPhrase, effectiveDuration, formatTimecode, Phrase, Fragment, extractChapters } from '@/lib/reader-utils';
 import {
   applyTextSelection,
   addFragment,
@@ -46,12 +46,6 @@ type AudioBookmark = { phraseIndex: number };
 
 const SPEEDS = [0.75, 1, 1.25, 1.5];
 
-function formatTime(s: number): string {
-  if (!isFinite(s)) return '0:00';
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60);
-  return `${m}:${sec.toString().padStart(2, '0')}`;
-}
 
 export default function ReaderPage() {
   const { id: bookId } = useParams<{ id: string }>();
@@ -514,6 +508,8 @@ export default function ReaderPage() {
   // audio.duration under-reports on byte-concatenated multi-chapter MP3s (stale
   // header) — drive the progress bar off the true full-book length instead.
   const effDuration = effectiveDuration(duration, phrases);
+  // Multi-hour audiobooks → HH:MM:SS; keep both labels on the same format.
+  const showHours = effDuration >= 3600;
   const fontSizeClass = FONT_SIZE_CLASSES[fontSize];
 
   return (
@@ -609,7 +605,7 @@ export default function ReaderPage() {
             <div className="mb-5">
               <input type="range" min={0} max={effDuration || 0} value={currentTime} step={0.1} onChange={handleScrub} className="w-full accent-blue-600" />
               <div className="flex justify-between text-xs text-gray-400 mt-1">
-                <span>{formatTime(currentTime)}</span><span>{formatTime(effDuration)}</span>
+                <span>{formatTimecode(currentTime, showHours)}</span><span>{formatTimecode(effDuration, showHours)}</span>
               </div>
             </div>
             <button onClick={() => setMode('escucha-activa')}
@@ -836,8 +832,8 @@ export default function ReaderPage() {
                   className="w-full accent-blue-600"
                 />
                 <div className="flex justify-between text-xs text-gray-400 mt-1">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(effDuration)}</span>
+                  <span>{formatTimecode(currentTime, showHours)}</span>
+                  <span>{formatTimecode(effDuration, showHours)}</span>
                 </div>
               </div>
 
