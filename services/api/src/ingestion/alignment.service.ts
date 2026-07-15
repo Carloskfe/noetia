@@ -12,6 +12,11 @@ export interface Chapter {
   endMs: number;
 }
 
+/** Convert a millisecond value to seconds with millisecond precision. */
+function msToSeconds(ms: number): number {
+  return Math.round(ms) / 1000;
+}
+
 @Injectable()
 export class AlignmentService {
   private readonly logger = new Logger(AlignmentService.name);
@@ -141,7 +146,15 @@ export class AlignmentService {
     return result;
   }
 
-  /** Distribute timestamps for phrases[start..end] linearly within [audioStart, audioEnd]. */
+  /**
+   * Distribute timestamps for phrases[start..end] linearly within
+   * [audioStart, audioEnd]. Chapter bounds arrive in MILLISECONDS (ffprobe
+   * `startMs`/`endMs`), but phrase `startTime`/`endTime` are stored in SECONDS —
+   * that's what the reader (`audio.currentTime`) and the whisper/SRT sync paths
+   * use. Emitting milliseconds here made Escucha Activa ~1000× off: the highlight
+   * barely advanced and "pick where you're reading" seeked past the audio's end.
+   * Keep the char-distribution math in ms for precision, convert on write.
+   */
   private distributeSegment(
     phrases: SyncPhrase[],
     start: number,
@@ -156,9 +169,9 @@ export class AlignmentService {
 
     for (let i = start; i <= end; i++) {
       const chars = phrases[i].text.length || 1;
-      phrases[i].startTime = audioStart + Math.round((cumChars / totalChars) * duration);
+      phrases[i].startTime = msToSeconds(audioStart + (cumChars / totalChars) * duration);
       cumChars += chars;
-      phrases[i].endTime = audioStart + Math.round((cumChars / totalChars) * duration);
+      phrases[i].endTime = msToSeconds(audioStart + (cumChars / totalChars) * duration);
     }
   }
 

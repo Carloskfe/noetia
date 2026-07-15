@@ -54,12 +54,22 @@ describe('AlignmentService.assignTimestamps', () => {
 
     expect(result.every(p => p.endTime >= p.startTime)).toBe(true);
     expect(result.every(p => p.startTime >= 0)).toBe(true);
-    // Chapter 1 phrases stay within chapter 1 time range
+    // Chapter bounds are ms in; phrase times are SECONDS out (÷1000).
+    // Chapter 1 phrases stay within chapter 1 time range (0–10s)
     expect(result[0].startTime).toBeGreaterThanOrEqual(0);
-    expect(result[2].endTime).toBeLessThanOrEqual(10_000);
-    // Chapter 2 phrases within chapter 2 range
-    expect(result[3].startTime).toBeGreaterThanOrEqual(10_000);
-    expect(result[4].endTime).toBeLessThanOrEqual(20_000);
+    expect(result[2].endTime).toBeLessThanOrEqual(10);
+    // Chapter 2 phrases within chapter 2 range (10–20s)
+    expect(result[3].startTime).toBeGreaterThanOrEqual(10);
+    expect(result[4].endTime).toBeLessThanOrEqual(20);
+  });
+
+  it('emits phrase times in seconds, not the milliseconds it receives', () => {
+    // A 30-second book (chapters given in ms) must produce a max endTime of 30,
+    // not 30_000 — the reader compares these to audio.currentTime (seconds).
+    const phrases = [text(0, 'A'), text(1, 'B'), text(2, 'C')];
+    const result = service.assignTimestamps(phrases, THREE_CHAPTERS);
+    expect(result[result.length - 1].endTime).toBe(30);
+    expect(result[result.length - 1].endTime).not.toBe(30_000);
   });
 
   it('falls back to full-book linear distribution when no headings', () => {
@@ -68,7 +78,7 @@ describe('AlignmentService.assignTimestamps', () => {
     const result = service.assignTimestamps(phrases, THREE_CHAPTERS);
 
     expect(result[0].startTime).toBe(0);
-    expect(result[result.length - 1].endTime).toBe(30_000);
+    expect(result[result.length - 1].endTime).toBe(30);
     expect(result.every(p => p.endTime > p.startTime || p.text.length === 0)).toBe(true);
   });
 
@@ -78,7 +88,7 @@ describe('AlignmentService.assignTimestamps', () => {
     const result = service.assignTimestamps(manyHeadings, THREE_CHAPTERS);
 
     expect(result[0].startTime).toBe(0);
-    expect(result[result.length - 1].endTime).toBe(30_000);
+    expect(result[result.length - 1].endTime).toBe(30);
   });
 
   it('produces monotonically non-decreasing startTimes', () => {
@@ -120,8 +130,8 @@ describe('AlignmentService.distributeLinear', () => {
     const phrases = [text(0, 'Hello world.'), text(1, 'Goodbye world.')];
     const result = service.distributeLinear(phrases, 5_000, 15_000);
 
-    expect(result[0].startTime).toBe(5_000);
-    expect(result[result.length - 1].endTime).toBe(15_000);
+    expect(result[0].startTime).toBe(5);
+    expect(result[result.length - 1].endTime).toBe(15);
   });
 
   it('allocates time proportional to character count', () => {
@@ -139,6 +149,6 @@ describe('AlignmentService.distributeLinear', () => {
     const result = service.distributeLinear(phrases, 0, 60_000);
 
     expect(result[0].startTime).toBe(0);
-    expect(result[0].endTime).toBe(60_000);
+    expect(result[0].endTime).toBe(60);
   });
 });
