@@ -444,3 +444,35 @@ describe('shareFragment textAlign', () => {
     expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)).not.toHaveProperty('textAlign');
   });
 });
+
+describe('shareFragment textScale', () => {
+  const base = { format: 'ig-post' as ShareFormat, font: 'playfair', bgType: 'solid' as const, bgColors: ['#000'] };
+  afterEach(() => jest.restoreAllMocks());
+  function mockOk() {
+    global.fetch = jest.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ url: 'x' }) } as Response);
+  }
+
+  it('sends textScale when larger than the default (L)', async () => {
+    mockOk();
+    await shareFragment('frag-1', { ...base, textScale: 1.5 });
+    expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body).textScale).toBe(1.5);
+  });
+
+  it('sends textScale when smaller than the default (S)', async () => {
+    mockOk();
+    await shareFragment('frag-1', { ...base, textScale: 0.7 });
+    expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body).textScale).toBe(0.7);
+  });
+
+  it('omits textScale when 1 (the default M)', async () => {
+    mockOk();
+    await shareFragment('frag-1', { ...base, textScale: 1 });
+    expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)).not.toHaveProperty('textScale');
+  });
+
+  it('omits textScale when not specified', async () => {
+    mockOk();
+    await shareFragment('frag-1', base);
+    expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)).not.toHaveProperty('textScale');
+  });
+});

@@ -647,6 +647,7 @@ export const en = {
     flip: 'Mirror background',
     flipAria: 'Mirror the background image horizontally',
     align: { left: 'Align left', center: 'Align center', right: 'Align right' },
+    textSize: { label: 'Text size', S: 'Small text', M: 'Medium text', L: 'Large text' },
   },
   giftCard: {
     send: {

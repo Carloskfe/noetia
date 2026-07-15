@@ -94,6 +94,7 @@ export interface ShareParams {
   bgImage?: string;
   bgFlip?: boolean;
   textAlign?: 'left' | 'center' | 'right';
+  textScale?: number;
 }
 
 export async function shareFragment(fragmentId: string, params: ShareParams): Promise<string> {
@@ -115,6 +116,7 @@ export async function shareFragment(fragmentId: string, params: ShareParams): Pr
       ...(params.bgImage     ? { bgImage:     params.bgImage }     : {}),
       ...(params.bgFlip      ? { bgFlip:      true }               : {}),
       ...(params.textAlign && params.textAlign !== 'center' ? { textAlign: params.textAlign } : {}),
+      ...(params.textScale && params.textScale !== 1 ? { textScale: params.textScale } : {}),
     }),
   });
   return data.url as string;

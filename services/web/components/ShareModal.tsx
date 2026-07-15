@@ -71,6 +71,13 @@ const FORMAT_ASPECT: Record<ShareFormat, string> = {
 
 const SHARE_FORMATS = Object.keys(FORMAT_PLATFORM_MAP) as ShareFormat[];
 
+// Quote text size options — scale matches the image-gen clamp range (0.7–1.5).
+const TEXT_SIZES = [
+  { id: 'S', scale: 0.7 },
+  { id: 'M', scale: 1 },
+  { id: 'L', scale: 1.5 },
+] as const;
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 type Props = {
@@ -105,6 +112,7 @@ export default function ShareModal({
   const [textBold, setTextBold] = useState(false);
   const [textItalic, setTextItalic] = useState(false);
   const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
+  const [textScale, setTextScale] = useState(1);
   const [captionEnabled, setCaptionEnabled] = useState(false);
 
   // E1 — editable fragment text
@@ -155,6 +163,7 @@ export default function ShareModal({
     ...(textBold                        ? { textBold:    true }              : {}),
     ...(textItalic                      ? { textItalic:  true }              : {}),
     ...(textAlign !== 'center'          ? { textAlign }                      : {}),
+    ...(textScale !== 1                 ? { textScale }                      : {}),
     ...(bgType === 'gradient'           ? { gradientDir }                    : {}),
     ...(bgType === 'image' && bgImage   ? { bgImage }                        : {}),
     ...(imageActive && bgFlip           ? { bgFlip: true }                   : {}),
@@ -339,9 +348,10 @@ export default function ShareModal({
                 style={{ fontFamily: fontCss }}
               >
                 <p
-                  className="text-sm leading-snug line-clamp-6 w-full"
+                  className="leading-snug line-clamp-6 w-full"
                   style={{
                     color: textColor,
+                    fontSize: `${0.875 * textScale}rem`,
                     fontWeight: textBold ? 'bold' : 'normal',
                     fontStyle: textItalic ? 'italic' : 'normal',
                     textAlign,
@@ -499,6 +509,23 @@ export default function ShareModal({
                       {a === 'center' && <><path d="M4 6h16M7 12h10M6 18h12" /></>}
                       {a === 'right' && <><path d="M4 6h16M10 12h10M7 18h13" /></>}
                     </svg>
+                  </button>
+                ))}
+              </div>
+
+              {/* Quote text size (S/M/L) */}
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-xs text-gray-500 flex-1">{t.shareCard.textSize.label}</span>
+                {TEXT_SIZES.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setTextScale(s.scale)}
+                    title={t.shareCard.textSize[s.id]}
+                    aria-label={t.shareCard.textSize[s.id]}
+                    aria-pressed={textScale === s.scale}
+                    className={`w-9 h-9 flex-shrink-0 rounded-xl border text-sm font-semibold transition ${textScale === s.scale ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}
+                  >
+                    {s.id}
                   </button>
                 ))}
               </div>
