@@ -157,8 +157,8 @@ Authors / Publishers / Companies
   1. "Toca donde vas leyendo" — user taps exact phrase, audio seeks and plays
   2. "Continuar desde frase N" — resumes from last saved position
   3. "Desde el principio"
-- Sync engine: phrase-level highlight driven by `phraseAt()` binary search on `startTime/endTime`
-- Sync timestamps come from SRT/VTT files uploaded by authors, or Whisper-generated VTT files for public-domain books (`syncSource = 'whisper'`); books without a sync file are readable but have `startTime=0` throughout
+- Sync engine: phrase-level highlight driven by `phraseAt()` — a linear scan over timed phrases (**seconds**), skipping zero-duration structural markers (a binary search misfired on the non-monotonic startTimes those markers create)
+- Sync timestamps come from SRT/VTT files uploaded by authors, or Whisper-generated VTT files for public-domain books (`syncSource = 'whisper'`); books without a real sync map are readable but have `startTime=0` throughout. The legacy chapter-linear (`auto`) estimate is retired — non-shippable, culled until a Whisper map lands (see [whisper-sync-troubleshooting.md §13](whisper-sync-troubleshooting.md#13-phrase-timing-units-and-why-chapter-linear-alignment-is-retired))
 
 ### 4. Highlight & Fragment System
 - Select text while reading to save as "fragments"

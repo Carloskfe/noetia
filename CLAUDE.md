@@ -153,7 +153,7 @@ noetia/
 │   │   ├── components/
 │   │   │   ├── BookGrid.tsx        # Book grid with next/image covers + language badge
 │   │   │   ├── ReaderTopBar.tsx    # Back/discover/clubs links + font/dark/audio/chapter/fragments controls — fully i18n
-│   │   │   ├── ShareModal.tsx      # Instagram, Facebook, LinkedIn, Pinterest formats
+│   │   │   ├── ShareModal.tsx      # Instagram, Facebook, LinkedIn, Pinterest formats; font/bold/italic/align/color/bg + S/M/L quote size (textScale)
 │   │   │   ├── StatsTab.tsx        # 7-day bar chart, streak, goal progress rings, goal form
 │   │   │   └── PrivacyTab.tsx      # 4 privacy toggle switches with optimistic PATCH
 │   │   ├── lib/
@@ -181,7 +181,7 @@ noetia/
 │   │   ├── app.py                  # Flask API — POST /generate
 │   │   ├── storage.py              # MinIO client (supports MINIO_PUBLIC_URL rewrite)
 │   │   ├── templates/              # Quote card design templates
-│   │   │   ├── base.py             # Core Pillow render_card, gradient, luminance utils
+│   │   │   ├── base.py             # Core Pillow render_card (textScale-aware), gradient, luminance utils
 │   │   │   ├── linkedin.py         # 1200×627 (post), 1200×675 (twitter-card)
 │   │   │   ├── instagram.py        # 1080×1080 (post), 1080×1920 (story/reel)
 │   │   │   ├── facebook.py         # 1200×630 (post), 1080×1920 (story/reel)
@@ -441,7 +441,7 @@ Themed cover PNGs live in `services/web/public/covers/` (generate with `services
 
 ## Database Migrations
 
-Run commands (dev + prod), full history (000–061), golden rules, and how to generate a new migration: [`docs/database-migrations.md`](docs/database-migrations.md).
+Run commands (dev + prod), full history (000–063), golden rules, and how to generate a new migration: [`docs/database-migrations.md`](docs/database-migrations.md).
 
 > **Critical rule:** Never edit a migration after deployment — write a corrective migration instead. Migrations 060 → 061 are the canonical example.
 
@@ -590,7 +590,7 @@ All docs live in `docs/`. Engineering-relevant docs:
 | [TASKS.md](docs/TASKS.md) | Sprint tracker and active backlog |
 | [sync-procedures.md](docs/sync-procedures.md) | Whisper pipeline, VTT steps, quality status table |
 | [whisper-sync-troubleshooting.md](docs/whisper-sync-troubleshooting.md) | Root-cause diagnosis for books below 90% coverage |
-| [database-migrations.md](docs/database-migrations.md) | Migration history (000–061), golden rules, run commands |
+| [database-migrations.md](docs/database-migrations.md) | Migration history (000–063), golden rules, run commands |
 | [persona-pipeline.md](docs/persona-pipeline.md) | Event stream, theme tagging, persona computation, opt-out |
 | [stripe-setup.md](docs/stripe-setup.md) | Stripe products, webhook registration, env vars |
 | [upload-guide.md](docs/upload-guide.md) | Author file specs — text, audio, cover, SRT/VTT |

@@ -8,6 +8,13 @@
 > **Current status (2026-06-25):** Stages 0–5 complete + major feature sprint complete. **Production live at https://noetia.app** — Contabo VPS (Traefik v2.11, containers healthy, 61 migrations applied). SSH port 222, fail2ban active. CI/CD working (auto-deploys + runs migrations).
 >
 > **Completed since last update:**
+> - [x] **Sync-map units bug fixed (2026-07-14, migration 062)** — legacy chapter-linear (`auto`) maps stored phrase times in ms; reader expects seconds → Escucha Activa ~1000× off (reported on Crimen y Castigo). `alignment.service.ts` now emits seconds; migration rescales 26 existing maps. See [whisper-sync-troubleshooting.md §13](whisper-sync-troubleshooting.md#13-phrase-timing-units-and-why-chapter-linear-alignment-is-retired) ✅
+> - [x] **Chapter-linear alignment retired** — validated `alignAll` fixes span but not accuracy (Crimen: 55 text headings vs 30 audio chapters). New titles must get a Whisper map; `auto` is never shippable ✅
+> - [x] **Search quality-gate cull (2026-07-15, `963313a`)** — below-standard titles leaked into Meili search (only isFree/isPublished filtered); now indexes a `meetsStandard` flag matching discovery + collections. **Re-run `seed-search` after deploy** ✅
+> - [x] **OAuth email-confirmation fix (migration 063)** — Google/FB/Apple users created before emailConfirmed-on-create were trapped behind the confirmation gate with no email; `upsertOAuthUser` now heals on login, migration confirms the backlog ✅
+> - [x] **Reader audio timeline — full-book HH:MM:SS** — `formatTimecode` in reader-utils; timeline already used `effectiveDuration` (full book, not one chapter) ✅
+> - [x] **Quote card text size (S/M/L)** — `textScale` param in image-gen + ShareModal control + scaled preview ✅
+> - [ ] **Whisper maps for the ~26 culled `auto` books** *(carry-over — the one open sync item)* — Crimen y Castigo, Viaje al Centro de la Tierra, Niebla, most Bible books, etc. Run the §2 Colab pipeline; they stay culled until ≥90% coverage
 > - [x] Stripe fully activated — 10 products, webhook live, price IDs in DB ✅
 > - [x] Meilisearch seeded — 67 books indexed, search functional ✅
 > - [x] Google OAuth live — any Google account can log in ✅
