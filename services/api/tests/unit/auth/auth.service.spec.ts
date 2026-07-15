@@ -173,7 +173,7 @@ describe('AuthService', () => {
 
   describe('upsertOAuthUser', () => {
     it('returns the existing user when found by provider', async () => {
-      const existing = { id: '99', email: 'g@test.com' };
+      const existing = { id: '99', email: 'g@test.com', emailConfirmed: true };
       mockUsersService.findByProvider.mockResolvedValue(existing);
       mockUsersService.findById.mockResolvedValue(existing);
 
@@ -187,6 +187,39 @@ describe('AuthService', () => {
 
       expect(mockUsersService.create).not.toHaveBeenCalled();
       expect(result).toEqual(existing);
+    });
+
+    it('does not re-confirm an already-confirmed existing user', async () => {
+      const existing = { id: '99', email: 'g@test.com', emailConfirmed: true };
+      mockUsersService.findByProvider.mockResolvedValue(existing);
+      mockUsersService.findById.mockResolvedValue(existing);
+
+      await service.upsertOAuthUser({
+        provider: AuthProvider.GOOGLE,
+        providerId: 'gid123',
+        email: 'g@test.com',
+        name: 'G User',
+        avatarUrl: null,
+      });
+
+      expect(mockUsersService.update).not.toHaveBeenCalled();
+    });
+
+    it('heals an existing OAuth user left emailConfirmed=false', async () => {
+      const stuck = { id: '99', email: 'g@test.com', emailConfirmed: false };
+      mockUsersService.findByProvider.mockResolvedValue(stuck);
+      mockUsersService.findById.mockResolvedValue({ ...stuck, emailConfirmed: true });
+
+      const result = await service.upsertOAuthUser({
+        provider: AuthProvider.GOOGLE,
+        providerId: 'gid123',
+        email: 'g@test.com',
+        name: 'G User',
+        avatarUrl: null,
+      });
+
+      expect(mockUsersService.update).toHaveBeenCalledWith('99', { emailConfirmed: true });
+      expect(result.emailConfirmed).toBe(true);
     });
 
     it('creates new OAuth user with emailConfirmed: true', async () => {

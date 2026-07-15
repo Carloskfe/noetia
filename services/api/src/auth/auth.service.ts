@@ -70,6 +70,13 @@ export class AuthService {
         emailConfirmed: true, // OAuth emails are verified by the provider
       });
     } else {
+      // Heal existing OAuth accounts left unconfirmed: those created before we
+      // set emailConfirmed on creation were trapped behind the confirmation
+      // gate with no way out — OAuth users never receive (or can resend) a
+      // confirmation email, which is local-provider only.
+      if (!user.emailConfirmed) {
+        await this.usersService.update(user.id, { emailConfirmed: true });
+      }
       user = (await this.usersService.findById(user.id))!;
     }
     return user;
