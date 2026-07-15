@@ -1,7 +1,13 @@
 import { Inject, Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import type { Index } from 'meilisearch';
 import { Book } from '../books/book.entity';
+import { SyncMap } from '../books/sync-map.entity';
 import { MEILI_INDEX } from './search.constants';
+
+// Mirrors the discovery gate in BooksService.findAll — keep them in sync.
+const SYNC_COVERAGE_GATE = 0.9;
 
 type BookDoc = {
   id: string;
@@ -12,6 +18,11 @@ type BookDoc = {
   language: string;
   isFree: boolean;
   isPublished: boolean;
+  // True when the title may be offered: a genuine author/publisher upload, or a
+  // free-library book whose Whisper sync map clears the coverage gate. Search
+  // filters on this so below-standard titles (e.g. auto-aligned books awaiting a
+  // Whisper map) never surface — same rule discovery and collections enforce.
+  meetsStandard: boolean;
   coverUrl: string | null;
   createdAt: string;
 };
@@ -20,13 +31,16 @@ type BookDoc = {
 export class SearchService implements OnModuleInit {
   private readonly logger = new Logger(SearchService.name);
 
-  constructor(@Inject(MEILI_INDEX) private readonly index: Index<BookDoc>) {}
+  constructor(
+    @Inject(MEILI_INDEX) private readonly index: Index<BookDoc>,
+    @InjectRepository(SyncMap) private readonly syncMapRepo: Repository<SyncMap>,
+  ) {}
 
   async onModuleInit() {
     await this.index
       .updateSettings({
         searchableAttributes: ['title', 'author', 'description'],
-        filterableAttributes: ['category', 'isFree', 'isPublished', 'language'],
+        filterableAttributes: ['category', 'isFree', 'isPublished', 'language', 'meetsStandard'],
         sortableAttributes: ['createdAt'],
       })
       .catch((err: Error) =>
@@ -34,8 +48,20 @@ export class SearchService implements OnModuleInit {
       );
   }
 
-  async indexBook(book: Book): Promise<void> {
-    const doc: BookDoc = {
+  /** Book ids (from the given set) that have a sync map clearing the gate. */
+  private async gatedBookIds(bookIds: string[]): Promise<Set<string>> {
+    if (!bookIds.length) return new Set();
+    const rows = await this.syncMapRepo
+      .createQueryBuilder('sm')
+      .select('DISTINCT sm.bookId', 'bookId')
+      .where('sm.bookId IN (:...ids)', { ids: bookIds })
+      .andWhere('sm.syncCoverage >= :gate', { gate: SYNC_COVERAGE_GATE })
+      .getRawMany<{ bookId: string }>();
+    return new Set(rows.map((r) => r.bookId));
+  }
+
+  private toDoc(book: Book, meetsStandard: boolean): BookDoc {
+    return {
       id: book.id,
       title: book.title,
       author: book.author,
@@ -44,11 +70,18 @@ export class SearchService implements OnModuleInit {
       language: book.language,
       isFree: book.isFree,
       isPublished: book.isPublished,
+      meetsStandard,
       coverUrl: book.coverUrl ?? null,
       createdAt: book.createdAt?.toISOString() ?? new Date().toISOString(),
     };
+  }
+
+  async indexBook(book: Book): Promise<void> {
+    // Author uploads are gated by the admin flow; free-library books need a
+    // qualifying Whisper sync map.
+    const meetsStandard = book.uploadedById != null || (await this.gatedBookIds([book.id])).has(book.id);
     await this.index
-      .addDocuments([doc], { primaryKey: 'id' })
+      .addDocuments([this.toDoc(book, meetsStandard)], { primaryKey: 'id' })
       .catch((err: Error) => this.logger.warn(`Index book failed (${book.id}): ${err.message}`));
   }
 
@@ -59,13 +92,9 @@ export class SearchService implements OnModuleInit {
   }
 
   async search(q: string, options: { category?: string; isFree?: boolean }) {
-    const filter: string[] = ['isPublished = true'];
+    const filter: string[] = ['isPublished = true', 'meetsStandard = true'];
     if (options.category) filter.push(`category = "${options.category}"`);
-    // Only offer books that meet the standard. Culled below-standard titles are
-    // isFree=false, so default the public search to free-only — never surface a
-    // title that would error when opened. (The index lacks uploadedById/sync
-    // coverage; when author books enter search, index a `meetsStandard` flag and
-    // filter on that instead so paid-but-complete author titles remain findable.)
+    // Public search defaults to the free library; author/paid titles opt in.
     filter.push(`isFree = ${options.isFree ?? true}`);
 
     return this.index.search(q, {
@@ -75,18 +104,10 @@ export class SearchService implements OnModuleInit {
   }
 
   async indexAll(books: Book[]): Promise<void> {
-    const docs: BookDoc[] = books.map((book) => ({
-      id: book.id,
-      title: book.title,
-      author: book.author,
-      description: book.description ?? '',
-      category: book.category,
-      language: book.language,
-      isFree: book.isFree,
-      isPublished: book.isPublished,
-      coverUrl: book.coverUrl ?? null,
-      createdAt: book.createdAt?.toISOString() ?? new Date().toISOString(),
-    }));
+    const gated = await this.gatedBookIds(books.map((b) => b.id));
+    const docs = books.map((book) =>
+      this.toDoc(book, book.uploadedById != null || gated.has(book.id)),
+    );
     await this.index.addDocuments(docs, { primaryKey: 'id' });
   }
 }

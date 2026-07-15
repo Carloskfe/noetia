@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import MeiliSearch from 'meilisearch';
 import { SearchController } from './search.controller';
 import { SearchService } from './search.service';
+import { SyncMap } from '../books/sync-map.entity';
 import { MEILI_INDEX } from './search.constants';
 
 export { MEILI_INDEX };
 
 @Module({
+  imports: [TypeOrmModule.forFeature([SyncMap])],
   providers: [
     {
       provide: MEILI_INDEX,

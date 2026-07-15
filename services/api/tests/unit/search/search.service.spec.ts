@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { SearchService } from '../../../src/search/search.service';
 import { MEILI_INDEX } from '../../../src/search/search.constants';
 import { Book, BookCategory } from '../../../src/books/book.entity';
+import { SyncMap } from '../../../src/books/sync-map.entity';
 
 const mockIndex = {
   updateSettings: jest.fn().mockResolvedValue({}),
@@ -9,6 +11,16 @@ const mockIndex = {
   deleteDocument: jest.fn().mockResolvedValue({}),
   search: jest.fn(),
 };
+
+// Query-builder mock for the syncCoverage gate lookup. `getRawMany` returns the
+// rows for bookIds that clear the gate — tests set it per case.
+const mockQb = {
+  select: jest.fn().mockReturnThis(),
+  where: jest.fn().mockReturnThis(),
+  andWhere: jest.fn().mockReturnThis(),
+  getRawMany: jest.fn().mockResolvedValue([]),
+};
+const mockSyncMapRepo = { createQueryBuilder: jest.fn(() => mockQb) };
 
 const makeBook = (overrides: Partial<Book> = {}): Book =>
   ({
@@ -34,12 +46,18 @@ describe('SearchService', () => {
       providers: [
         SearchService,
         { provide: MEILI_INDEX, useValue: mockIndex },
+        { provide: getRepositoryToken(SyncMap), useValue: mockSyncMapRepo },
       ],
     }).compile();
 
     service = module.get<SearchService>(SearchService);
     jest.clearAllMocks();
     mockIndex.updateSettings.mockResolvedValue({});
+    mockSyncMapRepo.createQueryBuilder.mockReturnValue(mockQb);
+    mockQb.select.mockReturnThis();
+    mockQb.where.mockReturnThis();
+    mockQb.andWhere.mockReturnThis();
+    mockQb.getRawMany.mockResolvedValue([]);
   });
 
   describe('onModuleInit', () => {
@@ -48,7 +66,7 @@ describe('SearchService', () => {
       expect(mockIndex.updateSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           searchableAttributes: ['title', 'author', 'description'],
-          filterableAttributes: ['category', 'isFree', 'isPublished', 'language'],
+          filterableAttributes: ['category', 'isFree', 'isPublished', 'language', 'meetsStandard'],
           sortableAttributes: ['createdAt'],
         }),
       );
@@ -96,6 +114,38 @@ describe('SearchService', () => {
       mockIndex.addDocuments.mockRejectedValue(new Error('unavailable'));
       await expect(service.indexBook(makeBook())).resolves.not.toThrow();
     });
+
+    it('marks a free book meetsStandard=true when its sync map clears the gate', async () => {
+      mockQb.getRawMany.mockResolvedValue([{ bookId: 'b-1' }]);
+
+      await service.indexBook(makeBook({ id: 'b-1', uploadedById: null }));
+
+      expect(mockIndex.addDocuments).toHaveBeenCalledWith(
+        [expect.objectContaining({ meetsStandard: true })],
+        { primaryKey: 'id' },
+      );
+    });
+
+    it('marks a below-standard free book meetsStandard=false (culled from search)', async () => {
+      mockQb.getRawMany.mockResolvedValue([]); // no sync map clears 0.90
+
+      await service.indexBook(makeBook({ id: 'b-1', uploadedById: null }));
+
+      expect(mockIndex.addDocuments).toHaveBeenCalledWith(
+        [expect.objectContaining({ meetsStandard: false })],
+        { primaryKey: 'id' },
+      );
+    });
+
+    it('marks an author upload meetsStandard=true without needing a sync map', async () => {
+      await service.indexBook(makeBook({ id: 'b-9', uploadedById: 'author-1', isFree: false }));
+
+      expect(mockSyncMapRepo.createQueryBuilder).not.toHaveBeenCalled();
+      expect(mockIndex.addDocuments).toHaveBeenCalledWith(
+        [expect.objectContaining({ meetsStandard: true })],
+        { primaryKey: 'id' },
+      );
+    });
   });
 
   describe('removeBook', () => {
@@ -121,6 +171,15 @@ describe('SearchService', () => {
         'quijote',
         expect.objectContaining({ filter: expect.stringContaining('isPublished = true') }),
       );
+    });
+
+    it('always filters on meetsStandard = true (culls below-standard titles)', async () => {
+      mockIndex.search.mockResolvedValue({ hits: [] });
+
+      await service.search('crimen', {});
+
+      const call = mockIndex.search.mock.calls[0][1];
+      expect(call.filter).toContain('meetsStandard = true');
     });
 
     it('appends category filter when provided', async () => {
