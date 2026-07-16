@@ -322,6 +322,12 @@ export const en = {
     popular: 'Most popular',
   },
   tutorials: {
+    nav: {
+      skip: 'Skip',
+      prev: 'Back',
+      next: 'Next',
+      done: 'Got it',
+    },
     welcome: {
       ariaLabel: 'Welcome to Noetia',
       tagline: 'Read. Listen. Capture. Share.',

@@ -159,6 +159,7 @@ export const es: MobileTranslations = {
       clubs:     { title: 'Lee con otros', body: 'Únete a clubes de lectura, discute pasajes y escucha en vivo con Escucha Juntos.' },
     },
     skip: 'Saltar',
+    prev: 'Atrás',
     next: 'Siguiente',
     done: '¡Comenzar!',
     dismissedMsg: 'Puedes ver el tour de nuevo en Cuenta → Ayuda.',

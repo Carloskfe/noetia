@@ -157,6 +157,7 @@ export const en = {
       clubs:     { title: 'Read with others', body: 'Join reading clubs, discuss passages, and listen live together with Escucha Juntos.' },
     },
     skip: 'Skip',
+    prev: 'Back',
     next: 'Next',
     done: "Let's go!",
     dismissedMsg: 'You can replay the tour anytime in Account → Help.',

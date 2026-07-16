@@ -324,6 +324,12 @@ export const es: Translations = {
     popular: 'Más popular',
   },
   tutorials: {
+    nav: {
+      skip: 'Omitir',
+      prev: 'Atrás',
+      next: 'Siguiente',
+      done: 'Entendido',
+    },
     welcome: {
       ariaLabel: 'Bienvenido a Noetia',
       tagline: 'Lee. Escucha. Captura. Comparte.',
