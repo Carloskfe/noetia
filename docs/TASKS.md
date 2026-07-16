@@ -511,11 +511,10 @@
 >
 > **Why this is a real risk:** if the site containers had *also* gone down, there'd be no remote entry at all except VNC — and CI/CD auto-deploy (which SSHes in) is dead whenever sshd is. Needs a complete fix, not just the one-time re-enable.
 
-- [ ] **Root-cause why `ssh.service` got disabled** — check `journalctl -u ssh`, `/var/log/auth.log`, apt history, and any hardening/fail2ban action around the disable. Was it a manual `systemctl disable`, an unattended-upgrade, or a hardening script?
-- [ ] **Confirm the boot-start fix persists** — `systemctl is-enabled ssh` should return `enabled`; verify it survives a reboot (already re-enabled in the incident, but confirm).
-- [ ] **Harden against lockout** — consider (a) a systemd watchdog / periodic check that sshd is up on 222, (b) a second admin entry path (Tailscale SSH is already on the box — verify it stays up independently of `ssh.service`), (c) an alert (Grafana/uptime) when port 222 stops answering.
-- [ ] **Document the recovery path in `docs/incident-response.md`** — "SSH refused / sshd disabled" playbook: Contabo VNC (enable in panel → reboot → `xtigervncviewer 161.97.77.108::<port>`), then `systemctl enable --now ssh`. Update CLAUDE.md's "SSH port 222" note if needed.
-- [ ] **Note:** `.github/workflows/cd.yml` auto-deploy is down whenever sshd is down — deploys silently fail. The alert above would also catch stalled CD.
+- [x] **Root-caused (2026-07-15)** — an **automatic `openssh-server` upgrade** (`…13.16 → …13.18`, apt-daily ~06:12 Jul 14) disabled `ssh.service` to hand off to Ubuntu 24.04 socket activation, but `ssh.socket` was already `disabled` → *neither* unit came up → 30-hour lockout. Not a human, not an attack — a dual-unit systemd packaging edge case. Evidence: `journalctl -u ssh` shows `Jul 14 06:12:29 Stopped` with no `Started` until our fix; apt `history.log` shows the openssh upgrade at that window. ✅
+- [x] **Permanent fix applied** — `systemctl mask ssh.socket` (hard `/dev/null` override so no future upgrade can hand off to it) + `ssh.service` enabled with a real boot symlink. `is-enabled` → `enabled` / `masked`. Recovery + fix documented in [`incident-response.md §9`](incident-response.md#9-ssh-refused--total-ssh-lockout-sshd-disabled). ✅
+- [ ] **Optional hardening — second admin entry path** — enable **Tailscale SSH** (Tailscale is already on the box for Grafana, `100.84.48.16`); it's independent of `ssh.service`, so any future sshd failure wouldn't require a VNC rescue. *(Not yet done — offered.)*
+- [ ] **Optional — alert when :222 stops answering** — a Grafana/uptime probe on port 222 would also catch stalled CD (auto-deploy SSHes in, so it dies silently whenever sshd is down). *(Not yet done.)*
 
 ---
 

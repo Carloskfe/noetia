@@ -216,3 +216,34 @@ docker ps | grep noetia-monitor
 ```
 
 URL: `http://100.84.48.16:3001` (Tailscale only — not reachable via public IP or SSH tunnel).
+
+---
+
+## 9. SSH refused / total SSH lockout (sshd disabled)
+
+**Symptom:** `ssh -p 222 root@84.247.140.175` returns **`Connection refused`** on 222 *and* 22, while the **site stays up** (containers auto-restart independently of sshd). CI/CD auto-deploy also silently fails (it SSHes in). `Connection refused` (not `timeout`) = host reachable, **no sshd listener**.
+
+**Confirmed root cause (2026-07-15 incident, 30-hour lockout):** an **automatic `openssh-server` upgrade** (`apt-daily`, ~06:12) **disabled `ssh.service`** to hand off to Ubuntu 24.04's socket-activation model — but `ssh.socket` was already `disabled`, so *neither* unit came up. A reboot does **not** fix it (disabled at boot).
+
+### Recover — via Contabo VNC console (the only way in when sshd is down)
+1. **Contabo panel** → your VPS → **VNC**: *enable* it (off by default; enabling **requires a reboot** — use the panel's **Restart** button, all containers are `restart: unless-stopped` so the site recovers on its own). Cycling VNC off→on clears a stale/refusing listener.
+2. **VNC host is NOT the server IP** — it's Contabo's console host **`161.97.77.108`** (server public IP is `84.247.140.175`), on the panel's port (e.g. `63041`) with the panel's VNC password.
+3. Connect from your machine: `sudo apt install -y tigervnc-viewer` then `xtigervncviewer 161.97.77.108::<PORT>` (**double colon** = raw port). First connect may drop with `End of stream` — retry 2–3×.
+4. At the console, log in as `root` with the **OS root password** (not the VNC password), then bring sshd back:
+   ```bash
+   systemctl enable --now ssh    # start now + enable on boot
+   ss -tlnp | grep ssh           # confirm listening on :222
+   ```
+
+### Permanent fix (prevents recurrence) — mask the socket
+```bash
+systemctl mask ssh.socket                      # hard-override: upgrades can't hand off to it
+systemctl is-enabled ssh.service ssh.socket    # expect: enabled / masked
+```
+`ssh.service` runs standalone and binds :222 from `sshd_config`; `disable` alone is not enough (a package preset can flip it back — that's what caused the incident). Applied 2026-07-15.
+
+### Diagnose why it happened (if it recurs despite the mask)
+```bash
+journalctl -u ssh --no-pager | grep -iE 'stopp|start|deactiv' | tail -20   # when sshd went down
+zgrep -iE 'openssh' /var/log/apt/history.log* 2>/dev/null | grep -i upgrade  # was openssh upgraded then?
+```
