@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { markReaderTutorialSeen } from '@/lib/reader-tutorial';
 import { useTranslation } from '@/lib/i18n';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
 
 export { hasSeenReaderTutorial } from '@/lib/reader-tutorial';
 
@@ -26,7 +26,6 @@ interface Props {
 }
 
 export default function ReaderTutorial({ onDismiss }: Props) {
-  const [step, setStep] = useState(0);
   const { t } = useTranslation();
   const tr = t.tutorials.reader;
 
@@ -35,46 +34,14 @@ export default function ReaderTutorial({ onDismiss }: Props) {
     onDismiss();
   }
 
-  const current = tr.steps[step];
-  const isLast = step === tr.steps.length - 1;
+  const steps = tr.steps.map((s, i) => ({ icon: ICONS[i], title: s.title, body: s.body }));
 
   return (
-    <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label={tr.ariaLabel}
-    >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
-        <div className="flex justify-center gap-1.5 mb-6">
-          {tr.steps.map((_, i) => (
-            <span
-              key={i}
-              className={`h-1.5 rounded-full transition-all ${i === step ? 'w-6 bg-blue-600' : 'w-1.5 bg-gray-200'}`}
-            />
-          ))}
-        </div>
-
-        <div className="flex justify-center mb-4">{ICONS[step]}</div>
-
-        <h2 className="text-lg font-bold text-gray-900 mb-2">{current.title}</h2>
-        <p className="text-sm text-gray-500 leading-relaxed mb-8">{current.body}</p>
-
-        <div className="flex gap-3">
-          <button
-            onClick={dismiss}
-            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition"
-          >
-            {tr.skip}
-          </button>
-          <button
-            onClick={isLast ? dismiss : () => setStep((s) => s + 1)}
-            className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
-          >
-            {isLast ? tr.done : tr.next}
-          </button>
-        </div>
-      </div>
-    </div>
+    <OnboardingTour
+      steps={steps}
+      ariaLabel={tr.ariaLabel}
+      onComplete={dismiss}
+      onSkip={dismiss}
+    />
   );
 }

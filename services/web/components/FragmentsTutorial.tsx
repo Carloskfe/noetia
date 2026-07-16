@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { hasSeenFragmentsTutorial, markFragmentsTutorialSeen } from '@/lib/tutorial-flags';
+import { ensureOnboardingSynced } from '@/lib/onboarding';
 import { useTranslation } from '@/lib/i18n';
 
 export default function FragmentsTutorial() {
@@ -10,7 +11,9 @@ export default function FragmentsTutorial() {
   const tf = t.tutorials.fragments;
 
   useEffect(() => {
-    if (!hasSeenFragmentsTutorial()) setShow(true);
+    ensureOnboardingSynced().then(() => {
+      if (!hasSeenFragmentsTutorial()) setShow(true);
+    });
   }, []);
 
   if (!show) return null;

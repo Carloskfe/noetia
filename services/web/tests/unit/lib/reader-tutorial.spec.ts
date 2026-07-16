@@ -1,4 +1,7 @@
+jest.mock('../../../lib/onboarding', () => ({ persistTourSeen: jest.fn() }));
+
 import { hasSeenReaderTutorial, markReaderTutorialSeen, READER_TUTORIAL_STORAGE_KEY } from '../../../lib/reader-tutorial';
+import { persistTourSeen } from '../../../lib/onboarding';
 
 const mockStorage: Record<string, string> = {};
 const localStorageMock = {
@@ -45,5 +48,10 @@ describe('markReaderTutorialSeen', () => {
     markReaderTutorialSeen();
     mockStorage[READER_TUTORIAL_STORAGE_KEY] = '1';
     expect(hasSeenReaderTutorial()).toBe(true);
+  });
+
+  it('persists the reader tour as seen server-side', () => {
+    markReaderTutorialSeen();
+    expect(persistTourSeen).toHaveBeenCalledWith('reader');
   });
 });

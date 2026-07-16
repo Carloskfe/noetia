@@ -1,9 +1,15 @@
+jest.mock('../../../lib/onboarding', () => ({
+  persistTourSeen: jest.fn(),
+  persistWelcomeStatus: jest.fn(),
+}));
+
 import {
   hasSeenWelcome, markWelcomeSeen,
   hasSeenFragmentsTutorial, markFragmentsTutorialSeen,
   hasSeenAudioTutorial, markAudioTutorialSeen,
   hasSeenClubsTutorial, markClubsTutorialSeen,
 } from '../../../lib/tutorial-flags';
+import { persistTourSeen, persistWelcomeStatus } from '../../../lib/onboarding';
 
 const mockStorage: Record<string, string> = {};
 const localStorageMock = {
@@ -45,3 +51,19 @@ for (const { label, hasSeen, markSeen, key } of CASES) {
     });
   });
 }
+
+describe('server persistence on markSeen', () => {
+  it('markWelcomeSeen records the welcome tour completed server-side', () => {
+    markWelcomeSeen();
+    expect(persistWelcomeStatus).toHaveBeenCalledWith('completed');
+  });
+
+  it.each([
+    ['fragments', markFragmentsTutorialSeen],
+    ['audio', markAudioTutorialSeen],
+    ['clubs', markClubsTutorialSeen],
+  ])('mark %s tutorial persists tourSeen server-side', (tour, mark) => {
+    mark();
+    expect(persistTourSeen).toHaveBeenCalledWith(tour);
+  });
+});

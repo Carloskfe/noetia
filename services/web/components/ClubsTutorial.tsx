@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { hasSeenClubsTutorial, markClubsTutorialSeen } from '@/lib/tutorial-flags';
+import { ensureOnboardingSynced } from '@/lib/onboarding';
 import { useTranslation } from '@/lib/i18n';
 
 export default function ClubsTutorial() {
@@ -10,7 +11,9 @@ export default function ClubsTutorial() {
   const tc = t.tutorials.clubs;
 
   useEffect(() => {
-    if (!hasSeenClubsTutorial()) setShow(true);
+    ensureOnboardingSynced().then(() => {
+      if (!hasSeenClubsTutorial()) setShow(true);
+    });
   }, []);
 
   if (!show) return null;

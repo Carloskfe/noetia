@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { hasSeenWelcome, markWelcomeSeen } from '@/lib/tutorial-flags';
+import { ensureOnboardingSynced } from '@/lib/onboarding';
 import { useTranslation } from '@/lib/i18n';
 
 export default function WelcomeSplash() {
@@ -11,7 +12,12 @@ export default function WelcomeSplash() {
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
-    if (token && !hasSeenWelcome()) setShow(true);
+    if (!token) return;
+    // Reconcile with server state first, so a returning user who already
+    // completed onboarding on another device never sees the splash again.
+    ensureOnboardingSynced().then(() => {
+      if (!hasSeenWelcome()) setShow(true);
+    });
   }, []);
 
   if (!show) return null;
