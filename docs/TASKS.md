@@ -659,9 +659,15 @@ Protestant canon = **66 books** (39 OT + 27 NT). Catalogue has **17 per language
 - [ ] **Welcome tour (first-run)** — the primary end-to-end walkthrough that auto-launches on first session after signup.
 - [ ] **Per-surface tours** — reader/Escucha Activa, fragments + quote-card creator, library/Mi Biblioteca, Clubes de Lectura, sharing, tokens — launchable on demand and optionally auto-shown the first time each surface is opened.
 - [ ] **Illustrations** — commission/produce the tour artwork (consistent Noetia visual language).
-- [ ] **State model — the key design decision:** the current `services/web/lib/tutorial-flags.ts` is **localStorage-only** (`welcome`/`fragments`/`audio`/`clubs`), which is per-device and can't reliably detect a true first-account-session or survive a cache clear. The first-run welcome tour needs a **server-persisted per-user flag** (e.g. `users.onboardingState`: `not_started` | `in_progress@step` | `skipped` | `completed`) so it (a) fires exactly once on the first real session, (b) resumes until skipped/completed, and (c) follows the user across devices. Per-surface tours can stay client-side or also move server-side for consistency.
+- [x] **State model — the key design decision:** DONE (2026-07-16). Added `users.onboardingState` jsonb (`welcome`: `not_started`|`in_progress`|`skipped`|`completed`, `welcomeStep`, `tours{}`) via **migration 064**, plus a merging `PATCH /users/me/onboarding` endpoint. Web reconciles server state into the localStorage flag cache on mount (one memoized `/users/me` per session, `ensureOnboardingSynced`) and persists dismissals back — so tutorials fire once per **account**, can resume mid-tour, and follow the user across devices. `tutorial-flags.ts` stays as the synchronous offline cache.
 
 **Notes:** builds on the existing one-off tutorials (`hasSeenAudioTutorial`, welcome/fragments/clubs flags) — extend/unify rather than duplicate. Reader/onboarding UX is hierarchy #1 (new-user activation). Mobile tour changes that add native deps require an EAS build; a pure JS/RN tour is OTA-safe.
+
+**Shipped 2026-07-16** (`da5b1cd` api · `60962df` web · `ac09891` i18n · `b502ce2` tests):
+- ✅ **State model** — server-persisted `onboardingState` + cross-device sync (see checked item above).
+- ✅ **Web tour framework** — reusable `OnboardingTour` stepper (progress dots, Back/Next/Skip, emoji-or-illustration icon slot; pure step logic in `onboarding-stepper.ts`, unit-tested). `ReaderTutorial` refactored onto it; +11-test component spec (`@/` jest mapper + `react-jsx` ts-jest override added).
+- ✅ **Per-surface tours now cross-device** — reader/audio/fragments/clubs "seen" state persists server-side and reconciles on mount.
+- ⏳ **Still open:** commissioned **illustrations** (icon slot is emoji placeholder); **mobile** stepper component (only the `prev` i18n string landed); full first-run **welcome tour** wired to the resumable `welcomeStep` UI (infra + persistence exist; WelcomeSplash isn't yet a resumable multi-step).
 
 ---
 
