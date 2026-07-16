@@ -6,6 +6,9 @@ module.exports = {
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.test.json' }],
   },
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
+  },
   collectCoverageFrom: ['lib/**/*.ts'],
   coverageDirectory: 'coverage',
   testEnvironment: 'jsdom',
