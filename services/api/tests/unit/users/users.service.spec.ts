@@ -152,4 +152,42 @@ describe('UsersService', () => {
       expect(mockRepo.delete).toHaveBeenCalledWith('u1');
     });
   });
+
+  describe('updateOnboarding', () => {
+    it('advances the welcome tour, preserving untouched fields', async () => {
+      mockRepo.findOneBy.mockResolvedValue({
+        id: 'u1',
+        onboardingState: { welcome: 'not_started', welcomeStep: 0, tours: { reader: true } },
+      });
+      mockRepo.update.mockResolvedValue({ affected: 1 });
+
+      const result = await service.updateOnboarding('u1', { welcome: 'in_progress', welcomeStep: 2 });
+
+      expect(mockRepo.update).toHaveBeenCalledWith('u1', {
+        onboardingState: { welcome: 'in_progress', welcomeStep: 2, tours: { reader: true } },
+      });
+      expect(result).toEqual({ welcome: 'in_progress', welcomeStep: 2, tours: { reader: true } });
+    });
+
+    it('marks a per-surface tutorial seen without touching the welcome fields', async () => {
+      mockRepo.findOneBy.mockResolvedValue({
+        id: 'u1',
+        onboardingState: { welcome: 'completed', welcomeStep: 5, tours: {} },
+      });
+      mockRepo.update.mockResolvedValue({ affected: 1 });
+
+      const result = await service.updateOnboarding('u1', { tourSeen: 'clubs' });
+
+      expect(result).toEqual({ welcome: 'completed', welcomeStep: 5, tours: { clubs: true } });
+    });
+
+    it('falls back to the default state for a legacy row with no onboardingState', async () => {
+      mockRepo.findOneBy.mockResolvedValue({ id: 'u1', onboardingState: null });
+      mockRepo.update.mockResolvedValue({ affected: 1 });
+
+      const result = await service.updateOnboarding('u1', { welcome: 'skipped' });
+
+      expect(result).toEqual({ welcome: 'skipped', welcomeStep: 0, tours: {} });
+    });
+  });
 });
