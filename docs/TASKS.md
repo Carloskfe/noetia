@@ -723,7 +723,14 @@ Protestant canon = **66 books** (39 OT + 27 NT). Catalogue has **17 per language
 
 ### 1. Paginated reader — text split into pages with transitions *(reader experience)*
 Present book text as discrete pages with a page-turn transition instead of one continuous scroll. Positive UX bet: more book-like, better sense of place, natural pause points.
-- **Challenges to resolve before committing:**
+
+- [x] **v1 paged reading mode (web) — SHIPPED behind a default-off toggle** — `readingLayout` preference (`scroll` | `paged`, default scroll) + top-bar toggle. Plain reading of a synced book renders a paged view: CSS multi-columns one page wide, translated horizontally a page at a time; prev/next buttons, edge tap zones, arrow keys, page indicator; reflow-safe (recomputes pages + re-anchors current phrase on resize/font change). `phraseIndex` stays canonical — resumes at saved position, persists the current page's first phrase. Escucha Activa/audio stay on scroll (sync engine untouched). Shared `PhraseRenderer` extracted; paging math pure+unit-tested; columns+translate verified in headless Chromium.
+  - **Remaining for a full release (each an increment):**
+    - **Paged + audio sync** — when audio crosses a page boundary, auto-*flip* to the active phrase's page (currently audio forces scroll). This is the "reflow the sync loop" work — the deferred hard part.
+    - **Fragment drag-select in paged mode** — v1 supports click/context-menu capture; pointer-drag selection across a page is not wired (the scroll view keeps it).
+    - **Visual QA pass** — the full component (phrase→page rect mapping, resume, reflow) hasn't been eyeballed in the live app with a real book; the *technique* and math are verified, but flip the default only after a human read-through.
+    - **Mobile (RN) paged mode + offline.**
+- **Challenges (original analysis, for reference):**
   - **Phrase-sync coupling** — Escucha Activa highlights + auto-scroll are built around a single scrollable phrase list (`phraseAt`, `scrollIntoView`, `phraseRefs`). Pagination means: which page is the active phrase on, and auto-*flip* (not scroll) to it when audio crosses a page boundary. Reflows the core sync loop.
   - **Dynamic pagination** — page breaks depend on viewport size, font size (user-adjustable), and dark mode. Pages must be recomputed on resize / font change without losing reading position (stored as `phraseIndex`, which is page-agnostic — good, keep that as the source of truth).
   - **Fragment selection across page boundaries** — current selection is pointer-drag over contiguous spans; a selection spanning a page break needs a defined behavior.
