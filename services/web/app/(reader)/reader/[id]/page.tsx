@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
-import { phraseAt, seekToPhrase, effectiveDuration, formatTimecode, Phrase, Fragment, extractChapters } from '@/lib/reader-utils';
+import { activePhraseForPlayback, seekToPhrase, effectiveDuration, formatTimecode, Phrase, Fragment, extractChapters } from '@/lib/reader-utils';
 import {
   applyTextSelection,
   addFragment,
@@ -176,8 +176,10 @@ export default function ReaderPage() {
     const onTimeUpdate = () => {
       // Use audio.currentTime directly — no stale closure on activePhraseIndex.
       // React 18 bails out if setActivePhraseIndex receives the same value.
+      // The scrubber tracks the true position; the highlight uses the offset
+      // resolver so it stays locked to the phrase being heard (not one ahead).
       setCurrentTime(audio.currentTime);
-      setActivePhraseIndex(phraseAt(phrases, audio.currentTime));
+      setActivePhraseIndex(activePhraseForPlayback(phrases, audio.currentTime));
     };
 
     const onDurationChange = () => setDuration(audio.duration);

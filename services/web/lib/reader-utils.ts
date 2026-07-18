@@ -61,18 +61,43 @@ export function phraseAt(phrases: Phrase[], currentTime: number): number {
 }
 
 /**
- * Small forward offset (seconds) so a seek lands INSIDE the target phrase.
- * MP3 seeking snaps to the nearest frame — often a hair before startTime — which
- * makes phraseAt() resolve to the PREVIOUS phrase, i.e. narration "starts one
- * phrase early". Nudging past startTime (but never past the phrase's own end)
- * keeps the intended phrase active. 150ms is imperceptible.
+ * The gap (seconds) between a phrase's marked `startTime` and its audible onset.
+ *
+ * Whisper marks `startTime` at the earliest onset of the phrase's first word,
+ * which lands a fraction of a second BEFORE the narrator is audibly into the
+ * phrase. Two symptoms fall out of that early marking, and both are the SAME
+ * quantity, so we model it with one offset and apply it consistently:
+ *
+ *  1. Highlight leads the audio — resolving the active phrase at exactly
+ *     `currentTime` flips the highlight to the next phrase before you hear it,
+ *     so text and audio drift a beat apart. Fix: resolve the highlight at
+ *     `currentTime - offset` so the current phrase stays lit until the next one
+ *     is actually being spoken (see activePhraseForPlayback).
+ *  2. Seek lands one phrase early — MP3 seek snaps to the nearest frame, often a
+ *     hair before `startTime`, so a raw seek resolves to the PREVIOUS phrase.
+ *     Fix: land the seek at `startTime + offset`, on the audible onset.
+ *
+ * Because highlighting subtracts the offset and seeking adds it, a seek to
+ * phrase i (playing OR paused) resolves straight back to i — no flash to the
+ * neighbour. ~250ms firmly corrects the lead while staying below the threshold
+ * where a highlight lag becomes noticeable in the other direction.
  */
-export const SEEK_NUDGE_SECONDS = 0.15;
+export const PHRASE_SYNC_OFFSET_SECONDS = 0.25;
+
+/**
+ * The phrase to highlight for a live playback position. Applies
+ * PHRASE_SYNC_OFFSET_SECONDS so the highlight tracks the phrase being *heard*,
+ * not the one just entered. Highlighting only — the scrubber and timecode keep
+ * the true `currentTime`.
+ */
+export function activePhraseForPlayback(phrases: Phrase[], currentTime: number): number {
+  return phraseAt(phrases, currentTime - PHRASE_SYNC_OFFSET_SECONDS);
+}
 
 export function seekToPhrase(phrases: Phrase[], index: number): number {
   if (index < 0 || index >= phrases.length) return 0;
   const p = phrases[index];
-  const nudge = Math.min(SEEK_NUDGE_SECONDS, Math.max(0, (p.endTime - p.startTime) / 2));
+  const nudge = Math.min(PHRASE_SYNC_OFFSET_SECONDS, Math.max(0, (p.endTime - p.startTime) / 2));
   return p.startTime + nudge;
 }
 

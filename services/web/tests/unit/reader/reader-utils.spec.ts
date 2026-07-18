@@ -1,4 +1,4 @@
-import { phraseAt, seekToPhrase, effectiveDuration, extractChapters, Phrase } from '../../../lib/reader-utils';
+import { phraseAt, activePhraseForPlayback, seekToPhrase, effectiveDuration, extractChapters, Phrase } from '../../../lib/reader-utils';
 
 const phrases: Phrase[] = [
   { index: 0, text: 'Hello world.', startTime: 0, endTime: 2.5 },
@@ -119,13 +119,37 @@ describe('phraseAt', () => {
   });
 });
 
+describe('activePhraseForPlayback', () => {
+  it('holds the current phrase past the next phrase\'s marked start (no lead)', () => {
+    // Phrase 1 is marked to start at 2.5. Within the sync offset of that mark the
+    // narrator is still finishing phrase 0, so the highlight must stay on 0.
+    expect(activePhraseForPlayback(phrases, 2.5)).toBe(0);  // exactly at the mark
+    expect(activePhraseForPlayback(phrases, 2.7)).toBe(0);  // within the 0.25s offset
+    expect(activePhraseForPlayback(phrases, 2.76)).toBe(1); // past the offset → advance
+  });
+
+  it('does not highlight until the first phrase is audibly underway', () => {
+    expect(activePhraseForPlayback(phrases, 0)).toBe(-1);
+    expect(activePhraseForPlayback(phrases, 0.24)).toBe(-1);
+    expect(activePhraseForPlayback(phrases, 0.25)).toBe(0);
+  });
+
+  it('a seek to phrase i resolves back to i under the playback offset (playing or paused)', () => {
+    // Guards the regression the shared offset is designed to avoid: seeking adds
+    // the offset, the highlight subtracts it, so they cancel to the exact phrase.
+    for (let i = 0; i < phrases.length; i++) {
+      expect(activePhraseForPlayback(phrases, seekToPhrase(phrases, i))).toBe(i);
+    }
+  });
+});
+
 describe('seekToPhrase', () => {
   it('returns a time nudged just INTO the phrase (not its exact startTime)', () => {
-    // +0.15s so MP3 seek imprecision doesn't land before startTime and highlight
-    // the previous phrase ("starts one phrase early").
-    expect(seekToPhrase(phrases, 0)).toBeCloseTo(0.15);
-    expect(seekToPhrase(phrases, 1)).toBeCloseTo(2.65);
-    expect(seekToPhrase(phrases, 3)).toBeCloseTo(8.15);
+    // +0.25s (the sync offset) so MP3 seek imprecision doesn't land before
+    // startTime and highlight the previous phrase ("starts one phrase early").
+    expect(seekToPhrase(phrases, 0)).toBeCloseTo(0.25);
+    expect(seekToPhrase(phrases, 1)).toBeCloseTo(2.75);
+    expect(seekToPhrase(phrases, 3)).toBeCloseTo(8.25);
   });
 
   it('the nudged seek target resolves back to the SAME phrase via phraseAt', () => {
