@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
-import { activePhraseForPlayback, seekToPhrase, effectiveDuration, formatTimecode, Phrase, Fragment, extractChapters } from '@/lib/reader-utils';
+import { activePhraseForPlayback, seekToPhrase, resumePhraseIndex, effectiveDuration, formatTimecode, Phrase, Fragment, extractChapters } from '@/lib/reader-utils';
 import {
   applyTextSelection,
   addFragment,
@@ -257,6 +257,39 @@ export default function ReaderPage() {
       if (progressDebounceRef.current) clearTimeout(progressDebounceRef.current);
     };
   }, [activePhraseIndex, bookId]);
+
+  // Persist reading position from scroll (silent reading). Audio playback saves
+  // via activePhraseIndex above; without this, reading a book without ever
+  // pressing play never recorded a resume point. Debounced and server-only — it
+  // never touches savedPhraseIndex (which drives the on-load jump), so saving
+  // can't yank the user's scroll.
+  useEffect(() => {
+    if (mode !== 'reading' || phrases.length === 0) return;
+    if (typeof window === 'undefined' || !localStorage.getItem('access_token')) return;
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const save = () => {
+      const idx = resumePhraseIndex(
+        phrases,
+        (i) => phraseRefs.current[i]?.getBoundingClientRect().bottom ?? null,
+      );
+      if (idx >= 0) {
+        apiFetch(`/books/${bookId}/progress`, {
+          method: 'POST',
+          body: JSON.stringify({ phraseIndex: idx }),
+        }).catch(() => {});
+      }
+    };
+    const onScroll = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(save, 1500);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (timer) clearTimeout(timer);
+    };
+  }, [mode, phrases, bookId]);
 
   // ── Controls ──────────────────────────────────────────────────────────────
 

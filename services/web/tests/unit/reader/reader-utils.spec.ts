@@ -1,4 +1,4 @@
-import { phraseAt, activePhraseForPlayback, seekToPhrase, effectiveDuration, extractChapters, Phrase } from '../../../lib/reader-utils';
+import { phraseAt, activePhraseForPlayback, seekToPhrase, resumePhraseIndex, effectiveDuration, extractChapters, Phrase } from '../../../lib/reader-utils';
 
 const phrases: Phrase[] = [
   { index: 0, text: 'Hello world.', startTime: 0, endTime: 2.5 },
@@ -176,6 +176,52 @@ describe('seekToPhrase', () => {
 
   it('returns 0 for an empty phrases array', () => {
     expect(seekToPhrase([], 0)).toBe(0);
+  });
+});
+
+describe('resumePhraseIndex', () => {
+  // 4 timed phrases (each 60px tall in these scenarios) + a heading marker.
+  const timed: Phrase[] = [
+    { index: 0, text: 'A.', startTime: 0, endTime: 2.5 },
+    { index: 1, text: 'B.', startTime: 2.5, endTime: 5.0 },
+    { index: 2, text: 'C.', startTime: 5.0, endTime: 8.0 },
+    { index: 3, text: 'D.', startTime: 8.0, endTime: 12.0 },
+  ];
+
+  it('returns -1 when no phrase is rendered', () => {
+    expect(resumePhraseIndex(timed, () => null)).toBe(-1);
+  });
+
+  it('returns the topmost phrase still below the header offset', () => {
+    // phrase 0 scrolled above the header (bottom 40 <= 64), phrase 1 straddles it.
+    const bottoms = [40, 100, 160, 220];
+    expect(resumePhraseIndex(timed, (i) => bottoms[i], 64)).toBe(1);
+  });
+
+  it('returns phrase 0 at the top of the book (nothing scrolled past)', () => {
+    const bottoms = [80, 140, 200, 260];
+    expect(resumePhraseIndex(timed, (i) => bottoms[i], 64)).toBe(0);
+  });
+
+  it('returns the last timed phrase once everything is scrolled past', () => {
+    const bottoms = [-300, -240, -180, -120]; // all above the header
+    expect(resumePhraseIndex(timed, (i) => bottoms[i], 64)).toBe(3);
+  });
+
+  it('skips zero-duration markers (headings / paragraph breaks)', () => {
+    const withMarker: Phrase[] = [
+      { index: 0, text: 'CAP. I', startTime: 0, endTime: 0, type: 'heading' }, // marker
+      { index: 1, text: 'First.', startTime: 0, endTime: 3, type: 'text' },
+      { index: 2, text: 'Second.', startTime: 3, endTime: 6, type: 'text' },
+    ];
+    // The heading straddles the header but must be skipped → returns the timed phrase.
+    const bottoms = [70, 130, 190];
+    expect(resumePhraseIndex(withMarker, (i) => bottoms[i], 64)).toBe(1);
+  });
+
+  it('skips phrases with no element and picks the next rendered one', () => {
+    const bottoms: (number | null)[] = [null, 100, 160, 220];
+    expect(resumePhraseIndex(timed, (i) => bottoms[i], 64)).toBe(1);
   });
 });
 

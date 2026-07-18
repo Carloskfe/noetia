@@ -102,6 +102,35 @@ export function seekToPhrase(phrases: Phrase[], index: number): number {
 }
 
 /**
+ * The phrase index to persist as the reading position while scrolling.
+ *
+ * `bottomOf(i)` returns phrase i's viewport-relative bottom edge in px (from
+ * getBoundingClientRect), or null when the phrase has no element (paragraph
+ * breaks aren't rendered). Returns the topmost timed phrase whose bottom is
+ * still below `topOffset` (just under the fixed header) — the natural resume
+ * point you're reading toward — or the last timed phrase once you've scrolled
+ * past everything. Zero-duration markers (headings / paragraph breaks) are
+ * skipped so the saved index is always a narratable phrase (audio resume seeks
+ * by its startTime); returns -1 when there is no timed phrase on screen.
+ */
+export function resumePhraseIndex(
+  phrases: Phrase[],
+  bottomOf: (index: number) => number | null,
+  topOffset = 64,
+): number {
+  let idx = -1;
+  for (let i = 0; i < phrases.length; i++) {
+    const p = phrases[i];
+    if (p.endTime <= p.startTime) continue; // skip headings / paragraph-break markers
+    const bottom = bottomOf(i);
+    if (bottom == null) continue;           // not rendered
+    idx = i;
+    if (bottom > topOffset) break;          // topmost timed phrase still in view
+  }
+  return idx;
+}
+
+/**
  * The true full-book audio length to drive the progress bar.
  *
  * Multi-chapter audio is byte-concatenated from per-chapter MP3s, so the merged
