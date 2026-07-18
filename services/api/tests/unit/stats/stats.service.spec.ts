@@ -131,6 +131,49 @@ describe('StatsService', () => {
     });
   });
 
+  // ── getStatsHistory ────────────────────────────────────────────────────────
+
+  describe('getStatsHistory', () => {
+    it('returns weekly and monthly bucket arrays', async () => {
+      mockStatsRepo.query
+        .mockResolvedValueOnce([]) // weekly
+        .mockResolvedValueOnce([]); // monthly
+      const result = await service.getStatsHistory('user-1');
+      expect(result).toHaveProperty('weekly');
+      expect(result).toHaveProperty('monthly');
+    });
+
+    it('maps DB string columns to numbers', async () => {
+      mockStatsRepo.query
+        .mockResolvedValueOnce([
+          { start: '2026-07-06', minutes: '42', phrases: '300', activeDays: '5' },
+        ])
+        .mockResolvedValueOnce([
+          { start: '2026-07-01', minutes: '180', phrases: '1200', activeDays: '20' },
+        ]);
+      const result = await service.getStatsHistory('user-1');
+      expect(result.weekly[0]).toEqual({ start: '2026-07-06', minutes: 42, phrases: 300, activeDays: 5 });
+      expect(result.monthly[0]).toEqual({ start: '2026-07-01', minutes: 180, phrases: 1200, activeDays: 20 });
+    });
+
+    it('requests a week bucket series and a month bucket series scoped to the user', async () => {
+      mockStatsRepo.query.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      await service.getStatsHistory('user-9');
+      const [weekSql, weekParams] = mockStatsRepo.query.mock.calls[0];
+      const [, monthParams] = mockStatsRepo.query.mock.calls[1];
+      expect(weekSql).toContain('generate_series');
+      expect(weekParams).toEqual(['user-9', 'week', 11]);
+      expect(monthParams).toEqual(['user-9', 'month', 11]);
+    });
+
+    it('zero-fills: empty rows produce an empty (not errored) result', async () => {
+      mockStatsRepo.query.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      const result = await service.getStatsHistory('user-1');
+      expect(result.weekly).toEqual([]);
+      expect(result.monthly).toEqual([]);
+    });
+  });
+
   // ── computeStreak (via getMyStats) ─────────────────────────────────────────
 
   describe('streak calculation', () => {

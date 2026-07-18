@@ -27,4 +27,9 @@ export class StatsController {
   getMyStats(@Req() req: any) {
     return this.statsService.getMyStats(req.user.sub);
   }
+
+  @Get('history')
+  getHistory(@Req() req: any) {
+    return this.statsService.getStatsHistory(req.user.sub);
+  }
 }

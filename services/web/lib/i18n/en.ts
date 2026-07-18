@@ -405,6 +405,16 @@ export const en = {
     booksThisWeek: 'Books this week',
     minutesFmt: (n: number) => n === 1 ? '1 min' : `${n} min`,
     noData: 'No reading this week yet',
+    period: {
+      days: '7 days',
+      weeks: 'Weeks',
+      months: 'Months',
+      rangeWeeks: 'Last 12 weeks',
+      rangeMonths: 'Last 12 months',
+      activeWeeks: (n: number) => n === 1 ? '1 active week' : `${n} active weeks`,
+      activeMonths: (n: number) => n === 1 ? '1 active month' : `${n} active months`,
+      empty: 'No reading yet',
+    },
     goals: {
       title: 'Weekly goals',
       weeklyMinutes: 'Minutes per week',

@@ -20,9 +20,25 @@ interface Stats {
   goals: { weeklyMinutes: number | null; weeklyBooks: number | null };
 }
 
+interface Bucket {
+  start: string;
+  minutes: number;
+  phrases: number;
+  activeDays: number;
+}
+
+interface History {
+  weekly: Bucket[];
+  monthly: Bucket[];
+}
+
+type Period = 'days' | 'weeks' | 'months';
+
 export default function StatsTab() {
   const { t } = useTranslation();
   const [stats, setStats] = useState<Stats | null>(null);
+  const [history, setHistory] = useState<History | null>(null);
+  const [period, setPeriod] = useState<Period>('days');
   const [loading, setLoading] = useState(true);
   const [goalMinutes, setGoalMinutes] = useState('');
   const [goalBooks, setGoalBooks] = useState('');
@@ -32,7 +48,8 @@ export default function StatsTab() {
   useEffect(() => {
     const token = localStorage.getItem('noetia_token');
     if (!token) { setLoading(false); return; }
-    fetch('/api/stats/me', { headers: { Authorization: `Bearer ${token}` } })
+    const auth = { headers: { Authorization: `Bearer ${token}` } };
+    fetch('/api/stats/me', auth)
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data) {
@@ -43,6 +60,11 @@ export default function StatsTab() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+    // History (weekly/monthly) loads in parallel — not required for first paint.
+    fetch('/api/stats/history', auth)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setHistory(data); })
+      .catch(() => {});
   }, []);
 
   const saveGoals = async () => {
@@ -65,33 +87,85 @@ export default function StatsTab() {
   if (loading) return <p className="text-sm text-gray-500 py-8 text-center">{t.common.loading}</p>;
   if (!stats) return null;
 
-  const maxMinutes = Math.max(...stats.thisWeek.map((d) => d.minutes), 1);
   const goalMin = stats.goals.weeklyMinutes;
   const goalBk = stats.goals.weeklyBooks;
 
-  const dayLabel = (dateStr: string) => {
-    const d = new Date(dateStr + 'T12:00:00Z');
-    return d.toLocaleDateString(undefined, { weekday: 'short' });
-  };
+  const asUtc = (dateStr: string) => new Date(dateStr + 'T12:00:00Z');
+  const dayLabel = (dateStr: string) => asUtc(dateStr).toLocaleDateString(undefined, { weekday: 'short' });
+  const weekLabel = (dateStr: string) => `${asUtc(dateStr).getUTCDate()}/${asUtc(dateStr).getUTCMonth() + 1}`;
+  const monthLabel = (dateStr: string) => asUtc(dateStr).toLocaleDateString(undefined, { month: 'short' });
+
+  const weekly = history?.weekly ?? [];
+  const monthly = history?.monthly ?? [];
+
+  // Bars for the selected granularity: 7 days, 12 weeks, or 12 months.
+  const chartItems =
+    period === 'days'
+      ? stats.thisWeek.map((d) => ({ key: d.date, label: dayLabel(d.date), minutes: d.minutes }))
+      : period === 'weeks'
+        ? weekly.map((b) => ({ key: b.start, label: weekLabel(b.start), minutes: b.minutes }))
+        : monthly.map((b) => ({ key: b.start, label: monthLabel(b.start), minutes: b.minutes }));
+  const chartMax = Math.max(...chartItems.map((i) => i.minutes), 1);
+  const historyLoading = period !== 'days' && !history;
+
+  const aggBuckets = period === 'weeks' ? weekly : monthly;
+  const aggTotal = aggBuckets.reduce((s, b) => s + b.minutes, 0);
+  const aggActive = aggBuckets.filter((b) => b.minutes > 0).length;
+  const aggRange = period === 'weeks' ? t.stats.period.rangeWeeks : t.stats.period.rangeMonths;
+  const aggActiveLabel = period === 'weeks'
+    ? t.stats.period.activeWeeks(aggActive)
+    : t.stats.period.activeMonths(aggActive);
 
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{t.stats.thisWeek}</h3>
-        <div className="flex items-end gap-1 h-24">
-          {stats.thisWeek.map((day) => (
-            <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-              <div
-                className="w-full rounded-t bg-indigo-500 transition-all"
-                style={{ height: `${Math.round((day.minutes / maxMinutes) * 72)}px`, minHeight: day.minutes > 0 ? '4px' : '0' }}
-                title={t.stats.minutesFmt(day.minutes)}
-              />
-              <span className="text-[10px] text-gray-400">{dayLabel(day.date)}</span>
-            </div>
+        {/* Period toggle — daily (this week) / weekly / monthly */}
+        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 mb-4 max-w-xs">
+          {(['days', 'weeks', 'months'] as Period[]).map((p) => (
+            <button
+              key={p}
+              type="button"
+              aria-pressed={period === p}
+              onClick={() => setPeriod(p)}
+              className={[
+                'flex-1 text-xs font-medium py-1.5 rounded-md transition',
+                period === p ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-800',
+              ].join(' ')}
+            >
+              {t.stats.period[p]}
+            </button>
           ))}
         </div>
-        {stats.thisWeekMinutes === 0 && (
-          <p className="text-xs text-gray-400 text-center mt-2">{t.stats.noData}</p>
+
+        {historyLoading ? (
+          <p className="text-sm text-gray-400 py-8 text-center">{t.common.loading}</p>
+        ) : (
+          <>
+            <div className="flex items-end gap-1 h-24">
+              {chartItems.map((item) => (
+                <div key={item.key} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                  <div
+                    data-testid="stat-bar"
+                    className="w-full rounded-t bg-indigo-500 transition-all"
+                    style={{ height: `${Math.round((item.minutes / chartMax) * 72)}px`, minHeight: item.minutes > 0 ? '4px' : '0' }}
+                    title={t.stats.minutesFmt(item.minutes)}
+                  />
+                  <span className="text-[9px] text-gray-400 truncate w-full text-center">{item.label}</span>
+                </div>
+              ))}
+            </div>
+            {period === 'days' ? (
+              stats.thisWeekMinutes === 0 && (
+                <p className="text-xs text-gray-400 text-center mt-2">{t.stats.noData}</p>
+              )
+            ) : (
+              <p className="text-xs text-gray-400 text-center mt-2">
+                {aggTotal === 0
+                  ? t.stats.period.empty
+                  : `${aggRange} · ${t.stats.minutesFmt(aggTotal)} · ${aggActiveLabel}`}
+              </p>
+            )}
+          </>
         )}
       </div>
 

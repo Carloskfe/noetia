@@ -5,6 +5,7 @@ import { StatsService } from '../../../src/stats/stats.service';
 const mockStatsService = {
   heartbeat: jest.fn(),
   getMyStats: jest.fn(),
+  getStatsHistory: jest.fn(),
 };
 
 const mockReq = { user: { sub: 'user-123' } };
@@ -43,6 +44,16 @@ describe('StatsController', () => {
       const result = await controller.getMyStats(mockReq);
       expect(mockStatsService.getMyStats).toHaveBeenCalledWith('user-123');
       expect(result).toEqual(mockStats);
+    });
+  });
+
+  describe('getHistory', () => {
+    it('calls statsService.getStatsHistory with userId and returns result', async () => {
+      const mockHistory = { weekly: [], monthly: [] };
+      mockStatsService.getStatsHistory.mockResolvedValue(mockHistory);
+      const result = await controller.getHistory(mockReq);
+      expect(mockStatsService.getStatsHistory).toHaveBeenCalledWith('user-123');
+      expect(result).toEqual(mockHistory);
     });
   });
 });

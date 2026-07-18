@@ -407,6 +407,16 @@ export const es: Translations = {
     booksThisWeek: 'Libros esta semana',
     minutesFmt: (n: number) => n === 1 ? '1 min' : `${n} min`,
     noData: 'Sin lectura esta semana aún',
+    period: {
+      days: '7 días',
+      weeks: 'Semanas',
+      months: 'Meses',
+      rangeWeeks: 'Últimas 12 semanas',
+      rangeMonths: 'Últimos 12 meses',
+      activeWeeks: (n: number) => n === 1 ? '1 semana activa' : `${n} semanas activas`,
+      activeMonths: (n: number) => n === 1 ? '1 mes activo' : `${n} meses activos`,
+      empty: 'Sin lectura aún',
+    },
     goals: {
       title: 'Metas semanales',
       weeklyMinutes: 'Minutos por semana',

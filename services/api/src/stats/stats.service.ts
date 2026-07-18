@@ -94,6 +94,51 @@ export class StatsService {
     };
   }
 
+  /**
+   * Weekly and monthly reading history for the trailing 12 buckets each.
+   *
+   * Buckets are produced by a Postgres `generate_series`, so every week/month is
+   * present and zero-filled even with no reading — the chart stays continuous —
+   * and the bucket boundaries line up exactly with `date_trunc` (no JS/SQL
+   * week-start drift). `start` is the bucket's first day (Monday for weeks, the
+   * 1st for months) as YYYY-MM-DD.
+   */
+  async getStatsHistory(userId: string) {
+    const [weekly, monthly] = await Promise.all([
+      this.bucketSeries(userId, 'week', 12),
+      this.bucketSeries(userId, 'month', 12),
+    ]);
+    return { weekly, monthly };
+  }
+
+  private async bucketSeries(userId: string, unit: 'week' | 'month', count: number) {
+    const rows: Array<{ start: string; minutes: string; phrases: string; activeDays: string }> =
+      await this.statsRepo.query(
+        `SELECT to_char(gs, 'YYYY-MM-DD') AS start,
+                COALESCE(SUM(rs."minutesRead"), 0) AS minutes,
+                COALESCE(SUM(rs."phrasesRead"), 0) AS phrases,
+                COUNT(rs.id) FILTER (WHERE rs."minutesRead" > 0) AS "activeDays"
+         FROM generate_series(
+                date_trunc($2, CURRENT_DATE) - (($3 || ' ' || $2)::interval),
+                date_trunc($2, CURRENT_DATE),
+                ('1 ' || $2)::interval
+              ) AS gs
+         LEFT JOIN reading_stats rs
+           ON rs."userId" = $1
+          AND date_trunc($2, rs.date) = gs
+         GROUP BY gs
+         ORDER BY gs`,
+        [userId, unit, count - 1],
+      );
+
+    return rows.map((r) => ({
+      start: r.start,
+      minutes: Number(r.minutes),
+      phrases: Number(r.phrases),
+      activeDays: Number(r.activeDays),
+    }));
+  }
+
   private computeStreak(dates: string[]): number {
     if (!dates.length) return 0;
     const todayStr = this.todayStr();
