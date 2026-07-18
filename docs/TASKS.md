@@ -733,7 +733,8 @@ Present book text as discrete pages with a page-turn transition instead of one c
 
 ### 2. Reading progress indicator + weekly/monthly stats (Duolingo-style) *(reader experience)*
 - **In-reader progress status** — a live progress indicator while reading (e.g. % through book / page N of M / chapter progress). Today the reader only shows the audio timeline; there's no text-reading progress affordance. Derive from `phraseIndex / phrases.length` (or page count once item 1 lands).
-- **Weekly & monthly stats** — extend the existing stats surface. We already have a **7-day bar chart, streak counter, all-time totals, and weekly goal rings** (`StatsTab.tsx`, `GET /api/stats/me`, heartbeat hook). Missing: a **weekly** and **monthly** aggregation view (Duolingo-style calendar/summary). Backend heartbeat data already exists per-day; needs new aggregation endpoints + UI. Update mobile `StatsTab` equivalent too.
+- [x] **Weekly & monthly stats (web) — DONE** — `GET /stats/history` returns the trailing **12 weeks + 12 months**, zero-filled and boundary-aligned via a Postgres `generate_series` + `date_trunc` join (verified against prod-shape data). `StatsTab.tsx` gained a period toggle (7 days / Weeks / Months) that fetches history in parallel and renders the selected granularity with a range summary (total minutes + active weeks/months). i18n web en/es. Tests: api service+controller specs, web jsdom render spec.
+  - [ ] **Mobile stats view** — mobile has **no** stats screen at all today (the `stats` i18n block is web-only). A follow-up would build the mobile `StatsTab` equivalent (daily + weekly + monthly) against the same `/stats/me` and `/stats/history` endpoints.
 
 ### 3. 🐛 Phrase highlight leads the audio by one phrase *(reader bug — high priority)*
 The Escucha Activa highlight sits **one phrase ahead** of the narrated audio; they should stay locked together. Investigation pointers:
