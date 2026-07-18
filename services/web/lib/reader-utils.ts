@@ -130,6 +130,38 @@ export function resumePhraseIndex(
   return idx;
 }
 
+// ── Paged (column) reader geometry ────────────────────────────────────────────
+//
+// Paged mode lays the text out in CSS multi-columns, each column the width of one
+// "page", and translates the content horizontally to reveal one page at a time.
+// These pure helpers do the page arithmetic; the DOM measuring lives in the
+// PagedReader component. `pitch` is always pageWidth + gap (a page plus the gutter
+// to the next one).
+
+/** Number of pages, from the content's total laid-out width (scrollWidth). */
+export function pageCount(scrollWidth: number, pageWidth: number, gap: number): number {
+  const pitch = pageWidth + gap;
+  if (pitch <= 0 || scrollWidth <= 0) return 1;
+  // scrollWidth = n*pageWidth + (n-1)*gap  ⇒  n = (scrollWidth + gap) / pitch
+  return Math.max(1, Math.round((scrollWidth + gap) / pitch));
+}
+
+/** Clamp a (possibly fractional) page into [0, total-1]. */
+export function clampPage(page: number, total: number): number {
+  if (!Number.isFinite(page)) return 0;
+  return Math.min(Math.max(0, Math.round(page)), Math.max(0, total - 1));
+}
+
+/**
+ * How many pages a horizontal pixel delta spans — used to turn "this phrase is
+ * `dxPx` to the right of the current page's left edge" into a page offset.
+ */
+export function deltaPages(dxPx: number, pageWidth: number, gap: number): number {
+  const pitch = pageWidth + gap;
+  if (pitch <= 0) return 0;
+  return Math.round(dxPx / pitch);
+}
+
 /**
  * The true full-book audio length to drive the progress bar.
  *

@@ -154,6 +154,14 @@ export const en = {
     errorUnavailable: 'Text unavailable.',
     errorBook: 'Could not load the book.',
     audioMode: 'Active listening mode',
+    paged: {
+      prev: 'Previous page',
+      next: 'Next page',
+      pageOf: (page: number, total: number) => `${page} / ${total}`,
+    },
+    layoutScroll: 'Scroll view',
+    layoutPaged: 'Page view',
+    layoutToggle: 'Switch reading layout',
   },
   fragments: {
     title: 'Fragments',

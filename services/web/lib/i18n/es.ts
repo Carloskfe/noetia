@@ -156,6 +156,14 @@ export const es: Translations = {
     errorUnavailable: 'Texto no disponible.',
     errorBook: 'No se pudo cargar el libro.',
     audioMode: 'Modo escucha activa',
+    paged: {
+      prev: 'Página anterior',
+      next: 'Página siguiente',
+      pageOf: (page: number, total: number) => `${page} / ${total}`,
+    },
+    layoutScroll: 'Vista de desplazamiento',
+    layoutPaged: 'Vista de páginas',
+    layoutToggle: 'Cambiar diseño de lectura',
   },
   fragments: {
     title: 'Fragmentos',

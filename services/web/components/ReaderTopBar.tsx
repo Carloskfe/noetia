@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FontSize, FONT_SIZES } from '@/lib/reader-preferences';
+import { FontSize, FONT_SIZES, ReadingLayout } from '@/lib/reader-preferences';
 import { useTranslation } from '@/lib/i18n';
 
 type Props = {
@@ -20,6 +20,9 @@ type Props = {
   onChaptersToggle?: () => void;
   /** Reading progress through the book, 0–1. Renders a % label + a thin bar. */
   progress?: number;
+  /** Current text layout; when onLayoutToggle is set a scroll/paged toggle shows. */
+  readingLayout?: ReadingLayout;
+  onLayoutToggle?: () => void;
 };
 
 export default function ReaderTopBar({
@@ -37,6 +40,8 @@ export default function ReaderTopBar({
   hasChapters,
   onChaptersToggle,
   progress,
+  readingLayout,
+  onLayoutToggle,
 }: Props) {
   const { t } = useTranslation();
   const atMin = fontSize === FONT_SIZES[0];
@@ -139,6 +144,22 @@ export default function ReaderTopBar({
           ].join(' ')}
         >
           {mode === 'reading' ? <HeadphonesIcon /> : <BookIcon />}
+        </button>
+      )}
+
+      {/* Reading layout toggle — scroll ↔ paged */}
+      {onLayoutToggle && (
+        <button
+          onClick={onLayoutToggle}
+          aria-label={t.reader.layoutToggle}
+          title={readingLayout === 'paged' ? t.reader.layoutScroll : t.reader.layoutPaged}
+          aria-pressed={readingLayout === 'paged'}
+          className={[
+            'flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition',
+            readingLayout === 'paged' ? 'bg-blue-600 text-white' : btn,
+          ].join(' ')}
+        >
+          {readingLayout === 'paged' ? <ScrollLayoutIcon /> : <PagedLayoutIcon />}
         </button>
       )}
 
@@ -248,6 +269,29 @@ function PeopleIcon() {
       <path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+    </svg>
+  );
+}
+
+function PagedLayoutIcon() {
+  // Two facing pages — offering the paged view.
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v15" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 5C10 3.5 6.5 3.5 4 4.5v14c2.5-1 6-1 8 .5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 5c2-1.5 5.5-1.5 8-.5v14c-2.5-1-6-1-8 .5" />
+    </svg>
+  );
+}
+
+function ScrollLayoutIcon() {
+  // Stacked lines — offering the continuous scroll view.
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <line x1="4" y1="6" x2="20" y2="6" strokeLinecap="round" />
+      <line x1="4" y1="10" x2="20" y2="10" strokeLinecap="round" />
+      <line x1="4" y1="14" x2="20" y2="14" strokeLinecap="round" />
+      <line x1="4" y1="18" x2="14" y2="18" strokeLinecap="round" />
     </svg>
   );
 }

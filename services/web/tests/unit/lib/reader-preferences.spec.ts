@@ -24,7 +24,7 @@ describe('FONT_SIZES', () => {
 describe('loadPreferences', () => {
   it('returns defaults when no values are stored', () => {
     const prefs = loadPreferences();
-    expect(prefs).toEqual({ fontSize: 'md', darkMode: false, speed: 1 });
+    expect(prefs).toEqual({ fontSize: 'md', darkMode: false, speed: 1, readingLayout: 'scroll' });
   });
 
   it('restores a stored playback speed', () => {
@@ -79,45 +79,65 @@ describe('loadPreferences', () => {
     expect(loadPreferences().darkMode).toBe(false);
   });
 
+  it('defaults reading layout to scroll', () => {
+    expect(loadPreferences().readingLayout).toBe('scroll');
+  });
+
+  it('restores a stored paged layout', () => {
+    mockStorage['reader-layout'] = 'paged';
+    expect(loadPreferences().readingLayout).toBe('paged');
+  });
+
+  it('falls back to scroll for an unknown stored layout', () => {
+    mockStorage['reader-layout'] = 'grid';
+    expect(loadPreferences().readingLayout).toBe('scroll');
+  });
+
   it('returns defaults without throwing when window is undefined', () => {
     Object.defineProperty(global, 'window', { value: undefined, writable: true });
     expect(() => loadPreferences()).not.toThrow();
-    expect(loadPreferences()).toEqual({ fontSize: 'md', darkMode: false, speed: 1 });
+    expect(loadPreferences()).toEqual({ fontSize: 'md', darkMode: false, speed: 1, readingLayout: 'scroll' });
   });
 });
 
 describe('savePreferences', () => {
   it('writes font size to localStorage', () => {
-    savePreferences({ fontSize: 'lg', darkMode: false, speed: 1 });
+    savePreferences({ fontSize: 'lg', darkMode: false, speed: 1, readingLayout: 'scroll' });
     expect(localStorageMock.setItem).toHaveBeenCalledWith('reader-font-size', 'lg');
   });
 
   it('writes dark mode to localStorage as string', () => {
-    savePreferences({ fontSize: 'md', darkMode: true, speed: 1 });
+    savePreferences({ fontSize: 'md', darkMode: true, speed: 1, readingLayout: 'scroll' });
     expect(localStorageMock.setItem).toHaveBeenCalledWith('reader-dark-mode', 'true');
   });
 
   it('writes the playback speed', () => {
-    savePreferences({ fontSize: 'md', darkMode: false, speed: 1.25 });
+    savePreferences({ fontSize: 'md', darkMode: false, speed: 1.25, readingLayout: 'scroll' });
     expect(localStorageMock.setItem).toHaveBeenCalledWith('reader-speed', '1.25');
   });
 
-  it('writes all three keys in a single call', () => {
-    savePreferences({ fontSize: 'sm', darkMode: false, speed: 2 });
-    expect(localStorageMock.setItem).toHaveBeenCalledTimes(3);
+  it('writes the reading layout', () => {
+    savePreferences({ fontSize: 'md', darkMode: false, speed: 1, readingLayout: 'paged' });
+    expect(localStorageMock.setItem).toHaveBeenCalledWith('reader-layout', 'paged');
+  });
+
+  it('writes all four keys in a single call', () => {
+    savePreferences({ fontSize: 'sm', darkMode: false, speed: 2, readingLayout: 'paged' });
+    expect(localStorageMock.setItem).toHaveBeenCalledTimes(4);
     expect(localStorageMock.setItem).toHaveBeenCalledWith('reader-font-size', 'sm');
     expect(localStorageMock.setItem).toHaveBeenCalledWith('reader-dark-mode', 'false');
     expect(localStorageMock.setItem).toHaveBeenCalledWith('reader-speed', '2');
+    expect(localStorageMock.setItem).toHaveBeenCalledWith('reader-layout', 'paged');
   });
 
   it('does not throw when window is undefined', () => {
     Object.defineProperty(global, 'window', { value: undefined, writable: true });
-    expect(() => savePreferences({ fontSize: 'md', darkMode: false, speed: 1 })).not.toThrow();
+    expect(() => savePreferences({ fontSize: 'md', darkMode: false, speed: 1, readingLayout: 'scroll' })).not.toThrow();
   });
 
   it('saved values are recoverable by loadPreferences', () => {
-    savePreferences({ fontSize: 'xl', darkMode: true, speed: 1.5 });
+    savePreferences({ fontSize: 'xl', darkMode: true, speed: 1.5, readingLayout: 'paged' });
     const prefs = loadPreferences();
-    expect(prefs).toEqual({ fontSize: 'xl', darkMode: true, speed: 1.5 });
+    expect(prefs).toEqual({ fontSize: 'xl', darkMode: true, speed: 1.5, readingLayout: 'paged' });
   });
 });

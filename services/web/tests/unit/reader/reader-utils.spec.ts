@@ -1,4 +1,4 @@
-import { phraseAt, activePhraseForPlayback, seekToPhrase, resumePhraseIndex, effectiveDuration, extractChapters, Phrase } from '../../../lib/reader-utils';
+import { phraseAt, activePhraseForPlayback, seekToPhrase, resumePhraseIndex, pageCount, clampPage, deltaPages, effectiveDuration, extractChapters, Phrase } from '../../../lib/reader-utils';
 
 const phrases: Phrase[] = [
   { index: 0, text: 'Hello world.', startTime: 0, endTime: 2.5 },
@@ -222,6 +222,55 @@ describe('resumePhraseIndex', () => {
   it('skips phrases with no element and picks the next rendered one', () => {
     const bottoms: (number | null)[] = [null, 100, 160, 220];
     expect(resumePhraseIndex(timed, (i) => bottoms[i], 64)).toBe(1);
+  });
+});
+
+describe('pageCount', () => {
+  it('returns 1 when content fits one page (no overflow)', () => {
+    expect(pageCount(300, 300, 40)).toBe(1);
+  });
+
+  it('counts pages from total laid-out width including gaps', () => {
+    // 3 columns of 300 with two 40px gaps = 900 + 80 = 980
+    expect(pageCount(980, 300, 40)).toBe(3);
+    // 5 columns: 5*300 + 4*40 = 1660
+    expect(pageCount(1660, 300, 40)).toBe(5);
+  });
+
+  it('returns 1 for zero or negative geometry', () => {
+    expect(pageCount(0, 300, 40)).toBe(1);
+    expect(pageCount(980, 0, 0)).toBe(1);
+  });
+});
+
+describe('clampPage', () => {
+  it('clamps into [0, total-1]', () => {
+    expect(clampPage(5, 3)).toBe(2);
+    expect(clampPage(-1, 3)).toBe(0);
+    expect(clampPage(1, 3)).toBe(1);
+  });
+
+  it('rounds fractional pages', () => {
+    expect(clampPage(1.4, 5)).toBe(1);
+    expect(clampPage(1.6, 5)).toBe(2);
+  });
+
+  it('handles empty/NaN safely', () => {
+    expect(clampPage(2, 0)).toBe(0);
+    expect(clampPage(NaN, 5)).toBe(0);
+  });
+});
+
+describe('deltaPages', () => {
+  it('converts a pixel delta into a page offset', () => {
+    expect(deltaPages(680, 300, 40)).toBe(2);   // 2 * 340
+    expect(deltaPages(340, 300, 40)).toBe(1);
+    expect(deltaPages(50, 300, 40)).toBe(0);     // same page
+    expect(deltaPages(-340, 300, 40)).toBe(-1);  // one page back
+  });
+
+  it('returns 0 for degenerate pitch', () => {
+    expect(deltaPages(100, 0, 0)).toBe(0);
   });
 });
 

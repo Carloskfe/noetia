@@ -12,11 +12,13 @@ import {
   EMPTY_SELECTION,
   SelectionState,
 } from '@/lib/fragment-selection';
-import { loadPreferences, savePreferences, FontSize, FONT_SIZES } from '@/lib/reader-preferences';
+import { loadPreferences, savePreferences, FontSize, FONT_SIZES, ReadingLayout } from '@/lib/reader-preferences';
 import FragmentPopover from '@/components/FragmentPopover';
 import FragmentSheet from '@/components/FragmentSheet';
 import ChapterSheet from '@/components/ChapterSheet';
 import ReaderTopBar from '@/components/ReaderTopBar';
+import PhraseRenderer from '@/components/PhraseRenderer';
+import PagedReader from '@/components/PagedReader';
 import ReaderTutorial, { hasSeenReaderTutorial } from '@/components/ReaderTutorial';
 import AudioTutorial from '@/components/AudioTutorial';
 import { hasSeenAudioTutorial } from '@/lib/tutorial-flags';
@@ -69,6 +71,8 @@ export default function ReaderPage() {
   // Reading preferences
   const [fontSize, setFontSize] = useState<FontSize>('md');
   const [darkMode, setDarkMode] = useState(false);
+  const [readingLayout, setReadingLayout] = useState<ReadingLayout>('scroll');
+  const [pagedPhraseIndex, setPagedPhraseIndex] = useState(-1);
 
   // Fragment state
   const [fragments, setFragments] = useState<Fragment[]>([]);
@@ -97,6 +101,7 @@ export default function ReaderPage() {
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pagedProgressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const phraseRefs = useRef<(HTMLElement | null)[]>([]);
 
   // ── Reading preferences ───────────────────────────────────────────────────
@@ -106,12 +111,13 @@ export default function ReaderPage() {
     setFontSize(prefs.fontSize);
     setDarkMode(prefs.darkMode);
     setSpeed(prefs.speed);
+    setReadingLayout(prefs.readingLayout);
     if (audioRef.current) audioRef.current.playbackRate = prefs.speed;
   }, []);
 
   useEffect(() => {
-    savePreferences({ fontSize, darkMode, speed });
-  }, [fontSize, darkMode, speed]);
+    savePreferences({ fontSize, darkMode, speed, readingLayout });
+  }, [fontSize, darkMode, speed, readingLayout]);
 
   // Re-apply the restored speed whenever the audio element (re)loads its source,
   // since a fresh HTMLAudioElement resets playbackRate to 1.
@@ -544,6 +550,21 @@ export default function ReaderPage() {
     phraseRefs.current[phraseIndex]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
+  // Paged mode reports the current page's first phrase — drives the progress
+  // indicator and persists the resume position (debounced), same endpoint the
+  // scroll and audio paths use.
+  const handlePagePhraseChange = useCallback((idx: number) => {
+    setPagedPhraseIndex(idx);
+    if (!bookId || typeof window === 'undefined' || !localStorage.getItem('access_token')) return;
+    if (pagedProgressTimerRef.current) clearTimeout(pagedProgressTimerRef.current);
+    pagedProgressTimerRef.current = setTimeout(() => {
+      apiFetch(`/books/${bookId}/progress`, {
+        method: 'POST',
+        body: JSON.stringify({ phraseIndex: idx }),
+      }).catch(() => {});
+    }, 1500);
+  }, [bookId]);
+
   // ── Span CSS helper ───────────────────────────────────────────────────────
 
   const getSpanClass = useCallback((i: number) => {
@@ -571,12 +592,20 @@ export default function ReaderPage() {
   const showHours = effDuration >= 3600;
   const fontSizeClass = FONT_SIZE_CLASSES[fontSize];
 
-  // Reading progress for the top-bar indicator: phrase position while listening
-  // (tracks the narration), scroll position while reading.
+  // Paged reading applies only to plain reading of a synced book; audio/Escucha
+  // Activa stay on the continuous scroll view (the sync engine is untouched).
+  const pagedActive = readingLayout === 'paged' && mode === 'reading' && hasSync;
+
+  // Reading progress for the top-bar indicator: page position when paged, phrase
+  // position while listening (tracks the narration), scroll position otherwise.
   const lastPhraseIdx = phrases.length - 1;
   const listeningProgress =
     lastPhraseIdx > 0 && activePhraseIndex >= 0 ? activePhraseIndex / lastPhraseIdx : null;
-  const readingProgress = mode === 'reading' ? scrollProgress : (listeningProgress ?? scrollProgress);
+  const pagedProgress =
+    lastPhraseIdx > 0 && pagedPhraseIndex >= 0 ? pagedPhraseIndex / lastPhraseIdx : null;
+  const readingProgress = pagedActive
+    ? (pagedProgress ?? 0)
+    : mode === 'reading' ? scrollProgress : (listeningProgress ?? scrollProgress);
 
   return (
     <div className={['flex flex-col md:flex-row min-h-screen', darkMode ? 'bg-gray-950 text-gray-100' : 'bg-white text-gray-800'].join(' ')}>
@@ -612,6 +641,8 @@ export default function ReaderPage() {
         hasChapters={chapters.length > 0}
         onChaptersToggle={() => setShowChapterDrawer((v) => !v)}
         progress={readingProgress}
+        readingLayout={readingLayout}
+        onLayoutToggle={hasSync && mode === 'reading' ? () => setReadingLayout((l) => (l === 'paged' ? 'scroll' : 'paged')) : undefined}
       />
 
       {/* Hidden audio element — uses M4B stream URL for browser-native playback */}
@@ -683,7 +714,20 @@ export default function ReaderPage() {
         </main>
       )}
 
-      {/* ── Text column (Lectura + Escucha Activa) ──────────────────────── */}
+      {/* ── Text column: paged view (reading a synced book) or scroll ────── */}
+      {pagedActive ? (
+        <PagedReader
+          phrases={phrases}
+          phraseRefs={phraseRefs}
+          fontSizeClass={fontSizeClass}
+          dark={darkMode}
+          getSpanClass={getSpanClass}
+          onPhraseClick={handlePhraseClick}
+          onPhraseContextMenu={handleStartSelection}
+          initialPhraseIndex={savedPhraseIndex}
+          onPagePhraseChange={handlePagePhraseChange}
+        />
+      ) : (
       <main className={[
         'flex-1 max-w-2xl mx-auto px-6 pt-14 md:pt-16',
         mode === 'audio' ? 'hidden' : '',
@@ -718,6 +762,7 @@ export default function ReaderPage() {
           )}
         </div>
       </main>
+      )}
 
       {/* ── Audio sidebar ────────────────────────────────────────────────── */}
       {hasAudio && (
@@ -1034,79 +1079,6 @@ export default function ReaderPage() {
         />
       )}
     </div>
-  );
-}
-
-type PhraseRendererProps = {
-  phrases: Phrase[];
-  phraseRefs: React.MutableRefObject<(HTMLElement | null)[]>;
-  getSpanClass: (i: number) => string;
-  onPhraseClick: (i: number) => void;
-  onPhraseContextMenu: (i: number, e: React.MouseEvent) => void;
-  dark: boolean;
-  tapToSyncActive?: boolean;
-};
-
-function PhraseRenderer({ phrases, phraseRefs, getSpanClass, onPhraseClick, onPhraseContextMenu, dark, tapToSyncActive }: PhraseRendererProps) {
-  type Block =
-    | { kind: 'heading'; i: number; phrase: Phrase }
-    | { kind: 'paragraph'; items: Array<{ i: number; phrase: Phrase }> };
-
-  const blocks = useMemo<Block[]>(() => {
-    const result: Block[] = [];
-    let currentPara: Array<{ i: number; phrase: Phrase }> = [];
-
-    phrases.forEach((phrase, i) => {
-      if (phrase.type === 'heading') {
-        if (currentPara.length) { result.push({ kind: 'paragraph', items: currentPara }); currentPara = []; }
-        result.push({ kind: 'heading', i, phrase });
-      } else if (phrase.type === 'paragraph-break') {
-        if (currentPara.length) { result.push({ kind: 'paragraph', items: currentPara }); currentPara = []; }
-      } else {
-        currentPara.push({ i, phrase });
-      }
-    });
-    if (currentPara.length) result.push({ kind: 'paragraph', items: currentPara });
-    return result;
-  }, [phrases]);
-
-  const headingClass = dark
-    ? 'text-xl font-bold mt-10 mb-3 text-gray-100'
-    : 'text-xl font-bold mt-10 mb-3 text-gray-900';
-
-  return (
-    <>
-      {blocks.map((block, bi) =>
-        block.kind === 'heading' ? (
-          <h2
-            key={bi}
-            ref={(el) => { phraseRefs.current[block.i] = el; }}
-            data-phrase-index={block.i}
-            className={headingClass}
-          >
-            {block.phrase.text}
-          </h2>
-        ) : (
-          <p key={bi} className="mb-5">
-            {block.items.map(({ i, phrase }) => (
-              <span
-                key={i}
-                ref={(el) => { phraseRefs.current[i] = el; }}
-                data-phrase-index={i}
-                onClick={() => onPhraseClick(i)}
-                onContextMenu={(e) => onPhraseContextMenu(i, e)}
-                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onPhraseClick(i)}
-                role={tapToSyncActive ? 'button' : undefined}
-                tabIndex={tapToSyncActive ? 0 : undefined}
-                className={['rounded px-0.5 transition-colors', getSpanClass(i)].join(' ')}
-              >
-                {phrase.text}{' '}
-              </span>
-            ))}
-          </p>
-        )
-      )}
-    </>
   );
 }
 
