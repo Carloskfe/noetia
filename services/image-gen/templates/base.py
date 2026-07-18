@@ -4,7 +4,7 @@ import os
 import textwrap
 import urllib.request
 
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
 # ── Font registry ─────────────────────────────────────────────────────────────
 
@@ -23,6 +23,7 @@ FONT_REGISTRY = {
 VALID_FONTS = FONT_REGISTRY
 
 VALID_BG_TYPES = {'solid', 'gradient', 'image'}
+VALID_BG_FITS = {'cover', 'contain', 'blur'}
 
 _DARK_NAVY = (13, 27, 42)
 _WHITE = (255, 255, 255)
@@ -97,36 +98,100 @@ def _render_gradient(img: Image.Image, color1: tuple, color2: tuple, direction: 
             )
 
 
-def _render_image_bg(img: Image.Image, bg_image: str, bg_flip: bool = False) -> None:
-    """Fill the card with a background image (URL or base64 data URI, cover-scaled).
+def _load_bg_image(bg_image: str) -> Image.Image:
+    """Load a background from a data: URI or an http(s) URL as RGB."""
+    if bg_image.startswith('data:'):
+        _, data = bg_image.split(',', 1)
+        return Image.open(io.BytesIO(base64.b64decode(data))).convert('RGB')
+    with urllib.request.urlopen(bg_image, timeout=10) as resp:
+        return Image.open(resp).convert('RGB')
 
-    When bg_flip is True the background is mirrored horizontally (left↔right).
-    Only the image is flipped — the quote text is composited afterwards and
-    stays upright and readable.
+
+def _cover_scale(bg: Image.Image, card_w: int, card_h: int) -> Image.Image:
+    """Scale to fully COVER the card, centre-cropping the overflow.
+
+    Fills every pixel but sacrifices the image edges — the source of the
+    "animals/flowers cut off the sides" complaint. Kept as an explicit opt-in
+    fit and reused to build the blurred backdrop for the 'blur' fit.
+    """
+    bg_w, bg_h = bg.size
+    scale = max(card_w / bg_w, card_h / bg_h)
+    new_w, new_h = max(1, round(bg_w * scale)), max(1, round(bg_h * scale))
+    scaled = bg.resize((new_w, new_h), Image.LANCZOS)
+    ox, oy = (new_w - card_w) // 2, (new_h - card_h) // 2
+    return scaled.crop((ox, oy, ox + card_w, oy + card_h))
+
+
+def _contain_fit(bg: Image.Image, card_w: int, card_h: int) -> tuple:
+    """Scale so the WHOLE image fits inside the card (no cropping).
+
+    Returns the scaled image and the top-left offset to centre it. The bands
+    left around it are filled by the caller (matte colour or blurred backdrop).
+    """
+    bg_w, bg_h = bg.size
+    scale = min(card_w / bg_w, card_h / bg_h)
+    new_w, new_h = max(1, round(bg_w * scale)), max(1, round(bg_h * scale))
+    scaled = bg.resize((new_w, new_h), Image.LANCZOS)
+    return scaled, (card_w - new_w) // 2, (card_h - new_h) // 2
+
+
+def _edge_matte_color(bg: Image.Image) -> tuple:
+    """Average colour of the image's border pixels — a matte that blends with
+    the artwork rather than an arbitrary bar colour."""
+    small = bg.resize((max(1, bg.width // 8), max(1, bg.height // 8)), Image.LANCZOS)
+    px = small.load()
+    w, h = small.size
+    edge = (
+        [(x, 0) for x in range(w)] + [(x, h - 1) for x in range(w)]
+        + [(0, y) for y in range(h)] + [(w - 1, y) for y in range(h)]
+    )
+    n = len(edge)
+    r = sum(px[x, y][0] for x, y in edge) // n
+    g = sum(px[x, y][1] for x, y in edge) // n
+    b = sum(px[x, y][2] for x, y in edge) // n
+    return (r, g, b)
+
+
+def _render_image_bg(img: Image.Image, bg_image: str, bg_flip: bool = False,
+                     bg_fit: str = 'blur') -> None:
+    """Fill the card with a background image without distorting it.
+
+    bg_fit controls how the image maps onto the (usually differently-shaped)
+    card:
+      • 'cover'   — scale up and centre-crop: fills the card but cuts the edges.
+      • 'contain' — fit the whole image; fill the leftover bands with a matte
+                    colour sampled from the image's own edges (no crop).
+      • 'blur'    — fit the whole image over a blurred, slightly darkened cover
+                    of itself, so nothing is cropped and there are no hard bars
+                    (default).
+
+    When bg_flip is True the source image is mirrored horizontally first; the
+    quote text is composited afterwards and stays upright and readable.
     """
     try:
-        if bg_image.startswith('data:'):
-            _, data = bg_image.split(',', 1)
-            bg_bytes = base64.b64decode(data)
-            bg = Image.open(io.BytesIO(bg_bytes)).convert('RGB')
-        else:
-            with urllib.request.urlopen(bg_image, timeout=10) as resp:
-                bg = Image.open(resp).convert('RGB')
-
-        # Cover-scale: fill card without distortion
-        bg_w, bg_h = bg.size
-        card_w, card_h = img.width, img.height
-        scale = max(card_w / bg_w, card_h / bg_h)
-        new_w, new_h = int(bg_w * scale), int(bg_h * scale)
-        bg = bg.resize((new_w, new_h), Image.LANCZOS)
-        offset_x = (new_w - card_w) // 2
-        offset_y = (new_h - card_h) // 2
-        bg = bg.crop((offset_x, offset_y, offset_x + card_w, offset_y + card_h))
+        bg = _load_bg_image(bg_image)
         if bg_flip:
             bg = ImageOps.mirror(bg)  # horizontal mirror only
-        img.paste(bg)
+        card_w, card_h = img.width, img.height
+
+        if bg_fit == 'cover':
+            img.paste(_cover_scale(bg, card_w, card_h))
+            return
+
+        foreground, ox, oy = _contain_fit(bg, card_w, card_h)
+
+        if bg_fit == 'contain':
+            img.paste(_edge_matte_color(bg), [0, 0, card_w, card_h])
+        else:  # 'blur' — default backdrop; no hard letterbox bars
+            radius = max(8, card_w // 40)
+            backdrop = _cover_scale(bg, card_w, card_h).filter(
+                ImageFilter.GaussianBlur(radius=radius))
+            backdrop = ImageEnhance.Brightness(backdrop).enhance(0.85)
+            img.paste(backdrop)
+
+        img.paste(foreground, (ox, oy))
     except Exception:
-        # Fallback to dark navy if image can't be loaded
+        # Fallback to dark navy if the image can't be loaded/decoded.
         _render_solid(img, _DARK_NAVY)
 
 
@@ -191,6 +256,7 @@ def render_card(
     bg_gradient_dir: str = 'to-bottom',
     bg_image: str | None = None,
     bg_flip: bool = False,
+    bg_fit: str = 'blur',
 ) -> bytes:
     if bg_colors is None:
         bg_colors = ['#0D1B2A']
@@ -221,7 +287,7 @@ def render_card(
 
     # ── Background ──────────────────────────────────────────────────────────
     if bg_type == 'image' and bg_image:
-        _render_image_bg(img, bg_image, bg_flip=bg_flip)
+        _render_image_bg(img, bg_image, bg_flip=bg_flip, bg_fit=bg_fit)
         # Semi-transparent dark overlay for text readability on photo backgrounds
         overlay = Image.new('RGBA', (width, height), (0, 0, 0, 100))
         img_rgba = img.convert('RGBA')

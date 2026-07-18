@@ -5,7 +5,7 @@ from flask import Flask, jsonify, request
 
 from storage import MinioClient
 from templates import facebook, instagram, linkedin, pinterest, whatsapp
-from templates.base import VALID_FONTS, VALID_BG_TYPES
+from templates.base import VALID_FONTS, VALID_BG_TYPES, VALID_BG_FITS
 
 app = Flask(__name__)
 
@@ -102,6 +102,12 @@ def generate():
     gradient_dir  = body.get("gradientDir") or "to-bottom"
     bg_image      = body.get("bgImage")     or None
     bg_flip       = bool(body.get("bgFlip", False))
+    # How a photo background maps onto the card. Defaults to 'blur' (fit the
+    # whole image, no edge cropping); unknown values fall back to that default
+    # rather than failing the render.
+    bg_fit        = (body.get("bgFit") or "blur").lower()
+    if bg_fit not in VALID_BG_FITS:
+        bg_fit = "blur"
     try:
         text_scale = float(body.get("textScale", 1.0))
     except (TypeError, ValueError):
@@ -123,7 +129,7 @@ def generate():
                              bg_type=bg_type, bg_colors=bg_colors,
                              text_color_override=text_color,
                              bg_gradient_dir=gradient_dir,
-                             bg_image=bg_image, bg_flip=bg_flip)
+                             bg_image=bg_image, bg_flip=bg_flip, bg_fit=bg_fit)
         client = MinioClient()
         url = client.upload(png_bytes)
     except Exception:

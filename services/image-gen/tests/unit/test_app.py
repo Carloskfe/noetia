@@ -283,6 +283,47 @@ def test_generate_bg_flip_defaults_to_false(client):
     assert kwargs["bg_flip"] is False
 
 
+# ── /generate — bgFit param ──────────────────────────────────────────────────
+
+def test_generate_bg_fit_forwarded_to_renderer(client):
+    mock_render = MagicMock(return_value=b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+    with patch("app.MinioClient", return_value=_patched_minio()), \
+         patch.dict("app._RENDERERS", {"linkedin": mock_render}):
+        client.post("/generate", json={**_VALID_BODY, "bgFit": "contain"})
+    _, kwargs = mock_render.call_args
+    assert kwargs["bg_fit"] == "contain"
+
+
+def test_generate_bg_fit_defaults_to_blur(client):
+    mock_render = MagicMock(return_value=b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+    with patch("app.MinioClient", return_value=_patched_minio()), \
+         patch.dict("app._RENDERERS", {"linkedin": mock_render}):
+        client.post("/generate", json=_VALID_BODY)
+    _, kwargs = mock_render.call_args
+    assert kwargs["bg_fit"] == "blur"
+
+
+def test_generate_unknown_bg_fit_falls_back_to_blur(client):
+    # Unlike bgType, an unknown bgFit must NOT 400 — it silently defaults so a
+    # client passing a future/typo'd value still gets a (safe, uncropped) card.
+    mock_render = MagicMock(return_value=b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+    with patch("app.MinioClient", return_value=_patched_minio()), \
+         patch.dict("app._RENDERERS", {"linkedin": mock_render}):
+        resp = client.post("/generate", json={**_VALID_BODY, "bgFit": "zoomzoom"})
+    assert resp.status_code == 200
+    _, kwargs = mock_render.call_args
+    assert kwargs["bg_fit"] == "blur"
+
+
+def test_generate_bg_fit_case_insensitive(client):
+    mock_render = MagicMock(return_value=b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+    with patch("app.MinioClient", return_value=_patched_minio()), \
+         patch.dict("app._RENDERERS", {"linkedin": mock_render}):
+        client.post("/generate", json={**_VALID_BODY, "bgFit": "COVER"})
+    _, kwargs = mock_render.call_args
+    assert kwargs["bg_fit"] == "cover"
+
+
 # ── /generate — textScale param ──────────────────────────────────────────────
 
 def test_generate_with_text_scale_returns_200(client):

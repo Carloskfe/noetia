@@ -14,7 +14,11 @@ from templates.base import (
     _LOGO_DARK,
     _LOGO_LIGHT,
     _WHITE,
+    VALID_BG_FITS,
     VALID_FONTS,
+    _contain_fit,
+    _cover_scale,
+    _edge_matte_color,
     _render_image_bg,
     _watermark_logo_path,
     parse_hex_color,
@@ -275,6 +279,103 @@ def test_render_card_flip_is_noop_on_solid_bg():
     flipped = render_card(_FRAGMENT, 800, 800, bg_type='solid', bg_colors=['#FF6B6B'], bg_flip=True)
     normal  = render_card(_FRAGMENT, 800, 800, bg_type='solid', bg_colors=['#FF6B6B'], bg_flip=False)
     assert flipped == normal
+
+
+# ── background image fit modes (no edge cropping) ─────────────────────────────
+
+def _edge_striped_data_uri() -> str:
+    """400×100 wide source: green left edge, blue right edge, grey middle.
+
+    A horizontal centre-crop ('cover') discards the coloured edges; a
+    'contain'/'blur' fit keeps them — so the modes are distinguishable by
+    sampling the card's left/right columns.
+    """
+    src = Image.new('RGB', (400, 100), (128, 128, 128))
+    src.paste((0, 200, 0), [0, 0, 20, 100])       # green left edge
+    src.paste((0, 0, 200), [380, 0, 400, 100])    # blue right edge
+    buf = io.BytesIO()
+    src.save(buf, format='PNG')
+    return 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode()
+
+
+def _dominant_channel(px) -> str:
+    return 'rgb'[max(range(3), key=lambda i: px[i])]
+
+
+def test_valid_bg_fits_values():
+    assert VALID_BG_FITS == {'cover', 'contain', 'blur'}
+
+
+def test_cover_scale_returns_exact_card_size():
+    out = _cover_scale(Image.new('RGB', (400, 100), (10, 20, 30)), 200, 200)
+    assert out.size == (200, 200)
+
+
+def test_contain_fit_never_exceeds_card_and_centres():
+    fg, ox, oy = _contain_fit(Image.new('RGB', (400, 100), (10, 20, 30)), 200, 200)
+    w, h = fg.size
+    assert w <= 200 and h <= 200
+    assert w == 200            # wide source → full width preserved (no crop)
+    assert ox == 0 and oy > 0  # letterboxed vertically, centred
+
+
+def test_edge_matte_color_of_solid_image():
+    assert _edge_matte_color(Image.new('RGB', (80, 80), (200, 50, 50))) == (200, 50, 50)
+
+
+def test_contain_fit_preserves_left_and_right_edges():
+    card = Image.new('RGB', (200, 200), (0, 0, 0))
+    _render_image_bg(card, _edge_striped_data_uri(), bg_fit='contain')
+    assert _dominant_channel(card.getpixel((3, 100))) == 'g'     # green left edge kept
+    assert _dominant_channel(card.getpixel((196, 100))) == 'b'   # blue right edge kept
+
+
+def test_blur_is_the_default_fit_and_preserves_edges():
+    card = Image.new('RGB', (200, 200), (0, 0, 0))
+    _render_image_bg(card, _edge_striped_data_uri())  # no bg_fit → default 'blur'
+    assert _dominant_channel(card.getpixel((3, 100))) == 'g'
+    assert _dominant_channel(card.getpixel((196, 100))) == 'b'
+
+
+def test_cover_fit_crops_the_edges():
+    card = Image.new('RGB', (200, 200), (0, 0, 0))
+    _render_image_bg(card, _edge_striped_data_uri(), bg_fit='cover')
+    # centre-crop of the wide image drops the green/blue edges → grey middle
+    assert _dominant_channel(card.getpixel((3, 100))) != 'g'
+    assert _dominant_channel(card.getpixel((196, 100))) != 'b'
+
+
+def test_contain_fills_letterbox_band_not_black():
+    card = Image.new('RGB', (200, 200), (0, 0, 0))
+    _render_image_bg(card, _edge_striped_data_uri(), bg_fit='contain')
+    assert card.getpixel((100, 3)) != (0, 0, 0)   # top band is the edge matte
+
+
+def test_blur_fills_letterbox_band_not_black():
+    card = Image.new('RGB', (200, 200), (0, 0, 0))
+    _render_image_bg(card, _edge_striped_data_uri(), bg_fit='blur')
+    assert card.getpixel((100, 3)) != (0, 0, 0)   # top band is the blurred backdrop
+
+
+def test_render_image_bg_falls_back_to_navy_on_bad_image():
+    card = Image.new('RGB', (100, 100), (0, 0, 0))
+    bad = 'data:image/png;base64,' + base64.b64encode(b'not a real png').decode()
+    _render_image_bg(card, bad, bg_fit='contain')
+    assert card.getpixel((50, 50)) == _DARK_NAVY
+
+
+@pytest.mark.parametrize('fit', ['cover', 'contain', 'blur'])
+def test_render_card_image_bg_all_fits_valid_png(fit):
+    result = render_card(_FRAGMENT, 1200, 627, bg_type='image',
+                         bg_image=_edge_striped_data_uri(), bg_fit=fit)
+    assert _png_dimensions(result) == (1200, 627)
+
+
+def test_render_card_contain_differs_from_cover():
+    uri = _edge_striped_data_uri()
+    contain = render_card(_FRAGMENT, 1200, 627, bg_type='image', bg_image=uri, bg_fit='contain')
+    cover   = render_card(_FRAGMENT, 1200, 627, bg_type='image', bg_image=uri, bg_fit='cover')
+    assert contain != cover
 
 
 # ── quote text scale (S/M/L) ──────────────────────────────────────────────────
