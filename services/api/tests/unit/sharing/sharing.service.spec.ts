@@ -223,6 +223,42 @@ describe('SharingService', () => {
       expect(body).not.toHaveProperty('bgFit');
     });
 
+    it('forwards textScale to the image-gen payload when set', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ url: 'http://example.com/img.png' }),
+      } as Response);
+
+      await service.generateShareUrl(
+        mockFragment() as Fragment,
+        mockBook() as Book,
+        'instagram',
+        { textScale: 1.5 },
+      );
+
+      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
+      const body = JSON.parse(options.body);
+      expect(body.textScale).toBe(1.5);
+    });
+
+    it('omits textScale from payload when not set', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ url: 'http://example.com/img.png' }),
+      } as Response);
+
+      await service.generateShareUrl(
+        mockFragment() as Fragment,
+        mockBook() as Book,
+        'instagram',
+        {},
+      );
+
+      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
+      const body = JSON.parse(options.body);
+      expect(body).not.toHaveProperty('textScale');
+    });
+
     it('forwards textAlign when set', async () => {
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: true,

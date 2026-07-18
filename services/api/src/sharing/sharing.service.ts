@@ -17,6 +17,7 @@ export interface ShareOptions {
   bgFlip?: boolean;
   bgFit?: string;
   textAlign?: string;
+  textScale?: number;
 }
 
 @Injectable()
@@ -50,6 +51,7 @@ export class SharingService {
         ...(options.bgFlip      && { bgFlip:      true }),
         ...(options.bgFit       && { bgFit:       options.bgFit }),
         ...(options.textAlign   && { textAlign:   options.textAlign }),
+        ...(options.textScale   && { textScale:   options.textScale }),
       }),
     });
 
