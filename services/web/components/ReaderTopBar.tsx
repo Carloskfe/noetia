@@ -18,6 +18,8 @@ type Props = {
   onModeToggle?: () => void;
   hasChapters?: boolean;
   onChaptersToggle?: () => void;
+  /** Reading progress through the book, 0–1. Renders a % label + a thin bar. */
+  progress?: number;
 };
 
 export default function ReaderTopBar({
@@ -34,10 +36,12 @@ export default function ReaderTopBar({
   onModeToggle,
   hasChapters,
   onChaptersToggle,
+  progress,
 }: Props) {
   const { t } = useTranslation();
   const atMin = fontSize === FONT_SIZES[0];
   const atMax = fontSize === FONT_SIZES[FONT_SIZES.length - 1];
+  const pct = progress != null ? Math.round(Math.min(1, Math.max(0, progress)) * 100) : null;
 
   const bar = dark
     ? 'bg-gray-900 border-gray-700 text-gray-100'
@@ -81,6 +85,16 @@ export default function ReaderTopBar({
 
       {/* Book title */}
       <span className="flex-1 text-sm font-medium truncate text-center px-1">{title}</span>
+
+      {/* Reading progress percentage (bar rendered at the header's bottom edge) */}
+      {pct != null && (
+        <span
+          className="hidden sm:inline flex-shrink-0 w-9 text-right text-[11px] font-medium tabular-nums text-gray-400"
+          aria-label={t.nav.readingProgress(pct)}
+        >
+          {pct}%
+        </span>
+      )}
 
       {/* Font size decrease */}
       <button
@@ -152,6 +166,16 @@ export default function ReaderTopBar({
           </span>
         )}
       </button>
+
+      {/* Reading progress bar — pinned to the header's bottom edge */}
+      {pct != null && (
+        <div
+          data-testid="reading-progress-bar"
+          className="absolute bottom-0 left-0 h-[3px] bg-blue-500 transition-[width] duration-150 ease-out"
+          style={{ width: `${pct}%` }}
+          aria-hidden="true"
+        />
+      )}
     </header>
   );
 }

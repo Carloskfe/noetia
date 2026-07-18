@@ -459,6 +459,7 @@ export const es: Translations = {
     activeListeningMode: 'Modo Escucha Activa — toca para volver',
     chapters: 'Capítulos',
     fragments: 'Fragmentos',
+    readingProgress: (pct: number) => `Progreso de lectura: ${pct}%`,
   },
   clubs: {
     nav: 'Clubes',

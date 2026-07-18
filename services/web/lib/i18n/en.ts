@@ -457,6 +457,7 @@ export const en = {
     activeListeningMode: 'Active Listening mode — tap to go back',
     chapters: 'Chapters',
     fragments: 'Fragments',
+    readingProgress: (pct: number) => `Reading progress: ${pct}%`,
   },
   clubs: {
     nav: 'Clubs',

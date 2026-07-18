@@ -64,6 +64,7 @@ export default function ReaderPage() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [speed, setSpeed] = useState(1);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   // Reading preferences
   const [fontSize, setFontSize] = useState<FontSize>('md');
@@ -213,6 +214,29 @@ export default function ReaderPage() {
       phraseRefs.current[activePhraseIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [mode, activePhraseIndex]);
+
+  // ── Scroll-based reading progress (drives the top-bar indicator) ──────────
+  // Cheap O(1) read of the document scroll fraction, rAF-throttled. Re-runs when
+  // content height changes (phrases loaded, mode switch, font size) so the ratio
+  // stays accurate.
+  useEffect(() => {
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const doc = document.documentElement;
+      const max = doc.scrollHeight - doc.clientHeight;
+      setScrollProgress(max > 0 ? Math.min(1, Math.max(0, doc.scrollTop / max)) : 0);
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [phrases, mode, fontSize]);
 
   // ── Progress persistence ──────────────────────────────────────────────────
 
@@ -514,6 +538,13 @@ export default function ReaderPage() {
   const showHours = effDuration >= 3600;
   const fontSizeClass = FONT_SIZE_CLASSES[fontSize];
 
+  // Reading progress for the top-bar indicator: phrase position while listening
+  // (tracks the narration), scroll position while reading.
+  const lastPhraseIdx = phrases.length - 1;
+  const listeningProgress =
+    lastPhraseIdx > 0 && activePhraseIndex >= 0 ? activePhraseIndex / lastPhraseIdx : null;
+  const readingProgress = mode === 'reading' ? scrollProgress : (listeningProgress ?? scrollProgress);
+
   return (
     <div className={['flex flex-col md:flex-row min-h-screen', darkMode ? 'bg-gray-950 text-gray-100' : 'bg-white text-gray-800'].join(' ')}>
       {showTutorial && <ReaderTutorial onDismiss={() => setShowTutorial(false)} />}
@@ -547,6 +578,7 @@ export default function ReaderPage() {
         onModeToggle={handleNavAudioButton}
         hasChapters={chapters.length > 0}
         onChaptersToggle={() => setShowChapterDrawer((v) => !v)}
+        progress={readingProgress}
       />
 
       {/* Hidden audio element — uses M4B stream URL for browser-native playback */}
