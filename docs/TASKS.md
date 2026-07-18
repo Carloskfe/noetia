@@ -717,6 +717,55 @@ Protestant canon = **66 books** (39 OT + 27 NT). Catalogue has **17 per language
 
 ---
 
+## Backlog — Reader UX & sharing (added 2026-07-18, from Carlos)
+
+> Six items raised together. Ordered by product hierarchy (reader experience first). Items 3 & 4 are reader-facing **bugs** and should jump the queue.
+
+### 1. Paginated reader — text split into pages with transitions *(reader experience)*
+Present book text as discrete pages with a page-turn transition instead of one continuous scroll. Positive UX bet: more book-like, better sense of place, natural pause points.
+- **Challenges to resolve before committing:**
+  - **Phrase-sync coupling** — Escucha Activa highlights + auto-scroll are built around a single scrollable phrase list (`phraseAt`, `scrollIntoView`, `phraseRefs`). Pagination means: which page is the active phrase on, and auto-*flip* (not scroll) to it when audio crosses a page boundary. Reflows the core sync loop.
+  - **Dynamic pagination** — page breaks depend on viewport size, font size (user-adjustable), and dark mode. Pages must be recomputed on resize / font change without losing reading position (stored as `phraseIndex`, which is page-agnostic — good, keep that as the source of truth).
+  - **Fragment selection across page boundaries** — current selection is pointer-drag over contiguous spans; a selection spanning a page break needs a defined behavior.
+  - **Progress mapping** — a page-based progress indicator (item 2) must map phraseIndex → page N of M consistently with the sync map.
+  - **Mobile vs web + offline** — must work in the RN reader and offline (cached phrases) too, not just web.
+  - **Recommendation:** prototype web-only behind a reading-preference toggle (scroll ↔ paged); keep `phraseIndex` as canonical position; do NOT change the stored progress model.
+
+### 2. Reading progress indicator + weekly/monthly stats (Duolingo-style) *(reader experience)*
+- **In-reader progress status** — a live progress indicator while reading (e.g. % through book / page N of M / chapter progress). Today the reader only shows the audio timeline; there's no text-reading progress affordance. Derive from `phraseIndex / phrases.length` (or page count once item 1 lands).
+- **Weekly & monthly stats** — extend the existing stats surface. We already have a **7-day bar chart, streak counter, all-time totals, and weekly goal rings** (`StatsTab.tsx`, `GET /api/stats/me`, heartbeat hook). Missing: a **weekly** and **monthly** aggregation view (Duolingo-style calendar/summary). Backend heartbeat data already exists per-day; needs new aggregation endpoints + UI. Update mobile `StatsTab` equivalent too.
+
+### 3. 🐛 Phrase highlight leads the audio by one phrase *(reader bug — high priority)*
+The Escucha Activa highlight sits **one phrase ahead** of the narrated audio; they should stay locked together. Investigation pointers:
+- `phraseAt()` in `lib/reader-utils.ts` returns the **last phrase whose `startTime <= currentTime`** ("last started"), which intentionally holds a highlight through inter-phrase gaps — but if sync-map `startTime`s run slightly early, or the next phrase's `startTime` precedes the audible onset, the highlight advances before you hear it.
+- Contrast with `SEEK_NUDGE_SECONDS` (0.15s) used only on *seek*, not on playback tracking.
+- Likely fixes to evaluate: a small **playback lag/offset** subtracted from `currentTime` before `phraseAt`, or gating advance on `currentTime >= nextPhrase.startTime + ε`. Validate on a known-good ≥99% book (Marianela / Niebla) so it's a tracking-tuning fix, not a per-book sync-map problem.
+
+### 4. 🐛 Audio speed/transport controls unreachable on Chrome web *(reader bug — high priority)*
+User can't reach the menu to set playback **speed** and transport in Escucha Activa on the web.
+- **Likely root cause:** the controls live in the `<aside>` (`reader/[id]/page.tsx` ~L735). The reader root is `flex flex-col md:flex-row`. Below the `md` breakpoint (768px — includes narrow desktop Chrome windows), the aside falls to the **`flex-col` block layout and renders *after* the entire book-text column**, so the speed selector + play/scrub are stranded at the bottom of the whole book. The inner `sticky top-12` doesn't help because you must first scroll to where the aside begins.
+- **Fix direction:** on small/narrow viewports render the Escucha Activa controls as a **fixed bottom sheet / overlay** (like the "Modo Audio" panel already is), not an inline block at the end of the flow. Reproduce at ~700px width in Chrome.
+
+### 5. Quote-card background is zoom-cropped, cutting image edges *(sharing)*
+`image-gen/templates/base.py` → `_render_image_bg()` uses **cover-scale** (`scale = max(card_w/bg_w, card_h/bg_h)` then center-crop), so a portrait/square source in a landscape card gets its **left/right edges cropped** — sacrificing animals/flowers at the sides.
+- **Approaches to explore (Carlos's suggestion is sound):**
+  - **Contain + fill (letterbox with matching color):** fit the whole image (`scale = min(...)`), then fill the remaining top/bottom (or side) bands with a color sampled from the image's edge palette or a gradient derived from it — so nothing is cropped.
+  - **Blurred-cover backfill:** place the full contained image on top of a blurred, zoomed copy of itself (very common in social cards) — no hard letterbox bars, no edge loss.
+  - Make it a **render option** (`bgFit: 'cover' | 'contain' | 'blur'`) threaded through image-gen → api → ShareModal, defaulting to the new safe mode. Add `test_base.py` cases for each fit mode. Keep the existing readability overlay.
+
+### 6. Direct social publishing readiness (LinkedIn / FB / IG) *(sharing)*
+**The code is built; going live is gated on platform review, not on us.** Current state:
+- **Publish pipeline exists** — `POST /social/:platform/publish` + OAuth connect/callback/status (`social.controller.ts`) and per-platform publishers (LinkedIn, Facebook, Instagram, Pinterest) that push the generated image directly.
+- **Blockers per platform:**
+  - **Google** OAuth is live (login), but Google is not a share target.
+  - **Facebook** — OAuth app is in **Dev mode**; direct publish works only for app test users until **Meta business verification + App Review** (`pages_manage_posts` etc.).
+  - **Instagram** — publish is **hard-gated** behind `INSTAGRAM_PUBLISH_ENABLED=false` and requires Meta App Review of the IG Content Publishing permission; also needs an IG Business/Creator account linked to a FB Page. Not usable until then.
+  - **LinkedIn** — publisher implemented; needs the LinkedIn app approved for the share/`w_member_social` scope and prod client credentials set.
+  - **Pinterest** — publisher implemented; needs app credentials + approval.
+- **Answer to "is the app ready?":** Technically yes — the connect-account + publish-from-Noetia flow is implemented end-to-end. Operationally **not yet live** for FB/IG (Meta App Review pending) and depends on approved prod app credentials for LinkedIn/Pinterest. Until then, the **share-sheet + download-image fallback** is the shipping path. Track the Meta review as the critical-path item.
+
+---
+
 ## Summary
 
 | Stage | Name                        | Sprints | Estimated Weeks | Testing overhead |
