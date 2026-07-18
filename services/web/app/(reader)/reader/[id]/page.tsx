@@ -619,7 +619,13 @@ export default function ReaderPage() {
       )}
 
       {/* ── Text column (Lectura + Escucha Activa) ──────────────────────── */}
-      <main className={['flex-1 max-w-2xl mx-auto px-6 pt-14 pb-10 md:pb-16 md:pt-16', mode === 'audio' ? 'hidden' : ''].join(' ')}>
+      <main className={[
+        'flex-1 max-w-2xl mx-auto px-6 pt-14 md:pt-16',
+        mode === 'audio' ? 'hidden' : '',
+        // Extra bottom room on mobile so the end of the text can scroll clear of
+        // the docked control sheet; desktop keeps normal padding (side sidebar).
+        mode === 'escucha-activa' ? 'pb-[70vh] md:pb-16' : 'pb-10 md:pb-16',
+      ].join(' ')}>
         <header className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">{book.title}</h1>
           <p className="text-gray-500 text-sm mt-1">{book.author}</p>
@@ -657,7 +663,10 @@ export default function ReaderPage() {
               onClick={handleFabClick}
               className={[
                 'fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center z-50 transition bg-blue-600 text-white',
-                mode === 'escucha-activa' ? 'md:hidden' : '',
+                // In escucha-activa the docked control panel (bottom sheet on
+                // mobile, sidebar on desktop) owns play/pause, so the FAB is
+                // redundant on every breakpoint there.
+                mode === 'escucha-activa' ? 'hidden' : '',
               ].join(' ')}
               aria-label={
                 mode === 'reading' ? 'Abrir Modo Escucha Activa'
@@ -733,15 +742,22 @@ export default function ReaderPage() {
             </div>
           )}
 
-          {/* Full controls sidebar */}
+          {/* Full controls: fixed bottom sheet on mobile, right sidebar on desktop */}
           <aside
             className={[
-              'border-t md:border-t-0 md:border-l border-gray-200 bg-gray-50',
-              'md:w-72 md:flex-shrink-0',
+              // Mobile: a fixed bottom sheet so speed/transport are always
+              // reachable. Previously this sat at the end of the flex-col flow —
+              // i.e. below the ENTIRE book text — so on narrow viewports (incl.
+              // Chrome windows under the md breakpoint) the controls could only
+              // be reached by scrolling to the end of the book.
+              // Desktop (md+): a normal sticky right sidebar (unchanged).
+              'bg-gray-50 border-gray-200',
+              'fixed inset-x-0 bottom-0 z-40 max-h-[70vh] overflow-y-auto rounded-t-2xl border-t shadow-[0_-4px_24px_rgba(0,0,0,0.12)]',
+              'md:static md:inset-auto md:z-auto md:max-h-none md:overflow-visible md:w-72 md:flex-shrink-0 md:rounded-none md:border-t-0 md:border-l md:shadow-none',
               mode === 'escucha-activa' ? 'block' : 'hidden',
             ].join(' ')}
           >
-            <div className="p-6 sticky top-12">
+            <div className="p-4 md:p-6 md:sticky md:top-12">
               {/* Header: mode label + close button */}
               <div className="flex items-center justify-between mb-4">
                 <div>
