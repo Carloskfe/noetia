@@ -15,6 +15,7 @@ export interface ShareOptions {
   gradientDir?: string;
   bgImage?: string;
   bgFlip?: boolean;
+  bgFit?: string;
   textAlign?: string;
 }
 
@@ -47,6 +48,7 @@ export class SharingService {
         ...(options.gradientDir && { gradientDir: options.gradientDir }),
         ...(options.bgImage     && { bgImage:     options.bgImage }),
         ...(options.bgFlip      && { bgFlip:      true }),
+        ...(options.bgFit       && { bgFit:       options.bgFit }),
         ...(options.textAlign   && { textAlign:   options.textAlign }),
       }),
     });

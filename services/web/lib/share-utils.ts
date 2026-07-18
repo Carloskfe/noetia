@@ -93,6 +93,7 @@ export interface ShareParams {
   gradientDir?: string;
   bgImage?: string;
   bgFlip?: boolean;
+  bgFit?: 'cover' | 'contain' | 'blur';
   textAlign?: 'left' | 'center' | 'right';
   textScale?: number;
 }
@@ -115,6 +116,7 @@ export async function shareFragment(fragmentId: string, params: ShareParams): Pr
       ...(params.gradientDir ? { gradientDir: params.gradientDir } : {}),
       ...(params.bgImage     ? { bgImage:     params.bgImage }     : {}),
       ...(params.bgFlip      ? { bgFlip:      true }               : {}),
+      ...(params.bgFit       ? { bgFit:       params.bgFit }       : {}),
       ...(params.textAlign && params.textAlign !== 'center' ? { textAlign: params.textAlign } : {}),
       ...(params.textScale && params.textScale !== 1 ? { textScale: params.textScale } : {}),
     }),

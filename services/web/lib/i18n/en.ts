@@ -652,6 +652,13 @@ export const en = {
   shareCard: {
     flip: 'Mirror background',
     flipAria: 'Mirror the background image horizontally',
+    fit: {
+      label: 'Image fit',
+      blur: 'Blur',
+      contain: 'Fit',
+      cover: 'Fill',
+      aria: 'Choose how the background image fits the card',
+    },
     align: { left: 'Align left', center: 'Align center', right: 'Align right' },
     textSize: { label: 'Text size', S: 'Small text', M: 'Medium text', L: 'Large text' },
   },

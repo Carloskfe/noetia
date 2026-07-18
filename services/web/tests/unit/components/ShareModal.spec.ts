@@ -425,6 +425,54 @@ describe('shareFragment bgFlip', () => {
   });
 });
 
+// ── shareFragment: bgFit (photo background fit mode) ──────────────────────────
+
+describe('shareFragment bgFit', () => {
+  const imageParams = {
+    format: 'ig-post' as ShareFormat,
+    font: 'playfair',
+    bgType: 'image' as const,
+    bgColors: ['#000000'],
+    bgImage: 'data:image/png;base64,AAAA',
+  };
+
+  afterEach(() => jest.restoreAllMocks());
+
+  function mockOk() {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ url: 'http://example.com/card.png' }),
+    } as Response);
+  }
+
+  it('sends bgFit when a non-default fit is chosen', async () => {
+    mockOk();
+    await shareFragment('frag-1', { ...imageParams, bgFit: 'contain' });
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.bgFit).toBe('contain');
+  });
+
+  it('sends bgFit=cover when chosen', async () => {
+    mockOk();
+    await shareFragment('frag-1', { ...imageParams, bgFit: 'cover' });
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.bgFit).toBe('cover');
+  });
+
+  it('omits bgFit when not specified', async () => {
+    mockOk();
+    await shareFragment('frag-1', imageParams);
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body).not.toHaveProperty('bgFit');
+  });
+});
+
 describe('shareFragment textAlign', () => {
   const base = { format: 'ig-post' as ShareFormat, font: 'playfair', bgType: 'solid' as const, bgColors: ['#000'] };
   afterEach(() => jest.restoreAllMocks());

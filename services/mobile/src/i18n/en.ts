@@ -127,6 +127,13 @@ export const en = {
     error: 'Could not generate the image. Try again.',
     flip: 'Mirror background',
     flipAria: 'Mirror the background image horizontally',
+    fit: {
+      label: 'Image fit',
+      blur: 'Blur',
+      contain: 'Fit',
+      cover: 'Fill',
+      aria: 'Choose how the background image fits the card',
+    },
     background: 'Background',
     bgDefault: 'Default',
     textStyle: 'Text style',

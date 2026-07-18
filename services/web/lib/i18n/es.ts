@@ -649,6 +649,13 @@ export const es: Translations = {
   shareCard: {
     flip: 'Reflejar fondo',
     flipAria: 'Reflejar la imagen de fondo horizontalmente',
+    fit: {
+      label: 'Ajuste de imagen',
+      blur: 'Difuminar',
+      contain: 'Ajustar',
+      cover: 'Rellenar',
+      aria: 'Elige cómo se ajusta la imagen de fondo a la tarjeta',
+    },
     align: { left: 'Alinear a la izquierda', center: 'Centrar', right: 'Alinear a la derecha' },
     textSize: { label: 'Tamaño del texto', S: 'Texto pequeño', M: 'Texto mediano', L: 'Texto grande' },
   },

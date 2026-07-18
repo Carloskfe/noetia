@@ -108,6 +108,9 @@ export default function ShareModal({
   const [bgImage, setBgImage] = useState<string | null>(null);
   const [bgImageLoading, setBgImageLoading] = useState(false);
   const [bgFlip, setBgFlip] = useState(false);
+  // How a photo background maps onto the card. 'blur' (fit whole image over a
+  // blurred backdrop, no crop) is the safe default; 'cover' crops to fill.
+  const [bgFit, setBgFit] = useState<'cover' | 'contain' | 'blur'>('blur');
   const [textColorOverride, setTextColorOverride] = useState<string | null>(null);
   const [textBold, setTextBold] = useState(false);
   const [textItalic, setTextItalic] = useState(false);
@@ -167,6 +170,7 @@ export default function ShareModal({
     ...(bgType === 'gradient'           ? { gradientDir }                    : {}),
     ...(bgType === 'image' && bgImage   ? { bgImage }                        : {}),
     ...(imageActive && bgFlip           ? { bgFlip: true }                   : {}),
+    ...(imageActive && bgFit !== 'blur' ? { bgFit }                          : {}),
   };
 
   const handleSelectPreset = useCallback(async (url: string) => {
@@ -335,14 +339,35 @@ export default function ShareModal({
           <div className="p-5 space-y-5">
             {/* ── Live CSS Preview ──────────────────────────────────────── */}
             <div className={`relative w-full ${FORMAT_ASPECT[selectedFormat]} rounded-xl overflow-hidden shadow-md mx-auto max-w-[260px]`}>
-              {/* Background layer — mirrored independently so the quote text stays upright */}
-              <div
-                className="absolute inset-0"
-                style={{
-                  background: previewBg,
-                  ...(imageActive && bgFlip ? { transform: 'scaleX(-1)' } : {}),
-                }}
-              />
+              {/* Background layer(s) — mirrored independently so the quote text
+                  stays upright. Photo backgrounds approximate the render's bgFit:
+                  cover fills+crops, contain fits over a matte, blur fits over a
+                  blurred zoom of itself. */}
+              {imageActive ? (
+                <div
+                  className="absolute inset-0"
+                  style={bgFlip ? { transform: 'scaleX(-1)' } : undefined}
+                >
+                  {bgFit === 'cover' ? (
+                    <div className="absolute inset-0" style={{ background: `url("${bgImage}") center/cover` }} />
+                  ) : bgFit === 'contain' ? (
+                    <>
+                      <div className="absolute inset-0 bg-gray-800" />
+                      <div className="absolute inset-0" style={{ background: `url("${bgImage}") center/contain no-repeat` }} />
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        className="absolute inset-0"
+                        style={{ background: `url("${bgImage}") center/cover`, filter: 'blur(8px) brightness(0.85)', transform: 'scale(1.15)' }}
+                      />
+                      <div className="absolute inset-0" style={{ background: `url("${bgImage}") center/contain no-repeat` }} />
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="absolute inset-0" style={{ background: previewBg }} />
+              )}
               <div
                 className="relative w-full h-full flex flex-col items-center justify-center p-4 gap-2"
                 style={{ fontFamily: fontCss }}
@@ -666,6 +691,36 @@ export default function ShareModal({
                     >
                       Quitar imagen
                     </button>
+                  )}
+
+                  {/* Image fit — photo backgrounds only */}
+                  {imageActive && (
+                    <div className="mt-3">
+                      <span className="text-sm text-gray-700">{t.shareCard.fit.label}</span>
+                      <div
+                        role="radiogroup"
+                        aria-label={t.shareCard.fit.aria}
+                        className="mt-1.5 flex items-center gap-1 bg-gray-100 rounded-lg p-1"
+                      >
+                        {(['blur', 'contain', 'cover'] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            role="radio"
+                            aria-checked={bgFit === mode}
+                            onClick={() => setBgFit(mode)}
+                            className={[
+                              'flex-1 text-xs font-medium py-1.5 rounded-md transition',
+                              bgFit === mode
+                                ? 'bg-white text-blue-600 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-800',
+                            ].join(' ')}
+                          >
+                            {t.shareCard.fit[mode]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )}
 
                   {/* Flip (mirror) — image backgrounds only */}

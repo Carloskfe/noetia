@@ -129,6 +129,13 @@ export const es: MobileTranslations = {
     error: 'No se pudo generar la imagen. Inténtalo de nuevo.',
     flip: 'Reflejar fondo',
     flipAria: 'Reflejar la imagen de fondo horizontalmente',
+    fit: {
+      label: 'Ajuste de imagen',
+      blur: 'Difuminar',
+      contain: 'Ajustar',
+      cover: 'Rellenar',
+      aria: 'Elige cómo se ajusta la imagen de fondo a la tarjeta',
+    },
     background: 'Fondo',
     bgDefault: 'Predeterminado',
     textStyle: 'Estilo de texto',
