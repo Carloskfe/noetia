@@ -293,8 +293,11 @@ def render_card(
         img_rgba = img.convert('RGBA')
         img_rgba = Image.alpha_composite(img_rgba, overlay)
         img = img_rgba.convert('RGB')
-        # Recalculate text color over dark overlay → almost always white
-        text_color = _WHITE
+        # Over the dark overlay white is the safe default, but honour an explicit
+        # text-colour override so the render matches what the share preview showed
+        # (the preview lets the user recolour text on photo backgrounds too).
+        if not text_color_override:
+            text_color = _WHITE
         attr_color = (200, 210, 220)
         rule_color = attr_color
     elif bg_type == 'gradient' and len(bg_colors) >= 2:

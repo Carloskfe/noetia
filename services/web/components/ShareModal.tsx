@@ -160,7 +160,13 @@ export default function ShareModal({
     font: selectedFont,
     bgType,
     bgColors: bgType !== 'image' ? activeBgColors : ['#000000'],
-    ...(textColorOverride               ? { textColor:   textColorOverride } : {}),
+    // Always forward the exact colour the preview shows (auto-contrast OR the
+    // user's override). The server derives auto-contrast slightly differently
+    // (it averages RGB channels then takes luminance; the preview averages the
+    // per-colour luminances), so on gradients the two could pick opposite
+    // colours — making the download not match the preview. Sending the resolved
+    // colour makes the preview authoritative.
+    textColor,
     ...(editedText !== fragmentText     ? { text:        editedText }        : {}),
     ...(citationEnabled && citationText ? { citation:    citationText }      : {}),
     ...(textBold                        ? { textBold:    true }              : {}),
