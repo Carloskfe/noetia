@@ -3,7 +3,14 @@ import io
 
 from PIL import Image
 
-from templates.base import render_card, text_color_for_bg, _WHITE, _DARK_NAVY
+from templates.base import (
+    render_card,
+    text_color_for_bg,
+    _logo_target_height,
+    _LOGO_MIN_H,
+    _WHITE,
+    _DARK_NAVY,
+)
 
 
 def _png_data_uri(color=(120, 120, 120), size=(8, 8)) -> str:
@@ -63,3 +70,22 @@ class TestRenderCardOverride:
         auto = _card(bg_type="image", bg_image=uri)
         white_override = _card(bg_type="image", bg_image=uri, text_color_override="#FFFFFF")
         assert auto == white_override
+
+
+# ── Watermark logo size ───────────────────────────────────────────────────────
+
+class TestLogoTargetHeight:
+    def test_height_is_3_9_percent_of_width(self):
+        # 1080px card → int(1080 * 0.039) = 42px.
+        assert _logo_target_height(1080) == 42
+
+    def test_reduced_35_percent_from_the_old_6_percent(self):
+        # The logo was 6% of card width; it is now ~35% smaller. Allow ±1px for
+        # int() truncation across the size range.
+        for width in (1000, 1080, 1200, 1920):
+            old = int(width * 0.06)
+            assert abs(_logo_target_height(width) - old * 0.65) <= 1
+
+    def test_floors_at_the_minimum_height(self):
+        # Very narrow cards clamp to the minimum so the mark stays legible.
+        assert _logo_target_height(100) == _LOGO_MIN_H

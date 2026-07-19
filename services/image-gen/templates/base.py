@@ -37,6 +37,11 @@ _ASSET_DIR = os.path.join(os.path.dirname(__file__), '..', 'assets')
 _LOGO_LIGHT = os.path.join(_ASSET_DIR, 'noetia-logo-light.png')
 _LOGO_DARK = os.path.join(_ASSET_DIR, 'noetia-logo-dark.png')
 
+# Watermark logo height as a fraction of card width. Kept deliberately subtle:
+# reduced 35% (0.06 → 0.039) so the wordmark reads as a mark, not a sticker.
+_LOGO_WIDTH_RATIO = 0.039
+_LOGO_MIN_H = 16
+
 # Gradient direction → (dx_start, dy_start) normalised vectors used to compute t
 _GRADIENT_DIRS = {
     'to-bottom':       lambda x, y, w, h: y / max(h - 1, 1),
@@ -218,6 +223,11 @@ def _watermark_logo_path(text_color: tuple) -> str:
     return _LOGO_LIGHT if text_color == _WHITE else _LOGO_DARK
 
 
+def _logo_target_height(card_width: int) -> int:
+    """Watermark logo height in px for a card of the given width."""
+    return max(_LOGO_MIN_H, int(card_width * _LOGO_WIDTH_RATIO))
+
+
 def _draw_watermark(img, draw, text_color: tuple, attr_color: tuple, font_wm, margin: int) -> None:
     """Composite the Noetia logo watermark in the bottom-right corner.
 
@@ -226,7 +236,7 @@ def _draw_watermark(img, draw, text_color: tuple, attr_color: tuple, font_wm, ma
     """
     try:
         logo = Image.open(_watermark_logo_path(text_color)).convert('RGBA')
-        target_h = max(24, int(img.width * 0.06))
+        target_h = _logo_target_height(img.width)
         target_w = max(1, int(target_h * logo.width / logo.height))
         logo = logo.resize((target_w, target_h), Image.LANCZOS)
         # Slightly translucent so it reads as a watermark, not a sticker
