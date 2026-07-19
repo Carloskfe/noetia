@@ -205,8 +205,8 @@ export default function PagedReader({
   // Translucent so it stays visible on both the paper card and the surround.
   const trackBg = dark ? 'bg-white/10' : 'bg-black/10';
   const trackFill = 'bg-gray-400';
-  const paperBg = dark ? '#111827' : '#FBFAF7';
-  const frameBorder = dark ? '#1F2937' : '#E7E4DC';
+  const paperBg = dark ? '#111827' : '#FCFCFD';
+  const frameBorder = dark ? '#1F2937' : '#DDE1E7';
   // Framed pages sit on a cool neutral-gray surround so the sheet pops. In dark
   // mode the reader background is already darker than the card, so leave it.
   const surroundBg = framed && !dark ? '#E3E6EB' : undefined;
