@@ -14,7 +14,11 @@ export const FONT_SIZES: FontSize[] = ['sm', 'md', 'lg', 'xl'];
 export const READING_LAYOUTS: ReadingLayout[] = ['scroll', 'paged'];
 export const SPEEDS = [0.75, 1, 1.25, 1.5, 2] as const;
 
-const DEFAULTS: ReaderPreferences = { fontSize: 'md', darkMode: false, speed: 1, readingLayout: 'scroll' };
+// Paged ("page") view is the standard reading layout. A reader who switches to
+// scroll has their choice remembered (localStorage 'reader-layout'), which wins
+// over this default. Paged only engages for synced books; others fall back to
+// scroll rendering regardless.
+const DEFAULTS: ReaderPreferences = { fontSize: 'md', darkMode: false, speed: 1, readingLayout: 'paged' };
 
 export function loadPreferences(): ReaderPreferences {
   if (typeof window === 'undefined') return { ...DEFAULTS };

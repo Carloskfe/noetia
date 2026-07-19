@@ -24,7 +24,7 @@ describe('FONT_SIZES', () => {
 describe('loadPreferences', () => {
   it('returns defaults when no values are stored', () => {
     const prefs = loadPreferences();
-    expect(prefs).toEqual({ fontSize: 'md', darkMode: false, speed: 1, readingLayout: 'scroll' });
+    expect(prefs).toEqual({ fontSize: 'md', darkMode: false, speed: 1, readingLayout: 'paged' });
   });
 
   it('restores a stored playback speed', () => {
@@ -79,24 +79,24 @@ describe('loadPreferences', () => {
     expect(loadPreferences().darkMode).toBe(false);
   });
 
-  it('defaults reading layout to scroll', () => {
-    expect(loadPreferences().readingLayout).toBe('scroll');
-  });
-
-  it('restores a stored paged layout', () => {
-    mockStorage['reader-layout'] = 'paged';
+  it('defaults reading layout to paged', () => {
     expect(loadPreferences().readingLayout).toBe('paged');
   });
 
-  it('falls back to scroll for an unknown stored layout', () => {
-    mockStorage['reader-layout'] = 'grid';
+  it('restores a stored scroll layout (a reader who opted out of paged)', () => {
+    mockStorage['reader-layout'] = 'scroll';
     expect(loadPreferences().readingLayout).toBe('scroll');
+  });
+
+  it('falls back to the paged default for an unknown stored layout', () => {
+    mockStorage['reader-layout'] = 'grid';
+    expect(loadPreferences().readingLayout).toBe('paged');
   });
 
   it('returns defaults without throwing when window is undefined', () => {
     Object.defineProperty(global, 'window', { value: undefined, writable: true });
     expect(() => loadPreferences()).not.toThrow();
-    expect(loadPreferences()).toEqual({ fontSize: 'md', darkMode: false, speed: 1, readingLayout: 'scroll' });
+    expect(loadPreferences()).toEqual({ fontSize: 'md', darkMode: false, speed: 1, readingLayout: 'paged' });
   });
 });
 

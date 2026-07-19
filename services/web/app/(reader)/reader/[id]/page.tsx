@@ -74,7 +74,7 @@ export default function ReaderPage() {
   // Reading preferences
   const [fontSize, setFontSize] = useState<FontSize>('md');
   const [darkMode, setDarkMode] = useState(false);
-  const [readingLayout, setReadingLayout] = useState<ReadingLayout>('scroll');
+  const [readingLayout, setReadingLayout] = useState<ReadingLayout>('paged');
   const [pagedPhraseIndex, setPagedPhraseIndex] = useState(-1);
 
   // Fragment state
