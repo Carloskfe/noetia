@@ -5,11 +5,15 @@ import { Phrase, pageCount, clampPage, pageForOffset } from '@/lib/reader-utils'
 import PhraseRenderer from './PhraseRenderer';
 import { useTranslation } from '@/lib/i18n';
 
-const GAP = 48;          // px gutter between pages (off-screen)
-const MIN_PAD_X = 24;    // px minimum horizontal page margin (mobile)
-const PAD_Y = 32;        // px vertical page margin — generous, book-like
-const CONTROLS_H = 52;   // px bottom bar (progress track + page indicator)
-const MAX_MEASURE = 620; // px — cap the text column to a comfortable line length
+const GAP = 48;               // px gutter between pages (off-screen)
+const MAX_MEASURE = 720;      // px — cap the text column to a comfortable line length
+const FRAME_BREAKPOINT = 640; // px — below this the page is full-bleed (mobile); above, framed
+const INNER_X_DESKTOP = 44;   // px horizontal text inset inside a framed page
+const INNER_X_MOBILE = 24;    // px horizontal text inset on full-bleed mobile
+const INNER_Y = 30;           // px vertical text inset inside the page
+const OUTER_Y = 28;           // px space above/below the page card (framed only)
+const CONTROLS_H = 52;        // px bottom bar (progress track + page indicator)
+const SWIPE_MIN = 45;         // px minimum horizontal travel to count as a page swipe
 
 type Props = {
   phrases: Phrase[];
@@ -36,10 +40,13 @@ export default function PagedReader({
 }: Props) {
   const { t } = useTranslation();
   const viewportRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const [pageWidth, setPageWidth] = useState(0); // content-box width of one page
-  const [padX, setPadX] = useState(MIN_PAD_X);   // horizontal margin; widens on large screens to centre the column
+  const [pageWidth, setPageWidth] = useState(0);       // content-box width of one page (the text measure)
+  const [frameWidth, setFrameWidth] = useState(0);     // outer width of the page card (measure + insets)
+  const [innerX, setInnerX] = useState(INNER_X_MOBILE); // horizontal text inset
+  const [framed, setFramed] = useState(false);          // draw the page as a bordered sheet (wide screens)
   const [total, setTotal] = useState(1);
   const [page, setPage] = useState(0);
 
@@ -47,23 +54,23 @@ export default function PagedReader({
   const pageRef = useRef(0);
   const totalRef = useRef(1);
   const pageWidthRef = useRef(0);
-  const padXRef = useRef(MIN_PAD_X);
+  const innerXRef = useRef(INNER_X_MOBILE);
   const anchorRef = useRef(initialPhraseIndex); // phrase kept visible across reflow
   const didInitRef = useRef(false);
   pageRef.current = page;
   totalRef.current = total;
   pageWidthRef.current = pageWidth;
-  padXRef.current = padX;
+  innerXRef.current = innerX;
 
   const pitch = pageWidth + GAP;
 
   // The page a phrase sits on. Its rect.left is relative to the CURRENT (already
   // translated) page, so recover the absolute content offset first, then floor.
   const pageOfPhrase = useCallback((i: number): number | null => {
-    const vp = viewportRef.current;
+    const frame = frameRef.current;
     const el = phraseRefs.current[i];
-    if (!vp || !el || pageWidthRef.current <= 0) return null;
-    const leftEdge = vp.getBoundingClientRect().left + padXRef.current;
+    if (!frame || !el || pageWidthRef.current <= 0) return null;
+    const leftEdge = frame.getBoundingClientRect().left + innerXRef.current;
     const pitchNow = pageWidthRef.current + GAP;
     const absoluteLeft = pageRef.current * pitchNow + (el.getBoundingClientRect().left - leftEdge);
     return clampPage(pageForOffset(absoluteLeft, pageWidthRef.current, GAP), totalRef.current);
@@ -76,9 +83,9 @@ export default function PagedReader({
 
   // First narratable phrase visible on the current page.
   const firstPhraseOnPage = useCallback((): number => {
-    const vp = viewportRef.current;
-    if (!vp || pageWidthRef.current <= 0) return -1;
-    const leftEdge = vp.getBoundingClientRect().left + padXRef.current;
+    const frame = frameRef.current;
+    if (!frame || pageWidthRef.current <= 0) return -1;
+    const leftEdge = frame.getBoundingClientRect().left + innerXRef.current;
     for (let i = 0; i < phrases.length; i++) {
       const ph = phrases[i];
       if (ph.endTime <= ph.startTime) continue; // skip headings / markers
@@ -95,11 +102,15 @@ export default function PagedReader({
     const vp = viewportRef.current;
     if (!vp) return;
     const cw = vp.clientWidth;
-    // Widen the side margins on large screens so the text column keeps a
-    // comfortable book measure (~620px) and sits centred, like a Kindle page.
-    const px = Math.max(MIN_PAD_X, Math.round((cw - MAX_MEASURE) / 2));
-    setPadX(px);
-    setPageWidth(Math.max(0, cw - 2 * px));
+    const isFramed = cw >= FRAME_BREAKPOINT;
+    const ix = isFramed ? INNER_X_DESKTOP : INNER_X_MOBILE;
+    // The page card is at most one comfortable measure wide (plus its insets);
+    // narrower viewports go full-bleed. Text measure = card width − insets.
+    const frameW = Math.min(cw, MAX_MEASURE + 2 * ix);
+    setFramed(isFramed);
+    setInnerX(ix);
+    setFrameWidth(frameW);
+    setPageWidth(Math.max(0, frameW - 2 * ix));
   }, []);
 
   useEffect(() => {
@@ -162,79 +173,123 @@ export default function PagedReader({
     return () => window.removeEventListener('keydown', onKey);
   }, [turn]);
 
+  // ── Touch swipe (mobile page turn) ────────────────────────────────────────
+  // A quick horizontal drag turns the page (left → next, right → prev), so the
+  // existing slide transition plays. Ignored while listening (audio drives the
+  // page) and when a text selection is in progress, so it never fights fragment
+  // capture.
+  const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    const t0 = e.touches[0];
+    touchStartRef.current = { x: t0.clientX, y: t0.clientY, t: Date.now() };
+  }, []);
+  const onTouchEnd = useCallback((e: React.TouchEvent) => {
+    const s = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!s || followActive) return;
+    const sel = typeof window !== 'undefined' ? window.getSelection() : null;
+    if (sel && !sel.isCollapsed) return; // user is selecting text → don't turn
+    const t1 = e.changedTouches[0];
+    const dx = t1.clientX - s.x;
+    const dy = t1.clientY - s.y;
+    if (Date.now() - s.t > 600) return;                         // too slow to be a flick
+    if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) < Math.abs(dy) * 1.4) return; // not horizontal enough
+    turn(dx < 0 ? 1 : -1);
+  }, [followActive, turn]);
+
   const atStart = page <= 0;
   const atEnd = page >= total - 1;
   const zoneBtn = dark ? 'text-gray-600 hover:text-gray-300' : 'text-gray-300 hover:text-gray-600';
   // Reading position through the book (0 on the first page, 1 on the last).
   const progress = total > 1 ? page / (total - 1) : 1;
   const trackBg = dark ? 'bg-gray-700/70' : 'bg-gray-200';
-  const trackFill = dark ? 'bg-gray-400' : 'bg-gray-400';
+  const trackFill = 'bg-gray-400';
+  const paperBg = dark ? '#111827' : '#FBFAF7';
+  const frameBorder = dark ? '#1F2937' : '#E7E4DC';
 
   return (
     <div className="h-full flex flex-col">
-      {/* Page viewport — one column wide, columns overflow & are translated */}
+      {/* Reading area — centres the page card horizontally. */}
       <div
         ref={viewportRef}
-        className="relative flex-1 overflow-hidden"
-        style={{ paddingLeft: padX, paddingRight: padX, paddingTop: PAD_Y, paddingBottom: PAD_Y }}
+        className="relative flex-1 min-h-0 flex justify-center overflow-hidden"
+        style={{ paddingTop: framed ? OUTER_Y : 0, paddingBottom: framed ? OUTER_Y : 0 }}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
       >
+        {/* The page — a bordered sheet on wide screens, full-bleed on mobile.
+            Its inner width is the text measure; other pages overflow and are
+            translated + clipped here. */}
         <div
-          ref={contentRef}
-          className={[
-            'h-full max-w-none',
-            fontSizeClass,
-            'leading-relaxed',
-            // Book-like block: justified, hyphenated, first-line indents and no
-            // inter-paragraph gap — so a page reads like a printed page, not a
-            // web article. Scoped to the paged column; scroll view is untouched.
-            'text-justify',
-            '[&_p]:indent-8 [&_p]:mb-0',
-          ].join(' ')}
+          ref={frameRef}
+          className={['relative h-full overflow-hidden', framed ? 'rounded-2xl border shadow-[0_4px_24px_rgba(0,0,0,0.10)]' : ''].join(' ')}
           style={{
-            columnWidth: pageWidth > 0 ? `${pageWidth}px` : undefined,
-            columnGap: `${GAP}px`,
-            columnFill: 'auto',
-            transform: `translateX(-${page * pitch}px)`,
-            transition: 'transform 250ms ease',
-            willChange: 'transform',
-            hyphens: 'auto',
-            WebkitHyphens: 'auto',
+            width: frameWidth || '100%',
+            paddingLeft: innerX,
+            paddingRight: innerX,
+            paddingTop: INNER_Y,
+            paddingBottom: INNER_Y,
+            background: framed ? paperBg : undefined,
+            borderColor: framed ? frameBorder : undefined,
           }}
         >
-          <PhraseRenderer
-            phrases={phrases}
-            phraseRefs={phraseRefs}
-            getSpanClass={getSpanClass}
-            onPhraseClick={onPhraseClick}
-            onPhraseContextMenu={onPhraseContextMenu}
-            dark={dark}
-          />
-        </div>
+          <div
+            ref={contentRef}
+            className={[
+              'h-full max-w-none',
+              fontSizeClass,
+              'leading-relaxed',
+              // Book-like block: justified, hyphenated, first-line indents and no
+              // inter-paragraph gap — so a page reads like a printed page.
+              'text-justify',
+              '[&_p]:indent-8 [&_p]:mb-0',
+            ].join(' ')}
+            style={{
+              columnWidth: pageWidth > 0 ? `${pageWidth}px` : undefined,
+              columnGap: `${GAP}px`,
+              columnFill: 'auto',
+              transform: `translateX(-${page * pitch}px)`,
+              transition: 'transform 250ms ease',
+              willChange: 'transform',
+              hyphens: 'auto',
+              WebkitHyphens: 'auto',
+            }}
+          >
+            <PhraseRenderer
+              phrases={phrases}
+              phraseRefs={phraseRefs}
+              getSpanClass={getSpanClass}
+              onPhraseClick={onPhraseClick}
+              onPhraseContextMenu={onPhraseContextMenu}
+              dark={dark}
+            />
+          </div>
 
-        {/* Edge tap zones — confined to the page margin so they never steal a
-            phrase tap (seek / fragment capture) from the text column. */}
-        {!atStart && (
-          <button
-            type="button"
-            aria-label={t.reader.paged.prev}
-            onClick={() => turn(-1)}
-            className="absolute inset-y-0 left-0 flex items-center justify-center cursor-pointer"
-            style={{ width: padX }}
-          >
-            <ChevronLeft className={zoneBtn} />
-          </button>
-        )}
-        {!atEnd && (
-          <button
-            type="button"
-            aria-label={t.reader.paged.next}
-            onClick={() => turn(1)}
-            className="absolute inset-y-0 right-0 flex items-center justify-center cursor-pointer"
-            style={{ width: padX }}
-          >
-            <ChevronRight className={zoneBtn} />
-          </button>
-        )}
+          {/* Edge tap zones — confined to the page's side inset so they never
+              steal a phrase tap (seek / fragment capture) from the text. */}
+          {!atStart && (
+            <button
+              type="button"
+              aria-label={t.reader.paged.prev}
+              onClick={() => turn(-1)}
+              className="absolute inset-y-0 left-0 z-10 flex items-center justify-center cursor-pointer"
+              style={{ width: innerX }}
+            >
+              <ChevronLeft className={zoneBtn} />
+            </button>
+          )}
+          {!atEnd && (
+            <button
+              type="button"
+              aria-label={t.reader.paged.next}
+              onClick={() => turn(1)}
+              className="absolute inset-y-0 right-0 z-10 flex items-center justify-center cursor-pointer"
+              style={{ width: innerX }}
+            >
+              <ChevronRight className={zoneBtn} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Bottom bar — slim progress track + page indicator. Hidden while
