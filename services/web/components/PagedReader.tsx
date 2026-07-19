@@ -5,10 +5,11 @@ import { Phrase, pageCount, clampPage, pageForOffset } from '@/lib/reader-utils'
 import PhraseRenderer from './PhraseRenderer';
 import { useTranslation } from '@/lib/i18n';
 
-const GAP = 48;      // px gutter between pages (off-screen)
-const PAD_X = 28;    // px horizontal page margin
-const PAD_Y = 20;    // px vertical page margin
-const CONTROLS_H = 44;
+const GAP = 48;          // px gutter between pages (off-screen)
+const MIN_PAD_X = 24;    // px minimum horizontal page margin (mobile)
+const PAD_Y = 32;        // px vertical page margin — generous, book-like
+const CONTROLS_H = 52;   // px bottom bar (progress track + page indicator)
+const MAX_MEASURE = 620; // px — cap the text column to a comfortable line length
 
 type Props = {
   phrases: Phrase[];
@@ -38,6 +39,7 @@ export default function PagedReader({
   const contentRef = useRef<HTMLDivElement>(null);
 
   const [pageWidth, setPageWidth] = useState(0); // content-box width of one page
+  const [padX, setPadX] = useState(MIN_PAD_X);   // horizontal margin; widens on large screens to centre the column
   const [total, setTotal] = useState(1);
   const [page, setPage] = useState(0);
 
@@ -45,11 +47,13 @@ export default function PagedReader({
   const pageRef = useRef(0);
   const totalRef = useRef(1);
   const pageWidthRef = useRef(0);
+  const padXRef = useRef(MIN_PAD_X);
   const anchorRef = useRef(initialPhraseIndex); // phrase kept visible across reflow
   const didInitRef = useRef(false);
   pageRef.current = page;
   totalRef.current = total;
   pageWidthRef.current = pageWidth;
+  padXRef.current = padX;
 
   const pitch = pageWidth + GAP;
 
@@ -59,7 +63,7 @@ export default function PagedReader({
     const vp = viewportRef.current;
     const el = phraseRefs.current[i];
     if (!vp || !el || pageWidthRef.current <= 0) return null;
-    const leftEdge = vp.getBoundingClientRect().left + PAD_X;
+    const leftEdge = vp.getBoundingClientRect().left + padXRef.current;
     const pitchNow = pageWidthRef.current + GAP;
     const absoluteLeft = pageRef.current * pitchNow + (el.getBoundingClientRect().left - leftEdge);
     return clampPage(pageForOffset(absoluteLeft, pageWidthRef.current, GAP), totalRef.current);
@@ -74,7 +78,7 @@ export default function PagedReader({
   const firstPhraseOnPage = useCallback((): number => {
     const vp = viewportRef.current;
     if (!vp || pageWidthRef.current <= 0) return -1;
-    const leftEdge = vp.getBoundingClientRect().left + PAD_X;
+    const leftEdge = vp.getBoundingClientRect().left + padXRef.current;
     for (let i = 0; i < phrases.length; i++) {
       const ph = phrases[i];
       if (ph.endTime <= ph.startTime) continue; // skip headings / markers
@@ -90,7 +94,12 @@ export default function PagedReader({
   const measure = useCallback(() => {
     const vp = viewportRef.current;
     if (!vp) return;
-    setPageWidth(Math.max(0, vp.clientWidth - 2 * PAD_X));
+    const cw = vp.clientWidth;
+    // Widen the side margins on large screens so the text column keeps a
+    // comfortable book measure (~620px) and sits centred, like a Kindle page.
+    const px = Math.max(MIN_PAD_X, Math.round((cw - MAX_MEASURE) / 2));
+    setPadX(px);
+    setPageWidth(Math.max(0, cw - 2 * px));
   }, []);
 
   useEffect(() => {
@@ -156,6 +165,10 @@ export default function PagedReader({
   const atStart = page <= 0;
   const atEnd = page >= total - 1;
   const zoneBtn = dark ? 'text-gray-600 hover:text-gray-300' : 'text-gray-300 hover:text-gray-600';
+  // Reading position through the book (0 on the first page, 1 on the last).
+  const progress = total > 1 ? page / (total - 1) : 1;
+  const trackBg = dark ? 'bg-gray-700/70' : 'bg-gray-200';
+  const trackFill = dark ? 'bg-gray-400' : 'bg-gray-400';
 
   return (
     <div className="h-full flex flex-col">
@@ -163,11 +176,20 @@ export default function PagedReader({
       <div
         ref={viewportRef}
         className="relative flex-1 overflow-hidden"
-        style={{ paddingLeft: PAD_X, paddingRight: PAD_X, paddingTop: PAD_Y, paddingBottom: PAD_Y }}
+        style={{ paddingLeft: padX, paddingRight: padX, paddingTop: PAD_Y, paddingBottom: PAD_Y }}
       >
         <div
           ref={contentRef}
-          className={['h-full max-w-none', fontSizeClass, 'leading-relaxed'].join(' ')}
+          className={[
+            'h-full max-w-none',
+            fontSizeClass,
+            'leading-relaxed',
+            // Book-like block: justified, hyphenated, first-line indents and no
+            // inter-paragraph gap — so a page reads like a printed page, not a
+            // web article. Scoped to the paged column; scroll view is untouched.
+            'text-justify',
+            '[&_p]:indent-8 [&_p]:mb-0',
+          ].join(' ')}
           style={{
             columnWidth: pageWidth > 0 ? `${pageWidth}px` : undefined,
             columnGap: `${GAP}px`,
@@ -175,6 +197,8 @@ export default function PagedReader({
             transform: `translateX(-${page * pitch}px)`,
             transition: 'transform 250ms ease',
             willChange: 'transform',
+            hyphens: 'auto',
+            WebkitHyphens: 'auto',
           }}
         >
           <PhraseRenderer
@@ -195,7 +219,7 @@ export default function PagedReader({
             aria-label={t.reader.paged.prev}
             onClick={() => turn(-1)}
             className="absolute inset-y-0 left-0 flex items-center justify-center cursor-pointer"
-            style={{ width: PAD_X }}
+            style={{ width: padX }}
           >
             <ChevronLeft className={zoneBtn} />
           </button>
@@ -206,41 +230,49 @@ export default function PagedReader({
             aria-label={t.reader.paged.next}
             onClick={() => turn(1)}
             className="absolute inset-y-0 right-0 flex items-center justify-center cursor-pointer"
-            style={{ width: PAD_X }}
+            style={{ width: padX }}
           >
             <ChevronRight className={zoneBtn} />
           </button>
         )}
       </div>
 
-      {/* Bottom bar — page indicator. Hidden while following audio: the page
-          auto-flips and the audio controls (sheet/sidebar) own transport, so it
-          would only collide with them. */}
+      {/* Bottom bar — slim progress track + page indicator. Hidden while
+          following audio: the page auto-flips and the audio controls own
+          transport, so it would only collide with them. */}
       <div
-        className={['flex items-center justify-center gap-4 text-xs', dark ? 'text-gray-400' : 'text-gray-500', followActive ? 'hidden' : ''].join(' ')}
+        className={['flex-shrink-0 flex flex-col items-center justify-center gap-2 px-6', followActive ? 'hidden' : ''].join(' ')}
         style={{ height: CONTROLS_H }}
       >
-        <button
-          type="button"
-          onClick={() => turn(-1)}
-          disabled={atStart}
-          aria-label={t.reader.paged.prev}
-          className="px-3 py-1 rounded-lg disabled:opacity-30 hover:opacity-80 transition"
-        >
-          ‹
-        </button>
-        <span data-testid="page-indicator" className="tabular-nums">
-          {t.reader.paged.pageOf(page + 1, total)}
-        </span>
-        <button
-          type="button"
-          onClick={() => turn(1)}
-          disabled={atEnd}
-          aria-label={t.reader.paged.next}
-          className="px-3 py-1 rounded-lg disabled:opacity-30 hover:opacity-80 transition"
-        >
-          ›
-        </button>
+        <div className={['w-full h-[3px] rounded-full overflow-hidden', trackBg].join(' ')} style={{ maxWidth: MAX_MEASURE }}>
+          <div
+            className={['h-full rounded-full transition-[width] duration-300 ease-out', trackFill].join(' ')}
+            style={{ width: `${Math.round(progress * 100)}%` }}
+          />
+        </div>
+        <div className={['flex items-center justify-center gap-5 text-[11px] tracking-wide', dark ? 'text-gray-500' : 'text-gray-400'].join(' ')}>
+          <button
+            type="button"
+            onClick={() => turn(-1)}
+            disabled={atStart}
+            aria-label={t.reader.paged.prev}
+            className="px-2 py-0.5 rounded disabled:opacity-30 hover:opacity-80 transition"
+          >
+            ‹
+          </button>
+          <span data-testid="page-indicator" className="tabular-nums">
+            {t.reader.paged.pageOf(page + 1, total)}
+          </span>
+          <button
+            type="button"
+            onClick={() => turn(1)}
+            disabled={atEnd}
+            aria-label={t.reader.paged.next}
+            className="px-2 py-0.5 rounded disabled:opacity-30 hover:opacity-80 transition"
+          >
+            ›
+          </button>
+        </div>
       </div>
     </div>
   );
