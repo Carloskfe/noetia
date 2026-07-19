@@ -207,9 +207,9 @@ export default function PagedReader({
   const trackFill = 'bg-gray-400';
   const paperBg = dark ? '#111827' : '#FBFAF7';
   const frameBorder = dark ? '#1F2937' : '#E7E4DC';
-  // Framed pages sit on a slightly darker surround so the sheet pops. In dark
+  // Framed pages sit on a cool neutral-gray surround so the sheet pops. In dark
   // mode the reader background is already darker than the card, so leave it.
-  const surroundBg = framed && !dark ? '#E6E3DD' : undefined;
+  const surroundBg = framed && !dark ? '#E3E6EB' : undefined;
 
   return (
     <div className="h-full flex flex-col" style={{ background: surroundBg }}>
