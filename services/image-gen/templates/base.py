@@ -202,14 +202,46 @@ def _render_image_bg(img: Image.Image, bg_image: str, bg_flip: bool = False,
 
 # ── Text drawing helpers ──────────────────────────────────────────────────────
 
-def _draw_text(draw: ImageDraw.ImageDraw, pos: tuple, text: str, font, fill: tuple, bold: bool = False) -> None:
-    """Draw text; if bold=True, use a multi-pass offset simulation."""
+_ITALIC_SHEAR = 0.22  # faux-italic slant; we only ship upright font files
+
+
+def _draw_text(img, draw: ImageDraw.ImageDraw, pos: tuple, text: str, font,
+               fill: tuple, bold: bool = False, italic: bool = False) -> None:
+    """Draw text with optional faux bold (offset passes) and faux italic (shear).
+
+    Non-italic output is unchanged: it draws straight onto ``draw``. Italic
+    renders the line to its own layer, shears it, and pastes it back so the
+    slant matches the share-modal preview (which uses CSS font-style: italic).
+    """
     x, y = int(pos[0]), int(pos[1])
-    if bold:
-        for dx, dy in [(0, 0), (1, 0), (0, 1), (1, 1)]:
-            draw.text((x + dx, y + dy), text, font=font, fill=fill)
-    else:
-        draw.text((x, y), text, font=font, fill=fill)
+
+    def _stamp(target_draw, ox, oy):
+        if bold:
+            for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
+                target_draw.text((ox + dx, oy + dy), text, font=font, fill=fill)
+        else:
+            target_draw.text((ox, oy), text, font=font, fill=fill)
+
+    if not italic:
+        _stamp(draw, x, y)
+        return
+
+    bb = draw.textbbox((0, 0), text, font=font)
+    pad = 6
+    layer_w = (bb[2] - bb[0]) + 2 * pad + 1
+    layer_h = (bb[3] - bb[1]) + 2 * pad + 1
+    layer = Image.new('RGBA', (max(1, layer_w), max(1, layer_h)), (0, 0, 0, 0))
+    _stamp(ImageDraw.Draw(layer), pad - bb[0], pad - bb[1])  # ink top-left at (pad, pad)
+
+    xshift = _ITALIC_SHEAR * layer.height
+    sheared = layer.transform(
+        (layer.width + int(round(xshift)), layer.height),
+        Image.AFFINE, (1, _ITALIC_SHEAR, -xshift, 0, 1, 0),
+        resample=Image.BICUBIC,
+    )
+    # The ink top-left sits at (pad, pad) in the layer; place it where the
+    # upright glyph would land so the baseline matches the non-italic path.
+    img.paste(sheared, (x + bb[0] - pad, y + bb[1] - pad), sheared)
 
 
 # ── Watermark ─────────────────────────────────────────────────────────────────
@@ -282,6 +314,7 @@ def render_card(
     title      = fragment.get("title", "")
     citation   = fragment.get("citation") or ""
     bold       = bool(fragment.get("bold", False))
+    italic     = bool(fragment.get("italic", False))
     align      = fragment.get("textAlign", "center")
 
     # Quote text size multiplier (user-adjustable S/M/L). Only the quote scales;
@@ -358,7 +391,7 @@ def render_card(
     for line in lines:
         bb = draw.textbbox((0, 0), line, font=font_quote)
         lw = bb[2] - bb[0]
-        _draw_text(draw, (_line_x(lw), y), line, font_quote, text_color, bold=bold)
+        _draw_text(img, draw, (_line_x(lw), y), line, font_quote, text_color, bold=bold, italic=italic)
         y += line_h
 
     rule_y = int(y + rule_gap)

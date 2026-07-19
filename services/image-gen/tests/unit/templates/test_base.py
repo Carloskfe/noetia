@@ -63,6 +63,24 @@ class TestRenderCardOverride:
         overridden = _card(bg_type="image", bg_image=uri, text_color_override="#0D1B2A")
         assert forced_white != overridden
 
+    def test_italic_changes_the_render(self):
+        # Italic must actually slant the quote text, so the output differs from
+        # the upright render (previously italic was ignored entirely).
+        upright = _card(fragment={"text": "Una cita en cursiva.", "author": "A", "title": "L"})
+        italic = _card(fragment={"text": "Una cita en cursiva.", "author": "A", "title": "L", "italic": True})
+        assert upright != italic
+
+    def test_bold_and_italic_combine(self):
+        italic = _card(fragment={"text": "Cita.", "author": "A", "title": "L", "italic": True})
+        bold_italic = _card(fragment={"text": "Cita.", "author": "A", "title": "L", "italic": True, "bold": True})
+        assert italic != bold_italic
+
+    def test_non_italic_render_is_unchanged_by_the_flag(self):
+        # italic=False must be byte-identical to omitting the flag.
+        default = _card(fragment={"text": "Cita.", "author": "A", "title": "L"})
+        explicit = _card(fragment={"text": "Cita.", "author": "A", "title": "L", "italic": False})
+        assert default == explicit
+
     def test_image_bg_white_override_matches_auto_white(self):
         # Sanity: an explicit white override equals the auto-white default over
         # an image, so the fix doesn't change the common case.
