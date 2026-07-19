@@ -78,6 +78,14 @@
 > - [ ] **EAS build config** — app.config.js + eas.json complete; needs Apple Developer Program enrollment for ascAppId + appleTeamId
 > - [ ] **App store submissions** — iOS ($99/yr Apple Developer) + Android ($25 one-time Google Play)
 >
+> **Reader & sharing UX backlog (user feedback 2026-07-19):** *— reader experience = top of product hierarchy; the two bugs jump the queue*
+> - [ ] **BUG — Club creation book search returns nothing** — in the create-a-club flow, typing a book title yields no matching/similar results. Book picker isn't hitting Meilisearch (or is querying the wrong index / a `meetsStandard`-filtered set that excludes the target, or debounced-empty). Repro: start "Crear club", type a known title → no suggestions. Investigate the club book-search endpoint + Meili query; confirm the index is seeded and the filter isn't over-restrictive. *Reader-social; highest priority.*
+> - [ ] **BUG — Share preview doesn't match downloaded image** — the quote-card live preview (ShareModal) shows one text **color and size**, but the generated/download image renders differently. Preview must be WYSIWYG: same font color and same text size (textScale) as the image-gen render. Likely a param not forwarded to image-gen or a preview-vs-render scaling mismatch (cf. prior `textScale` forwarding fix `ae050bc`). Audit ShareModal preview CSS ↔ image-gen `render_card`.
+> - [ ] **Paged reading mode → make it the default view** — "page generator view" should be a user's default reading layout (persisted per-user, not just per-device localStorage `readingLayout`). Currently paged is behind a default-off toggle. Decide default-on vs. user-preference-backed default; wire through reader-preferences + users table if it should follow the account.
+> - [ ] **Paged mode — select & save quotes (fragments) from the page** — in paged view the user should be able to select text and save a Fragmento, same as scroll mode. Confirm text-selection + FragmentPopover works inside `PagedReader` (selection is currently wired on the scroll `<main>`; paged column may not forward pointer selection).
+> - [ ] **Paged mode — visual polish (Kindle-like look & feel)** — paged view works but isn't attractive. Reference Kindle's page look: margins/measure, page-turn affordance, typographic rhythm, page number/progress footer. Design pass on `PagedReader`.
+> - [ ] **Smaller Noetia logo in generated share images** — the Noetia wordmark/logo on final share cards is too prominent; shrink it ~35% from current size. Change in image-gen `templates/base.py` (and per-format templates if sized independently); update `image-gen` unit tests. *Not the web preview — the rendered PNG.*
+>
 > **Backlog (post app store):**
 > - [ ] **English Whisper sync** — run remaining 29 EN titles after Meditations + Jane Eyre; then expand EN catalogue
 > - [ ] English free library — expand EN catalogue once priority titles are fully synced
