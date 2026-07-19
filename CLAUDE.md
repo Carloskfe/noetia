@@ -118,7 +118,7 @@ noetia/
 │   │   │   ├── email/              # Email delivery (nodemailer, SMTP)
 │   │   │   │   ├── email.service.ts    # sendEmailConfirmation, sendPasswordReset
 │   │   │   │   └── email.module.ts
-│   │   │   ├── books/              # Book catalog, streaming, DRM, sync maps
+│   │   │   ├── books/              # Book catalog, streaming, DRM, sync maps. GET /books supports ?search= (case-insensitive title/author ILIKE) + ?limit= behind the ≥90% quality gate — powers the club book picker typeahead.
 │   │   │   ├── fragments/          # Highlights and fragment sheets
 │   │   │   ├── subscriptions/      # Stripe plans and billing
 │   │   │   ├── authors/            # Author/publisher module
@@ -145,21 +145,26 @@ noetia/
 │   │
 │   ├── web/                        # Next.js web app
 │   │   ├── app/
-│   │   │   ├── (reader)/           # Synchronized reading UI + Modo Escucha Activa
+│   │   │   ├── (reader)/           # Synchronized reading UI + Modo Escucha Activa (fully i18n; paged view is the default layout)
 │   │   │   ├── (library)/          # Book catalog, discovery, Mi Biblioteca (with collection grouping)
 │   │   │   ├── (fragments)/        # Fragment sheet and editor
 │   │   │   ├── (social)/           # Quote card preview and sharing
 │   │   │   └── (admin)/            # Author/publisher dashboard
 │   │   ├── components/
 │   │   │   ├── BookGrid.tsx        # Book grid with next/image covers + language badge
-│   │   │   ├── ReaderTopBar.tsx    # Back/discover/clubs links + font/dark/audio/chapter/fragments controls — fully i18n
-│   │   │   ├── ShareModal.tsx      # Instagram, Facebook, LinkedIn, Pinterest formats; font/bold/italic/align/color/bg + S/M/L quote size (textScale)
+│   │   │   ├── ReaderTopBar.tsx    # Back/discover/clubs links + font/dark/audio/chapter/fragments/layout controls — fully i18n
+│   │   │   ├── PagedReader.tsx     # Kindle-style page view: centred framed "sheet" + cool-gray surround, justified/hyphenated text, edge tap zones, mobile swipe, slim progress footer. Auto-flips to the narrated phrase in Escucha Activa. Default layout.
+│   │   │   ├── PhraseRenderer.tsx  # Shared phrase→span renderer (scroll + paged): click-to-seek, fragment capture, highlight
+│   │   │   ├── FragmentSheet.tsx   # Saved-fragments drawer (select/combine/share/delete) — i18n
+│   │   │   ├── ChapterSheet.tsx    # Chapter navigation drawer — i18n
+│   │   │   ├── ShareModal.tsx      # Instagram, Facebook, LinkedIn, Pinterest formats; font/bold/italic/align/color/bg + S/M/L quote size (textScale). Fully i18n; preview is WYSIWYG — the resolved text colour is always forwarded so the render matches (image-gen never re-derives it).
 │   │   │   ├── StatsTab.tsx        # 7-day bar chart, streak, goal progress rings, goal form
 │   │   │   └── PrivacyTab.tsx      # 4 privacy toggle switches with optimistic PATCH
 │   │   ├── lib/
-│   │   │   ├── i18n/               # LanguageProvider, useTranslation(); en.ts + es.ts; syncs language to/from API on mount
+│   │   │   ├── i18n/               # LanguageProvider, useTranslation(); en.ts + es.ts; syncs language to/from API on mount. Reader/drawers/ShareModal namespaces: reader.audio, reader.chapters, fragments.sheet, shareCard. tests/unit/lib/i18n.spec.ts enforces en/es parity.
+│   │   │   ├── reader-preferences.ts # fontSize / darkMode / speed / readingLayout in localStorage — readingLayout DEFAULT is 'paged' (per-device; a scroll choice is remembered and wins)
 │   │   │   ├── use-reading-heartbeat.ts  # 60s interval hook — POST /api/stats/heartbeat, tracks phrasDelta
-│   │   │   └── share-utils.ts      # SharePlatform, ShareFormat, FORMAT_PLATFORM_MAP
+│   │   │   └── share-utils.ts      # SharePlatform, ShareFormat, FORMAT_PLATFORM_MAP, getTextColor (auto-contrast — averages per-colour luminances)
 │   │   ├── public/
 │   │   │   ├── covers/             # Themed book cover PNGs — volume-mounted in docker-compose.yml
 │   │   │   ├── backgrounds/        # imagen-1..5.png + upload-slot.png (preset backgrounds)
@@ -181,7 +186,7 @@ noetia/
 │   │   ├── app.py                  # Flask API — POST /generate
 │   │   ├── storage.py              # MinIO client (supports MINIO_PUBLIC_URL rewrite)
 │   │   ├── templates/              # Quote card design templates
-│   │   │   ├── base.py             # Core Pillow render_card (textScale-aware), gradient, luminance utils
+│   │   │   ├── base.py             # Core Pillow render_card (textScale-aware), gradient, luminance utils. Faux bold (offset passes) + faux italic (shear on a per-line layer — we ship only upright fonts). Honours text_color_override on image backgrounds too. Watermark logo = 3.9% of card width (_logo_target_height).
 │   │   │   ├── linkedin.py         # 1200×627 (post), 1200×675 (twitter-card)
 │   │   │   ├── instagram.py        # 1080×1080 (post), 1080×1920 (story/reel)
 │   │   │   ├── facebook.py         # 1200×630 (post), 1080×1920 (story/reel)
@@ -548,6 +553,8 @@ Guidelines for all user-facing copy — i18n strings, error messages, email temp
 
 **i18n rule:** Always update all 4 files in the same PR:
 `services/web/lib/i18n/{en,es}.ts` · `services/mobile/src/i18n/{en,es}.ts`
+
+Keep **en/es in lockstep within a platform** (web has `tests/unit/lib/i18n.spec.ts` enforcing structural parity — a key added to `en.ts` but not `es.ts` fails the suite). The 4-file rule is for *shared* copy; platform-specific surfaces stay on their own platform (e.g. the web reader/drawer/ShareModal namespaces `reader.audio`, `reader.chapters`, `fragments.sheet`, `shareCard` are web-only — mobile's reader is a separate screen with its own strings, so don't mirror them into mobile).
 
 ### Register and tone
 

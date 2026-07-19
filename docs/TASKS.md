@@ -5,7 +5,15 @@
 > 2. **Author/company experience** — content supply chain; upload, sync tooling, analytics
 > 3. **Free library** — beta acquisition only; not expanded after 6–12 months; UI hero will yield to author content
 >
-> **Current status (2026-06-25):** Stages 0–5 complete + major feature sprint complete. **Production live at https://noetia.app** — Contabo VPS (Traefik v2.11, containers healthy, 61 migrations applied). SSH port 222, fail2ban active. CI/CD working (auto-deploys + runs migrations).
+> **Current status (2026-07-19):** Stages 0–5 complete + major feature sprint complete. **Production live at https://noetia.app** — Contabo VPS (Traefik v2.11, containers healthy, 63 migrations applied). SSH port 222, fail2ban active. CI/CD working (auto-deploys + runs migrations).
+>
+> **Reader & sharing polish sprint (2026-07-19):**
+> - [x] **Reader fully internationalized** — the reader page (Escucha Activa panel, play/jump confirms, quote flow, bookmark banner, all aria-labels), `FragmentSheet`, `ChapterSheet`, `FragmentPopover`, and `ShareModal` now go through `useTranslation` (were hardcoded Spanish). New web namespaces `reader.audio` / `reader.chapters` / `fragments.sheet` / `shareCard`; `tests/unit/lib/i18n.spec.ts` enforces en/es parity. ✅
+> - [x] **Paged reading mode = default** (`DEFAULTS.readingLayout = 'paged'`); a scroll choice is remembered per-device and wins. Kindle-style polish: centred framed "sheet" with a cool neutral-gray surround, ~720px measure, justified + hyphenated text with first-line indents, mobile swipe (left/right), slim progress footer. Quote selection now works in paged mode (was impossible). ✅
+> - [x] **BUG — club book search returned nothing** — `GET /books` ignored `search`/`limit`; now applies a case-insensitive title/author ILIKE + `take(limit)` behind the quality gate. ✅
+> - [x] **BUG — share preview ≠ download (text colour)** — auto-contrast diverged web↔image-gen on gradients, and image backgrounds forced white over any override. ShareModal now always forwards the resolved colour (preview authoritative); `render_card` honours the override on photos. ✅
+> - [x] **BUG — italic not rendered in share images** — `render_card` read only `bold`; added faux-italic (shear on a per-line layer). Non-italic output byte-identical. ✅
+> - [x] **Share-card logo −35%** — watermark height 6% → 3.9% of card width (`_logo_target_height`). ✅
 >
 > **Completed since last update:**
 > - [x] **Sync-map units bug fixed (2026-07-14, migration 062)** — legacy chapter-linear (`auto`) maps stored phrase times in ms; reader expects seconds → Escucha Activa ~1000× off (reported on Crimen y Castigo). `alignment.service.ts` now emits seconds; migration rescales 26 existing maps. See [whisper-sync-troubleshooting.md §13](whisper-sync-troubleshooting.md#13-phrase-timing-units-and-why-chapter-linear-alignment-is-retired) ✅
