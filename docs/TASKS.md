@@ -14,6 +14,8 @@
 > - [x] **BUG — share preview ≠ download (text colour)** — auto-contrast diverged web↔image-gen on gradients, and image backgrounds forced white over any override. ShareModal now always forwards the resolved colour (preview authoritative); `render_card` honours the override on photos. ✅
 > - [x] **BUG — italic not rendered in share images** — `render_card` read only `bold`; added faux-italic (shear on a per-line layer). Non-italic output byte-identical. ✅
 > - [x] **Share-card logo −35%** — watermark height 6% → 3.9% of card width (`_logo_target_height`). ✅
+> - [x] **BUG — italic not rendered in share images** — faux-italic shear added to `render_card`. ✅
+> - [x] **Shared quote cards are invite pages (migration 065)** — "Copy link" now shares a public `/s/<id>` landing page (persisted `shares` record) instead of a bare PNG: shows the card + quote, a book-first CTA (`Lee «Book» en Noetia` → reader) + `Descubre Noetia`, and full OG/Twitter tags for rich link previews (bilingual via Accept-Language). Download/publish still use the PNG. Acquisition funnel: reader sends logged-out viewers to `/login?next=…`; login honours a safe internal `next`. ✅
 >
 > **Completed since last update:**
 > - [x] **Sync-map units bug fixed (2026-07-14, migration 062)** — legacy chapter-linear (`auto`) maps stored phrase times in ms; reader expects seconds → Escucha Activa ~1000× off (reported on Crimen y Castigo). `alignment.service.ts` now emits seconds; migration rescales 26 existing maps. See [whisper-sync-troubleshooting.md §13](whisper-sync-troubleshooting.md#13-phrase-timing-units-and-why-chapter-linear-alignment-is-retired) ✅

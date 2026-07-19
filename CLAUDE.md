@@ -122,7 +122,7 @@ noetia/
 │   │   │   ├── fragments/          # Highlights and fragment sheets
 │   │   │   ├── subscriptions/      # Stripe plans and billing
 │   │   │   ├── authors/            # Author/publisher module
-│   │   │   ├── sharing/            # Share engine, deep links
+│   │   │   ├── sharing/            # Share engine + invite pages. POST /fragments/:id/share → { url: <invite page WEB_URL/s/<slug>>, imageUrl: <png> }; persists a `shares` record (migration 065); public GET /shares/:id feeds the /s/<id> landing page. Copy link = invite page; download/publish = PNG.
 │   │   │   ├── social/             # OAuth account linking + publish per platform
 │   │   │   │   ├── social.controller.ts
 │   │   │   │   ├── social-token.service.ts   # AES-256-CBC encrypted tokens in Redis
@@ -149,6 +149,7 @@ noetia/
 │   │   │   ├── (library)/          # Book catalog, discovery, Mi Biblioteca (with collection grouping)
 │   │   │   ├── (fragments)/        # Fragment sheet and editor
 │   │   │   ├── (social)/           # Quote card preview and sharing
+│   │   │   ├── s/[id]/             # PUBLIC invite landing page for a shared quote card (SSR + OG/Twitter tags; book-first CTA into the reader; bilingual via Accept-Language). Login honours ?next so logged-out viewers return to the book.
 │   │   │   └── (admin)/            # Author/publisher dashboard
 │   │   ├── components/
 │   │   │   ├── BookGrid.tsx        # Book grid with next/image covers + language badge
