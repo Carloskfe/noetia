@@ -65,6 +65,37 @@ describe('BooksController', () => {
     mockBooksService.checkUploadQuota.mockResolvedValue(undefined);
   });
 
+  describe('GET /books', () => {
+    it('forwards the search term and parsed limit to the service', async () => {
+      const books = [{ id: 'b-1', title: 'La Odisea' }];
+      mockBooksService.findAll.mockResolvedValue(books);
+
+      const result = await controller.findAll(undefined, undefined, undefined, 'odisea', '8');
+
+      // category, isFree(undefined), standalone(true), search, limit(8)
+      expect(mockBooksService.findAll).toHaveBeenCalledWith(undefined, undefined, true, 'odisea', 8);
+      expect(result).toEqual(books);
+    });
+
+    it('passes undefined limit when none is provided', async () => {
+      mockBooksService.findAll.mockResolvedValue([]);
+      await controller.findAll(undefined, undefined, undefined, 'x');
+      expect(mockBooksService.findAll).toHaveBeenCalledWith(undefined, undefined, true, 'x', undefined);
+    });
+
+    it('caps the limit at 50', async () => {
+      mockBooksService.findAll.mockResolvedValue([]);
+      await controller.findAll(undefined, undefined, undefined, 'x', '999');
+      expect(mockBooksService.findAll).toHaveBeenCalledWith(undefined, undefined, true, 'x', 50);
+    });
+
+    it('treats includeCollections=true as non-standalone', async () => {
+      mockBooksService.findAll.mockResolvedValue([]);
+      await controller.findAll(undefined, undefined, 'true', 'x');
+      expect(mockBooksService.findAll).toHaveBeenCalledWith(undefined, undefined, false, 'x', undefined);
+    });
+  });
+
   describe('GET /books/pending', () => {
     it('returns pending books for admin', async () => {
       const pending = [{ id: 'b-1', isPublished: false }];

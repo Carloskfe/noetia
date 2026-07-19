@@ -12,12 +12,27 @@ export class BooksService {
     @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {}
 
-  findAll(category?: BookCategory, isFree?: boolean, standalone = true): Promise<Book[]> {
+  findAll(
+    category?: BookCategory,
+    isFree?: boolean,
+    standalone = true,
+    search?: string,
+    limit?: number,
+  ): Promise<Book[]> {
     const qb = this.repo.createQueryBuilder('book')
       .where('book.isPublished = :published', { published: true })
       .orderBy('book.createdAt', 'DESC');
     if (category) qb.andWhere('book.category = :category', { category });
     if (isFree !== undefined) qb.andWhere('book.isFree = :isFree', { isFree });
+    // Case-insensitive title/author match for typeahead search (e.g. the club
+    // book picker). Without this, GET /books?search= was silently ignored, so the
+    // picker showed an unfiltered list — a typed title never narrowed results.
+    const term = search?.trim();
+    if (term) {
+      qb.andWhere('(book.title ILIKE :search OR book.author ILIKE :search)', {
+        search: `%${term}%`,
+      });
+    }
     // Exclude books that have an entry in book_collections (i.e. belong to a collection).
     // Using the join table rather than book.collection VARCHAR so the filter works
     // even when the VARCHAR field was never populated (e.g. books ingested after migrations).
@@ -37,6 +52,7 @@ export class BooksService {
           AND sm."syncCoverage" >= 0.90
       )
     )`);
+    if (limit && limit > 0) qb.take(limit);
     return qb.getMany();
   }
 

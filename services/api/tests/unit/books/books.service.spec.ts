@@ -12,6 +12,7 @@ const makeQb = (books: unknown[] = []) => {
     where: jest.fn(),
     andWhere: jest.fn(),
     orderBy: jest.fn(),
+    take: jest.fn(),
     getMany: jest.fn().mockResolvedValue(books),
   };
   // Make every method return the same qb so chaining works
@@ -149,6 +150,50 @@ describe('BooksService', () => {
         expect.stringContaining('collection'),
         expect.anything(),
       );
+    });
+
+    it('applies a case-insensitive title/author ILIKE filter when search is given', async () => {
+      const qb = makeQb([]);
+      mockRepo.createQueryBuilder.mockReturnValue(qb);
+      await service.findAll(undefined, undefined, true, 'quijote');
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        '(book.title ILIKE :search OR book.author ILIKE :search)',
+        { search: '%quijote%' },
+      );
+    });
+
+    it('trims the search term before matching', async () => {
+      const qb = makeQb([]);
+      mockRepo.createQueryBuilder.mockReturnValue(qb);
+      await service.findAll(undefined, undefined, true, '  odisea  ');
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        '(book.title ILIKE :search OR book.author ILIKE :search)',
+        { search: '%odisea%' },
+      );
+    });
+
+    it('does not add a search filter for an empty or whitespace term', async () => {
+      const qb = makeQb([]);
+      mockRepo.createQueryBuilder.mockReturnValue(qb);
+      await service.findAll(undefined, undefined, true, '   ');
+      expect(qb.andWhere).not.toHaveBeenCalledWith(
+        expect.stringContaining('ILIKE'),
+        expect.anything(),
+      );
+    });
+
+    it('caps the result set with take() when a positive limit is given', async () => {
+      const qb = makeQb([]);
+      mockRepo.createQueryBuilder.mockReturnValue(qb);
+      await service.findAll(undefined, undefined, true, undefined, 8);
+      expect(qb.take).toHaveBeenCalledWith(8);
+    });
+
+    it('does not call take() when no limit is given', async () => {
+      const qb = makeQb([]);
+      mockRepo.createQueryBuilder.mockReturnValue(qb);
+      await service.findAll();
+      expect(qb.take).not.toHaveBeenCalled();
     });
   });
 

@@ -64,11 +64,22 @@ export class BooksController {
     @Query('category') category?: BookCategory,
     @Query('isFree') isFree?: string,
     @Query('includeCollections') includeCollections?: string,
+    @Query('search') search?: string,
+    @Query('limit') limit?: string,
   ) {
     const isFreeFilter =
       isFree === 'true' ? true : isFree === 'false' ? false : undefined;
     const standalone = includeCollections !== 'true';
-    return this.booksService.findAll(category, isFreeFilter, standalone);
+    const parsedLimit = limit
+      ? Math.min(Math.max(parseInt(limit, 10) || 0, 0), 50)
+      : undefined;
+    return this.booksService.findAll(
+      category,
+      isFreeFilter,
+      standalone,
+      search,
+      parsedLimit,
+    );
   }
 
   // Must come before /:id to avoid "pending" being matched as an id
