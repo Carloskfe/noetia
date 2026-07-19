@@ -1,6 +1,7 @@
 'use client';
 
 import { Chapter } from '@/lib/reader-utils';
+import { useTranslation } from '@/lib/i18n';
 
 type Props = {
   chapters: Chapter[];
@@ -10,6 +11,8 @@ type Props = {
 };
 
 export default function ChapterSheet({ chapters, onChapterSelect, onClose, dark = false }: Props) {
+  const { t } = useTranslation();
+  const tc = t.reader.chapters;
   const drawer = dark ? 'bg-gray-900 text-gray-100' : 'bg-white';
   const border = dark ? 'border-gray-700' : 'border-gray-100';
   const heading = dark ? 'text-gray-100' : 'text-gray-900';
@@ -29,13 +32,13 @@ export default function ChapterSheet({ chapters, onChapterSelect, onClose, dark 
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label="Capítulos del libro"
+        aria-label={tc.ariaLabel}
         onKeyDown={handleKeyDown}
         className={['fixed top-0 right-0 h-full w-80 shadow-xl z-50 flex flex-col', drawer].join(' ')}
       >
         <div className={['flex items-center justify-between px-5 py-4 border-b', border].join(' ')}>
-          <h2 className={['text-base font-semibold', heading].join(' ')}>Capítulos</h2>
-          <button onClick={onClose} aria-label="Cerrar capítulos" className="text-gray-400 hover:text-gray-600 transition focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
+          <h2 className={['text-base font-semibold', heading].join(' ')}>{tc.title}</h2>
+          <button onClick={onClose} aria-label={tc.close} className="text-gray-400 hover:text-gray-600 transition focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
             <XIcon aria-hidden="true" />
           </button>
         </div>
@@ -43,7 +46,7 @@ export default function ChapterSheet({ chapters, onChapterSelect, onClose, dark 
         <div className="flex-1 overflow-y-auto py-2">
           {chapters.length === 0 ? (
             <p className={['text-sm text-center mt-8 px-5', empty].join(' ')}>
-              Este libro no tiene capítulos etiquetados.
+              {tc.empty}
             </p>
           ) : (
             chapters.map((ch, i) => (

@@ -86,3 +86,31 @@ describe('reader.audio namespace', () => {
     expect(es.reader.audio.quoteMarked(5)).toContain('5');
   });
 });
+
+describe('reader.chapters namespace', () => {
+  it('exposes the chapter drawer strings in both languages', () => {
+    for (const t of [en, es]) {
+      expect(typeof t.reader.chapters.ariaLabel).toBe('string');
+      expect(typeof t.reader.chapters.title).toBe('string');
+      expect(typeof t.reader.chapters.close).toBe('string');
+      expect(typeof t.reader.chapters.empty).toBe('string');
+    }
+  });
+});
+
+describe('fragments.sheet namespace', () => {
+  it('exposes the fragment drawer strings in both languages', () => {
+    for (const t of [en, es]) {
+      expect(typeof t.fragments.sheet.ariaLabel).toBe('string');
+      expect(typeof t.fragments.sheet.select).toBe('string');
+      expect(typeof t.fragments.sheet.empty).toBe('string');
+      expect(typeof t.fragments.sheet.share).toBe('string');
+      expect(typeof t.fragments.sheet.delete).toBe('string');
+    }
+  });
+
+  it('interpolates the selected count in combine', () => {
+    expect(en.fragments.sheet.combine(3)).toContain('3');
+    expect(es.fragments.sheet.combine(3)).toContain('3');
+  });
+});

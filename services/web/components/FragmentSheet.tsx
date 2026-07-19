@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Fragment } from '@/lib/reader-utils';
+import { useTranslation } from '@/lib/i18n';
 import ShareModal from './ShareModal';
 
 type Props = {
@@ -16,6 +17,8 @@ type Props = {
 };
 
 export default function FragmentSheet({ fragments, bookAuthor, bookTitle, bookCollection, onClose, onDelete, onCombine, dark = false }: Props) {
+  const { t } = useTranslation();
+  const tf = t.fragments.sheet;
   const [multiSelect, setMultiSelect] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sharingFragment, setSharingFragment] = useState<{ id: string; text: string; note: string | null } | null>(null);
@@ -55,13 +58,13 @@ export default function FragmentSheet({ fragments, bookAuthor, bookTitle, bookCo
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label="Fragmentos guardados"
+        aria-label={tf.ariaLabel}
         onKeyDown={handleKeyDown}
         className={['fixed top-0 right-0 h-full w-80 shadow-xl z-50 flex flex-col', dark ? 'bg-gray-900 text-gray-100' : 'bg-white'].join(' ')}
       >
         {/* Header */}
         <div className={['flex items-center justify-between px-5 py-4 border-b', dark ? 'border-gray-700' : 'border-gray-100'].join(' ')}>
-          <h2 className={['text-base font-semibold', dark ? 'text-gray-100' : 'text-gray-900'].join(' ')}>Fragmentos</h2>
+          <h2 className={['text-base font-semibold', dark ? 'text-gray-100' : 'text-gray-900'].join(' ')}>{tf.title}</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
@@ -77,9 +80,9 @@ export default function FragmentSheet({ fragments, bookAuthor, bookTitle, bookCo
                   : 'border-gray-200 text-gray-600 hover:bg-gray-50',
               ].join(' ')}
             >
-              {multiSelect ? 'Cancelar' : 'Seleccionar'}
+              {multiSelect ? tf.cancel : tf.select}
             </button>
-            <button onClick={onClose} aria-label="Cerrar fragmentos" className="text-gray-400 hover:text-gray-600 transition focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
+            <button onClick={onClose} aria-label={tf.close} className="text-gray-400 hover:text-gray-600 transition focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
               <XIcon aria-hidden="true" />
             </button>
           </div>
@@ -89,7 +92,7 @@ export default function FragmentSheet({ fragments, bookAuthor, bookTitle, bookCo
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
           {fragments.length === 0 ? (
             <p className={['text-sm text-center mt-8', dark ? 'text-gray-500' : 'text-gray-400'].join(' ')}>
-              No hay fragmentos guardados para este libro.
+              {tf.empty}
             </p>
           ) : (
             fragments.map((f) => (
@@ -112,14 +115,14 @@ export default function FragmentSheet({ fragments, bookAuthor, bookTitle, bookCo
                       <button
                         onClick={() => setSharingFragment({ id: f.id, text: f.text, note: f.note })}
                         className="text-gray-300 hover:text-blue-500 transition"
-                        aria-label="Compartir fragmento"
+                        aria-label={tf.share}
                       >
                         <ShareIcon />
                       </button>
                       <button
                         onClick={() => onDelete(f.id)}
                         className="text-gray-300 hover:text-red-400 transition"
-                        aria-label="Eliminar fragmento"
+                        aria-label={tf.delete}
                       >
                         <TrashIcon />
                       </button>
@@ -145,7 +148,7 @@ export default function FragmentSheet({ fragments, bookAuthor, bookTitle, bookCo
               onClick={handleCombine}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2.5 rounded-xl transition"
             >
-              Combinar ({selected.size})
+              {tf.combine(selected.size)}
             </button>
           </div>
         )}

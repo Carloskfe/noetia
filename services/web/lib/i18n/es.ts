@@ -166,6 +166,12 @@ export const es: Translations = {
     layoutToggle: 'Cambiar diseño de lectura',
     noContent: 'No hay contenido disponible para este libro.',
     bookNotFound: 'Libro no encontrado',
+    chapters: {
+      ariaLabel: 'Capítulos del libro',
+      title: 'Capítulos',
+      close: 'Cerrar capítulos',
+      empty: 'Este libro no tiene capítulos etiquetados.',
+    },
     audio: {
       panelTitle: 'Modo Escucha Activa',
       tapToSyncBanner: 'Toca la frase donde estás leyendo para iniciar el audio desde allí',
@@ -204,6 +210,17 @@ export const es: Translations = {
     title: 'Fragmentos',
     empty: 'Sin fragmentos aún',
     emptySubtitle: 'Mantén presionado cualquier frase en el lector para guardarla aquí.',
+    sheet: {
+      ariaLabel: 'Fragmentos guardados',
+      title: 'Fragmentos',
+      select: 'Seleccionar',
+      cancel: 'Cancelar',
+      close: 'Cerrar fragmentos',
+      empty: 'No hay fragmentos guardados para este libro.',
+      share: 'Compartir fragmento',
+      delete: 'Eliminar fragmento',
+      combine: (n: number) => `Combinar (${n})`,
+    },
   },
   account: {
     title: 'Mi cuenta',

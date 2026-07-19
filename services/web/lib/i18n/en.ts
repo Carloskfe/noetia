@@ -164,6 +164,12 @@ export const en = {
     layoutToggle: 'Switch reading layout',
     noContent: 'No content available for this book.',
     bookNotFound: 'Book not found',
+    chapters: {
+      ariaLabel: 'Book chapters',
+      title: 'Chapters',
+      close: 'Close chapters',
+      empty: 'This book has no tagged chapters.',
+    },
     audio: {
       panelTitle: 'Active Listening Mode',
       tapToSyncBanner: "Tap the phrase where you're reading to start the audio there",
@@ -202,6 +208,17 @@ export const en = {
     title: 'Fragments',
     empty: 'No fragments yet',
     emptySubtitle: 'Long-press any phrase in the reader to save it here.',
+    sheet: {
+      ariaLabel: 'Saved fragments',
+      title: 'Fragments',
+      select: 'Select',
+      cancel: 'Cancel',
+      close: 'Close fragments',
+      empty: 'No saved fragments for this book.',
+      share: 'Share fragment',
+      delete: 'Delete fragment',
+      combine: (n: number) => `Combine (${n})`,
+    },
   },
   account: {
     title: 'My account',
