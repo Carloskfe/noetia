@@ -23,6 +23,7 @@ import ReaderTutorial, { hasSeenReaderTutorial } from '@/components/ReaderTutori
 import AudioTutorial from '@/components/AudioTutorial';
 import { hasSeenAudioTutorial } from '@/lib/tutorial-flags';
 import { useReadingHeartbeat } from '@/lib/use-reading-heartbeat';
+import { useTranslation } from '@/lib/i18n';
 
 const FONT_SIZE_CLASSES: Record<FontSize, string> = {
   sm: 'text-base',
@@ -51,6 +52,8 @@ const SPEEDS = [0.75, 1, 1.25, 1.5];
 
 export default function ReaderPage() {
   const { id: bookId } = useParams<{ id: string }>();
+  const { t } = useTranslation();
+  const ta = t.reader.audio;
 
   const [book, setBook] = useState<Book | null>(null);
   const [phrases, setPhrases] = useState<Phrase[]>([]);
@@ -582,7 +585,7 @@ export default function ReaderPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (loading) return <LoadingScreen />;
-  if (error || !book) return <ErrorScreen message={error || 'Book not found'} />;
+  if (error || !book) return <ErrorScreen message={error || t.reader.bookNotFound} />;
 
   const audioUrl = book.audioStreamUrl ?? book.audioFileUrl;
   const hasAudio = Boolean(audioUrl);
@@ -659,13 +662,13 @@ export default function ReaderPage() {
         <div className="fixed top-14 left-0 right-0 z-40 bg-blue-600 text-white px-4 py-2.5 flex items-center justify-between shadow-md">
           <span className="text-sm font-medium flex items-center gap-2">
             <TouchIcon />
-            Toca la frase donde estás leyendo para iniciar el audio desde allí
+            {ta.tapToSyncBanner}
           </span>
           <button
             onClick={() => { setTapToSyncActive(false); setMode('reading'); }}
             className="text-blue-200 hover:text-white text-xs underline ml-4"
           >
-            Cancelar
+            {ta.cancel}
           </button>
         </div>
       )}
@@ -693,14 +696,14 @@ export default function ReaderPage() {
             </div>
             <div className="flex items-center justify-center gap-5 mb-5">
               <button onClick={() => { if (audioRef.current) audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10); }}
-                aria-label="Retroceder 10 segundos" className="flex flex-col items-center gap-0.5 text-gray-500 hover:text-blue-600 transition">
+                aria-label={ta.rewind10} className="flex flex-col items-center gap-0.5 text-gray-500 hover:text-blue-600 transition">
                 <ReplayIcon /><span className="text-[10px]">10s</span>
               </button>
-              <button onClick={togglePlay} className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-md transition" aria-label={playing ? 'Pausar' : 'Reproducir'}>
+              <button onClick={togglePlay} className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-md transition" aria-label={playing ? ta.pause : ta.play}>
                 {playing ? <PauseIcon /> : <PlayIcon />}
               </button>
               <button onClick={() => { if (audioRef.current) audioRef.current.currentTime = Math.min(effDuration, audioRef.current.currentTime + 10); }}
-                aria-label="Avanzar 10 segundos" className="flex flex-col items-center gap-0.5 text-gray-500 hover:text-blue-600 transition">
+                aria-label={ta.forward10} className="flex flex-col items-center gap-0.5 text-gray-500 hover:text-blue-600 transition">
                 <ForwardIcon /><span className="text-[10px]">10s</span>
               </button>
             </div>
@@ -712,7 +715,7 @@ export default function ReaderPage() {
             </div>
             <button onClick={() => setMode('escucha-activa')}
               className="w-full border border-gray-300 hover:border-blue-400 hover:text-blue-600 text-gray-600 py-2.5 rounded-xl text-sm font-medium transition">
-              Ver texto — Escucha Activa
+              {ta.viewText}
             </button>
           </div>
         </main>
@@ -775,7 +778,7 @@ export default function ReaderPage() {
           ) : rawText ? (
             <p className="whitespace-pre-wrap">{rawText}</p>
           ) : (
-            <p className="text-gray-400 italic">No hay contenido disponible para este libro.</p>
+            <p className="text-gray-400 italic">{t.reader.noContent}</p>
           )}
         </div>
       </main>
@@ -796,8 +799,8 @@ export default function ReaderPage() {
                 mode === 'escucha-activa' ? 'hidden' : '',
               ].join(' ')}
               aria-label={
-                mode === 'reading' ? 'Abrir Modo Escucha Activa'
-                : playing ? 'Pausar' : 'Reproducir'
+                mode === 'reading' ? ta.openListening
+                : playing ? ta.pause : ta.play
               }
             >
               {mode === 'reading' ? <HeadphonesSmIcon /> : playing ? <PauseIcon /> : <PlayIcon />}
@@ -807,9 +810,9 @@ export default function ReaderPage() {
           {/* Play confirmation card — appears above the floating button */}
           {showPlayConfirm && (
             <div className="fixed bottom-24 right-4 z-50 bg-white rounded-2xl shadow-2xl border border-gray-100 w-72 p-4">
-              <p className="text-sm font-semibold text-gray-900 mb-1">¿Dónde empezamos?</p>
+              <p className="text-sm font-semibold text-gray-900 mb-1">{ta.whereToStart}</p>
               <p className="text-xs text-gray-500 mb-4">
-                Elige desde dónde iniciar el audio.
+                {ta.whereToStartSub}
               </p>
               <div className="flex flex-col gap-2">
                 {hasSync && playConfirmTargetMode === 'escucha-activa' && (
@@ -818,7 +821,7 @@ export default function ReaderPage() {
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2"
                   >
                     <TouchIcon />
-                    Toca donde vas leyendo
+                    {ta.tapWhereReading}
                   </button>
                 )}
                 {savedPhraseIndex > 0 && (
@@ -826,20 +829,20 @@ export default function ReaderPage() {
                     onClick={handlePlayFromProgress}
                     className="w-full border border-blue-200 hover:border-blue-400 text-blue-700 py-2.5 rounded-xl text-sm font-medium transition"
                   >
-                    Continuar desde frase {savedPhraseIndex + 1}
+                    {ta.continueFromPhrase(savedPhraseIndex + 1)}
                   </button>
                 )}
                 <button
                   onClick={handlePlayFromStart}
                   className="w-full border border-gray-200 hover:border-gray-300 text-gray-700 py-2.5 rounded-xl text-sm font-medium transition"
                 >
-                  Desde el principio
+                  {ta.fromStart}
                 </button>
                 <button
                   onClick={() => { setShowPlayConfirm(false); setMode('reading'); setTapToSyncActive(false); }}
                   className="text-gray-400 hover:text-gray-600 text-xs py-1 transition"
                 >
-                  Cancelar
+                  {ta.cancel}
                 </button>
               </div>
             </div>
@@ -848,22 +851,22 @@ export default function ReaderPage() {
           {/* Confirm before jumping the narration mid-playback */}
           {pendingJumpIndex !== null && (
             <div className="fixed bottom-24 right-4 z-50 bg-white rounded-2xl shadow-2xl border border-gray-100 w-72 p-4">
-              <p className="text-sm font-semibold text-gray-900 mb-1">¿Mover la narración aquí?</p>
+              <p className="text-sm font-semibold text-gray-900 mb-1">{ta.moveNarrationHere}</p>
               <p className="text-xs text-gray-500 mb-4">
-                Vas por la frase {activePhraseIndex >= 0 ? activePhraseIndex + 1 : 1}. Saltarás a la frase {pendingJumpIndex + 1}.
+                {ta.moveNarrationSub(activePhraseIndex >= 0 ? activePhraseIndex + 1 : 1, pendingJumpIndex + 1)}
               </p>
               <div className="flex flex-col gap-2">
                 <button
                   onClick={handleConfirmJump}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-medium transition"
                 >
-                  Mover aquí
+                  {ta.moveHere}
                 </button>
                 <button
                   onClick={handleCancelJump}
                   className="text-gray-400 hover:text-gray-600 text-xs py-1 transition"
                 >
-                  Seguir escuchando
+                  {ta.keepListening}
                 </button>
               </div>
             </div>
@@ -889,14 +892,14 @@ export default function ReaderPage() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-0.5">
-                    Modo Escucha Activa
+                    {ta.panelTitle}
                   </p>
                   <p className="text-sm font-semibold text-gray-900 truncate">{book.title}</p>
                   <p className="text-xs text-gray-500 truncate">{book.author}</p>
                 </div>
                 <button
                   onClick={() => setMode('reading')}
-                  aria-label="Cerrar panel de audio"
+                  aria-label={ta.closePanel}
                   className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition ml-2"
                 >
                   <CloseIcon />
@@ -907,7 +910,7 @@ export default function ReaderPage() {
               {!hasSync && (
                 <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
                   <p className="text-xs text-amber-700">
-                    Este libro aún no tiene sincronización texto-audio. El audio se reproduce pero las frases no se resaltarán.
+                    {ta.noSyncWarning}
                   </p>
                 </div>
               )}
@@ -939,7 +942,7 @@ export default function ReaderPage() {
                   onClick={() => {
                     if (audioRef.current) audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
                   }}
-                  aria-label="Retroceder 10 segundos"
+                  aria-label={ta.rewind10}
                   className="flex flex-col items-center gap-0.5 text-gray-500 hover:text-blue-600 transition"
                 >
                   <ReplayIcon />
@@ -949,7 +952,7 @@ export default function ReaderPage() {
                 <button
                   onClick={togglePlay}
                   className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-md transition"
-                  aria-label={playing ? 'Pausar' : 'Reproducir'}
+                  aria-label={playing ? ta.pause : ta.play}
                 >
                   {playing ? <PauseIcon /> : <PlayIcon />}
                 </button>
@@ -958,7 +961,7 @@ export default function ReaderPage() {
                   onClick={() => {
                     if (audioRef.current) audioRef.current.currentTime = Math.min(effDuration, audioRef.current.currentTime + 10);
                   }}
-                  aria-label="Avanzar 10 segundos"
+                  aria-label={ta.forward10}
                   className="flex flex-col items-center gap-0.5 text-gray-500 hover:text-blue-600 transition"
                 >
                   <ForwardIcon />
@@ -988,7 +991,7 @@ export default function ReaderPage() {
                 className="w-full flex items-center justify-center gap-2 border border-gray-300 hover:border-blue-400 hover:text-blue-600 text-gray-700 py-2.5 rounded-xl text-sm font-medium transition"
               >
                 <QuoteIcon />
-                Crear cita
+                {ta.createQuote}
               </button>
 
               {/* Solo audio: hide the text for screen-off / earbud listening.
@@ -997,7 +1000,7 @@ export default function ReaderPage() {
                 onClick={() => setMode('audio')}
                 className="mt-3 w-full text-xs text-gray-500 hover:text-blue-600 py-1.5 transition"
               >
-                Solo audio — ocultar texto
+                {ta.soloAudio}
               </button>
             </div>
           </aside>
@@ -1008,20 +1011,20 @@ export default function ReaderPage() {
       {audioBookmark && mode === 'reading' && !showQuoteChoice && (
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-blue-600 text-white px-4 py-3 flex items-center justify-between shadow-lg">
           <span className="text-sm font-medium">
-            🔖 Cita marcada en frase {audioBookmark.phraseIndex + 1}
+            {ta.quoteMarked(audioBookmark.phraseIndex + 1)}
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setAudioBookmark(null)}
               className="text-blue-200 hover:text-white text-xs underline"
             >
-              Descartar
+              {ta.discard}
             </button>
             <button
               onClick={handleResumeAudio}
               className="bg-white text-blue-600 text-sm font-semibold px-3 py-1 rounded-lg hover:bg-blue-50 transition"
             >
-              Ir al audio
+              {ta.goToAudio}
             </button>
           </div>
         </div>
@@ -1031,22 +1034,22 @@ export default function ReaderPage() {
       {showQuoteChoice && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm p-6 shadow-2xl">
-            <h3 className="text-base font-semibold text-gray-900 mb-1">Crear cita</h3>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">{ta.quoteModalTitle}</h3>
             <p className="text-sm text-gray-500 mb-5">
-              El audio está pausado. ¿Qué quieres hacer?
+              {ta.quoteModalSub}
             </p>
             <div className="flex flex-col gap-3">
               <button
                 onClick={handleOpenInReading}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium transition text-sm"
               >
-                Abrir en modo lectura
+                {ta.openInReading}
               </button>
               <button
                 onClick={handleBookmarkAndContinue}
                 className="w-full border border-gray-300 hover:border-gray-400 text-gray-700 py-3 rounded-xl font-medium transition text-sm"
               >
-                Marcar posición y continuar
+                {ta.markAndContinue}
               </button>
               <button
                 onClick={() => {
@@ -1055,7 +1058,7 @@ export default function ReaderPage() {
                 }}
                 className="w-full text-gray-400 hover:text-gray-600 py-2 text-sm transition"
               >
-                Cancelar
+                {ta.cancel}
               </button>
             </div>
           </div>
