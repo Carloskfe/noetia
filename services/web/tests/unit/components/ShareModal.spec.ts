@@ -365,7 +365,7 @@ describe('shareFragment', () => {
     await expect(shareFragment('frag-1', defaultParams)).rejects.toThrow();
   });
 
-  it('loading state: returns url on success', async () => {
+  it('loading state: returns page + image urls on success', async () => {
     const url = 'http://storage/images/test.png';
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
@@ -373,7 +373,8 @@ describe('shareFragment', () => {
     } as Response);
 
     const result = await shareFragment('frag-1', defaultParams);
-    expect(result).toBe(url);
+    expect(result.pageUrl).toBe(url);
+    expect(result.imageUrl).toBe(url);
   });
 });
 

@@ -11,10 +11,18 @@ import SocialAuthButtons from '@/components/SocialAuthButtons';
 import LanguagePicker from '@/components/LanguagePicker';
 import { useTranslation } from '@/lib/i18n';
 
+/** Only allow internal absolute paths as a post-login destination — blocks
+ *  open-redirects (external URLs, protocol-relative //host). */
+function safeNext(next: string | null): string | null {
+  if (!next || !next.startsWith('/') || next.startsWith('//')) return null;
+  return next;
+}
+
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const resetSuccess = params.get('reset') === '1';
+  const nextPath = safeNext(params.get('next'));
   const { t } = useTranslation();
 
   const schema = z.object({
@@ -39,7 +47,9 @@ function LoginForm() {
       saveToken(data.accessToken);
       saveUserType(data.user?.userType ?? null);
       saveEmailConfirmed(data.user?.emailConfirmed ?? true);
-      router.push(postAuthRedirect(data.user?.userType ?? null));
+      // Honour ?next (e.g. a shared-quote link that sent the viewer to sign in),
+      // otherwise fall back to the role-based landing.
+      router.push(nextPath ?? postAuthRedirect(data.user?.userType ?? null));
     } catch (err: any) {
       setError('root', { message: err.message ?? t.auth.login.errors.generic });
     }
@@ -101,7 +111,10 @@ function LoginForm() {
 
       <p className="text-center text-sm mt-6 text-gray-500">
         {t.auth.login.noAccount}{' '}
-        <Link href="/register" className="text-blue-600 hover:underline">
+        <Link
+          href={nextPath ? `/register?next=${encodeURIComponent(nextPath)}` : '/register'}
+          className="text-blue-600 hover:underline"
+        >
           {t.auth.login.register}
         </Link>
       </p>

@@ -98,7 +98,14 @@ export interface ShareParams {
   textScale?: number;
 }
 
-export async function shareFragment(fragmentId: string, params: ShareParams): Promise<string> {
+export interface ShareResult {
+  /** Public invite page (noetia.app/s/<id>) — for Copy link + rich previews. */
+  pageUrl: string;
+  /** Raw PNG — for Download and posting to social platforms. */
+  imageUrl: string;
+}
+
+export async function shareFragment(fragmentId: string, params: ShareParams): Promise<ShareResult> {
   const { platform, format } = FORMAT_PLATFORM_MAP[params.format];
   const data = await apiFetch(`/fragments/${fragmentId}/share`, {
     method: 'POST',
@@ -121,7 +128,8 @@ export async function shareFragment(fragmentId: string, params: ShareParams): Pr
       ...(params.textScale && params.textScale !== 1 ? { textScale: params.textScale } : {}),
     }),
   });
-  return data.url as string;
+  // `url` is the invite page; older responses only had the image — fall back.
+  return { pageUrl: data.url as string, imageUrl: (data.imageUrl ?? data.url) as string };
 }
 
 export async function copyToClipboard(text: string): Promise<void> {

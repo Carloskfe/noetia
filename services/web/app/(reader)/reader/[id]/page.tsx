@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { activePhraseForPlayback, seekToPhrase, resumePhraseIndex, effectiveDuration, formatTimecode, Phrase, Fragment, extractChapters } from '@/lib/reader-utils';
 import {
@@ -52,6 +52,7 @@ const SPEEDS = [0.75, 1, 1.25, 1.5];
 
 export default function ReaderPage() {
   const { id: bookId } = useParams<{ id: string }>();
+  const router = useRouter();
   const { t } = useTranslation();
   const ta = t.reader.audio;
 
@@ -139,6 +140,14 @@ export default function ReaderPage() {
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
 
+    // A shared quote card can bring a logged-out viewer straight to a book (the
+    // acquisition funnel). Reading requires auth, so send them to sign in and
+    // return here — don't dead-end on the guarded book fetch.
+    if (!token) {
+      router.replace(`/login?next=${encodeURIComponent(`/reader/${bookId}`)}`);
+      return;
+    }
+
     Promise.all([
       apiFetch(`/books/${bookId}`),
       apiFetch(`/books/${bookId}/sync-map`).catch(() => null),
@@ -167,7 +176,7 @@ export default function ReaderPage() {
         setLoading(false);
         if (!hasSeenReaderTutorial()) setShowTutorial(true);
       });
-  }, [bookId]);
+  }, [bookId, router]);
 
   // ── Scroll to saved phrase on load ────────────────────────────────────────
 

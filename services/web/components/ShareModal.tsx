@@ -12,6 +12,7 @@ import {
   SHARE_FORMAT_LABELS,
   ShareFormat,
   ShareParams,
+  ShareResult,
   copyToClipboard,
   getTextColor,
   shareFragment,
@@ -255,12 +256,12 @@ export default function ShareModal({
       setPublishError(null);
       setPublishToast(null);
       try {
-        const url = await shareFragment(fragmentId, params);
+        const { imageUrl } = await shareFragment(fragmentId, params);
         const res = await fetch(`/api/social/${platform}/publish`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageUrl: url, caption: captionEnabled ? note : undefined }),
+          body: JSON.stringify({ imageUrl, caption: captionEnabled ? note : undefined }),
         });
         if (!res.ok) throw new Error('publish_failed');
         const data = (await res.json()) as { postUrl: string };
@@ -275,7 +276,7 @@ export default function ShareModal({
     [fragmentId, params, captionEnabled, note, t],
   );
 
-  const generate = useCallback(async (): Promise<string | null> => {
+  const generate = useCallback(async (): Promise<ShareResult | null> => {
     setLoading(true);
     setError(null);
     try {
@@ -289,10 +290,10 @@ export default function ShareModal({
   }, [fragmentId, params, t]);
 
   const handleDownload = useCallback(async () => {
-    const url = await generate();
-    if (!url) return;
+    const result = await generate();
+    if (!result) return;
     try {
-      const res = await fetch(url);
+      const res = await fetch(result.imageUrl);
       const blob = await res.blob();
       const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -307,10 +308,12 @@ export default function ShareModal({
     }
   }, [generate, selectedFormat, t]);
 
+  // Copy link shares the public invite page (not the bare PNG) so recipients
+  // land on a page that shows the card and invites them into Noetia.
   const handleCopy = useCallback(async () => {
-    const url = await generate();
-    if (!url) return;
-    await copyToClipboard(url);
+    const result = await generate();
+    if (!result) return;
+    await copyToClipboard(result.pageUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [generate]);

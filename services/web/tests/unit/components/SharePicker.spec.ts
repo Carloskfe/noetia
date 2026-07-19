@@ -112,7 +112,7 @@ describe('shareFragment', () => {
     jest.restoreAllMocks();
   });
 
-  it('returns the URL from a successful share call', async () => {
+  it('returns the invite page + image URLs from a successful share call', async () => {
     const expectedUrl = 'http://storage/images/card.png?token=abc';
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
@@ -120,7 +120,9 @@ describe('shareFragment', () => {
     } as Response);
 
     const result = await shareFragment('frag-1', defaultParams);
-    expect(result).toBe(expectedUrl);
+    // No imageUrl in this legacy response → both fall back to `url`.
+    expect(result.pageUrl).toBe(expectedUrl);
+    expect(result.imageUrl).toBe(expectedUrl);
   });
 
   it('calls the correct API endpoint', async () => {
