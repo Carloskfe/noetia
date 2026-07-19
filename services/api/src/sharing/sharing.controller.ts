@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   NotFoundException,
   Param,
   Post,
@@ -54,10 +55,16 @@ export class SharingController {
     const book = await this.bookRepo.findOneBy({ id: fragment.bookId });
     if (!book) throw new NotFoundException();
 
-    const url = await this.sharingService.generateShareUrl(fragment, book, platform, {
-      format, font, bgType, bgColors, textColor, textOverride, citation,
-      textBold, textItalic, gradientDir, bgImage, bgFlip, bgFit, textAlign, textScale,
-    });
+    const { pageUrl, imageUrl } = await this.sharingService.generateShareUrl(
+      fragment,
+      book,
+      platform,
+      {
+        format, font, bgType, bgColors, textColor, textOverride, citation,
+        textBold, textItalic, gradientDir, bgImage, bgFlip, bgFit, textAlign, textScale,
+      },
+      req.user.id,
+    );
 
     book.shareCount = (book.shareCount ?? 0) + 1;
     await this.bookRepo.save(book);
@@ -69,6 +76,14 @@ export class SharingController {
       themes: fragment.themes ?? [],
     }).catch(() => {});
 
-    return { url };
+    // `url` is the public invite page (Copy link); `imageUrl` is the raw PNG
+    // (Download + social publish).
+    return { url: pageUrl, imageUrl };
+  }
+
+  /** Public — the /s/<id> invite page fetches this (no auth). */
+  @Get('shares/:id')
+  getShare(@Param('id') id: string) {
+    return this.sharingService.getPublicShare(id);
   }
 }

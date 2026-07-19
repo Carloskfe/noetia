@@ -10,7 +10,10 @@ import { JwtAuthGuard } from '../../../src/auth/jwt-auth.guard';
 
 const mockSharingService = {
   generateShareUrl: jest.fn(),
+  getPublicShare: jest.fn(),
 };
+
+const shareResult = (pageUrl: string, imageUrl = 'https://cdn.example.com/img.png') => ({ pageUrl, imageUrl });
 
 const mockEventsService = {
   emit: jest.fn().mockResolvedValue(undefined),
@@ -54,22 +57,24 @@ describe('SharingController', () => {
   });
 
   describe('POST /fragments/:id/share', () => {
-    it('returns a share URL for a valid fragment and platform', async () => {
+    it('returns the invite page URL as `url` plus the raw imageUrl', async () => {
       mockFragmentRepo.findOneBy.mockResolvedValue(mockFragment);
       mockBookRepo.findOneBy.mockResolvedValue({ ...mockBook });
-      mockSharingService.generateShareUrl.mockResolvedValue('https://cdn.example.com/image.png');
+      mockSharingService.generateShareUrl.mockResolvedValue(
+        shareResult('https://noetia.app/s/abc1234567', 'https://cdn.example.com/image.png'),
+      );
       mockBookRepo.save.mockResolvedValue(undefined);
 
       const result = await controller.share('frag-1', 'linkedin', undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, { user: mockUser });
 
-      expect(result).toEqual({ url: 'https://cdn.example.com/image.png' });
+      expect(result).toEqual({ url: 'https://noetia.app/s/abc1234567', imageUrl: 'https://cdn.example.com/image.png' });
     });
 
     it('increments shareCount on the book after generating the URL', async () => {
       const book = { ...mockBook, shareCount: 4 };
       mockFragmentRepo.findOneBy.mockResolvedValue(mockFragment);
       mockBookRepo.findOneBy.mockResolvedValue(book);
-      mockSharingService.generateShareUrl.mockResolvedValue('https://cdn.example.com/img.png');
+      mockSharingService.generateShareUrl.mockResolvedValue(shareResult('https://noetia.app/s/slugimg', 'https://cdn.example.com/img.png'));
       mockBookRepo.save.mockResolvedValue(undefined);
 
       await controller.share('frag-1', 'instagram', undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, { user: mockUser });
@@ -81,7 +86,7 @@ describe('SharingController', () => {
       const book = { ...mockBook, shareCount: null as any };
       mockFragmentRepo.findOneBy.mockResolvedValue(mockFragment);
       mockBookRepo.findOneBy.mockResolvedValue(book);
-      mockSharingService.generateShareUrl.mockResolvedValue('https://cdn.example.com/img.png');
+      mockSharingService.generateShareUrl.mockResolvedValue(shareResult('https://noetia.app/s/slugimg', 'https://cdn.example.com/img.png'));
       mockBookRepo.save.mockResolvedValue(undefined);
 
       await controller.share('frag-1', 'whatsapp', undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, { user: mockUser });
@@ -111,7 +116,7 @@ describe('SharingController', () => {
     it('passes styling options to the sharing service', async () => {
       mockFragmentRepo.findOneBy.mockResolvedValue(mockFragment);
       mockBookRepo.findOneBy.mockResolvedValue({ ...mockBook });
-      mockSharingService.generateShareUrl.mockResolvedValue('https://cdn.example.com/styled.png');
+      mockSharingService.generateShareUrl.mockResolvedValue(shareResult('https://noetia.app/s/slugstyled', 'https://cdn.example.com/styled.png'));
       mockBookRepo.save.mockResolvedValue(undefined);
 
       await controller.share('frag-1', 'linkedin', 'square', 'serif', 'gradient', ['#fff', '#000'], '#333', undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, { user: mockUser });
@@ -121,13 +126,14 @@ describe('SharingController', () => {
         expect.objectContaining({ id: 'book-1' }),
         'linkedin',
         expect.objectContaining({ format: 'square', font: 'serif', bgType: 'gradient', bgColors: ['#fff', '#000'], textColor: '#333' }),
+        'user-1',
       );
     });
 
     it('forwards bgImage, bgFlip, bgFit and textScale to the sharing service', async () => {
       mockFragmentRepo.findOneBy.mockResolvedValue(mockFragment);
       mockBookRepo.findOneBy.mockResolvedValue({ ...mockBook });
-      mockSharingService.generateShareUrl.mockResolvedValue('https://cdn.example.com/flipped.png');
+      mockSharingService.generateShareUrl.mockResolvedValue(shareResult('https://noetia.app/s/slugflipped', 'https://cdn.example.com/flipped.png'));
       mockBookRepo.save.mockResolvedValue(undefined);
 
       await controller.share(
@@ -143,7 +149,20 @@ describe('SharingController', () => {
         expect.objectContaining({
           bgImage: 'data:image/png;base64,AAAA', bgFlip: true, bgFit: 'contain', textScale: 1.3,
         }),
+        'user-1',
       );
+    });
+  });
+
+  describe('GET /shares/:id', () => {
+    it('delegates to the sharing service', async () => {
+      const payload = { id: 'abc', quote: 'q', imageUrl: 'http://img', book: { id: 'book-1' } };
+      mockSharingService.getPublicShare.mockResolvedValue(payload);
+
+      const result = await controller.getShare('abc');
+
+      expect(mockSharingService.getPublicShare).toHaveBeenCalledWith('abc');
+      expect(result).toBe(payload);
     });
   });
 });

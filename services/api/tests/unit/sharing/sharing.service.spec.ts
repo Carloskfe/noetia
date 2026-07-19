@@ -1,8 +1,20 @@
-import { BadGatewayException } from '@nestjs/common';
+import { BadGatewayException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { SharingService } from '../../../src/sharing/sharing.service';
 import { Fragment } from '../../../src/fragments/fragment.entity';
 import { Book } from '../../../src/books/book.entity';
+import { Share } from '../../../src/sharing/share.entity';
+
+const mockShareRepo = {
+  create: jest.fn((v: unknown) => v),
+  save: jest.fn(async (v: unknown) => v),
+  findOneBy: jest.fn(),
+  increment: jest.fn(async () => ({ affected: 1 })),
+};
+const mockBookRepo = {
+  findOneBy: jest.fn(),
+};
 
 const mockFragment = (): Partial<Fragment> => ({
   id: 'frag-1',
@@ -25,10 +37,17 @@ describe('SharingService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [SharingService],
+      providers: [
+        SharingService,
+        { provide: getRepositoryToken(Share), useValue: mockShareRepo },
+        { provide: getRepositoryToken(Book), useValue: mockBookRepo },
+      ],
     }).compile();
 
     service = module.get<SharingService>(SharingService);
+    jest.clearAllMocks();
+    mockShareRepo.create.mockImplementation((v: unknown) => v);
+    mockShareRepo.save.mockImplementation(async (v: unknown) => v);
   });
 
   afterEach(() => {
@@ -36,7 +55,7 @@ describe('SharingService', () => {
   });
 
   describe('generateShareUrl', () => {
-    it('returns URL from image-gen on success', async () => {
+    it('returns the image URL and a public invite page URL, and persists a share', async () => {
       const expectedUrl = 'http://storage:9000/images/uuid.png?token=abc';
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: true,
@@ -47,9 +66,44 @@ describe('SharingService', () => {
         mockFragment() as Fragment,
         mockBook() as Book,
         'linkedin',
+        {},
+        'user-1',
       );
 
-      expect(result).toBe(expectedUrl);
+      expect(result.imageUrl).toBe(expectedUrl);
+      expect(result.pageUrl).toMatch(/\/s\/[A-Za-z0-9]{10}$/);
+      expect(mockShareRepo.save).toHaveBeenCalledTimes(1);
+      const saved = mockShareRepo.save.mock.calls[0][0] as Share;
+      expect(saved).toMatchObject({
+        bookId: 'book-1',
+        fragmentId: 'frag-1',
+        quote: 'El conocimiento es poder.',
+        author: 'Francis Bacon',
+        title: 'Meditationes Sacrae',
+        imageUrl: expectedUrl,
+        platform: 'linkedin',
+        createdById: 'user-1',
+      });
+      expect(saved.id).toHaveLength(10);
+      // The persisted slug is the one in the returned page URL.
+      expect(result.pageUrl.endsWith(`/s/${saved.id}`)).toBe(true);
+    });
+
+    it('snapshots the edited text override as the quote', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ url: 'http://example.com/img.png' }),
+      } as Response);
+
+      await service.generateShareUrl(
+        mockFragment() as Fragment,
+        mockBook() as Book,
+        'linkedin',
+        { textOverride: 'Texto editado.' },
+      );
+
+      const saved = mockShareRepo.save.mock.calls[0][0] as Share;
+      expect(saved.quote).toBe('Texto editado.');
     });
 
     it('sends platform and required fields in payload', async () => {
@@ -306,6 +360,44 @@ describe('SharingService', () => {
       await expect(
         service.generateShareUrl(mockFragment() as Fragment, mockBook() as Book, 'linkedin'),
       ).rejects.toThrow();
+    });
+  });
+
+  describe('getPublicShare', () => {
+    it('returns the share snapshot with book info and bumps the visit count', async () => {
+      mockShareRepo.findOneBy.mockResolvedValueOnce({
+        id: 'abc123', bookId: 'book-1', quote: 'Una frase.', author: 'A', title: 'T',
+        citation: null, imageUrl: 'http://img/x.png',
+      });
+      mockBookRepo.findOneBy.mockResolvedValueOnce({
+        id: 'book-1', title: 'T', author: 'A', coverUrl: 'http://cov.png', isFree: true,
+      });
+
+      const res = await service.getPublicShare('abc123');
+
+      expect(res).toMatchObject({
+        id: 'abc123',
+        quote: 'Una frase.',
+        imageUrl: 'http://img/x.png',
+        book: { id: 'book-1', coverUrl: 'http://cov.png', isFree: true },
+      });
+      expect(mockShareRepo.increment).toHaveBeenCalledWith({ id: 'abc123' }, 'visitCount', 1);
+    });
+
+    it('still returns the share when the book is gone (book: null)', async () => {
+      mockShareRepo.findOneBy.mockResolvedValueOnce({
+        id: 'abc123', bookId: 'gone', quote: 'q', author: 'A', title: 'T',
+        citation: null, imageUrl: 'http://img/x.png',
+      });
+      mockBookRepo.findOneBy.mockResolvedValueOnce(null);
+
+      const res = await service.getPublicShare('abc123');
+      expect(res.book).toBeNull();
+    });
+
+    it('throws NotFoundException for an unknown slug', async () => {
+      mockShareRepo.findOneBy.mockResolvedValueOnce(null);
+      await expect(service.getPublicShare('nope')).rejects.toThrow(NotFoundException);
     });
   });
 });
