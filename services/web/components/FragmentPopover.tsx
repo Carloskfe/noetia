@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslation } from '@/lib/i18n';
+
 type Props = {
   text: string;
   onSave: () => void;
@@ -8,6 +10,7 @@ type Props = {
 };
 
 export default function FragmentPopover({ text, onSave, onCancel, dark = false }: Props) {
+  const { t } = useTranslation();
   const preview = text.length > 80 ? text.slice(0, 80) + '…' : text;
 
   return (
@@ -23,13 +26,13 @@ export default function FragmentPopover({ text, onSave, onCancel, dark = false }
           onClick={onSave}
           className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 rounded-lg transition"
         >
-          Guardar fragmento
+          {t.reader.saveFragment}
         </button>
         <button
           onClick={onCancel}
           className={['flex-1 text-sm font-medium py-2 rounded-lg transition border', dark ? 'border-gray-600 hover:bg-gray-800 text-gray-200' : 'border-gray-200 hover:bg-gray-50 text-gray-700'].join(' ')}
         >
-          Cancelar
+          {t.reader.cancel}
         </button>
       </div>
     </div>
