@@ -261,12 +261,12 @@ export default function ShareModal({
         setPublishToast({ platform, postUrl: data.postUrl });
         setTimeout(() => setPublishToast(null), 6000);
       } catch {
-        setPublishError('No se pudo publicar. Intenta de nuevo.');
+        setPublishError(t.shareCard.errorPublish);
       } finally {
         setPublishingPlatform(null);
       }
     },
-    [fragmentId, params, captionEnabled, note],
+    [fragmentId, params, captionEnabled, note, t],
   );
 
   const generate = useCallback(async (): Promise<string | null> => {
@@ -275,12 +275,12 @@ export default function ShareModal({
     try {
       return await shareFragment(fragmentId, params);
     } catch {
-      setError('No se pudo generar la imagen');
+      setError(t.shareCard.errorGenerate);
       return null;
     } finally {
       setLoading(false);
     }
-  }, [fragmentId, params]);
+  }, [fragmentId, params, t]);
 
   const handleDownload = useCallback(async () => {
     const url = await generate();
@@ -297,9 +297,9 @@ export default function ShareModal({
       document.body.removeChild(a);
       URL.revokeObjectURL(objectUrl);
     } catch {
-      setError('No se pudo descargar la imagen');
+      setError(t.shareCard.errorDownload);
     }
-  }, [generate, selectedFormat]);
+  }, [generate, selectedFormat, t]);
 
   const handleCopy = useCallback(async () => {
     const url = await generate();
@@ -324,14 +324,14 @@ export default function ShareModal({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Crear tarjeta para compartir"
+          aria-label={t.shareCard.dialogAria}
           className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-            <h3 className="text-sm font-semibold text-gray-900">Crear tarjeta</h3>
-            <button onClick={onClose} aria-label="Cerrar" className="text-gray-400 hover:text-gray-600">
+            <h3 className="text-sm font-semibold text-gray-900">{t.shareCard.title}</h3>
+            <button onClick={onClose} aria-label={t.shareCard.close} className="text-gray-400 hover:text-gray-600">
               <XIcon aria-hidden="true" />
             </button>
           </div>
@@ -404,13 +404,13 @@ export default function ShareModal({
 
             {/* ── E1: Edit fragment text ───────────────────────────────── */}
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Texto de la cita</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t.shareCard.quoteText}</p>
               <textarea
                 value={editedText}
                 onChange={(e) => setEditedText(e.target.value)}
                 rows={3}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 resize-none focus:outline-none focus:border-blue-400 transition"
-                placeholder="Edita el texto antes de crear la imagen…"
+                placeholder={t.shareCard.quotePlaceholder}
               />
               {textChanged && (
                 <button
@@ -418,7 +418,7 @@ export default function ShareModal({
                   disabled={savingText}
                   className="mt-1.5 text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50 transition"
                 >
-                  {savingText ? 'Guardando…' : 'Guardar cambios en la biblioteca'}
+                  {savingText ? t.shareCard.saving : t.shareCard.saveToLibrary}
                 </button>
               )}
             </div>
@@ -434,7 +434,7 @@ export default function ShareModal({
                   className="w-4 h-4 accent-blue-600 rounded"
                 />
                 <label htmlFor="citation-toggle" className="text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer">
-                  Incluir ubicación de la cita
+                  {t.shareCard.includeCitation}
                 </label>
               </div>
               {citationEnabled && (
@@ -443,14 +443,14 @@ export default function ShareModal({
                   value={citationText}
                   onChange={(e) => setCitationText(e.target.value)}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-400 transition"
-                  placeholder={isBible ? `${bookTitle}, Capítulo 23, versículo 1` : bookCollection ? `${bookCollection} · ${bookTitle}, Capítulo X, p. N` : `${bookTitle}, Capítulo X, p. N`}
+                  placeholder={isBible ? t.shareCard.citationBiblePlaceholder(bookTitle) : bookCollection ? t.shareCard.citationCollectionPlaceholder(bookCollection, bookTitle) : t.shareCard.citationPlaceholder(bookTitle)}
                 />
               )}
             </div>
 
             {/* ── Format selection ──────────────────────────────────────── */}
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Formato Imagen</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t.shareCard.format}</p>
               <select
                 value={selectedFormat}
                 onChange={(e) => setSelectedFormat(e.target.value as ShareFormat)}
@@ -464,7 +464,7 @@ export default function ShareModal({
 
             {/* ── Font + Bold/Italic ────────────────────────────────────── */}
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Fuente</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t.shareCard.font}</p>
               <div className="flex items-center gap-2">
                 {/* Custom font dropdown — shows sample text in each font */}
                 <div className="relative flex-1">
@@ -481,7 +481,7 @@ export default function ShareModal({
                         className="text-sm text-gray-800 leading-none"
                         style={{ fontFamily: fontCss }}
                       >
-                        El inicio de algo grande
+                        {t.shareCard.fontSample}
                       </span>
                     </div>
                     <svg className="w-4 h-4 text-gray-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -500,7 +500,7 @@ export default function ShareModal({
                         >
                           <span className="text-[10px] text-gray-400 block leading-none mb-0.5">{f.label}</span>
                           <span className="text-sm text-gray-800" style={{ fontFamily: f.css }}>
-                            El inicio de algo grande
+                            {t.shareCard.fontSample}
                           </span>
                         </button>
                       ))}
@@ -510,12 +510,12 @@ export default function ShareModal({
 
                 <button
                   onClick={() => setTextBold((v) => !v)}
-                  title="Negrita"
+                  title={t.shareCard.bold}
                   className={`w-9 h-9 flex-shrink-0 rounded-xl border text-sm font-bold transition ${textBold ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}
                 >B</button>
                 <button
                   onClick={() => setTextItalic((v) => !v)}
-                  title="Cursiva"
+                  title={t.shareCard.italic}
                   className={`w-9 h-9 flex-shrink-0 rounded-xl border text-sm italic transition ${textItalic ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}
                 ><em>I</em></button>
 
@@ -558,7 +558,7 @@ export default function ShareModal({
 
             {/* ── Background (D3 hex inputs, D4 directions, D7 images) ── */}
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Fondo</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t.shareCard.background}</p>
 
               {/* Type tabs */}
               <div className="flex gap-2 mb-3">
@@ -572,7 +572,7 @@ export default function ShareModal({
                         : 'border-gray-200 text-gray-600 hover:border-blue-200'
                     }`}
                   >
-                    {type === 'solid' ? 'Sólido' : type === 'gradient' ? 'Degradado' : 'Imagen'}
+                    {type === 'solid' ? t.shareCard.bgSolid : type === 'gradient' ? t.shareCard.bgGradient : t.shareCard.bgImage}
                   </button>
                 ))}
               </div>
@@ -581,13 +581,13 @@ export default function ShareModal({
               {bgType !== 'image' && (
                 <div className="flex flex-wrap gap-3 mb-3">
                   <ColorPicker
-                    label={bgType === 'gradient' ? 'Color 1' : 'Color'}
+                    label={bgType === 'gradient' ? t.shareCard.color1 : t.shareCard.color}
                     value={bgColors[0]}
                     onChange={(v) => setBgColors([v, bgColors[1]])}
                   />
                   {bgType === 'gradient' && (
                     <ColorPicker
-                      label="Color 2"
+                      label={t.shareCard.color2}
                       value={bgColors[1]}
                       onChange={(v) => setBgColors([bgColors[0], v])}
                     />
@@ -598,7 +598,7 @@ export default function ShareModal({
               {/* D4 — Gradient direction 3×3 grid */}
               {bgType === 'gradient' && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-1.5">Dirección del degradado</p>
+                  <p className="text-xs text-gray-500 mb-1.5">{t.shareCard.gradientDirection}</p>
                   <div className="grid grid-cols-3 gap-1 w-28">
                     {GRADIENT_DIRS.map((d) => (
                       <button
@@ -633,7 +633,7 @@ export default function ShareModal({
                             : 'border-transparent hover:border-blue-300'
                         }`}
                       >
-                        <img src={url} alt={`Imagen ${i + 1}`} className="w-full h-full object-cover" />
+                        <img src={url} alt={t.shareCard.presetAlt(i + 1)} className="w-full h-full object-cover" />
                       </button>
                     ))}
 
@@ -646,7 +646,7 @@ export default function ShareModal({
                       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-8m0 0l-3 3m3-3l3 3M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1" />
                       </svg>
-                      <span className="text-[10px] font-medium">Subir imagen</span>
+                      <span className="text-[10px] font-medium">{t.shareCard.uploadImage}</span>
                     </button>
 
                     {/* Camera capture */}
@@ -659,7 +659,7 @@ export default function ShareModal({
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
                         <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
                       </svg>
-                      <span className="text-[10px] font-medium">Cámara</span>
+                      <span className="text-[10px] font-medium">{t.shareCard.camera}</span>
                     </button>
                   </div>
 
@@ -682,14 +682,14 @@ export default function ShareModal({
                   />
 
                   {bgImageLoading && (
-                    <p className="text-xs text-blue-500 mt-2 text-center">Cargando imagen…</p>
+                    <p className="text-xs text-blue-500 mt-2 text-center">{t.shareCard.loadingImage}</p>
                   )}
                   {bgImage && !bgImageLoading && (
                     <button
                       onClick={() => setBgImage(null)}
                       className="mt-2 text-xs text-gray-400 hover:text-red-500 transition"
                     >
-                      Quitar imagen
+                      {t.shareCard.removeImage}
                     </button>
                   )}
 
@@ -754,7 +754,7 @@ export default function ShareModal({
 
             {/* ── Text color picker (D3 hex input) ────────────────────── */}
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Color del texto</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t.shareCard.textColor}</p>
               <div className="flex items-center gap-3">
                 <ColorPicker
                   label=""
@@ -763,7 +763,7 @@ export default function ShareModal({
                 />
                 {textColorOverride && (
                   <button onClick={() => setTextColorOverride(null)} className="text-xs text-blue-500 hover:underline">
-                    Restablecer
+                    {t.shareCard.reset}
                   </button>
                 )}
               </div>
@@ -779,7 +779,7 @@ export default function ShareModal({
                     onChange={(e) => setCaptionEnabled(e.target.checked)}
                     className="accent-blue-600"
                   />
-                  <span className="text-xs font-medium text-gray-700">Usar como comentario</span>
+                  <span className="text-xs font-medium text-gray-700">{t.shareCard.useAsCaption}</span>
                 </label>
                 {captionEnabled && (
                   <p className="text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2 leading-snug">{note}</p>
@@ -800,7 +800,7 @@ export default function ShareModal({
                 className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-xl transition"
               >
                 {loading ? <SpinnerIcon /> : <DownloadIcon />}
-                Descargar
+                {t.shareCard.download}
               </button>
               <button
                 onClick={handleCopy}
@@ -808,13 +808,13 @@ export default function ShareModal({
                 className="flex-1 flex items-center justify-center gap-2 border border-gray-200 hover:bg-gray-50 disabled:opacity-50 text-gray-700 text-sm font-medium py-2.5 rounded-xl transition"
               >
                 {loading ? <SpinnerIcon /> : <CopyIcon />}
-                {copied ? '¡Copiado!' : 'Copiar enlace'}
+                {copied ? t.shareCard.copied : t.shareCard.copyLink}
               </button>
             </div>
 
             {/* ── Social publish ────────────────────────────────────────── */}
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Publicar</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t.shareCard.publish}</p>
               <div className="space-y-2">
                 {(['linkedin', 'facebook', 'instagram', 'pinterest'] as const).map((platform) => {
                   const connected = connectedPlatforms.has(platform);
@@ -828,17 +828,17 @@ export default function ShareModal({
                         <button
                           onClick={() => handlePublish(platform)}
                           disabled={isPublishing || igDisabled}
-                          title={igDisabled ? 'Pendiente aprobación' : undefined}
+                          title={igDisabled ? t.shareCard.pendingApproval : undefined}
                           className="flex-1 text-xs py-1.5 rounded-lg border border-green-400 bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 transition"
                         >
-                          {isPublishing ? <SpinnerIcon /> : 'Compartir ahora'}
+                          {isPublishing ? <SpinnerIcon /> : t.shareCard.shareNow}
                         </button>
                       ) : (
                         <button
                           onClick={() => handleConnect(platform)}
                           className="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-blue-200 hover:bg-blue-50 transition"
                         >
-                          Conectar cuenta
+                          {t.shareCard.connectAccount}
                         </button>
                       )}
                     </div>
@@ -848,9 +848,9 @@ export default function ShareModal({
               {publishError && <p className="text-xs text-red-500 mt-2">{publishError}</p>}
               {publishToast && (
                 <p className="text-xs text-green-700 mt-2">
-                  ¡Publicado en {publishToast.platform.charAt(0).toUpperCase() + publishToast.platform.slice(1)}!{' '}
+                  {t.shareCard.publishedOn(publishToast.platform.charAt(0).toUpperCase() + publishToast.platform.slice(1))}{' '}
                   <a href={publishToast.postUrl} target="_blank" rel="noopener noreferrer" className="underline">
-                    Ver publicación
+                    {t.shareCard.viewPost}
                   </a>
                 </p>
               )}

@@ -114,3 +114,31 @@ describe('fragments.sheet namespace', () => {
     expect(es.fragments.sheet.combine(3)).toContain('3');
   });
 });
+
+describe('shareCard namespace', () => {
+  it('exposes the share-modal strings in both languages', () => {
+    for (const t of [en, es]) {
+      expect(typeof t.shareCard.title).toBe('string');
+      expect(typeof t.shareCard.background).toBe('string');
+      expect(typeof t.shareCard.download).toBe('string');
+      expect(typeof t.shareCard.publish).toBe('string');
+      expect(typeof t.shareCard.errorPublish).toBe('string');
+    }
+  });
+
+  it('interpolates the platform name in publishedOn', () => {
+    expect(en.shareCard.publishedOn('LinkedIn')).toContain('LinkedIn');
+    expect(es.shareCard.publishedOn('LinkedIn')).toContain('LinkedIn');
+  });
+
+  it('interpolates book/collection into the citation placeholders', () => {
+    expect(en.shareCard.citationPlaceholder('Hamlet')).toContain('Hamlet');
+    expect(es.shareCard.citationCollectionPlaceholder('Shakespeare', 'Hamlet')).toContain('Hamlet');
+    expect(es.shareCard.citationCollectionPlaceholder('Shakespeare', 'Hamlet')).toContain('Shakespeare');
+  });
+
+  it('numbers the preset alt text', () => {
+    expect(en.shareCard.presetAlt(2)).toContain('2');
+    expect(es.shareCard.presetAlt(2)).toContain('2');
+  });
+});
