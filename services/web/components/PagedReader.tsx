@@ -202,13 +202,17 @@ export default function PagedReader({
   const zoneBtn = dark ? 'text-gray-600 hover:text-gray-300' : 'text-gray-300 hover:text-gray-600';
   // Reading position through the book (0 on the first page, 1 on the last).
   const progress = total > 1 ? page / (total - 1) : 1;
-  const trackBg = dark ? 'bg-gray-700/70' : 'bg-gray-200';
+  // Translucent so it stays visible on both the paper card and the surround.
+  const trackBg = dark ? 'bg-white/10' : 'bg-black/10';
   const trackFill = 'bg-gray-400';
   const paperBg = dark ? '#111827' : '#FBFAF7';
   const frameBorder = dark ? '#1F2937' : '#E7E4DC';
+  // Framed pages sit on a slightly darker surround so the sheet pops. In dark
+  // mode the reader background is already darker than the card, so leave it.
+  const surroundBg = framed && !dark ? '#E6E3DD' : undefined;
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col" style={{ background: surroundBg }}>
       {/* Reading area — centres the page card horizontally. */}
       <div
         ref={viewportRef}
