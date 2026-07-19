@@ -724,14 +724,22 @@ export default function ReaderPage() {
       {/* ── Text column: paged view (reading / Escucha Activa) or scroll ─── */}
       {pagedActive ? (
         <div
-          className={
+          className={[
             mode === 'escucha-activa'
               ? 'flex-1 min-w-0'                               // in-flow beside the audio sidebar
-              : 'fixed left-0 right-0 top-12 bottom-0 z-10'    // full reading area under the top bar
-          }
+              : 'fixed left-0 right-0 top-12 bottom-0 z-10',   // full reading area under the top bar
+            // Match the scroll column: selection → fragment popover only while
+            // reading; disable text selection in audio / Escucha Activa.
+            mode !== 'reading' ? 'select-none' : '',
+          ].join(' ')}
           // Escucha Activa: fill the viewport height and pad below the fixed top
           // bar (paged content sits in-flow, so it can't use `top-12`).
           style={mode === 'escucha-activa' ? { height: '100dvh', paddingTop: '3rem' } : undefined}
+          // Paged reading: capture text selection so a passage can be saved as a
+          // Fragmento, exactly as the scroll column does. Without this the paged
+          // view offered no way to save quotes.
+          onPointerDown={mode === 'reading' ? handleTextPointerDown : undefined}
+          onPointerUp={mode === 'reading' ? handleTextPointerUp : undefined}
         >
           <PagedReader
             phrases={phrases}
