@@ -153,13 +153,18 @@ export function clampPage(page: number, total: number): number {
 }
 
 /**
- * How many pages a horizontal pixel delta spans — used to turn "this phrase is
- * `dxPx` to the right of the current page's left edge" into a page offset.
+ * The 0-based page an element sits on, from its absolute horizontal offset
+ * within the multi-column content (px from the content's left edge).
+ *
+ * Uses FLOOR, not round: phrases are inline spans that can start mid-line, so an
+ * element's offset carries an intra-column part on top of the column position.
+ * Flooring keeps it on the column it actually starts in; rounding would spill a
+ * phrase that starts in the right half of a page onto the next page.
  */
-export function deltaPages(dxPx: number, pageWidth: number, gap: number): number {
+export function pageForOffset(absoluteLeft: number, pageWidth: number, gap: number): number {
   const pitch = pageWidth + gap;
   if (pitch <= 0) return 0;
-  return Math.round(dxPx / pitch);
+  return Math.max(0, Math.floor(absoluteLeft / pitch));
 }
 
 /**

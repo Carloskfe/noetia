@@ -1,14 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Phrase, pageCount, clampPage, deltaPages } from '@/lib/reader-utils';
+import { Phrase, pageCount, clampPage, pageForOffset } from '@/lib/reader-utils';
 import PhraseRenderer from './PhraseRenderer';
 import { useTranslation } from '@/lib/i18n';
 
 const GAP = 48;      // px gutter between pages (off-screen)
 const PAD_X = 28;    // px horizontal page margin
 const PAD_Y = 20;    // px vertical page margin
-const TOP_BAR = 48;  // fixed top bar height (h-12)
 const CONTROLS_H = 44;
 
 type Props = {
@@ -23,11 +22,16 @@ type Props = {
   initialPhraseIndex?: number;
   /** Fires with the first narratable phrase on the current page (progress + persistence). */
   onPagePhraseChange?: (phraseIndex: number) => void;
+  /** When true (Escucha Activa), the page auto-flips to follow the narrated phrase. */
+  followActive?: boolean;
+  /** The currently narrated phrase; the page flips to keep it visible when followActive. */
+  activePhraseIndex?: number;
 };
 
 export default function PagedReader({
   phrases, phraseRefs, fontSizeClass, dark, getSpanClass,
   onPhraseClick, onPhraseContextMenu, initialPhraseIndex = 0, onPagePhraseChange,
+  followActive = false, activePhraseIndex = -1,
 }: Props) {
   const { t } = useTranslation();
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -49,14 +53,16 @@ export default function PagedReader({
 
   const pitch = pageWidth + GAP;
 
-  // The page a phrase sits on, relative to the current page (via its rect).
+  // The page a phrase sits on. Its rect.left is relative to the CURRENT (already
+  // translated) page, so recover the absolute content offset first, then floor.
   const pageOfPhrase = useCallback((i: number): number | null => {
     const vp = viewportRef.current;
     const el = phraseRefs.current[i];
     if (!vp || !el || pageWidthRef.current <= 0) return null;
     const leftEdge = vp.getBoundingClientRect().left + PAD_X;
-    const dx = el.getBoundingClientRect().left - leftEdge;
-    return clampPage(pageRef.current + deltaPages(dx, pageWidthRef.current, GAP), totalRef.current);
+    const pitchNow = pageWidthRef.current + GAP;
+    const absoluteLeft = pageRef.current * pitchNow + (el.getBoundingClientRect().left - leftEdge);
+    return clampPage(pageForOffset(absoluteLeft, pageWidthRef.current, GAP), totalRef.current);
   }, [phraseRefs]);
 
   const goToPhrase = useCallback((i: number) => {
@@ -125,6 +131,14 @@ export default function PagedReader({
     return () => cancelAnimationFrame(raf);
   }, [page, total, firstPhraseOnPage, onPagePhraseChange]);
 
+  // Auto-flip to follow the narrated phrase during Escucha Activa. Also keeps it
+  // as the reflow anchor so a resize/font change lands back on the spoken page.
+  useEffect(() => {
+    if (!followActive || activePhraseIndex < 0) return;
+    anchorRef.current = activePhraseIndex;
+    goToPhrase(activePhraseIndex);
+  }, [followActive, activePhraseIndex, goToPhrase]);
+
   const turn = useCallback((dir: -1 | 1) => {
     setPage((p) => clampPage(p + dir, totalRef.current));
   }, []);
@@ -144,10 +158,7 @@ export default function PagedReader({
   const zoneBtn = dark ? 'text-gray-600 hover:text-gray-300' : 'text-gray-300 hover:text-gray-600';
 
   return (
-    <div
-      className="fixed left-0 right-0 flex flex-col"
-      style={{ top: TOP_BAR, bottom: 0 }}
-    >
+    <div className="h-full flex flex-col">
       {/* Page viewport — one column wide, columns overflow & are translated */}
       <div
         ref={viewportRef}
@@ -176,13 +187,15 @@ export default function PagedReader({
           />
         </div>
 
-        {/* Edge tap zones — left third / right third */}
+        {/* Edge tap zones — confined to the page margin so they never steal a
+            phrase tap (seek / fragment capture) from the text column. */}
         {!atStart && (
           <button
             type="button"
             aria-label={t.reader.paged.prev}
             onClick={() => turn(-1)}
-            className="absolute inset-y-0 left-0 w-1/3 flex items-center justify-start pl-1 cursor-pointer"
+            className="absolute inset-y-0 left-0 flex items-center justify-center cursor-pointer"
+            style={{ width: PAD_X }}
           >
             <ChevronLeft className={zoneBtn} />
           </button>
@@ -192,16 +205,19 @@ export default function PagedReader({
             type="button"
             aria-label={t.reader.paged.next}
             onClick={() => turn(1)}
-            className="absolute inset-y-0 right-0 w-1/3 flex items-center justify-end pr-1 cursor-pointer"
+            className="absolute inset-y-0 right-0 flex items-center justify-center cursor-pointer"
+            style={{ width: PAD_X }}
           >
             <ChevronRight className={zoneBtn} />
           </button>
         )}
       </div>
 
-      {/* Bottom bar — page indicator */}
+      {/* Bottom bar — page indicator. Hidden while following audio: the page
+          auto-flips and the audio controls (sheet/sidebar) own transport, so it
+          would only collide with them. */}
       <div
-        className={['flex items-center justify-center gap-4 text-xs', dark ? 'text-gray-400' : 'text-gray-500'].join(' ')}
+        className={['flex items-center justify-center gap-4 text-xs', dark ? 'text-gray-400' : 'text-gray-500', followActive ? 'hidden' : ''].join(' ')}
         style={{ height: CONTROLS_H }}
       >
         <button

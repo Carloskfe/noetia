@@ -1,4 +1,4 @@
-import { phraseAt, activePhraseForPlayback, seekToPhrase, resumePhraseIndex, pageCount, clampPage, deltaPages, effectiveDuration, extractChapters, Phrase } from '../../../lib/reader-utils';
+import { phraseAt, activePhraseForPlayback, seekToPhrase, resumePhraseIndex, pageCount, clampPage, pageForOffset, effectiveDuration, extractChapters, Phrase } from '../../../lib/reader-utils';
 
 const phrases: Phrase[] = [
   { index: 0, text: 'Hello world.', startTime: 0, endTime: 2.5 },
@@ -261,16 +261,27 @@ describe('clampPage', () => {
   });
 });
 
-describe('deltaPages', () => {
-  it('converts a pixel delta into a page offset', () => {
-    expect(deltaPages(680, 300, 40)).toBe(2);   // 2 * 340
-    expect(deltaPages(340, 300, 40)).toBe(1);
-    expect(deltaPages(50, 300, 40)).toBe(0);     // same page
-    expect(deltaPages(-340, 300, 40)).toBe(-1);  // one page back
+describe('pageForOffset', () => {
+  it('maps an absolute offset to its page via floor', () => {
+    expect(pageForOffset(0, 300, 40)).toBe(0);      // page 0
+    expect(pageForOffset(340, 300, 40)).toBe(1);    // start of page 1 (pitch 340)
+    expect(pageForOffset(680, 300, 40)).toBe(2);
+  });
+
+  it('keeps a phrase that starts mid-page on that page (floor, not round)', () => {
+    // A phrase starting 250px into page 0 (past the halfway mark) must stay on
+    // page 0 — round() would have pushed it to page 1.
+    expect(pageForOffset(250, 300, 40)).toBe(0);
+    // ...and 250px into page 5 stays on page 5, not 6.
+    expect(pageForOffset(5 * 340 + 250, 300, 40)).toBe(5);
+  });
+
+  it('clamps negative offsets to page 0', () => {
+    expect(pageForOffset(-5, 300, 40)).toBe(0);
   });
 
   it('returns 0 for degenerate pitch', () => {
-    expect(deltaPages(100, 0, 0)).toBe(0);
+    expect(pageForOffset(100, 0, 0)).toBe(0);
   });
 });
 

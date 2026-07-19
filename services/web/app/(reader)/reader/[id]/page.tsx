@@ -555,6 +555,8 @@ export default function ReaderPage() {
   // scroll and audio paths use.
   const handlePagePhraseChange = useCallback((idx: number) => {
     setPagedPhraseIndex(idx);
+    // While listening, the audio path (activePhraseIndex effect) owns persistence.
+    if (mode !== 'reading') return;
     if (!bookId || typeof window === 'undefined' || !localStorage.getItem('access_token')) return;
     if (pagedProgressTimerRef.current) clearTimeout(pagedProgressTimerRef.current);
     pagedProgressTimerRef.current = setTimeout(() => {
@@ -563,7 +565,7 @@ export default function ReaderPage() {
         body: JSON.stringify({ phraseIndex: idx }),
       }).catch(() => {});
     }, 1500);
-  }, [bookId]);
+  }, [bookId, mode]);
 
   // ── Span CSS helper ───────────────────────────────────────────────────────
 
@@ -592,20 +594,22 @@ export default function ReaderPage() {
   const showHours = effDuration >= 3600;
   const fontSizeClass = FONT_SIZE_CLASSES[fontSize];
 
-  // Paged reading applies only to plain reading of a synced book; audio/Escucha
-  // Activa stay on the continuous scroll view (the sync engine is untouched).
-  const pagedActive = readingLayout === 'paged' && mode === 'reading' && hasSync;
+  // Paged layout applies to reading AND Escucha Activa of a synced book (audio
+  // mode hides the text). In Escucha Activa the page auto-flips to the narrated
+  // phrase; the sync map itself is untouched.
+  const pagedActive =
+    readingLayout === 'paged' && hasSync && (mode === 'reading' || mode === 'escucha-activa');
 
-  // Reading progress for the top-bar indicator: page position when paged, phrase
-  // position while listening (tracks the narration), scroll position otherwise.
+  // Reading progress for the top-bar indicator: while listening it tracks the
+  // narrated phrase; while reading it's the page position (paged) or scroll.
   const lastPhraseIdx = phrases.length - 1;
   const listeningProgress =
     lastPhraseIdx > 0 && activePhraseIndex >= 0 ? activePhraseIndex / lastPhraseIdx : null;
   const pagedProgress =
     lastPhraseIdx > 0 && pagedPhraseIndex >= 0 ? pagedPhraseIndex / lastPhraseIdx : null;
-  const readingProgress = pagedActive
-    ? (pagedProgress ?? 0)
-    : mode === 'reading' ? scrollProgress : (listeningProgress ?? scrollProgress);
+  const readingProgress = mode === 'reading'
+    ? (pagedActive ? (pagedProgress ?? 0) : scrollProgress)
+    : (listeningProgress ?? (pagedActive ? (pagedProgress ?? 0) : scrollProgress));
 
   return (
     <div className={['flex flex-col md:flex-row min-h-screen', darkMode ? 'bg-gray-950 text-gray-100' : 'bg-white text-gray-800'].join(' ')}>
@@ -714,19 +718,32 @@ export default function ReaderPage() {
         </main>
       )}
 
-      {/* ── Text column: paged view (reading a synced book) or scroll ────── */}
+      {/* ── Text column: paged view (reading / Escucha Activa) or scroll ─── */}
       {pagedActive ? (
-        <PagedReader
-          phrases={phrases}
-          phraseRefs={phraseRefs}
-          fontSizeClass={fontSizeClass}
-          dark={darkMode}
-          getSpanClass={getSpanClass}
-          onPhraseClick={handlePhraseClick}
-          onPhraseContextMenu={handleStartSelection}
-          initialPhraseIndex={savedPhraseIndex}
-          onPagePhraseChange={handlePagePhraseChange}
-        />
+        <div
+          className={
+            mode === 'escucha-activa'
+              ? 'flex-1 min-w-0'                               // in-flow beside the audio sidebar
+              : 'fixed left-0 right-0 top-12 bottom-0 z-10'    // full reading area under the top bar
+          }
+          // Escucha Activa: fill the viewport height and pad below the fixed top
+          // bar (paged content sits in-flow, so it can't use `top-12`).
+          style={mode === 'escucha-activa' ? { height: '100dvh', paddingTop: '3rem' } : undefined}
+        >
+          <PagedReader
+            phrases={phrases}
+            phraseRefs={phraseRefs}
+            fontSizeClass={fontSizeClass}
+            dark={darkMode}
+            getSpanClass={getSpanClass}
+            onPhraseClick={handlePhraseClick}
+            onPhraseContextMenu={handleStartSelection}
+            initialPhraseIndex={mode === 'escucha-activa' && activePhraseIndex >= 0 ? activePhraseIndex : savedPhraseIndex}
+            onPagePhraseChange={handlePagePhraseChange}
+            followActive={mode === 'escucha-activa'}
+            activePhraseIndex={activePhraseIndex}
+          />
+        </div>
       ) : (
       <main className={[
         'flex-1 max-w-2xl mx-auto px-6 pt-14 md:pt-16',
