@@ -99,6 +99,11 @@
 > - [x] **Smaller Noetia logo in generated share images (done 2026-07-19, `dda4f05`)** — watermark logo height reduced 6% → 3.9% of card width (~35% smaller) in image-gen `templates/base.py`; extracted `_logo_target_height` + constants, tests added, verified on a rendered card. All formats share `render_card`, so one change covers them. ✅
 >
 > **Backlog (post app store):**
+> - [ ] **Referral attribution on share invite pages** — build on the shipped `/s/<id>` invite pages (migration 065). Groundwork already in place: `shares.createdById` is persisted per share, so we know who shared each card. Scope:
+>   - **Credit the sharer on the page** — "«Name» te invita a leer en Noetia" (needs the sharer's display name — join `users` in `getPublicShare`; respect the profile-privacy toggle before showing a name).
+>   - **Track invite → signup attribution** — carry the share slug through the funnel (`/s/<id>` → `/login?next=…` / `/register`) so a new account records `referredByShareId` / `referredByUserId`; count conversions per sharer.
+>   - **Rewards (optional, later)** — grant the sharer a token (or Causas credit) when a referred user subscribes; ties into the existing token/gifting model — see [[project_token_gifting]] / [[project_gift_cards]].
+>   - Decisions to make before building: reward amount + trigger (signup vs first paid), anti-abuse (self-referral / duplicate-device), and whether names are opt-in. *Parked 2026-07-19 ("not for now"); this entry captures the plan.*
 > - [ ] **English Whisper sync** — run remaining 29 EN titles after Meditations + Jane Eyre; then expand EN catalogue
 > - [ ] English free library — expand EN catalogue once priority titles are fully synced
 > - [x] Facebook + Google OAuth credentials — Google live; Facebook Dev mode (Go Live pending Meta business verification) ✅
