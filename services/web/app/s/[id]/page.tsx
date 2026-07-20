@@ -14,7 +14,11 @@ type ShareData = {
   book: { id: string; title: string; author: string; coverUrl: string | null; isFree: boolean } | null;
 };
 
-const API = process.env.INTERNAL_API_URL ?? 'http://localhost:4000';
+// Server-side base for the SSR fetch. On prod `/api` is routed by Traefik (not
+// the Next rewrite), so INTERNAL_API_URL may be unset there — default to the
+// docker service name `api`, which is reachable from the web container on
+// noetia_net in both dev and prod (localhost:4000 is NOT, inside the container).
+const API = process.env.INTERNAL_API_URL ?? 'http://api:4000';
 
 // React cache() dedupes the fetch across generateMetadata + the page render,
 // so a request hits the API (and bumps the visit counter) exactly once.
