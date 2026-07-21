@@ -39,7 +39,11 @@ import { ReadingProgressService } from './reading-progress.service';
 import { FragmentsService } from '../fragments/fragments.service';
 import { UploadCodesService } from '../codes/upload-codes.service';
 
-const PRESIGN_TTL = 60 * 15; // 15 minutes
+const PRESIGN_TTL = 60 * 15; // 15 minutes — text (downloaded once, quickly)
+// Audiobooks play for hours; a 15-min URL expires mid-listen, so the next range
+// request 403s → the <audio> element errors → the reader restarts from 0. Give
+// audio a long-lived URL that comfortably outlasts a listening session.
+const AUDIO_PRESIGN_TTL = 60 * 60 * 12; // 12 hours
 
 // Reader content endpoints are protected by JwtAuthGuard + SubscriptionGuard.
 // Per-IP rate limiting is not appropriate here — legitimate readers in
@@ -100,12 +104,12 @@ export class BooksController {
     const audioFileUrl = book.audioFileKey
       ? book.audioFileKey.startsWith('http')
         ? book.audioFileKey
-        : await this.storageService.presign('audio', book.audioFileKey, PRESIGN_TTL)
+        : await this.storageService.presign('audio', book.audioFileKey, AUDIO_PRESIGN_TTL)
       : null;
     const audioStreamUrl = book.audioStreamKey
       ? book.audioStreamKey.startsWith('http')
         ? book.audioStreamKey
-        : await this.storageService.presign('audio', book.audioStreamKey, PRESIGN_TTL)
+        : await this.storageService.presign('audio', book.audioStreamKey, AUDIO_PRESIGN_TTL)
       : null;
     return { ...book, textFileUrl, audioFileUrl, audioStreamUrl };
   }

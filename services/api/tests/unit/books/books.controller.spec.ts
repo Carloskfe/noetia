@@ -65,6 +65,41 @@ describe('BooksController', () => {
     mockBooksService.checkUploadQuota.mockResolvedValue(undefined);
   });
 
+  describe('GET /books/:id', () => {
+    it('presigns audio with a long (12h) TTL and text with the short (15m) TTL', async () => {
+      mockBooksService.findById.mockResolvedValue({
+        id: 'b-1',
+        textFileKey: 'books/x.html',
+        audioFileKey: 'audio/x.mp3',
+        audioStreamKey: 'audio/x-stream.mp3',
+      });
+      mockStorageService.presign.mockResolvedValue('signed-url');
+
+      await controller.findOne('b-1');
+
+      // Text is downloaded once, quickly → short TTL is fine.
+      expect(mockStorageService.presign).toHaveBeenCalledWith('books', 'books/x.html', 900);
+      // Audio plays for hours → the URL must outlast a listening session, else
+      // the reader restarts from 0 when it expires mid-listen.
+      expect(mockStorageService.presign).toHaveBeenCalledWith('audio', 'audio/x.mp3', 43200);
+      expect(mockStorageService.presign).toHaveBeenCalledWith('audio', 'audio/x-stream.mp3', 43200);
+    });
+
+    it('leaves full http audio URLs untouched (no presign)', async () => {
+      mockBooksService.findById.mockResolvedValue({
+        id: 'b-2',
+        textFileKey: null,
+        audioFileKey: null,
+        audioStreamKey: 'https://cdn.example.com/stream.mp3',
+      });
+
+      const res = await controller.findOne('b-2');
+
+      expect(res.audioStreamUrl).toBe('https://cdn.example.com/stream.mp3');
+      expect(mockStorageService.presign).not.toHaveBeenCalledWith('audio', expect.stringContaining('http'), expect.anything());
+    });
+  });
+
   describe('GET /books', () => {
     it('forwards the search term and parsed limit to the service', async () => {
       const books = [{ id: 'b-1', title: 'La Odisea' }];
