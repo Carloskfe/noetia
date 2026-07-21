@@ -104,6 +104,10 @@ export default function ReaderPage() {
   const [pendingJumpIndex, setPendingJumpIndex] = useState<number | null>(null);
 
   const audioRef = useRef<HTMLAudioElement>(null);
+  // When an expired presigned URL forces a src refresh, carry the play position
+  // across the reload so it resumes instead of restarting from 0.
+  const resumeAfterReloadRef = useRef<{ time: number; play: boolean } | null>(null);
+  const lastReloadResumeRef = useRef(0);
   const progressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pagedProgressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const phraseRefs = useRef<(HTMLElement | null)[]>([]);
@@ -124,11 +128,22 @@ export default function ReaderPage() {
   }, [fontSize, darkMode, speed, readingLayout]);
 
   // Re-apply the restored speed whenever the audio element (re)loads its source,
-  // since a fresh HTMLAudioElement resets playbackRate to 1.
+  // since a fresh HTMLAudioElement resets playbackRate to 1. Also resume the
+  // pre-reload position when the source was refreshed after an error (expired
+  // presigned URL) — otherwise the reload would restart from 0.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const apply = () => { audio.playbackRate = speed; };
+    const apply = () => {
+      audio.playbackRate = speed;
+      const resume = resumeAfterReloadRef.current;
+      if (resume) {
+        resumeAfterReloadRef.current = null;
+        lastReloadResumeRef.current = Date.now();
+        if (resume.time > 0) audio.currentTime = resume.time;
+        if (resume.play) void audio.play();
+      }
+    };
     audio.addEventListener('loadedmetadata', apply);
     return () => audio.removeEventListener('loadedmetadata', apply);
   }, [speed]);
@@ -205,6 +220,13 @@ export default function ReaderPage() {
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
     const onError = () => {
+      // Likely an expired presigned URL (or a transient stream hiccup). Refresh
+      // the book to get a fresh URL, and remember where we were so the reload
+      // resumes there. The 5s guard prevents a resume that immediately re-errors
+      // from looping (e.g. a genuinely unseekable position).
+      if (Date.now() - lastReloadResumeRef.current > 5000) {
+        resumeAfterReloadRef.current = { time: audio.currentTime || 0, play: !audio.paused };
+      }
       apiFetch(`/books/${bookId}`)
         .then((data) => setBook(data))
         .catch(() => {});
