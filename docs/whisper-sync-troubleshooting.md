@@ -1122,6 +1122,47 @@ aren't broken; it just won't be *discovered*.
 
 ---
 
+## 14. Constant phrase offset (highlight ahead of audio) — an aligner bug + LibriVox credits
+
+> Distinct from §12 (merged-VTT *cumulative* drift). This is a **constant, non-growing**
+> shift: the highlight runs a fixed ~1–8 phrases ahead of the audio, same gap start to
+> finish. Reported 2026-07-30 (Carlos), after §12's merge-drift fix. Two mechanisms:
+
+**(a) Aligner early-window bias — `phrase-aligner.ts`.** `scoreWindow` matches a phrase's
+tokens as an *unanchored* subsequence inside a window `ceil(n*1.5)+5` words wide, and the
+search keeps the **earliest** offset reaching a full match (forward scan, `if (score === 1)
+break`). Because that window is longer than the phrase, an offset several words *before* the
+true onset still contains all the phrase's words in order → `best.pos`, hence `startTime`, is
+set systematically early. The effect is ~constant per book (bigger with longer phrases), so it
+reads as a fixed "N phrases behind." **Fix:** anchor the match on the phrase's first token so
+the onset is pinned to the first spoken word (see `sync-diagnostics.ts` `anchoredScore`).
+
+**(b) Per-segment LibriVox credits.** Every merged chapter re-introduces spoken credits not in
+the book text ("This is a LibriVox recording…", section intro/outro). They add audio words with
+no text counterpart; the proportional model smears them across the chapter, and — separately —
+the reader has nothing to advance to during them, so **the highlight should hold static on the
+last real phrase while the audio plays through the announcement**. This compounds per segment,
+which is why merged multi-chapter free-library books show the larger (~8-phrase) gap.
+
+**Diagnostic tool.** `src/ingestion/diagnose-sync.ts` (core: `sync-diagnostics.ts`, 7 unit
+tests) re-locates each phrase's true onset by a first-token-anchored, position-banded scan of
+the committed VTT — independent of the stored `startTime` — and reports edition coverage,
+leading/embedded extra words, median offset (seconds **and** phrases), and drift slope
+(constant vs growing):
+
+```bash
+docker compose exec api npx ts-node -r tsconfig-paths/register \
+  src/ingestion/diagnose-sync.ts \
+  --book "Marianela" --transcript /app/transcriptions/marianela.merged.vtt --realign
+```
+
+Always use `--realign` (splits the stored text and aligns to the committed VTT — apples-to-
+apples). `--stored` compares the **live DB map** against the committed VTT and is only valid
+when they share a timescale; on Marianela it exposed a ~10 000 s scale gap, i.e. the committed
+VTT is *not* the same-timescale transcript the live map was built from (`/app/transcriptions`
+is wiped/re-merged each deploy — §10). Validated readings (`--realign`): Marianela ~1 phrase
+early / slope ≈ 0, Lazarillo ~1 phrase early / slope ≈ 0 — both a fixed shift, confirming (a).
+
 ## <a name="why-90"></a>Why 90%, not 85%
 
 Raised from 85% on 2026-06-24 after this investigation showed that most
