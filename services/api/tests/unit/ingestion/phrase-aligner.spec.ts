@@ -66,6 +66,26 @@ describe('alignPhrases', () => {
     expect(stats.avgConfidence).toBe(1);
   });
 
+  it('times the true onset, not the (early-biased) window start', () => {
+    // The scoring window is wider than the phrase, so the search latches onto an
+    // offset BEFORE the true onset (the filler words are still inside the window
+    // and the phrase remains a subsequence). Timing must come from the first word
+    // that actually matched — regression for the constant "highlight ahead of
+    // audio" offset (whisper-sync-troubleshooting §14).
+    const phrases = [makePhrase(0, 'alpha bravo charlie delta echo foxtrot')];
+    const filler = Array.from({ length: 5 }, (_, i) =>
+      makeWord(`zzz${i}`, i * 0.5, i * 0.5 + 0.5),
+    ); // occupy audio 0.0–2.5s with words NOT in the text
+    const spoken = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot'].map(
+      (w, i) => makeWord(w, 2.5 + i * 0.5, 2.5 + (i + 1) * 0.5),
+    );
+    const words = [...filler, ...spoken];
+
+    const { phrases: result } = alignPhrases(phrases, words);
+    expect(result[0].startTime).toBe(2.5); // onset of 'alpha', not filler's 0.0
+    expect(result[0].endTime).toBe(5.5);   // end of 'foxtrot', not a mid-window word
+  });
+
   it('handles slight word mismatches (Whisper errors) gracefully', () => {
     const phrases = [makePhrase(0, 'de cuyo nombre no quiero acordarme')];
     // Whisper mishears "cuyo" as "cuio"

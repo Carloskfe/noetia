@@ -104,6 +104,44 @@ function scoreWindow(
   return matches / n;
 }
 
+// ── Match span ───────────────────────────────────────────────────────────────
+//
+// The search (scoreWindow) picks a window OFFSET, but that offset is biased
+// early: because the window is wider than the phrase, an offset several words
+// before the true onset still contains the phrase as a subsequence and scores
+// full, and the forward scan keeps the earliest such offset. Reading the timing
+// from the window start therefore places `startTime` a few words — a near-constant
+// shift — before the phrase is actually spoken, so the highlight runs ahead of
+// the audio. matchSpan returns the ABSOLUTE word indices of the first and last
+// phrase tokens that actually matched inside the chosen window, so timing lands
+// on the real onset/offset instead of the window edge. See phrase-aligner.spec.
+function matchSpan(
+  phraseTokens: string[],
+  words: TimedWord[],
+  offset: number,
+): { firstIdx: number; lastIdx: number } {
+  const n = phraseTokens.length;
+  const available = words.length - offset;
+  const windowSize = Math.min(Math.ceil(n * 1.5) + 5, available);
+
+  let firstIdx = -1;
+  let lastIdx = -1;
+  let searchFrom = 0;
+  for (const token of phraseTokens) {
+    if (!token) continue;
+    for (let i = searchFrom; i < windowSize; i++) {
+      if (normalizeWord(words[offset + i].word) === token) {
+        const abs = offset + i;
+        if (firstIdx === -1) firstIdx = abs;
+        lastIdx = abs;
+        searchFrom = i + 1;
+        break;
+      }
+    }
+  }
+  return { firstIdx, lastIdx };
+}
+
 // ── Main alignment ─────────────────────────────────────────────────────────────
 //
 // Proportion-based positioning with EMA drift correction: each phrase estimates
@@ -185,10 +223,16 @@ export function alignPhrases(
     }
 
     // ── Aligned ───────────────────────────────────────────────────────────────
-    const endPos = Math.min(best.pos + tokens.length - 1, totalWordSlots - 1);
+    // Time from the words that actually matched, not the (early-biased) window
+    // start — see matchSpan. Fall back to the window edge if nothing matched.
+    const span     = matchSpan(tokens, timedWords, best.pos);
+    const startPos = span.firstIdx >= 0 ? span.firstIdx : best.pos;
+    const endPos   = span.lastIdx  >= 0
+      ? span.lastIdx
+      : Math.min(best.pos + tokens.length - 1, totalWordSlots - 1);
     result[i] = {
       ...phrase,
-      startTime: timedWords[best.pos]?.start ?? 0,
+      startTime: timedWords[startPos]?.start ?? 0,
       endTime:   timedWords[endPos]?.end     ?? 0,
       exception: false,
     };
