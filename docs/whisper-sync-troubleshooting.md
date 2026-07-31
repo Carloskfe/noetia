@@ -1139,10 +1139,24 @@ the onset is pinned to the first spoken word (see `sync-diagnostics.ts` `anchore
 
 **(b) Per-segment LibriVox credits.** Every merged chapter re-introduces spoken credits not in
 the book text ("This is a LibriVox recording…", section intro/outro). They add audio words with
-no text counterpart; the proportional model smears them across the chapter, and — separately —
-the reader has nothing to advance to during them, so **the highlight should hold static on the
-last real phrase while the audio plays through the announcement**. This compounds per segment,
-which is why merged multi-chapter free-library books show the larger (~8-phrase) gap.
+no text counterpart; the concern was that the proportional model smears them across the chapter,
+and that the reader has nothing to advance to during them.
+
+*Resolution (2026-07-31) — both halves already covered once (a) is fixed; no separate change:*
+
+- **Aligner:** empirically absorbed. Post-(a), `diagnose-sync --realign` returns **median 0 /
+  OK even on the heaviest-credit books** — Génesis (946 leading credit words / 393 s), Crimen y
+  Castigo (905 / 431 s). Anchored `matchSpan` + the EMA drift correction + skip-and-continue
+  already handle the per-boundary steps (credits are ~20–40 words/chapter, well inside
+  `MAX_DRIFT=150`). A two-pass credit-exclusion aligner was considered and rejected — zero
+  measured benefit, real regression risk. Many-chapter books that still fail are *edition
+  mismatch* (Don Quijote 59%) or *structural drift* (La Divina Comedia 76%), not credits.
+- **Reader:** already correct. `reader-utils.ts phraseAt` returns the **last-started** timed
+  phrase, so through a credit gap the highlight **holds on the chapter's last real phrase** while
+  the audio plays on, then advances to the next chapter's first phrase only when it is actually
+  spoken. The highlight *jumping* during credits was a **symptom of (a)** (early `startTime`s
+  landing in the gap), not a separate bug. Locked by a regression test in
+  `services/web/tests/unit/reader/reader-utils.spec.ts`.
 
 **Diagnostic tool.** `src/ingestion/diagnose-sync.ts` (core: `sync-diagnostics.ts`, 7 unit
 tests) re-locates each phrase's true onset by a first-token-anchored, position-banded scan of

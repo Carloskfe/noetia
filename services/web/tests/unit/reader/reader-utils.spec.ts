@@ -117,6 +117,28 @@ describe('phraseAt', () => {
     expect(phraseAt(gapped, 3.5)).toBe(0); // in the gap → stay on A, not -1
     expect(phraseAt(gapped, 5.0)).toBe(1);
   });
+
+  // Cause 2 (whisper-sync-troubleshooting §14): merged multi-chapter audio plays
+  // spoken LibriVox credits between chapters ("End of chapter… This is a LibriVox
+  // recording…") that have no phrase in the book text. The highlight must HOLD on
+  // the last real phrase of the chapter for the whole announcement and advance to
+  // the next chapter's first phrase only when it is actually spoken — never early.
+  it('holds the last phrase static through a long inter-chapter announcement span', () => {
+    const chapters: Phrase[] = [
+      { index: 0, text: 'Last line of chapter one.',  startTime: 100, endTime: 104, type: 'text' },
+      // ~30s of credits/announcement play here — no phrase covers 104..134
+      { index: 1, text: 'First line of chapter two.', startTime: 134, endTime: 138, type: 'text' },
+    ];
+    // Anywhere inside the announcement the highlight stays on chapter one's last phrase.
+    expect(phraseAt(chapters, 105)).toBe(0);
+    expect(phraseAt(chapters, 120)).toBe(0);
+    expect(phraseAt(chapters, 133.9)).toBe(0);
+    // Under the playback offset it must not jump to chapter two before it is heard.
+    expect(activePhraseForPlayback(chapters, 133)).toBe(0);
+    expect(activePhraseForPlayback(chapters, 134)).toBe(0);   // exactly at the mark
+    // Only once chapter two is genuinely underway does the highlight advance.
+    expect(activePhraseForPlayback(chapters, 134.3)).toBe(1);
+  });
 });
 
 describe('activePhraseForPlayback', () => {
