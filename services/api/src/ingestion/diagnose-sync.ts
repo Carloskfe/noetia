@@ -65,7 +65,7 @@ class DiagnoseRunner {
       phrases = map.phrases;
     }
 
-    return diagnoseSync(phrases, timedWords, { book: title });
+    return { d: diagnoseSync(phrases, timedWords, { book: title }), phrases };
   }
 }
 
@@ -111,7 +111,7 @@ async function bootstrap() {
   const app = await NestFactory.createApplicationContext(DiagnoseModule, {
     logger: ['error', 'warn'],
   });
-  const d = await app.get(DiagnoseRunner).run(book, transcript, realign);
+  const { d, phrases } = await app.get(DiagnoseRunner).run(book, transcript, realign);
 
   const verdict = d.editionCoverage < 0.6
     ? 'EDITION MISMATCH — stored text differs from the recording; fix the text first'
@@ -161,11 +161,46 @@ async function bootstrap() {
 
     console.log('── Drift profile ──────────────────────────────────');
     console.log(`Offset by position:  first ${m1.toFixed(1)}s · middle ${m2.toFixed(1)}s · last ${m3.toFixed(1)}s`);
+
+    // Per-decile median — shows exactly which tenth of the book the ramp starts in.
+    const deciles: string[] = [];
+    for (let b = 0; b < 10; b++) {
+      const lo = Math.floor((b * n) / 10);
+      const hi = Math.floor(((b + 1) * n) / 10);
+      deciles.push(med(located.slice(lo, hi).map((s) => s.deltaSeconds)).toFixed(0));
+    }
+    console.log(`Offset by decile:    ${deciles.join(' ')}  (seconds, 0→100% of book)`);
+
+    // Drift onset: the first anchor where the offset departs and STAYS departed
+    // (≥ half the remaining anchors also offset) — i.e. a sustained ramp, not a
+    // lone duplicate-text outlier. Mapped back to the canto/chapter heading it
+    // falls under, so you know exactly where the audio starts walking off.
+    const THRESH = 60; // seconds
+    let onset = -1;
+    for (let i = 0; i < n; i++) {
+      if (Math.abs(located[i].deltaSeconds) <= THRESH) continue;
+      const rest = located.slice(i);
+      const frac = rest.filter((s) => Math.abs(s.deltaSeconds) > THRESH).length / rest.length;
+      if (frac >= 0.5) { onset = i; break; }
+    }
+    if (onset >= 0) {
+      const at = located[onset];
+      const heading = phrases
+        .filter((p) => p.type === 'heading' && p.text.trim() && p.index <= at.index)
+        .pop();
+      console.log(
+        `Drift onset:         ~phrase ${at.index} (Δ ${at.deltaSeconds.toFixed(0)}s), ` +
+        `under heading: "${heading?.text ?? '(no preceding heading)'}"`,
+      );
+    } else {
+      console.log('Drift onset:         none sustained — offsets are isolated (artifact)');
+    }
+
     console.log(`Outliers (|Δ|>${OUT}s): ${outliers.length} / ${n} anchors`);
     for (const o of outliers.slice(0, 8)) {
       console.log(`   phrase ${o.index}: Δ ${o.deltaSeconds.toFixed(1)}s  (confidence ${o.confidence})`);
     }
-    const artifact = spread < 5 && outliers.length > 0 && outliers.length < n * 0.25;
+    const artifact = onset < 0 && spread < 5 && outliers.length < n * 0.25;
     console.log(
       `→ ${artifact
         ? 'Looks like ANCHOR-NOISE ARTIFACT — median ≈ 0 across the book, isolated outliers. Likely plays fine; safe to reseed for the onset fix.'
