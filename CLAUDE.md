@@ -416,6 +416,8 @@ Full pipeline — Colab GPU setup (`scripts/whisper-colab.ipynb`), step-by-step 
 
 Root-cause diagnosis for books below 90% (announcement noise, front/back matter, story-order mismatches, edition mismatches) is in [`docs/whisper-sync-troubleshooting.md`](docs/whisper-sync-troubleshooting.md).
 
+**Sync-offset tooling (2026-07/08):** `services/api/src/ingestion/diagnose-sync.ts` measures a book's highlight-vs-audio offset independently of its stored map — `--realign` (splits stored text + aligns to the committed VTT, apples-to-apples) reports edition coverage, median offset (seconds **and** phrases), and `--profile` gives a per-decile breakdown + drift-onset canto to localize where a book drifts. `scripts/reseed-sync.sh` is the gated batch re-seed that uses `--realign` as a pre-write gate (free-library first; dry-run by default, `--apply` to write). The constant "highlight ahead of audio" bug was an aligner early-window bias — fixed in `phrase-aligner.ts` `matchSpan` and re-seeded to prod. Full write-up: [`docs/whisper-sync-troubleshooting.md §14`](docs/whisper-sync-troubleshooting.md).
+
 ---
 
 ## Content Ingestion
