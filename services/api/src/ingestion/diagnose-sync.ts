@@ -131,7 +131,49 @@ async function bootstrap() {
   console.log(`Median offset:     ${d.medianDeltaSeconds}s  ≈ ${d.medianDeltaPhrases} phrase(s)`);
   console.log(`Drift slope:       ${d.driftSlope}s/phrase  (${d.constantOffset ? 'constant' : 'growing'})`);
   console.log(`\nVERDICT: ${verdict}`);
-  console.log('───────────────────────────────────────────────────\n');
+  console.log('───────────────────────────────────────────────────');
+
+  // ── Drift profile (--profile) ──────────────────────────────────────────────
+  // Separates an anchor-noise ARTIFACT (isolated anchors mis-located to a
+  // repeated/versed line — median ≈ 0 in every part of the book, a few wild
+  // outliers) from REAL drift (offset ramps across the book). Only the latter
+  // needs per-book text/transcription work; the former plays fine.
+  if (process.argv.includes('--profile')) {
+    const located = d.samples.filter((s) => s.deltaSeconds !== null) as
+      Array<typeof d.samples[number] & { deltaSeconds: number }>;
+    const n = located.length;
+    const med = (arr: number[]) => {
+      if (!arr.length) return 0;
+      const s = [...arr].sort((a, b) => a - b);
+      const m = Math.floor(s.length / 2);
+      return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+    };
+    const third = Math.max(1, Math.floor(n / 3));
+    const t1 = located.slice(0, third);
+    const t2 = located.slice(third, 2 * third);
+    const t3 = located.slice(2 * third);
+    const m1 = med(t1.map((s) => s.deltaSeconds));
+    const m2 = med(t2.map((s) => s.deltaSeconds));
+    const m3 = med(t3.map((s) => s.deltaSeconds));
+    const OUT = 30; // seconds
+    const outliers = located.filter((s) => Math.abs(s.deltaSeconds) > OUT);
+    const spread = Math.max(Math.abs(m1), Math.abs(m2), Math.abs(m3));
+
+    console.log('── Drift profile ──────────────────────────────────');
+    console.log(`Offset by position:  first ${m1.toFixed(1)}s · middle ${m2.toFixed(1)}s · last ${m3.toFixed(1)}s`);
+    console.log(`Outliers (|Δ|>${OUT}s): ${outliers.length} / ${n} anchors`);
+    for (const o of outliers.slice(0, 8)) {
+      console.log(`   phrase ${o.index}: Δ ${o.deltaSeconds.toFixed(1)}s  (confidence ${o.confidence})`);
+    }
+    const artifact = spread < 5 && outliers.length > 0 && outliers.length < n * 0.25;
+    console.log(
+      `→ ${artifact
+        ? 'Looks like ANCHOR-NOISE ARTIFACT — median ≈ 0 across the book, isolated outliers. Likely plays fine; safe to reseed for the onset fix.'
+        : 'Thirds diverge / many outliers — looks like REAL drift. Needs per-book text/transcription work; a reseed from this VTT will not fix it.'}`,
+    );
+    console.log('───────────────────────────────────────────────────');
+  }
+  console.log();
 
   await app.close();
 }
