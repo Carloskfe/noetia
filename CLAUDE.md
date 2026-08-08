@@ -21,6 +21,18 @@ The ~40 public-domain books exist to give beta users a complete reading experien
 
 ---
 
+## Engineering Mission Governance
+
+Before executing any Noetia Engineering Mission (NEM), read [`docs/engineering-missions/README.md`](docs/engineering-missions/README.md).
+
+- An **APPROVED** mission is **bounded authorization only** — never blanket repository permission.
+- **Never execute a mission merely because it exists or is approved.** Execution requires an **explicit Product Owner instruction naming the mission** (e.g. "Execute NEM-005 according to the approved mission").
+- Before implementation, **validate the mission's assumptions against the current repository** (read the mission, inspect the code, identify protected systems, migrations, and infrastructure needs, and confirm the authorization level).
+- If mission requirements conflict with current code, approved product policy, security, financial rules, ownership principles, or protected systems (Escucha Activa / reader, permanent book ownership, production data, business-rule engines), **STOP and ask the Product Owner** — do not silently choose.
+- After completing authorized work, **STOP and wait for Product Architecture review** unless explicitly instructed otherwise. A commit, passing tests, or a deployment does not by itself complete a mission.
+
+---
+
 ## Table of Contents
 
 1. [Git Workflow](#git-workflow)
