@@ -50,7 +50,11 @@ export class AdminTokensController {
   ) {}
 
   private assertAdmin(req: any) {
-    if (req.user?.userType !== 'admin') throw new ForbiddenException('Admin only');
+    // Admin status is the `User.isAdmin` boolean — NOT a `UserType` value.
+    // (`UserType` is personal|author|editorial; there is no 'admin' userType, so
+    // the previous `userType === 'admin'` check could never pass and 403'd every
+    // caller, including real admins.) Aligns with all other admin routes.
+    if (!req.user?.isAdmin) throw new ForbiddenException('Admin only');
   }
 
   // ── Promotional tokens ─────────────────────────────────────────────────────

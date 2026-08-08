@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { SubscriptionsService } from '../../../src/subscriptions/subscriptions.service';
 import { WebhooksService } from '../../../src/subscriptions/webhooks.service';
 import { GiftsService } from '../../../src/gifts/gifts.service';
+import { StripeProcessedEvent } from '../../../src/subscriptions/stripe-processed-event.entity';
 
 const mockGiftsService = { fulfillGift: jest.fn() };
 
@@ -12,6 +14,28 @@ const mockSubscriptionsService = {
   addPurchasedBook: jest.fn(),
   issueTokensForNewSubscription: jest.fn(),
   issueTokensForPurchasedPackage: jest.fn(),
+};
+
+// Stateful in-memory stand-in for the stripe_processed_events ledger: a row is
+// written by the service ONLY after successful dispatch, and only then does a
+// subsequent findOne see it (mirroring the completed-after-success contract).
+let processedStore: Map<string, { eventId: string; type: string; processedAt: Date }>;
+const mockProcessedRepo = {
+  findOne: jest.fn(({ where: { eventId } }: any) =>
+    Promise.resolve(processedStore.get(eventId) ?? null),
+  ),
+  createQueryBuilder: jest.fn(() => ({
+    insert: () => ({
+      values: (v: any) => ({
+        orIgnore: () => ({
+          execute: () => {
+            if (!processedStore.has(v.eventId)) processedStore.set(v.eventId, v);
+            return Promise.resolve({});
+          },
+        }),
+      }),
+    }),
+  })),
 };
 
 const makeEvent = (type: string, data: object, id = 'evt_test_1') => ({
@@ -25,11 +49,13 @@ describe('WebhooksService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    processedStore = new Map();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WebhooksService,
         { provide: SubscriptionsService, useValue: mockSubscriptionsService },
         { provide: GiftsService, useValue: mockGiftsService },
+        { provide: getRepositoryToken(StripeProcessedEvent), useValue: mockProcessedRepo },
       ],
     }).compile();
 
@@ -266,7 +292,75 @@ describe('WebhooksService', () => {
       await service.handleEvent(event as any);
       await service.handleEvent(event as any);
 
-      expect(mockSubscriptionsService.upsertFromWebhook).toHaveBeenCalledTimes(2);
+      // Redelivery of the same event.id → the second delivery is skipped.
+      expect(mockSubscriptionsService.upsertFromWebhook).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('idempotency (P2)', () => {
+    it('processes a first delivery exactly once and records it', async () => {
+      const event = makeEvent('invoice.paid', {
+        subscription: 'sub_1', customer: 'cus_1', lines: { data: [] },
+      }, 'evt_first');
+
+      await service.handleEvent(event as any);
+
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledTimes(1);
+      expect(processedStore.has('evt_first')).toBe(true);
+    });
+
+    it('duplicate invoice.paid does not issue duplicate subscription tokens', async () => {
+      const event = makeEvent('invoice.paid', {
+        subscription: 'sub_1', customer: 'cus_1', lines: { data: [] },
+      }, 'evt_inv_dup');
+
+      await service.handleEvent(event as any);
+      await service.handleEvent(event as any); // Stripe redelivers the SAME event
+
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledTimes(1);
+    });
+
+    it('duplicate token-package checkout does not issue duplicate purchased tokens', async () => {
+      const event = makeEvent('checkout.session.completed', {
+        mode: 'payment', metadata: { tokenPackageId: 'pkg_1', userId: 'u_1' },
+      }, 'evt_pkg_dup');
+
+      await service.handleEvent(event as any);
+      await service.handleEvent(event as any);
+
+      expect(mockSubscriptionsService.issueTokensForPurchasedPackage).toHaveBeenCalledTimes(1);
+    });
+
+    it('a processing FAILURE does not permanently suppress a legitimate Stripe retry', async () => {
+      const event = makeEvent('invoice.paid', {
+        subscription: 'sub_1', customer: 'cus_1', lines: { data: [] },
+      }, 'evt_retry');
+
+      // First delivery fails mid-processing → must NOT be recorded as processed.
+      mockSubscriptionsService.issueTokensForNewSubscription.mockRejectedValueOnce(new Error('boom'));
+      await expect(service.handleEvent(event as any)).rejects.toThrow('boom');
+      expect(processedStore.has('evt_retry')).toBe(false); // no record → Stripe will retry
+
+      // Stripe redelivers → now it succeeds and is processed exactly once more.
+      await service.handleEvent(event as any);
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledTimes(2);
+      expect(processedStore.has('evt_retry')).toBe(true);
+    });
+
+    it('distinct legitimate events continue to process independently', async () => {
+      const e1 = makeEvent('invoice.paid', {
+        subscription: 'sub_1', customer: 'cus_1', lines: { data: [] },
+      }, 'evt_a');
+      const e2 = makeEvent('invoice.paid', {
+        subscription: 'sub_2', customer: 'cus_2', lines: { data: [] },
+      }, 'evt_b');
+
+      await service.handleEvent(e1 as any);
+      await service.handleEvent(e2 as any);
+
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledTimes(2);
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledWith('sub_1');
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledWith('sub_2');
     });
   });
 });

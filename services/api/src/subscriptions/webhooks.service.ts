@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { GiftsService } from '../gifts/gifts.service';
+import { StripeProcessedEvent } from './stripe-processed-event.entity';
 import { SubscriptionsService } from './subscriptions.service';
 
 @Injectable()
@@ -9,9 +12,46 @@ export class WebhooksService {
   constructor(
     private readonly subscriptionsService: SubscriptionsService,
     private readonly giftsService: GiftsService,
+    @InjectRepository(StripeProcessedEvent)
+    private readonly processedRepo: Repository<StripeProcessedEvent>,
   ) {}
 
+  /**
+   * Entry point — idempotent against Stripe's at-least-once redelivery.
+   *
+   * Design (retry-safe): the `stripe_processed_events` ledger records an event
+   * ONLY AFTER its business side effects have fully succeeded. So:
+   *   - a redelivered event whose row already exists is skipped (no duplicate
+   *     side effects — supplements, does not replace, the path-level guards);
+   *   - if dispatch() throws, NO row is written, the controller returns non-2xx,
+   *     and Stripe re-delivers → the event is re-processed (a mid-processing
+   *     failure/crash never permanently suppresses a legitimate retry).
+   * Recording-before-processing was deliberately rejected because a crash between
+   * the insert and the side effects would drop the retry (under-fulfillment).
+   */
   async handleEvent(event: any): Promise<void> {
+    const already = await this.processedRepo.findOne({ where: { eventId: event.id } });
+    if (already) {
+      this.logger.log(
+        `Stripe event ${event.id} (${event.type}) already processed — skipping duplicate`,
+      );
+      return;
+    }
+
+    // Business side effects first — throws here propagate so Stripe retries.
+    await this.dispatch(event);
+
+    // Mark completed only on success. `orIgnore` guards the rare check-then-insert
+    // race; the PK on eventId is the hard uniqueness guarantee.
+    await this.processedRepo
+      .createQueryBuilder()
+      .insert()
+      .values({ eventId: event.id, type: event.type, processedAt: new Date() })
+      .orIgnore()
+      .execute();
+  }
+
+  private async dispatch(event: any): Promise<void> {
     switch (event.type) {
       case 'checkout.session.completed':
         if (event.data.object.mode === 'payment') {

@@ -17,12 +17,13 @@ import { SubscriptionsController } from './subscriptions.controller';
 import { SubscriptionsService } from './subscriptions.service';
 import { TokenLedger } from './token-ledger.entity';
 import { TokenPackage } from './token-package.entity';
+import { StripeProcessedEvent } from './stripe-processed-event.entity';
 import { WebhooksController } from './webhooks.controller';
 import { WebhooksService } from './webhooks.service';
 import { AdminTokensController } from './admin-tokens.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Subscription, SubscriptionInvite, Plan, User, Book, UserBook, TokenLedger, TokenPackage, CourtesyTokenQuota]), UsersModule, EmailModule, GiftsModule, PushModule],
+  imports: [TypeOrmModule.forFeature([Subscription, SubscriptionInvite, Plan, User, Book, UserBook, TokenLedger, TokenPackage, CourtesyTokenQuota, StripeProcessedEvent]), UsersModule, EmailModule, GiftsModule, PushModule],
   providers: [SubscriptionsService, PlansService, WebhooksService, SubscriptionGuard],
   controllers: [SubscriptionsController, WebhooksController, AdminTokensController],
   exports: [SubscriptionsService, SubscriptionGuard],
