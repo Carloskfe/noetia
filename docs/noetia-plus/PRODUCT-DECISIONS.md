@@ -35,6 +35,17 @@ Durable record of the Product Owner decisions that resolve the three principal b
 - **Provenance:** Noetia should answer "where did this idea come from?" — Noetia-grounded claims cite Book → Author → Chapter/Section → chunk → reader/sync location, ideally deep-linking into Escucha Activa. Hybrid answers can distinguish *FROM YOUR LIBRARY* vs *BROADER CONTEXT* (labels/UX = future).
 - **Never attribute external knowledge to a book.**
 
+## PO-004 — Semantic Retrieval Store
+→ **[ADR-004](../architecture/adr/ADR-004-postgresql-pgvector-semantic-retrieval.md)** (accepted via NEM-005A)
+
+- **PostgreSQL + pgvector** is the **authoritative semantic vector store**; **Meilisearch** stays lexical/full-text and may join future hybrid retrieval. **No standalone vector database for the MVP.**
+- PostgreSQL remains the **system of record** (app data, ownership, content permissions, semantic chunks, embeddings, provenance, citation relationships). A primary reason for the choice is native integration of semantic retrieval with authoritative relational **permission** data (ADR-002 — authorization before context).
+- **Semantic chunks stay separate from Escucha Activa sync phrases**, referencing a phrase range (`phraseIndexStart`/`phraseIndexEnd`) for provenance/deep-linking — no coupling of AI chunking to reader sync.
+- **Exact vector search first** (correctness/recall/simplicity); approximate indexing (HNSW/IVFFlat) is a later, **evidence-driven** step, not added now.
+- A mandatory **Semantic Retrieval Interface** keeps Noetia Brain decoupled from pgvector-specific queries; pgvector is the approved implementation, **not** an irreversible dependency. Embedding provider/model stays configurable under **ADR-001**; multilingual ES/EN (incl. cross-language) required; embedding versioning treated as re-embedding.
+- Standalone vector DBs (Qdrant/Weaviate/Pinecone/etc.) and Redis-vector are **rejected for the MVP** on operational-complexity grounds. Reconsideration requires a future ADR on measured evidence.
+- *(Does not alter PO-001/002/003.)*
+
 ---
 
 ## Blockers closed by these decisions

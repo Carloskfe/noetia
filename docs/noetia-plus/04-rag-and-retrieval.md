@@ -26,7 +26,7 @@ So: **derive chunks from the same stored book text, aligned to phrase-index rang
 
 **Recommendation: D — PostgreSQL + `pgvector`.** Rationale: it keeps everything in the datastore the team already operates and backs up nightly; chunks + embeddings + permissions + citations live in one transactionally-consistent place; retrieval joins naturally with ownership/permission tables (permission filtering happens *in the query*); no new stateful service on a memory-constrained VPS. The single infra change is swapping the `postgres:16-alpine` image for a pgvector-enabled Postgres 16 image (or installing the extension) + an additive `CREATE EXTENSION vector` migration — reversible, well-trodden.
 
-**Scale note:** pgvector with an HNSW/IVFFlat index comfortably serves the expected volume (dozens–hundreds of owned books/user; catalog in the low thousands). If catalog-wide semantic scale ever outgrows pgvector, option C becomes an ADR revisit — the Gateway/retrieval interface makes that swap local.
+**Scale note (per [ADR-004](../architecture/adr/ADR-004-postgresql-pgvector-semantic-retrieval.md)):** the MVP uses **exact vector search** (correctness/recall/simplicity); approximate indexing (HNSW/IVFFlat) is **not** added now — it is a later, evidence-driven step (corpus size, latency, CPU, throughput). If catalog-wide semantic scale ever outgrows pgvector, a standalone store becomes a future-ADR revisit — the Semantic Retrieval Interface makes that swap local.
 
 **Multilingual:** use **one multilingual embedding model** covering ES + EN so cross-language retrieval works (ask in ES about EN text and vice-versa) without separate indexes. The specific model is provider-configurable ([06](06-ai-provider-architecture.md)); dimension is stored per embedding version so a model change is a re-embed job, not a schema break.
 
@@ -50,6 +50,6 @@ Permission filtering is applied **after** candidate retrieval and **before** con
 - Embedding is **async and never blocks reading**; a book with no embeddings yet simply isn't Ask-able yet (graceful — [35](19-release-roadmap.md)/failure modes in [14](14-security-and-copyright.md)/[16](16-observability.md)).
 
 ## ADR candidates
-- **Semantic index technology** (recommend pgvector) — highest-priority ADR.
+- **Semantic index technology** — **DECIDED: PostgreSQL + pgvector** ([ADR-004](../architecture/adr/ADR-004-postgresql-pgvector-semantic-retrieval.md) / PO-004). Exact vector search first; approximate indexing (HNSW/IVFFlat) is a later evidence-driven step. Access via a mandatory Semantic Retrieval Interface (pgvector not an irreversible dependency).
 - **Chunking strategy** (size, overlap, phrase-range linkage).
 - **Embedding model** (multilingual, dimension, versioning).

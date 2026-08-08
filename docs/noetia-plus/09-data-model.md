@@ -14,7 +14,7 @@
 ### `book_chunks` — NEW, **MVP: yes**
 - **Purpose:** semantic RAG unit (distinct from sync phrases — [04](04-rag-and-retrieval.md)).
 - **Fields:** `id` uuid PK; `bookId` uuid FK; `chunkIndex` int; `text` text; `charStart/charEnd` int; `phraseIndexStart/phraseIndexEnd` int (deep-link to reader); `chapter`/`section` varchar null; `language` varchar; `tokenCount` int; `textHash` varchar (content version); `embedding` vector(N) *(pgvector)*; `embeddingModel`/`embeddingVersion` varchar; `contentScopeCache` varchar null; `createdAt`.
-- **Indexes:** `(bookId, chunkIndex)`; pgvector HNSW/IVFFlat on `embedding`; `textHash`.
+- **Indexes:** `(bookId, chunkIndex)`; `textHash`. Vector search: **exact (no ANN index) for the MVP** per [ADR-004](../architecture/adr/ADR-004-postgresql-pgvector-semantic-retrieval.md); a pgvector HNSW/IVFFlat index is a later, evidence-driven addition.
 - **Relationships:** many→1 `books`.
 - **Lifecycle:** created by `plus-embed` job on ingest/first-use; re-created on `textHash`/model-version change; deleted with book (CASCADE).
 - **Privacy:** content-derived (book text) — governed by content permissions, **not** user-private.

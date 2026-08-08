@@ -83,4 +83,4 @@ Per mission §44: where the product spec is incomplete, **engineering does not i
 - **Recommended default:** **not at launch**; design keeps it possible.
 
 ---
-**ADR-worthy among these:** D3, D6, D9 (semantic index tech is in [04](04-rag-and-retrieval.md)). See [45 in EXECUTIVE] for the full ADR candidate list.
+**ADR-worthy among these:** D3, D6, D9. Semantic-index technology is now **decided** — PostgreSQL + pgvector ([ADR-004](../architecture/adr/ADR-004-postgresql-pgvector-semantic-retrieval.md) / PO-004). See [PRODUCT-DECISIONS.md](PRODUCT-DECISIONS.md) and the ADR index for the full decided/candidate list.

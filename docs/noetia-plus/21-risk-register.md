@@ -23,7 +23,7 @@ Severity = impact × likelihood for a production platform. Each: risk · impact 
 ## MEDIUM
 | # | Risk | Impact | Likelihood | Mitigation |
 |---|------|--------|-----------|------------|
-| R9 | **pgvector scale ceiling** (catalog-wide semantic growth) | retrieval latency | Low-Med | HNSW index, scoped queries (owned/one-book first); retrieval interface allows external vector swap if needed ([04](04-rag-and-retrieval.md)) |
+| R9 | **pgvector scale ceiling** (catalog-wide semantic growth) | retrieval latency | Low-Med | Exact search + scoped queries (owned/one-book first) for MVP; approximate index (HNSW/IVFFlat) added later on measured evidence; Semantic Retrieval Interface allows an external vector swap via a future ADR ([ADR-004](../architecture/adr/ADR-004-postgresql-pgvector-semantic-retrieval.md)) |
 | R10 | **Embedding backlog / infra pressure on small VPS** | delayed Ask availability | Med | Async, batched, concurrency-capped; graceful "not indexed yet"; staging validates load ([11](11-background-processing.md)) |
 | R11 | **Multilingual quality** (ES/EN, cross-language) | poor Spanish-first UX | Med | One multilingual embedding model; eval sets for ES/EN + cross-language before GA ([04](04-rag-and-retrieval.md), eval) |
 | R12 | **Storage growth** (conversations, usage events, embeddings) | DB size/backup cost | Med | Retention windows + rollups ([D11](20-open-product-decisions.md)); soft-delete purge jobs |
