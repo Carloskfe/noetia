@@ -1,0 +1,249 @@
+# Staging deployment — permanent pre-production validation layer (NEM-006A).
+#
+# ISOLATION CONTRACT (see docs/staging/README.md):
+#   - Deploy ONLY with an explicit project name so nothing collides with prod:
+#       docker compose -p noetia-staging --env-file .env.staging -f docker-compose.staging.yml up -d
+#   - All named volumes are *-staging and belong to the noetia-staging project;
+#     production volumes (postgres_data, redis_data, minio_data, meilisearch_data)
+#     are NEVER referenced here.
+#   - Its own bridge network (noetia_staging_net). Shares only the external Traefik
+#     "proxy" network, with distinct router/service/middleware names (noetia-staging-*)
+#     and distinct Host rules (staging.noetia.app). It cannot touch prod routers.
+#   - db uses a pgvector-enabled PostgreSQL 16 image (staging only). Production
+#     PostgreSQL stays postgres:16-alpine and is NOT changed by this mission.
+#   - Behind Traefik HTTP basic-auth + noindex so it is not a public Noetia clone.
+#   - No monitoring stack (prod's Prometheus/Grafana/exporters are not duplicated);
+#     diagnose via `docker compose -p noetia-staging logs`.
+#
+# Requires: external "proxy" network (prod Traefik), and .env.staging on the host.
+
+networks:
+  noetia_staging_net:
+    driver: bridge
+  proxy:
+    external: true
+
+volumes:
+  postgres_data_staging:
+  redis_data_staging:
+  minio_data_staging:
+  meilisearch_data_staging:
+
+services:
+  # ─── API (NestJS) ─── staging.noetia.app/api/* ──────────────────────────────
+  api:
+    build:
+      context: ./services/api
+      target: production
+    env_file: .env.staging
+    environment:
+      NODE_ENV: production   # build/runtime mode; APP_ENV distinguishes staging
+      APP_ENV: staging
+    depends_on:
+      db: { condition: service_healthy }
+      cache: { condition: service_healthy }
+    networks: [noetia_staging_net, proxy]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits: { cpus: "0.75", memory: 384M }
+        reservations: { memory: 128M }
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      # Basic-auth gate (users list from .env.staging → STAGING_BASICAUTH, htpasswd format)
+      - "traefik.http.middlewares.noetia-staging-auth.basicauth.users=${STAGING_BASICAUTH}"
+      - "traefik.http.routers.noetia-staging-api.rule=Host(`staging.noetia.app`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.noetia-staging-api.entrypoints=websecure"
+      - "traefik.http.routers.noetia-staging-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.noetia-staging-api.loadbalancer.server.port=4000"
+      - "traefik.http.middlewares.noetia-staging-strip-api.stripprefix.prefixes=/api"
+      - "traefik.http.routers.noetia-staging-api.middlewares=noetia-staging-strip-api,noetia-staging-auth"
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # ─── Web (Next.js) ─── staging.noetia.app ───────────────────────────────────
+  web:
+    build:
+      context: ./services/web
+      target: production
+    env_file: .env.staging
+    environment:
+      NODE_ENV: production
+      HOSTNAME: "0.0.0.0"
+      NEXT_PUBLIC_APP_ENV: staging   # drives the STAGING banner + noindex
+    depends_on: [api]
+    networks: [noetia_staging_net, proxy]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits: { cpus: "0.75", memory: 384M }
+        reservations: { memory: 128M }
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.noetia-staging-web.rule=Host(`staging.noetia.app`)"
+      - "traefik.http.routers.noetia-staging-web.entrypoints=websecure"
+      - "traefik.http.routers.noetia-staging-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.noetia-staging-web.loadbalancer.server.port=3000"
+      - "traefik.http.routers.noetia-staging-web.middlewares=noetia-staging-auth"
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # ─── Image Generation (Python/Flask) ────────────────────────────────────────
+  image-gen:
+    build:
+      context: ./services/image-gen
+    env_file: .env.staging
+    environment:
+      FLASK_ENV: production
+    depends_on:
+      storage: { condition: service_healthy }
+    networks: [noetia_staging_net]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 384M }
+        reservations: { memory: 128M }
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "3" }
+
+  # ─── Worker (BullMQ) ── consumes ONLY the staging Redis ─────────────────────
+  worker:
+    build:
+      context: ./services/worker
+      target: production
+    env_file: .env.staging
+    environment:
+      NODE_ENV: production
+    depends_on:
+      cache: { condition: service_healthy }
+    networks: [noetia_staging_net]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 192M }
+        reservations: { memory: 96M }
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "3" }
+
+  # ─── PostgreSQL 16 + pgvector (STAGING ONLY) ────────────────────────────────
+  # Validated locally (NEM-006A): pgvector/pgvector:pg16 → PG 16.14, vector 0.8.6,
+  # CREATE EXTENSION vector OK, vector(768) exact search OK. Same MAJOR version as
+  # production (16), so a production PG16 dump restores here. Prod DB is UNCHANGED.
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${DB_NAME:-noetia_staging}
+      POSTGRES_USER: ${DB_USER:-noetia}
+      POSTGRES_PASSWORD: ${DB_PASS:?DB_PASS is required in .env.staging}
+    volumes:
+      - postgres_data_staging:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-noetia} -d ${DB_NAME:-noetia_staging}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [noetia_staging_net]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "0.75", memory: 512M }
+        reservations: { memory: 192M }
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "3" }
+
+  # ─── Redis (staging state) ──────────────────────────────────────────────────
+  cache:
+    image: redis:7-alpine
+    volumes:
+      - redis_data_staging:/data
+      - ./infra/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [noetia_staging_net]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "0.25", memory: 128M }
+        reservations: { memory: 48M }
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "3" }
+
+  # ─── MinIO (staging object storage) ─── storage.staging.noetia.app ──────────
+  storage:
+    image: minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+      MINIO_SERVER_URL: ${MINIO_PUBLIC_URL:-https://storage.staging.noetia.app}
+    volumes:
+      - minio_data_staging:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [noetia_staging_net, proxy]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "0.25", memory: 192M }
+        reservations: { memory: 96M }
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.noetia-staging-storage.rule=Host(`storage.staging.noetia.app`)"
+      - "traefik.http.routers.noetia-staging-storage.entrypoints=websecure"
+      - "traefik.http.routers.noetia-staging-storage.tls.certresolver=letsencrypt"
+      - "traefik.http.services.noetia-staging-storage.loadbalancer.server.port=9000"
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "3" }
+
+  # ─── Meilisearch (staging indexes) ──────────────────────────────────────────
+  search:
+    image: getmeili/meilisearch:v1.7
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY is required}
+      MEILI_ENV: development   # staging: enables the search preview/analytics UI
+    volumes:
+      - meilisearch_data_staging:/meili_data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7700/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks: [noetia_staging_net]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "0.25", memory: 256M }
+        reservations: { memory: 128M }
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "3" }

@@ -1,0 +1,67 @@
+name: CD (staging)
+
+# Deploys the STAGING environment ONLY. Fully isolated from production:
+#   - triggers on the `staging` branch (or manual dispatch), NEVER `main`;
+#   - separate host directory  /opt/noetia-staging  (its own git checkout);
+#   - compose project name      noetia_staging       (container prefix
+#     "noetia_staging-…", which does NOT contain the substring "noetia-", so the
+#     production workflow's `docker ... --filter name=noetia-` teardown can never
+#     match staging containers, and this workflow only ever addresses its own
+#     project via `-p noetia_staging`);
+#   - env file                  .env.staging  (staging-only secrets, Stripe test);
+#   - compose file              docker-compose.staging.yml (staging volumes/DB).
+#
+# This workflow never runs prod compose files, never references prod volumes, and
+# a failure here cannot trigger or affect the production deploy.
+#
+# PREREQUISITES (Product Owner / ops — see docs/staging/EXTERNAL-ACTIONS.md):
+#   /opt/noetia-staging cloned + checked out on `staging`; .env.staging present;
+#   DNS for staging.noetia.app; STAGING_BASICAUTH set. Until then this is inert.
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging          # distinct from prod's deploy-production
+  cancel-in-progress: true
+
+jobs:
+  deploy-staging:
+    name: Deploy to staging (Contabo, isolated)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Deploy staging via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: 84.247.140.175
+          username: root
+          port: 222
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            # Separate checkout — never touches the production /opt/noetia tree.
+            cd /opt/noetia-staging
+
+            echo "── Pulling staging branch ───────────────────────"
+            git fetch origin staging
+            git checkout staging
+            git pull origin staging
+
+            echo "── Building/starting STAGING project (isolated) ─"
+            # -p noetia_staging scopes every action to the staging project only.
+            docker compose -p noetia_staging --env-file .env.staging \
+              -f docker-compose.staging.yml up -d --build --remove-orphans
+
+            echo "── Running staging migrations ───────────────────"
+            docker compose -p noetia_staging --env-file .env.staging \
+              -f docker-compose.staging.yml exec -T -e DB_HOST=db api npm run migration:run:prod
+
+            echo "── Pruning dangling images (safe, non-container) ─"
+            docker image prune -f
+
+            echo "── Staging deploy complete ──────────────────────"
