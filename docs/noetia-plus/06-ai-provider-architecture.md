@@ -1,5 +1,7 @@
 # 06 — AI Provider Architecture
 
+> **RATIFIED by PO-001 / [ADR-001](../architecture/adr/ADR-001-ai-provider-abstraction-and-model-routing.md) (NEM-005).** The provider-agnostic AI Gateway + dynamic model routing described here is an approved architecture decision. Workload classes map to the ADR's tiers: **low-cost** (classification, tagging, intent, query-rewrite, extraction, light summary, embedding, rec-augmentation) → Cheap; **standard intelligence** (Ask This Book / Ask My Highlights / grounded Q&A / synthesis / learning paths) → Mid; **advanced reasoning** (cross-book synthesis, contradiction, complex comparison, sophisticated maps, high-value long-form/presentations) → High. **No model name is part of the customer promise.** Exact provider/model selection + verified prices remain subordinate open decisions ([20](20-open-product-decisions.md) D9).
+
 ## Goal
 Noetia product logic must **not** be hardwired to one AI SDK. Provider/model choices must be swappable and config-driven, so pricing/capability changes never require rewriting features.
 

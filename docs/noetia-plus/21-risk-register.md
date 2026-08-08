@@ -1,5 +1,7 @@
 # 21 — Risk Register
 
+> **UPDATE (NEM-005):** PO-001/002/003 (ADR-001/002/003) reduce the *architecture* residual of **R1 (cost)** — provider-agnostic routing + COGS target ~$1.50/mo + bands, **R2 (copyright)** — permission-aware retrieval + anti-reconstruction + training-off + product-policy/legal separation, and **R8 (vendor lock-in)** — Gateway abstraction. The **remaining** residual for these is now *selection/pricing/thresholds* (exact provider/model, verified prices, exact quotation thresholds) — configuration decisions, not open architecture.
+
 Severity = impact × likelihood for a production platform. Each: risk · impact · likelihood · mitigation (all mitigations are *designed*, not built).
 
 ## CRITICAL

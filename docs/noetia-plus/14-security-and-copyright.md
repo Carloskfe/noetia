@@ -1,5 +1,9 @@
 # 14 — Security & Copyright Protection
 
+> **RATIFIED by PO-002 / [ADR-002](../architecture/adr/ADR-002-permission-aware-content-intelligence.md) (NEM-005).** Permanent principle: *Noetia Brain may help a user understand a copyrighted work but must not function to reconstruct or substitute for it.* Noetia claims **no universal word count / percentage** as automatically lawful fair use; quotation is governed by rights, contract, product-safety controls, context, and purpose, with the anti-reconstruction safeguards below. Any technical quotation limits are **product/compliance controls, not declarations of legal safe harbors**, and their exact thresholds remain a future Product/Legal decision.
+>
+> **PRODUCT POLICY vs LEGAL DETERMINATION:** this document is product policy, **not legal advice**. Before commercial rollout of licensed-content AI features, obtain legal review of licensing agreements, quotation policies, publisher AI permissions, content-processing terms, and provider data handling. The architecture is deliberately configurable, so technical design is not blocked on that review.
+
 ## Anti-extraction / copyright (mission §12)
 Threat: prompts that reconstruct copyrighted books ("give me every paragraph of chapter 4", sequential extraction, very long verbatim output, whole-book reconstruction).
 

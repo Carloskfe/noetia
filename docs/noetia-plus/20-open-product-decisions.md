@@ -2,6 +2,8 @@
 
 Per mission §44: where the product spec is incomplete, **engineering does not invent policy.** Each item: **Question · Why it matters · Options · Technical consequence · Recommended default (if any)**. Product Architecture decides.
 
+> **UPDATE — NEM-005 resolved the three principal blockers.** Product Owner decisions **PO-001/002/003** ([PRODUCT-DECISIONS.md](PRODUCT-DECISIONS.md); ADR-[001](../architecture/adr/ADR-001-ai-provider-abstraction-and-model-routing.md)/[002](../architecture/adr/ADR-002-permission-aware-content-intelligence.md)/[003](../architecture/adr/ADR-003-source-aware-hybrid-intelligence.md)) resolve the **provider architecture & AI economics**, the **copyright/quotation & permission architecture**, and the **grounded-vs-general knowledge** question (now the three-mode Source-Aware model). Items below are annotated **RESOLVED** or **PARTIALLY RESOLVED**; the remaining subordinate decisions (final price, exact usage/quotation thresholds, exact provider/model selection, verified prices, publisher matrix, mode names/UX) stay open.
+
 ---
 
 ### D1 — Exact Noetia+ monthly price
@@ -17,12 +19,14 @@ Per mission §44: where the product spec is incomplete, **engineering does not i
 - **Recommended default:** **soft + hard caps, model-specific** (High-tier scarcer), surfaced as user-friendly units ([D10]); exact numbers set after real-cost modeling.
 
 ### D3 — May AI use general model knowledge? (grounding-only vs augmented)
+> **RESOLVED (PO-003 / ADR-003):** Source-Aware Hybrid Intelligence — three modes (**This Book** tightly grounded / **My Knowledge** / **Expand**). General knowledge is allowed where the mode permits, **never invisibly blended and never attributed to a book**. This supersedes the "strictly grounded" recommended default below (kept for history).
 - **Why:** core product identity ("not a generic chatbot") and copyright posture.
 - **Options:** (a) **strictly grounded** — answer only from retrieved entitled content, refuse otherwise; (b) **grounded + general knowledge**, clearly separated ("from your books" vs "general context"); (c) hybrid per feature.
 - **Consequence:** (a) safest for rights + brand, may feel limited; (b) more helpful, risks unattributed/copyright confusion and higher hallucination; needs UI separation + eval.
 - **Recommended default:** **(a) strictly grounded for book Q&A**; allow general knowledge only in clearly-labeled, non-book features (e.g. learning-path rationale) — revisit with eval data.
 
 ### D4 — Quotation limits (verbatim length/proportion)
+> **PARTIALLY RESOLVED (PO-002 / ADR-002):** *architecture* decided — **no universal fair-use word count is claimed**; quotation is governed by rights/contract/safety/context/purpose with anti-reconstruction safeguards and per-book quotation policy. **Exact technical thresholds remain OPEN (Product/Legal).**
 - **Why:** copyright/legal exposure on licensed content.
 - **Options:** a fixed max words/percentage per answer and per-book; publisher-configurable; stricter for licensed vs public-domain.
 - **Consequence:** thresholds are **legal decisions**, not engineering ones ([14](14-security-and-copyright.md)) — engineering enforces whatever is set.
@@ -35,6 +39,7 @@ Per mission §44: where the product spec is incomplete, **engineering does not i
 - **Recommended default:** **retain read-only + export; re-enable on resubscribe; hard-delete on account deletion.**
 
 ### D6 — Publisher default AI permissions for licensed content
+> **PARTIALLY RESOLVED (PO-002 / ADR-002):** *architecture* decided — title-level rights-holder AI controls, **training-off default** for licensed content, permission-before-retrieval, and editions/translations matter for public-domain status. **Exact default-permission matrix + publisher-contract language remain OPEN.**
 - **Why:** governs what non-public-domain content AI may touch; rights + publisher trust.
 - **Options:** permissive-by-default (opt-out) / conservative-by-default (opt-in) per operation; training always off.
 - **Consequence:** permissive risks publisher pushback/rights issues; conservative limits early coverage but is safer. Per-book flags support either ([05](05-content-permissions.md)).
@@ -53,6 +58,7 @@ Per mission §44: where the product spec is incomplete, **engineering does not i
 - **Recommended default:** **per-member Noetia+** (intelligence is personal); shared book-token pools do not grant shared Noetia+.
 
 ### D9 — AI provider/model selection + provider training on data
+> **PARTIALLY RESOLVED (PO-001 / ADR-001):** *economics & abstraction* decided — provider-agnostic AI Gateway + dynamic model routing, COGS target (~$1.50/mo normal-user) + bands, metering with **book token ≠ AI usage**, no model name promised to customers, no-training default. **Exact provider/model selection + verified prices remain OPEN** (and are configuration, not architecture).
 - **Why:** cost, quality (ES/EN), and data-privacy posture; **prices are currently UNKNOWN** and must not be fabricated.
 - **Options:** provider family + tier mapping ([06](06-ai-provider-architecture.md)); provider data-retention/no-training settings.
 - **Consequence:** picks the real numbers in the cost model; determines privacy guarantees. Gateway makes the choice swappable.

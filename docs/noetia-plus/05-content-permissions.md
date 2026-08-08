@@ -2,6 +2,8 @@
 
 **Mandatory.** Noetia+ must never treat the catalog as universally queryable. Rights are enforced **before** any content enters model context.
 
+> **RATIFIED by PO-002 / [ADR-002](../architecture/adr/ADR-002-permission-aware-content-intelligence.md) (NEM-005).** Two clarifications the ADR makes binding: (1) **public-domain status is per specific text/translation/edition** — a work being public-domain does NOT automatically make a modern translation/edition public-domain; verify the exact edition before full AI processing. (2) **User ownership does NOT by itself grant Noetia unrestricted AI rights** over copyrighted content — the OWNED scope's AI operations are **subject to Noetia's rights agreement with the applicable rights holder.** Permission is enforced *before* retrieval, not by filtering afterward.
+
 ## Content scopes
 Every retrievable unit resolves to exactly one scope for a given user:
 

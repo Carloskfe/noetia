@@ -9,6 +9,8 @@ Proposed surface (no controllers implemented). All under `/plus/*`, all behind `
 
 ## MVP endpoints
 
+> **Modes (PO-003 / [ADR-003](../architecture/adr/ADR-003-source-aware-hybrid-intelligence.md)):** the `scope` parameter carries the approved Source-Aware modes — `this_book` = **This Book** (tightly grounded), `library`/`highlights`/`selected` = **My Knowledge**, and an `expand` flag/scope = **Expand** (broader/general knowledge). Responses must keep provenance distinguishable (*from your library* vs *broader context*) and never attribute external knowledge to a book.
+
 ### Ask (Q&A) — Phase 1
 | Method | Path | Cap | Sync? | Notes |
 |--------|------|-----|-------|-------|

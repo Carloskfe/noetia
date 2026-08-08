@@ -3,7 +3,9 @@
 **Provider prices are UNKNOWN / not verified in this mission and MUST NOT be fabricated.** This is a *configurable framework*: every price is a variable. The illustrative numbers below are clearly marked **[PLACEHOLDER]** and exist only to show the math shape; Product must supply real, verified prices before any pricing commitment.
 
 ## Business target
-Noetia+ retail target: **below ~$10/mo** (exploration band $5.99–$9.99). The architecture must keep **average AI COGS per subscriber** within a configurable fraction of revenue.
+Noetia+ retail target: **below ~$10/mo** (exploration band $5.99–$9.99; mainstream interest ~$7.99–$8.99). The architecture must keep **average AI COGS per subscriber** within a configurable fraction of revenue.
+
+**Metering principle (PO-001 / [ADR-001](../architecture/adr/ADR-001-ai-provider-abstraction-and-model-routing.md)):** internal metering tracks provider, model, input/output tokens, embeddings, retrieval ops, duration, estimated cost, cache usage, and failures — but **raw LLM tokens must not become the primary customer-facing unit**, and **book acquisition tokens and AI usage are separate economic concepts that must never be merged** (`BOOK TOKEN ≠ AI USAGE`). Customer-facing units stay user-friendly ("standard requests / deep analyses / creation jobs").
 
 ## Cost model (formula)
 Per-subscriber monthly AI COGS =
@@ -46,16 +48,16 @@ Define a configurable target as a fraction of net revenue:
 ```
 target_max_avg_COGS = target_ratio × (retail_price − payment_fees − other_COGS_share)
 ```
-Recommended **operating bands** for `AI_COGS / Noetia+_revenue` (mission §46):
+**Operating bands** for `AI COGS / Noetia+ revenue` — **ratified by PO-001 / [ADR-001](../architecture/adr/ADR-001-ai-provider-abstraction-and-model-routing.md)** (configurable management guardrails; not hard-coded into product behavior unless a future mission authorizes it):
 
 | Band | Ratio | Meaning |
 |------|-------|---------|
 | **Excellent** | ≤ 15% | strong margin; room to invest in quality |
-| **Healthy** | 15–30% | sustainable target zone |
-| **Caution** | 30–45% | tighten routing/limits; investigate heavy tail |
-| **Unsustainable** | > 45% | throttle / raise limits / reprice — alert |
+| **Healthy** | > 15–25% | sustainable target zone |
+| **Caution** | > 25–35% | tighten routing/limits; investigate heavy tail |
+| **Intervention Required** | > 35% | throttle / raise limits / reprice — alert |
 
-At a [PLACEHOLDER] $7.99 retail, "Healthy" ⇒ average AI COGS ≲ ~$2.40/subscriber — comfortably above the Normal-user estimate, with Heavy/Extreme users controlled by fair-use. **This must be re-derived with real prices before launch.**
+**Approved architectural target (PO-001):** **normal-user average AI/infrastructure COGS ≤ ~$1.50/month** — a target, not a hard-coded billing rule. At a [PLACEHOLDER] $7.99 retail, "Healthy" (≤25%) ⇒ average AI COGS ≲ ~$2.00/subscriber — headroom above the ~$1.50 target, with Heavy/Extreme users controlled by fair-use. **Re-derive with verified provider prices before launch** (prices are time-sensitive examples, stored/configured — never hard-coded into architecture; PO-001).
 
 ## Fair-use levers (design, not final — see [20](20-open-product-decisions.md))
 - **User-facing units, not tokens:** "standard requests", "deep analyses", "creation jobs" (hide raw LLM tokens — mission §20).

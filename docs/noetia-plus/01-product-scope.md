@@ -28,8 +28,13 @@ Noetia already covers BOOK → HIGHLIGHT/NOTE (reader, Escucha Activa, fragments
 | **REMEMBER** | Resurface forgotten highlights; spaced review; resurface related past reading | fragments + reading history |
 | **GROW** | Reading/listening analytics; consistency; interests; intellectual development over time | stats + personas |
 
+## Source-Aware Intelligence (PO-003 / ADR-003) — RESOLVED
+Noetia Brain is **source-aware**: it may use broader model knowledge where the selected mode permits, but Noetia-derived and general knowledge are **never invisibly blended**, and external knowledge is **never attributed to a book**. Three approved modes (final names = future UX): **This Book** (tightly grounded in the selected book), **My Knowledge** (owned books + highlights + notes + authorized/public-domain Noetia sources — the core experience), **Expand** (broader/general/authorized-external knowledge, provenance distinguishable). See [ADR-003](../architecture/adr/ADR-003-source-aware-hybrid-intelligence.md).
+
+**Differentiation (product direction, not final marketing):** not "generic chatbot + books" — differentiation comes from the permanent personal library, synchronized reading/listening, highlights/notes, knowledge accumulation, source-aware intelligence, provenance, intellectual memory, and creation grounded in what the user has actually read: *"Ask what you've read. Connect what you've learned. Know where every idea came from."*
+
 ## Explicit non-goals
-- **Not a generic chatbot.** Answers are grounded in the user's entitled content; general-model knowledge use is an **OPEN DECISION** ([20](20-open-product-decisions.md)).
+- **Not a generic chatbot.** Answers are grounded in the user's entitled content by default; broader knowledge is used only in modes that permit it, always with distinguishable provenance ([ADR-003](../architecture/adr/ADR-003-source-aware-hybrid-intelligence.md) — resolves the former open decision).
 - Not a replacement for the reader — it is a layer beside it.
 - Not a rights-agnostic librarian — retrieval is permission-aware ([05](05-content-permissions.md)).
 

@@ -1,5 +1,7 @@
 # 19 — Release Roadmap
 
+> **UPDATE (NEM-005):** the three principal blockers are **resolved** (PO-001/002/003; ADR-001/002/003; [PRODUCT-DECISIONS.md](PRODUCT-DECISIONS.md)). Phase 0 architecture is settled; remaining pre-build inputs are **subordinate selection/configuration** decisions (exact provider/model, verified prices, exact quotation thresholds, final price) — see [20](20-open-product-decisions.md). Implementation still requires a separate, explicitly-authorized implementation mission per NEM-004 governance.
+
 The mission's phase sequence is **sound**; below is a validated/refined version with dependency ordering and cost discipline. Each phase ships behind flags ([18](18-feature-flags-rollout.md)) to beta → % rollout → GA.
 
 ## Phase 0 — Infrastructure (no user-facing AI)
