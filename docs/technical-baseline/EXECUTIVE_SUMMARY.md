@@ -39,8 +39,10 @@ Breadth of **shipped, code-backed** capability is high:
 
 ## 3. Greatest risks
 
-**Two must-verify items (do first):**
-- **Annual-plan monthly token issuance may not be scheduled** (INFERRED, CRITICAL). The issuance method exists but no cron/trigger was found — potential paying-customer entitlement bug.
+**Verified critical item:**
+- **Annual-plan monthly token issuance was never scheduled** (CONFIRMED). The issuance method had zero callers, so annual subscribers would get ~1/12 of their tokens. Verified **latent** — 0 active annual subscriptions on prod, no customer harmed, no backfill needed — but annual plans are sellable, so it flips to active on the first annual purchase. **Fix drafted (daily cron + tests, 66/66 green), awaiting review before deploy.**
+
+**Remaining must-verify item (do first):**
 - **Stripe live-vs-test mode is unconfirmed from code** (UNKNOWN, CRITICAL). Must be verified before any billing change.
 
 **Structural / operational risks (CONFIRMED):**

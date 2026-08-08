@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'crypto';
 import Stripe from 'stripe';
@@ -140,6 +141,29 @@ export class SubscriptionsService {
 
     await this.tokenRepo.update(token.id, { status: 'redeemed', redeemedAt: new Date(), bookId });
     await this.userBookRepo.insert({ userId, bookId, purchaseType: 'token' });
+  }
+
+  /**
+   * Daily scheduler for the annual-plan monthly token drip.
+   *
+   * Annual subscriptions are billed once a year, so Stripe fires `invoice.paid`
+   * only once — the 11 subsequent monthly token grants must be issued internally.
+   * Without this trigger, annual subscribers receive ~1/12 of their token
+   * entitlement. `issueMonthlyTokensForAnnualPlans()` is idempotent per 30-day
+   * window (guarded by `nextTokenIssuanceAt < now`), so a daily run is safe and
+   * will not double-issue. Errors are caught so a failure never crashes the
+   * scheduler. Runs at 01:00 (distinct from the 02:00 persona cron).
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  async issueAnnualPlanTokensCron(): Promise<void> {
+    try {
+      await this.issueMonthlyTokensForAnnualPlans();
+    } catch (err) {
+      this.logger.error(
+        'Annual-plan monthly token issuance failed',
+        err instanceof Error ? err.stack : String(err),
+      );
+    }
   }
 
   async issueMonthlyTokensForAnnualPlans(): Promise<void> {

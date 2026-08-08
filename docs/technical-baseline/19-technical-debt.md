@@ -4,10 +4,11 @@ Prioritized register. Each item: **Why**, **Impact**, **Recommendation**. Severi
 
 ## CRITICAL
 
-### C1 — Annual-plan monthly token issuance may not be scheduled — INFERRED
-- **Why:** `issueMonthlyTokensForAnnualPlans()` exists, but the only `@Cron` found is the 2 AM persona job. No scheduler invoking monthly token issuance was located.
-- **Impact:** annual subscribers might not automatically receive monthly `tokensPerCycle` — a direct entitlement/billing-correctness defect.
-- **Recommendation:** confirm the trigger (cron/queue/external). If missing, this is a paying-customer bug to fix first. **Verify before anything else.**
+### C1 — Annual-plan monthly token issuance was never scheduled — CONFIRMED (latent; fix drafted)
+- **Why:** `issueMonthlyTokensForAnnualPlans()` existed with **zero callers** (verified by exhaustive repo grep) — no `@Cron`, controller, worker, or script. The only `@Cron` was the 2 AM persona job. `ScheduleModule.forRoot()` is registered (cron infra works), the trigger was simply never added. Annual plans are billed once/year (`invoice.paid` fires once), so months 2–12 depended entirely on this missing internal scheduler; `nextTokenIssuanceAt` is set (+30 d) only for annual plans and nothing consumed it.
+- **Impact:** annual subscribers would receive ~**1/12** of their intended token entitlement.
+- **Blast radius (verified on prod 2026-08):** **0 active annual subscriptions** → **latent, no customer harmed yet**; **no backfill required**. Annual plans carry real Stripe price IDs (`price_1…`) so they are sellable — the defect flips to **active** on the first annual purchase.
+- **Fix (drafted, awaiting review — NOT deployed):** added a daily `@Cron(EVERY_DAY_AT_1AM) issueAnnualPlanTokensCron()` wrapper in `subscriptions.service.ts` that calls the existing (idempotent) method with error isolation; 5 new unit tests in `subscriptions.service.spec.ts` (66/66 green). The `nextTokenIssuanceAt < now` guard makes daily runs safe (no double-issue).
 
 ### C2 — Stripe live-vs-test mode unconfirmed — UNKNOWN
 - **Why:** keys are env-provided; mode not determinable from code.

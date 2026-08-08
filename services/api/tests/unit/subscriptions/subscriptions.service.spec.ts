@@ -35,6 +35,7 @@ const mockUserRepo = {
 
 const mockQb = { where: jest.fn().mockReturnThis(), andWhere: jest.fn().mockReturnThis(), leftJoinAndSelect: jest.fn().mockReturnThis(), getOne: jest.fn() };
 const mockSubRepo = {
+  find: jest.fn(),
   findOne: jest.fn(),
   findOneBy: jest.fn(),
   update: jest.fn(),
@@ -445,6 +446,57 @@ describe('SubscriptionsService', () => {
 
       await service.issueTokensForNewSubscription('sub_stripe_1');
       expect(mockSubRepo.update).toHaveBeenCalledWith('sub1', expect.objectContaining({ nextTokenIssuanceAt: expect.any(Date) }));
+    });
+  });
+
+  describe('issueMonthlyTokensForAnnualPlans', () => {
+    it('issues tokens and advances nextTokenIssuanceAt for a due annual sub', async () => {
+      const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      mockSubRepo.find.mockResolvedValue([
+        { id: 'subA', userId: 'uA', plan: { interval: 'year', tokensPerCycle: 2 }, nextTokenIssuanceAt: past },
+      ]);
+      const issueSpy = jest.spyOn(service, 'issueTokens').mockResolvedValue(undefined as any);
+
+      await service.issueMonthlyTokensForAnnualPlans();
+
+      expect(issueSpy).toHaveBeenCalledWith('uA', 2, 'paid', expect.objectContaining({ subscriptionId: 'subA' }));
+      const [, patch] = mockSubRepo.update.mock.calls[0];
+      // next issuance advanced ~30 days past the previous due date
+      expect(patch.nextTokenIssuanceAt.getTime()).toBeGreaterThan(past.getTime());
+    });
+
+    it('skips non-annual (monthly) plans', async () => {
+      mockSubRepo.find.mockResolvedValue([
+        { id: 'subM', userId: 'uM', plan: { interval: 'month', tokensPerCycle: 1 }, nextTokenIssuanceAt: new Date(0) },
+      ]);
+      const issueSpy = jest.spyOn(service, 'issueTokens').mockResolvedValue(undefined as any);
+
+      await service.issueMonthlyTokensForAnnualPlans();
+
+      expect(issueSpy).not.toHaveBeenCalled();
+      expect(mockSubRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when no subscriptions are due', async () => {
+      mockSubRepo.find.mockResolvedValue([]);
+      const issueSpy = jest.spyOn(service, 'issueTokens').mockResolvedValue(undefined as any);
+
+      await service.issueMonthlyTokensForAnnualPlans();
+
+      expect(issueSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('issueAnnualPlanTokensCron', () => {
+    it('runs the drip', async () => {
+      const spy = jest.spyOn(service, 'issueMonthlyTokensForAnnualPlans').mockResolvedValue(undefined);
+      await service.issueAnnualPlanTokensCron();
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('swallows errors so the scheduler never crashes', async () => {
+      jest.spyOn(service, 'issueMonthlyTokensForAnnualPlans').mockRejectedValue(new Error('boom'));
+      await expect(service.issueAnnualPlanTokensCron()).resolves.toBeUndefined();
     });
   });
 

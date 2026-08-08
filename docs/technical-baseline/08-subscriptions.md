@@ -37,7 +37,7 @@ Customer resolution: `getOrCreateStripeCustomer` persists `stripeCustomerId` on 
 
 ## Billing / invoices — CONFIRMED / INFERRED
 - Invoices are handled implicitly via `invoice.paid` / `invoice.payment_failed` webhooks; invoice records themselves live in Stripe, not mirrored locally. **INFERRED** (no invoice table).
-- Annual plans: `issueMonthlyTokensForAnnualPlans()` re-issues `tokensPerCycle` monthly for annual subscribers. **CONFIRMED** method exists; scheduling of it → **UNKNOWN** (only the daily persona cron was found via `@Cron`; token-issuance scheduling may be triggered elsewhere or manually).
+- Annual plans: annual subscriptions are billed once/year, so `invoice.paid` fires once; the intended 11 subsequent monthly token grants come from `issueMonthlyTokensForAnnualPlans()` (guarded by `nextTokenIssuanceAt < now`, +30-day advance). **VERIFIED 2026-08 (was UNKNOWN):** the method had **zero callers** — no `@Cron`/trigger — so annual subscribers would receive ~1/12 of their token entitlement. Blast radius at time of verification: **0 active annual subscriptions on prod → latent, no customer harm**; annual plans do carry real Stripe price IDs (sellable). **Fix drafted** (not yet deployed): a daily `@Cron` wrapper `issueAnnualPlanTokensCron()` in `subscriptions.service.ts` (idempotent, error-isolated) + unit tests. See [19](19-technical-debt.md) C1.
 
 ## Refunds & retries — UNKNOWN / INFERRED
 - **No explicit refund handling** found (no `charge.refunded` / `refund` handler). **INFERRED:** refunds are managed manually in the Stripe dashboard.
