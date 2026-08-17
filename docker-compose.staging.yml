@@ -74,6 +74,12 @@ services:
     build:
       context: ./services/web
       target: production
+      # NEXT_PUBLIC_* are baked into the client bundle at build time — without these
+      # args the staging bundle would call the PRODUCTION API from the browser.
+      args:
+        NEXT_PUBLIC_API_URL: https://staging.noetia.app/api
+        NEXT_PUBLIC_OAUTH_URL: https://staging.noetia.app/api
+        NEXT_PUBLIC_APP_ENV: staging
     env_file: .env.staging
     environment:
       NODE_ENV: production

@@ -11,6 +11,7 @@ const nextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: 'covers.openlibrary.org' },
       { protocol: 'https', hostname: 'storage.noetia.app' },
+      { protocol: 'https', hostname: 'storage.staging.noetia.app' },
     ],
   },
   async rewrites() {

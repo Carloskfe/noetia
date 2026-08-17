@@ -16,8 +16,16 @@ RUN npm install
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV INTERNAL_API_URL=http://api:4000
-ENV NEXT_PUBLIC_API_URL=https://noetia.app/api
-ENV NEXT_PUBLIC_OAUTH_URL=https://noetia.app/api
+
+# NEXT_PUBLIC_* are inlined into the client bundle at build time, so they cannot be
+# overridden by runtime env. Defaults are the production values (prod build output is
+# unchanged); staging overrides them via build args in docker-compose.staging.yml.
+ARG NEXT_PUBLIC_API_URL=https://noetia.app/api
+ARG NEXT_PUBLIC_OAUTH_URL=https://noetia.app/api
+ARG NEXT_PUBLIC_APP_ENV=
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_OAUTH_URL=$NEXT_PUBLIC_OAUTH_URL
+ENV NEXT_PUBLIC_APP_ENV=$NEXT_PUBLIC_APP_ENV
 RUN npm run build
 
 # ─── Production ─────────────────────────────────────────────────────────────
