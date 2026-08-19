@@ -182,8 +182,12 @@ PO-006 fixes canonical pricing; nobody has checked the live Stripe price IDs aga
 Requires production Stripe access — outside NOF-001's authorization.
 
 ### IG-02 — No creator settlement/payout engine · CRITICAL · Engineering + Accounting
-PO-007 and PO-008 decide allocation and accrual. No code computes, records, or reports a
-creator obligation. Redemption events are captured in `token_ledger` / `user_books`, so
+PO-007 (allocation), PO-008 (accrual), and **PO-010 (gross value basis)** together make the
+policy complete: the obligation, its trigger, and the amount are all now decided. **No code
+computes, records, or reports a creator obligation.**
+
+With PO-010 the remaining blockers are implementation and accounting, not policy — the one
+open policy fragment is discount allocation across bundled benefits (PO-010 §3). Redemption events are captured in `token_ledger` / `user_books`, so
 reconstruction is likely possible — but it has never been performed or verified. This is
 the largest gap between decided policy and running system.
 
@@ -207,7 +211,9 @@ Formerly C-08. NEM-006C tooling is committed; the full-catalog run is executing.
 | IG-01 Stripe verification | HIGH |
 | IG-03 staging Escucha Activa | HIGH *(in progress)* |
 
-Review markers raised: `ACCOUNTING REVIEW REQUIRED` (C-03 / PO-008 / IG-02).
+Review markers raised: `ACCOUNTING REVIEW REQUIRED` (C-03 / PO-008 / **PO-010** / IG-02) —
+now also covering precision, currency, fractional cents, payout rounding, and discount
+allocation.
 
 **C-02 (Family seats: 5 or 6) remains deliberately unresolved.** Per the continuation
 authorization, the framework must not adopt whichever value the code happens to enforce —

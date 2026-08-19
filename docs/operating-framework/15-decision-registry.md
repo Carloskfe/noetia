@@ -26,6 +26,7 @@ decision record*. Promoting them is a Product Owner act, not an editorial one.
 | PO-007 | PO | Canonical revenue allocation | DECIDED | Economics | [PO-007](decisions/product-owner/PO-007-canonical-revenue-allocation.md) | NOT IMPLEMENTED → IG-02 |
 | PO-008 | PO | Creator obligation accrual | DECIDED | Economics, Creator | [PO-008](decisions/product-owner/PO-008-creator-obligation-accrual.md) | NOT IMPLEMENTED → IG-02 · `ACCOUNTING REVIEW REQUIRED` |
 | PO-009 | PO | Engineering mission traceability | DECIDED | Governance | [PO-009](decisions/product-owner/PO-009-engineering-mission-traceability.md) | Backfill performed by NOF-001 |
+| PO-010 | PO | Token gross value basis | DECIDED | Economics | [PO-010](decisions/product-owner/PO-010-token-gross-value-basis.md) | NOT IMPLEMENTED → IG-02 · `ACCOUNTING REVIEW REQUIRED` |
 | ADR-001 | ADR | AI provider abstraction & model routing | ACCEPTED | Architecture | [ADR-001](../architecture/adr/ADR-001-ai-provider-abstraction-and-model-routing.md) | PLANNED |
 | ADR-002 | ADR | Permission-aware content intelligence | ACCEPTED | Rights | [ADR-002](../architecture/adr/ADR-002-permission-aware-content-intelligence.md) | PLANNED |
 | ADR-003 | ADR | Source-aware hybrid intelligence | ACCEPTED | AI | [ADR-003](../architecture/adr/ADR-003-source-aware-hybrid-intelligence.md) | PLANNED |
@@ -33,7 +34,8 @@ decision record*. Promoting them is a Product Owner act, not an editorial one.
 
 **Supersession:** PO-006 supersedes the annual prices in `business/en|es/01-business-plan.md`.
 PO-007 supersedes ambiguous "45%" usage. PO-004 explicitly does not alter PO-001…003.
-PO-005 refines PO-001 without amending ADR-001.
+PO-005 refines PO-001 without amending ADR-001. PO-010 completes PO-007/PO-008 by
+supplying the basis the percentages apply to; it supersedes nothing.
 
 **Decision status is not implementation status.** PO-007 and PO-008 are `DECIDED` while the
 settlement engine is `NOT IMPLEMENTED`; PO-006 is `DECIDED` while Stripe is `UNVERIFIED`.

@@ -77,6 +77,13 @@ code enforces** — that would convert an implementation detail into policy.
 mechanics were found. Waitlist and single-use `upload_codes` exist in code, but their
 commercial semantics are `INFERRED`.
 
+## Token gross value
+
+Each issued token carries a gross economic value derived from the actual price of its
+subscription period — **[PO-010](decisions/product-owner/PO-010-token-gross-value-basis.md)**.
+This is the basis PO-007's allocation percentages apply to, and it differs between monthly
+and annual plans.
+
 ## Related
 
 [05-economic-framework](05-economic-framework.md) ·

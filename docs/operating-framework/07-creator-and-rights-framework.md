@@ -38,8 +38,11 @@ The "45% creator share — highest in the category" claim is accurate **only** f
 self-narrated case. Author-facing material must never use "45%" without saying whose share
 it is.
 
-**Obligations accrue at redemption** (PO-008), whether or not software computes them. No
-settlement engine exists → [IG-02](governance/contradictions-and-gaps.md#implementation-gaps).
+**Obligations accrue at redemption** (PO-008), whether or not software computes them. The
+amount is the token's gross value per
+**[PO-010](decisions/product-owner/PO-010-token-gross-value-basis.md)** — the actual
+consideration attributable to that token, which differs between monthly and annual plans.
+No settlement engine exists → [IG-02](governance/contradictions-and-gaps.md#implementation-gaps).
 
 ## Compensation models
 

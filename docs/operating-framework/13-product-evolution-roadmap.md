@@ -17,7 +17,7 @@ none were found. Sequencing reflects dependencies and current engineering realit
 
 | Item | Why now | Blocked by |
 |---|---|---|
-| **Creator settlement / payout engine** | IG-02 — the largest policy-to-system gap; obligations accrue with nothing recording them | Needs per-token gross value (`OPEN`, [05-economic](05-economic-framework.md)) + `ACCOUNTING REVIEW` |
+| **Creator settlement / payout engine** | IG-02 — the largest policy-to-system gap; obligations accrue with nothing recording them | **Policy now complete** (PO-007/008/010). Remaining: `ACCOUNTING REVIEW` + discount allocation (Q-14) |
 | **Stripe pricing verification** | IG-01 — live prices unverified against PO-006 | Production Stripe access |
 | **NEM-006B** — production PG16 restore-compatibility proof | Prerequisite for any pgvector production work | Staging content (NEM-006C) |
 | **Backup & restore procedure** | No documented, tested procedure exists | — |
@@ -60,9 +60,11 @@ NEM-006A staging ──> NEM-006C content ──> NEM-006B PG16 proof ──> NE
                               PO-005 AI credentials ─────────────────┘
                               evaluation methodology (OPEN) ─────────┘
 
-PO-007 + PO-008 policy ──> per-token gross value (OPEN) ──> settlement engine (IG-02)
+PO-007 allocation + PO-008 accrual + PO-010 gross value ──> settlement engine (IG-02)
+                                    ACCOUNTING REVIEW ─────┘  discount allocation (Q-14) ┘
 ```
 
 Two chains, largely independent. The Noetia+ chain is well specified and gated on
-infrastructure; the economic chain is gated on an unanswered pricing question and
-professional review. **The economic chain is the one accruing cost while it waits.**
+infrastructure. The economic chain's **policy is now complete** — PO-010 supplied the last
+missing input — leaving it gated on accounting review and implementation rather than on an
+unanswered product question. **It remains the chain accruing cost while it waits.**

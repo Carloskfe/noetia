@@ -103,6 +103,15 @@ from project notes and enforced only by whatever the caller passes.
 ### Q-07 · Is peer-to-peer token gifting committed, or an idea?
 → C-07. It appears in the business narrative but only gift cards are implemented.
 
+### Q-14 · How is a bundled discount allocated across benefits? — **NEW, raised by [PO-010](../decisions/product-owner/PO-010-token-gross-value-basis.md) §3**
+PO-010 establishes that token gross value reflects the **actual consideration**, not list
+price. Where a discount applies to a bundle rather than to tokens alone, no policy
+determines how it is split across those benefits — and the split changes what creators are
+owed.
+
+**Why it matters:** it is the last open policy fragment in the creator-obligation chain,
+and it needs `ACCOUNTING REVIEW` rather than a product ruling alone. No rule was invented.
+
 ### Q-08 · When does the free-library sunset actually trigger?
 → C-10. "6–12 months" with no start date, and "50+ author titles" with no owner watching
 the count.
@@ -146,7 +155,7 @@ stated. NOF-001 §10 explicitly forbids assuming exclusion.
 | Priority | Open | Resolved |
 |---|---|---|
 | P0 | **0** | 4 (PO-006 … PO-009) |
-| P1 | 5 | 0 |
+| P1 | 6 | 0 |
 | P2 | 4 | 0 |
 
 No P0 question remains open. Resolving them moved the Economic, Creator, and Business

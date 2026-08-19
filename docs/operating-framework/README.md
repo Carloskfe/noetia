@@ -1,6 +1,6 @@
 # Noetia Operating Framework
 
-**Version 0.1** · established by NOF-001 · status: **DRAFT — not yet accepted by the Product Owner**
+**Version 0.1** · established by NOF-001 · status: **ACCEPTED** — canonical Noetia Operating Framework v0.1
 
 The Operating Framework is Noetia's institutional layer: the place that explains *why*
 Noetia works the way it does, and which commitments should outlive any individual
@@ -78,7 +78,7 @@ All 20 deliverables are at v0.1.
 | [Documentation inventory](governance/documentation-inventory.md) | 96 documents classified, with canonical destinations |
 | [Contradictions & gaps](governance/contradictions-and-gaps.md) | Conflicts and implementation gaps, tracked separately |
 | [Product Owner questions](governance/product-owner-questions.md) | Open questions by priority; resolved ones kept as history |
-| [Product Owner decisions](decisions/product-owner/) | PO-005 … PO-009 |
+| [Product Owner decisions](decisions/product-owner/) | PO-005 … PO-010 |
 
 ---
 
@@ -93,6 +93,7 @@ All 20 deliverables are at v0.1.
 | Peer token gifting: committed or idea (C-07) | P1 |
 | Free-library sunset trigger (C-10) | P1 |
 | Anti-goals beyond "not a publisher" (Q-09) | P1 |
+| Bundled-discount allocation (Q-14) | P1 — `ACCOUNTING REVIEW` |
 | Permanent ownership as a formal commitment | P1 — new |
 | Noetia+ price · mode names · quotation thresholds · market boundary | P2 |
 

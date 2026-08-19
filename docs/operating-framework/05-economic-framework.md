@@ -53,15 +53,49 @@ creator · earning date · payout status · adjustments.
 
 | Source | Treatment |
 |---|---|
-| **Plan-derived tokens** | Subscription revenue; `tokensPerCycle` per plan. Gross value per token = `OPEN` — no approved formula found |
+| **Plan-derived tokens** | Subscription revenue; `tokensPerCycle` per plan. Gross value per token per **[PO-010](decisions/product-owner/PO-010-token-gross-value-basis.md)** |
 | **Purchased token packages** | Direct purchase, type `paid` |
 | **Promotional / courtesy tokens** | Non-purchased grants. **No creator allocation** — these are not qualifying paid redemptions |
 | **Gift cards** | Stripe purchase; allocation follows redemption, not purchase |
 | **Free-library access** | Public domain; no allocation |
 
-`OPEN:` how a plan's monthly price converts into per-token gross value — especially when a
-Family plan yields 3 tokens for $18.99 — is not documented. This is the **next economic
-question after the P0s** and blocks any settlement implementation.
+## Gross value per token
+
+**DECIDED — [PO-010](decisions/product-owner/PO-010-token-gross-value-basis.md)**
+
+```
+subscription:  price attributable to the period ÷ tokens issued for that period
+annual:        annual price ÷ 12 ÷ monthly token allocation
+packages:      package price ÷ tokens purchased
+```
+
+The basis is the **actual consideration**, never an undiscounted list price, and it travels
+with the token from issuance rather than being recomputed at redemption.
+
+Illustrative, unrounded, from PO-006 pricing:
+
+| Plan | Monthly basis | Annual basis |
+|---|---|---|
+| Individual | $8.99 | $6.999166… |
+| Duo | $6.995 | $5.41625 |
+| Family | $6.33 | $4.999722… |
+
+An annual subscriber's tokens therefore carry a **lower** gross value — and a smaller
+creator allocation per redemption — than a monthly subscriber's. A consequence of the
+pricing, not a separate policy, but one that will be visible on creator statements.
+
+`OPEN — implementation/accounting:` allocating a discount that applies to a bundle of
+benefits rather than to tokens alone. No rule invented (PO-010 §3).
+
+**No rounding is prescribed.** Precision, currency, fractional cents, payout rounding,
+refunds, and tax treatment are implementation and accounting decisions (PO-010 §6).
+
+## Historical reconstruction
+
+PO-010 is defined so a future creator ledger can reconstruct obligations for historical
+qualifying redemptions where evidence permits — `token_ledger` holds issuance,
+`user_books` holds redemption, and plan records hold the period price and allocation.
+Feasibility against live data is **unverified**; that belongs to the settlement mission.
 
 ## Breakage
 
