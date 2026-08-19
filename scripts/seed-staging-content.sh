@@ -193,21 +193,26 @@ if [[ $SKIP_MIRROR == 0 && $DRY_RUN == 0 ]]; then
       # A sequential copy is the one access pattern we have directly observed
       # working. It is slower and that is an acceptable trade for a staging
       # refresh. Objects already present are skipped, so this resumes.
-      # mc ls --recursive prints "[date time UTC] SIZE STORAGECLASS path"; the
-      # object key is the last field (audio keys are slugs, never spaced).
-      mc ls --recursive prod/audio | awk "{print \$NF}" > /tmp/objects
-      total=$(wc -l < /tmp/objects); n=0; copied=0; skipped=0
-      while IFS= read -r obj; do
-        [ -z "$obj" ] && continue
+      # `mc find` prints full object paths, one per line. The minio/mc image has
+      # no awk, wc, sed or grep — only mc and the shell — so parsing uses POSIX
+      # parameter expansion alone. Explicit `if` rather than `test && continue`:
+      # under `set -e` a failing test in an AND-OR list can abort the loop.
+      mc find prod/audio > /tmp/objects
+      n=0; copied=0; skipped=0
+      while IFS= read -r full; do
+        obj=${full#prod/audio/}
+        if [ -z "$obj" ]; then continue; fi
+        case "$obj" in */) continue;; esac
         n=$((n+1))
         if mc stat "stag/audio/$obj" >/dev/null 2>&1; then
-          skipped=$((skipped+1)); continue
+          skipped=$((skipped+1))
+          continue
         fi
-        echo "[$n/$total] $obj"
+        echo "[$n] $obj"
         mc cp "prod/audio/$obj" "stag/audio/$obj" || exit 1
         copied=$((copied+1))
       done < /tmp/objects
-      echo "sequential copy complete: $copied copied, $skipped already present, $total total"
+      echo "sequential copy complete: $copied copied, $skipped already present, $n examined"
     ')
   [[ -n "$MIRROR_CID" ]] || die "could not create the mirror container"
   docker network connect "$STAG_NET" "$MIRROR_CID" || die "could not attach staging network"
