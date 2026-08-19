@@ -57,14 +57,17 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
-      # Basic-auth gate (users list from .env.staging → STAGING_BASICAUTH, htpasswd format)
-      - "traefik.http.middlewares.noetia-staging-auth.basicauth.users=${STAGING_BASICAUTH}"
       - "traefik.http.routers.noetia-staging-api.rule=Host(`staging.noetia.app`) && PathPrefix(`/api`)"
       - "traefik.http.routers.noetia-staging-api.entrypoints=websecure"
       - "traefik.http.routers.noetia-staging-api.tls.certresolver=letsencrypt"
       - "traefik.http.services.noetia-staging-api.loadbalancer.server.port=4000"
       - "traefik.http.middlewares.noetia-staging-strip-api.stripprefix.prefixes=/api"
-      - "traefik.http.routers.noetia-staging-api.middlewares=noetia-staging-strip-api,noetia-staging-auth"
+      # NO basicauth on the API router. HTTP Basic and the app's JWT both use the
+      # Authorization header: web/lib/api.ts sets `Authorization: Bearer <token>`,
+      # which replaces the browser's cached Basic credentials, so Traefik rejects
+      # every authenticated API call with 401 and the browser re-prompts forever.
+      # The gate lives on the web router (below); /api is JWT-protected as in prod.
+      - "traefik.http.routers.noetia-staging-api.middlewares=noetia-staging-strip-api"
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
@@ -101,6 +104,10 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
+      # Basic-auth gate (users list from .env.staging → STAGING_BASICAUTH, htpasswd
+      # format). Defined here because the web router is its only consumer — keeping
+      # it on the api service would make the gate vanish if api ever stopped.
+      - "traefik.http.middlewares.noetia-staging-auth.basicauth.users=${STAGING_BASICAUTH}"
       - "traefik.http.routers.noetia-staging-web.rule=Host(`staging.noetia.app`)"
       - "traefik.http.routers.noetia-staging-web.entrypoints=websecure"
       - "traefik.http.routers.noetia-staging-web.tls.certresolver=letsencrypt"
