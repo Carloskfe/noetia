@@ -5,8 +5,27 @@ import {
   sortByChapterNumber,
   pickChapterMp3s,
   minioAudioKey,
+  titleSlug,
   resolveAudioSource,
 } from '../../../src/ingestion/audio-source-resolver';
+
+describe('titleSlug', () => {
+  it('folds accents and punctuation to a stable slug', () => {
+    expect(titleSlug('Doña Perfecta')).toBe('dona-perfecta');
+    expect(titleSlug('Éxodo')).toBe('exodo');
+    expect(titleSlug("Alice's Adventures in Wonderland")).toBe('alice-s-adventures-in-wonderland');
+  });
+
+  it('collapses separators and trims edges', () => {
+    expect(titleSlug('  Don Quijote de la Mancha — Vol. I  ')).toBe(
+      'don-quijote-de-la-mancha-vol-i',
+    );
+  });
+
+  it('is the basis of minioAudioKey, so the two cannot drift', () => {
+    expect(minioAudioKey('La Odisea')).toBe(`books/${titleSlug('La Odisea')}-audio.mp3`);
+  });
+});
 
 describe('needsMigration', () => {
   it('flags a null/empty key', () => {

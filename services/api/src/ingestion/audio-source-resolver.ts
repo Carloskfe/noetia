@@ -49,15 +49,22 @@ export function pickChapterMp3s(html: string): string[] {
   return sortByChapterNumber(candidates);
 }
 
-/** Deterministic MinIO object key for a book's concatenated audio. */
-export function minioAudioKey(title: string): string {
-  const slug = title
+/**
+ * Deterministic, accent-folded slug for a book title. Shared so object keys and
+ * transcript filenames cannot drift apart (NEM-006C resolves VTTs by this slug).
+ */
+export function titleSlug(title: string): string {
+  return title
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
-  return `books/${slug}-audio.mp3`;
+}
+
+/** Deterministic MinIO object key for a book's concatenated audio. */
+export function minioAudioKey(title: string): string {
+  return `books/${titleSlug(title)}-audio.mp3`;
 }
 
 export interface AudioCandidate {

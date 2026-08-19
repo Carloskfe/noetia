@@ -36,6 +36,14 @@ dcs exec -T -e DB_HOST=db api npm run migration:run:prod
 dcs exec -T db psql -U noetia -d noetia_staging -c "SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 3;"
 ```
 
+## Rebuild reader content (audio + sync maps)
+```bash
+scripts/seed-staging-content.sh --dry-run     # inventory only, never touches production
+scripts/seed-staging-content.sh               # full run (~13 GB audio mirror + sync)
+scripts/seed-staging-content.sh --skip-mirror # DB-side only, audio already present
+```
+Full procedure, per-title outcomes, and failure recovery: [content-seeding.md](content-seeding.md).
+
 ## Reset staging data (disposable)
 ```bash
 dcs down                                   # stop staging containers (keeps volumes)

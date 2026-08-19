@@ -47,6 +47,13 @@ docker compose -p noetia_staging --env-file .env.staging -f docker-compose.stagi
 ```
 Or push to the `staging` branch to trigger `cd-staging.yml`.
 
+## Content
+A freshly deployed staging has book text but no audio and no real sync maps, so every
+title fails the ≥90% catalog quality gate and Escucha Activa cannot be exercised.
+[content-seeding.md](content-seeding.md) covers the one-command rebuild (NEM-006C):
+audio mirrored read-only from production, sync maps reconstructed from the VTT corpus
+committed to the repository. **Catalog content only — no production user data.**
+
 ## Hosting strategy (§6, §7)
 Designed to **colocate on the existing Contabo VPS** with bounded resource limits (staging total ≈ ~2.0 GB memory cap; monitoring stack intentionally omitted). Production keeps priority. **Before activation, the operator must verify current host free capacity** (`free -h`, `df -h`, `docker stats`); **if capacity is insufficient, provision a separate small staging VPS instead of colocating** — do not compromise production reliability. This capacity check is a host-side action (see EXTERNAL-ACTIONS) because it cannot be measured from the repository.
 
