@@ -153,7 +153,7 @@ if [[ $SKIP_MIRROR == 0 && $DRY_RUN == 0 ]]; then
       mc alias set prod "$PROD_HOST" "$PROD_AK" "$PROD_SK" >/dev/null
       mc alias set stag "$STAG_HOST" "$STAG_AK" "$STAG_SK" >/dev/null
       mc mb --ignore-existing stag/audio
-      mc mirror --preserve --limit-download 200MiB prod/audio stag/audio
+      mc mirror --limit-download 200MiB prod/audio stag/audio
     ')
   [[ -n "$MIRROR_CID" ]] || die "could not create the mirror container"
   docker network connect "$STAG_NET" "$MIRROR_CID" || die "could not attach staging network"
@@ -173,9 +173,17 @@ if [[ $SKIP_MIRROR == 0 && $DRY_RUN == 0 ]]; then
   done
 
   MIRROR_RC=$(docker inspect -f '{{.State.ExitCode}}' "$MIRROR_CID" 2>/dev/null || echo 1)
-  docker logs --tail 5 "$MIRROR_CID" 2>&1 | sed 's/^/  /'
+  # Keep the full log before removing the container — a failure here is worthless
+  # to diagnose from a 5-line tail, and the container is the only place it exists.
+  mkdir -p "$REPORT_DIR"
+  docker logs "$MIRROR_CID" > "$REPORT_DIR/mirror.log" 2>&1
   docker rm "$MIRROR_CID" >/dev/null 2>&1
-  [[ "$MIRROR_RC" == "0" ]] || die "audio mirror failed (exit $MIRROR_RC) — re-run to resume"
+  if [[ "$MIRROR_RC" != "0" ]]; then
+    echo "  ── last 30 lines of $REPORT_DIR/mirror.log ──"
+    tail -30 "$REPORT_DIR/mirror.log" | sed 's/^/  /'
+    die "audio mirror failed (exit $MIRROR_RC) — full log: $REPORT_DIR/mirror.log · re-run to resume"
+  fi
+  tail -6 "$REPORT_DIR/mirror.log" | sed 's/^/  /'
   log "Phase 1 complete"
 else
   log "Phase 1 — skipped$([[ $DRY_RUN == 1 ]] && echo ' (dry run)')"
