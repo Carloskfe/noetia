@@ -86,6 +86,41 @@ Upload specifications: [`upload-guide.md`](../upload-guide.md). Author uploads *
 the ≥90% sync quality gate** — creators manage their own quality through the review flow,
 unlike ingested public-domain titles.
 
+## Rights and economic attribution require explicit evidence
+
+**PERMANENT PRINCIPLE — recorded by NEM-007 Phase A**
+
+> **Noetia must not infer copyright, rights-holder, narrator, or economic entitlement from
+> implementation metadata that was not created for that purpose. Rights and economic
+> attribution require explicit authoritative evidence.**
+
+Evidence may eventually include a rights-holder agreement, publisher agreement, author
+agreement, narrator agreement, a verified public-domain determination, an approved licensing
+record, or a verified internal rights review. Final legal-evidence standards are **not**
+defined here — `LEGAL REVIEW REQUIRED`.
+
+### Fields that must never be used as rights status
+
+Two existing fields look like rights metadata and are not. Both are live traps.
+
+**`isFree` is NOT a rights-status field.** It governs catalog readiness and the ≥90%
+synchronization quality gate. From `catalogue.ts`: *"isFree stays false until each clears the
+90% gate."* A public-domain title can be `isFree=false` purely because its Whisper sync is
+poor. It must never be reused as public-domain status, royalty status, rights ownership, or
+any commercial/free legal classification.
+
+**`pendingRights` is NOT persisted rights metadata.** It exists only as a build-time constant
+in `catalogue.ts` and merely causes `ingestAll()` to skip an entry. It never reaches the
+database. Its **absence from a database record is not evidence that rights are cleared** —
+for every already-ingested title, rights status was simply never recorded.
+
+Equally excluded as rights proxies: synchronization quality · `uploadedById` · `category` ·
+uploader identity · catalog visibility · token eligibility · the existing `author` string.
+
+**Unknown means unknown.** Where authoritative evidence is absent, the correct rights
+classification is `UNKNOWN`, and the Product Owner has explicitly accepted that this may be
+most or all existing titles until authoritative backfill occurs.
+
 ## Rights controls
 
 **DECIDED (PO-002 / ADR-002) · NOT IMPLEMENTED**

@@ -27,6 +27,9 @@ decision record*. Promoting them is a Product Owner act, not an editorial one.
 | PO-008 | PO | Creator obligation accrual | DECIDED | Economics, Creator | [PO-008](decisions/product-owner/PO-008-creator-obligation-accrual.md) | NOT IMPLEMENTED → IG-02 · `ACCOUNTING REVIEW REQUIRED` |
 | PO-009 | PO | Engineering mission traceability | DECIDED | Governance | [PO-009](decisions/product-owner/PO-009-engineering-mission-traceability.md) | Backfill performed by NOF-001 |
 | PO-010 | PO | Token gross value basis | DECIDED | Economics | [PO-010](decisions/product-owner/PO-010-token-gross-value-basis.md) | NOT IMPLEMENTED → IG-02 · `ACCOUNTING REVIEW REQUIRED` |
+| PO-011 | PO | Causas recognition basis (payment-level) | DECIDED | Economics | [PO-011](decisions/product-owner/PO-011-causas-recognition-basis.md) | NOT IMPLEMENTED → IG-02 · `ACCOUNTING REVIEW REQUIRED` |
+| PO-012 | PO | Marketing & breakage treatment | DECIDED | Economics | [PO-012](decisions/product-owner/PO-012-marketing-and-breakage-treatment.md) | NOT IMPLEMENTED → IG-02 · `ACCOUNTING REVIEW REQUIRED` |
+| PO-013 | PO | Discount attribution | DECIDED | Economics | [PO-013](decisions/product-owner/PO-013-discount-attribution.md) | NOT IMPLEMENTED → IG-02 |
 | ADR-001 | ADR | AI provider abstraction & model routing | ACCEPTED | Architecture | [ADR-001](../architecture/adr/ADR-001-ai-provider-abstraction-and-model-routing.md) | PLANNED |
 | ADR-002 | ADR | Permission-aware content intelligence | ACCEPTED | Rights | [ADR-002](../architecture/adr/ADR-002-permission-aware-content-intelligence.md) | PLANNED |
 | ADR-003 | ADR | Source-aware hybrid intelligence | ACCEPTED | AI | [ADR-003](../architecture/adr/ADR-003-source-aware-hybrid-intelligence.md) | PLANNED |
@@ -35,7 +38,10 @@ decision record*. Promoting them is a Product Owner act, not an editorial one.
 **Supersession:** PO-006 supersedes the annual prices in `business/en|es/01-business-plan.md`.
 PO-007 supersedes ambiguous "45%" usage. PO-004 explicitly does not alter PO-001…003.
 PO-005 refines PO-001 without amending ADR-001. PO-010 completes PO-007/PO-008 by
-supplying the basis the percentages apply to; it supersedes nothing.
+supplying the basis the percentages apply to. PO-011 and PO-012 establish *when* each
+allocation arises (payment level vs redemption level) and supersede the business plan's
+implied per-payment creator reading; PO-013 governs discounted consideration. None
+supersedes PO-007's percentages.
 
 **Decision status is not implementation status.** PO-007 and PO-008 are `DECIDED` while the
 settlement engine is `NOT IMPLEMENTED`; PO-006 is `DECIDED` while Stripe is `UNVERIFIED`.
@@ -65,7 +71,9 @@ wording was invented.
 | NEM-006A | Permanent staging environment foundation | COMPLETE (awaiting review) | [record](../engineering-missions/COMPLETED/NEM-006A-staging-foundation.md) · `0dcd139`, `3c71e5a`, `5aa9a7b`, `15e5762` |
 | NEM-006B | Production PG16 restore-compatibility proof | NOT STARTED | Referenced in staging docs; no record created |
 | NEM-006C | Full-catalog reader-validatable staging content | IN PROGRESS | [record](../engineering-missions/IN-PROGRESS/NEM-006C-staging-content.md) · `b16aec7`, `b39fd7f`, `ccccf25`, `4f8907c` |
-| NOF-001 | Operating Framework foundation | IN PROGRESS | [record](../engineering-missions/IN-PROGRESS/NOF-001-operating-framework.md) · `64e6bf9` |
+| NOF-001 | Operating Framework foundation | ACCEPTED (v0.1) | [record](../engineering-missions/IN-PROGRESS/NOF-001-operating-framework.md) · `64e6bf9`, `7fa7f29`, `0086145` |
+| NOF-002 | Creator economics stress test | COMPLETE | [analysis](analysis/creator-economics-stress-test.md) · `ae385cf` |
+| NEM-007 | Creator rights & economic attribution | **Phase A COMPLETE · Phase B NOT AUTHORIZED** | PO-011/012/013 recorded; schema work gated on NEM-006C |
 
 ---
 

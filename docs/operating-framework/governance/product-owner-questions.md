@@ -103,7 +103,13 @@ from project notes and enforced only by whatever the caller passes.
 ### Q-07 · Is peer-to-peer token gifting committed, or an idea?
 → C-07. It appears in the business narrative but only gift cards are implemented.
 
-### Q-14 · How is a bundled discount allocated across benefits? — **NEW, raised by [PO-010](../decisions/product-owner/PO-010-token-gross-value-basis.md) §3**
+### Q-14 · How is a bundled discount allocated across benefits? — **RESOLVED at product-policy level by [PO-013](../decisions/product-owner/PO-013-discount-attribution.md)**
+Unambiguous discounts follow PO-010 on actual consideration. Ambiguous bundles must either
+declare their token allocation **before activation** or be **excluded from creator-economic
+processing** — no runtime invention. Accounting implementation may still require review.
+
+<details><summary>Original question</summary>
+
 PO-010 establishes that token gross value reflects the **actual consideration**, not list
 price. Where a discount applies to a bundle rather than to tokens alone, no policy
 determines how it is split across those benefits — and the split changes what creators are
@@ -111,14 +117,22 @@ owed.
 
 **Why it matters:** it is the last open policy fragment in the creator-obligation chain,
 and it needs `ACCOUNTING REVIEW` rather than a product ruling alone. No rule was invented.
+</details>
 
-### Q-15 · Is Causas Noetia 2.22% of every payment, or of each qualifying redemption? — **NEW (NOF-002)** → C-11
+### Q-15 · Causas basis — payment or redemption? — **RESOLVED by [PO-011](../decisions/product-owner/PO-011-causas-recognition-basis.md) + [PO-012](../decisions/product-owner/PO-012-marketing-and-breakage-treatment.md)**
+**Payment.** Causas (2.22%) and Marketing (7.78%) arise from qualifying collected revenue;
+creator allocations (36% / 9%) arise only at qualifying redemption; residual value is
+`BREAKAGE / RETAINED ECONOMIC VALUE`. `ACCOUNTING REVIEW REQUIRED` remains open.
+
+<details><summary>Original question</summary>
+
 The business plan says payment; PO-007 says redemption. Modelled difference: **$30,633 vs
 $22,975 per year** at 10,000 subscribers — 25%, widening as redemption falls.
 
 **Why it matters:** it is a **public commitment**, and the same ruling settles whether
 Marketing and Causas allocations arise on tokens that expire unredeemed — currently
 unstated, and assumed away in the NOF-002 model. `ACCOUNTING REVIEW REQUIRED`.
+</details>
 
 ### Q-08 · When does the free-library sunset actually trigger?
 → C-10. "6–12 months" with no start date, and "50+ author titles" with no owner watching
@@ -163,7 +177,7 @@ stated. NOF-001 §10 explicitly forbids assuming exclusion.
 | Priority | Open | Resolved |
 |---|---|---|
 | P0 | **0** | 4 (PO-006 … PO-009) |
-| P1 | 7 | 0 |
+| P1 | 5 | 2 (Q-14, Q-15) |
 | P2 | 4 | 0 |
 
 No P0 question remains open. Resolving them moved the Economic, Creator, and Business

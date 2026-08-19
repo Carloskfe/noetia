@@ -78,7 +78,7 @@ All 20 deliverables are at v0.1.
 | [Documentation inventory](governance/documentation-inventory.md) | 96 documents classified, with canonical destinations |
 | [Contradictions & gaps](governance/contradictions-and-gaps.md) | Conflicts and implementation gaps, tracked separately |
 | [Product Owner questions](governance/product-owner-questions.md) | Open questions by priority; resolved ones kept as history |
-| [Product Owner decisions](decisions/product-owner/) | PO-005 … PO-010 |
+| [Product Owner decisions](decisions/product-owner/) | PO-005 … PO-013 |
 
 ---
 
@@ -93,7 +93,6 @@ All 20 deliverables are at v0.1.
 | Peer token gifting: committed or idea (C-07) | P1 |
 | Free-library sunset trigger (C-10) | P1 |
 | Anti-goals beyond "not a publisher" (Q-09) | P1 |
-| Bundled-discount allocation (Q-14) | P1 — `ACCOUNTING REVIEW` |
 | Permanent ownership as a formal commitment | P1 — new |
 | Noetia+ price · mode names · quotation thresholds · market boundary | P2 |
 

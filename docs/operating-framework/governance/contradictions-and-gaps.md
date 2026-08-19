@@ -170,7 +170,7 @@ come due.
 
 ---
 
-## C-11 — Causas Noetia allocation basis: payment or redemption? · **HIGH** · Product Owner + Accounting
+## C-11 — Causas Noetia allocation basis · **RESOLVED — PO-011** (accounting review open)
 
 Found by [NOF-002](../analysis/creator-economics-stress-test.md) §7.
 
@@ -188,8 +188,16 @@ per-redemption while the public claim is per-payment, the claim overstates fundi
 determines whether Marketing and Causas allocations arise on tokens that expire unredeemed
 — currently unstated, and assumed away in the NOF-002 model.
 
-**Needs:** Product Owner ruling on the basis, and whether Marketing/Causas arise at payment
-or at redemption. `ACCOUNTING REVIEW REQUIRED`. → Q-15
+**Resolved by [PO-011](../decisions/product-owner/PO-011-causas-recognition-basis.md):**
+Causas arises from **qualifying collected revenue**, not redemption — the same basis the
+public commitment already states, so claim and rule now agree. An unused or expired token
+does not eliminate the allocation.
+[PO-012](../decisions/product-owner/PO-012-marketing-and-breakage-treatment.md) settles the
+companion question: Marketing is likewise payment-level, creator allocations are
+redemption-level, and residual value is `BREAKAGE / RETAINED ECONOMIC VALUE`.
+
+`ACCOUNTING REVIEW REQUIRED` remains open for recognition, refunds, reversals, taxation,
+donation mechanics, and reporting.
 
 ---
 
@@ -202,11 +210,30 @@ system**, and collapsing the two would let real gaps disappear behind a resolved
 PO-006 fixes canonical pricing; nobody has checked the live Stripe price IDs against it.
 Requires production Stripe access — outside NOF-001's authorization.
 
-### IG-04 — No creator attribution in the schema · CRITICAL · Product + Engineering
-Found by [NOF-002](../analysis/creator-economics-stress-test.md) §12. No rights holder,
-narrator, or self-narrated flag exists per book. A settlement engine can compute **how much**
-is owed but not **who** is owed it. This is the hard blocker on NEM-007, ahead of every
-policy question.
+### IG-04 — No authoritative creator/rights attribution system · **CRITICAL — OPEN** · Product + Engineering
+
+> No authoritative creator/rightsholder/narrator/rights-status attribution system exists.
+
+Current state, established by NEM-007 Phase A repository validation:
+
+| Element | Reality |
+|---|---|
+| `books.author` | A plain **varchar string** — not an identity, not a relation |
+| Canonical author/party table | **Does not exist.** The `authors/` module is analytics-only |
+| Narrator relationship | **None** — narrator is unrepresented on a book |
+| Rights-status column | **None** on `books` |
+| `uploadedById` | An upload actor — **not economic entitlement** |
+| `CourtesyRole` (`author\|publisher\|narrator`) | Attached to a **user's token quota**, not to a book — a role vocabulary, not attribution |
+| `isFree` | The ≥90% sync-quality gate — **not rights status** |
+| `pendingRights` | Build-time ingestion metadata — **not persisted**, so its absence proves nothing |
+
+A settlement engine can compute **how much** is owed but not **who** is owed it. Phase A
+records the governing policy; the attribution system itself is **NEM-007 Phase B**, gated on
+NEM-006C completion and explicit Product Owner authorization.
+
+**Catalog audit:** `DEFERRED TO NEM-007 PHASE B` — authoritative rights metadata does not
+exist, production read access is operationally separate, and NEM-006C currently owns
+staging. The initial audit may legitimately classify titles as `UNKNOWN`.
 
 ### IG-02 — No creator settlement/payout engine · CRITICAL · Engineering + Accounting
 PO-007 (allocation), PO-008 (accrual), and **PO-010 (gross value basis)** together make the

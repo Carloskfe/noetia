@@ -59,7 +59,7 @@ code enforces** — that would convert an implementation detail into policy.
 |---|---|
 | **Gift cards** | IMPLEMENTED — Stripe purchase, emailed claim token, bounded expiry |
 | **Peer token gifting** | FUTURE — project notes only → C-07 |
-| **Causas Noetia** | 2.22% of every payment (PO-007) — decided, **not computed** → IG-02 |
+| **Causas Noetia** | 2.22% of qualifying **collected revenue** ([PO-011](decisions/product-owner/PO-011-causas-recognition-basis.md)) — survives unused/expired tokens. Decided, **not computed** → IG-02 |
 | **Noetia+ subscription** | PLANNED — recurring AI capability tier; price unset (Q-11) |
 
 ## Noetia+ economics

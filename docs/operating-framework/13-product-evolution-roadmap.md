@@ -17,8 +17,8 @@ none were found. Sequencing reflects dependencies and current engineering realit
 
 | Item | Why now | Blocked by |
 |---|---|---|
-| **Creator attribution in the schema** | IG-04 — no rights holder, narrator, or self-narrated flag per book. **The hard blocker on NEM-007** (NOF-002 §12) | Product + schema decision |
-| **Creator settlement / payout engine** (NEM-007) | IG-02 | **GATE D = NO** (NOF-002): blocked on IG-04, C-11 Causas basis, breakage residual, Q-14 |
+| **NEM-007 Phase B** — attribution schema, API, staging validation, catalog audit | IG-04 — no authoritative attribution system exists. Phase A (PO-011/012/013) is **complete** | **NEM-006C completion + acceptance**, stable staging, explicit PO authorization |
+| **Creator settlement / payout engine** (NEM-008) | IG-02 | NOF-002 GATE D blockers: C-11, breakage residual and Q-14 are **now resolved** (PO-011/012/013); **IG-04 attribution remains**, plus `ACCOUNTING REVIEW` |
 | **Stripe pricing verification** | IG-01 — live prices unverified against PO-006 | Production Stripe access |
 | **NEM-006B** — production PG16 restore-compatibility proof | Prerequisite for any pgvector production work | Staging content (NEM-006C) |
 | **Backup & restore procedure** | No documented, tested procedure exists | — |
@@ -61,11 +61,14 @@ NEM-006A staging ──> NEM-006C content ──> NEM-006B PG16 proof ──> NE
                               PO-005 AI credentials ─────────────────┘
                               evaluation methodology (OPEN) ─────────┘
 
-PO-007 allocation + PO-008 accrual + PO-010 gross value ──> settlement engine (IG-02)
-                                    ACCOUNTING REVIEW ─────┘  discount allocation (Q-14) ┘
+PO-007 allocation + PO-008 accrual + PO-010 basis + PO-011/012 timing + PO-013 discounts
+                                   │
+   NEM-006C ──> NEM-007 Phase B (attribution, IG-04) ──> NEM-008 settlement (IG-02)
+                                   ACCOUNTING REVIEW ────┘
 ```
 
 Two chains, largely independent. The Noetia+ chain is well specified and gated on
-infrastructure. The economic chain's **policy is now complete** — PO-010 supplied the last
-missing input — leaving it gated on accounting review and implementation rather than on an
-unanswered product question. **It remains the chain accruing cost while it waits.**
+infrastructure. The economic chain's **policy is complete** — PO-010 through PO-013 answered
+every open product question — leaving it gated on *attribution* (who is owed), accounting
+review, and implementation. **It remains the chain accruing cost while it waits**, and both
+chains now converge on NEM-006C finishing.
