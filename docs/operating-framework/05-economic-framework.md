@@ -1,0 +1,93 @@
+# Economic Framework
+
+**v0.1** · NOF-001 · Where the money goes. `ACCOUNTING REVIEW REQUIRED` throughout for
+classification, recognition, and tax treatment — this document records **allocation
+policy**, not accounting policy.
+
+---
+
+## Allocation per qualifying token redemption
+
+**DECIDED — [PO-007](decisions/product-owner/PO-007-canonical-revenue-allocation.md)**
+
+| Allocation | Share |
+|---|---|
+| Noetia | **45%** |
+| Author / Publisher | **36%** |
+| Narrator | **9%** |
+| Marketing | **7.78%** |
+| Causas Noetia | **2.22%** |
+| **Total** | **100%** |
+
+### Naming rule
+
+"45%" is ambiguous and must never stand alone:
+
+- **Noetia's share = 45%.**
+- **Creator share = 45% only when author/publisher and narrator are combined**, i.e. a
+  self-narrated title (36% + 9%).
+
+Where the narrator is a separate party: author/publisher **36%**, narrator **9%**.
+
+| Title type | Author/Publisher | Narrator | Combined creator |
+|---|---|---|---|
+| Self-narrated | 36% | 9% | **45%** |
+| Separate narrator | 36% | 9% (to narrator) | 36% + 9% to two parties |
+
+## Obligation accrual
+
+**DECIDED — [PO-008](decisions/product-owner/PO-008-creator-obligation-accrual.md)**
+
+> A qualifying paid redemption creates the creator obligation **when the redemption
+> occurs.** No settlement engine does not mean no obligation.
+
+```
+EARNED → PENDING → PAYABLE → PAID        (+ ADJUSTED / REVERSED)
+```
+
+Traceability a future implementation must preserve: gross token value · author/publisher
+allocation · narrator allocation · self-narrated combination · redemption identity · book ·
+creator · earning date · payout status · adjustments.
+
+## Where value comes from
+
+| Source | Treatment |
+|---|---|
+| **Plan-derived tokens** | Subscription revenue; `tokensPerCycle` per plan. Gross value per token = `OPEN` — no approved formula found |
+| **Purchased token packages** | Direct purchase, type `paid` |
+| **Promotional / courtesy tokens** | Non-purchased grants. **No creator allocation** — these are not qualifying paid redemptions |
+| **Gift cards** | Stripe purchase; allocation follows redemption, not purchase |
+| **Free-library access** | Public domain; no allocation |
+
+`OPEN:` how a plan's monthly price converts into per-token gross value — especially when a
+Family plan yields 3 tokens for $18.99 — is not documented. This is the **next economic
+question after the P0s** and blocks any settlement implementation.
+
+## Breakage
+
+`OPEN` — paid tokens expire at 90 days. Whether unredeemed paid tokens constitute
+breakage revenue, and how that is recognized, has no decision.
+`ACCOUNTING REVIEW REQUIRED`.
+
+## Cost control
+
+**DECIDED as guardrails (PO-001):** Noetia+ AI/infra COGS target ≤ ~$1.50/user/month;
+COGS bands Excellent ≤15% / Healthy 15–25% / Caution 25–35% / Intervention >35%.
+Configurable, not hard-coded into product behavior.
+
+Infrastructure cost is a single Contabo VPS (8 vCPU / 24 GB / 400 GB) hosting production
+and staging — a deliberate low-fixed-cost posture.
+
+## Implementation reality
+
+**Nothing in this document is computed by software.** → [IG-02](governance/contradictions-and-gaps.md#implementation-gaps)
+
+Redemption events *are* captured (`token_ledger`, `user_books`), so reconstruction is
+likely possible — but has never been performed or verified. Every qualifying redemption
+since launch has created an obligation that no system has recorded as such.
+
+## Review markers
+
+`ACCOUNTING REVIEW REQUIRED` — accounting classification · revenue recognition · tax
+treatment · refund treatment · liability treatment · Causas Noetia treatment · payout
+reporting · breakage.

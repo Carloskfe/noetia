@@ -12,9 +12,18 @@ Answering a P0 typically resolves a CRITICAL or HIGH entry in the
 
 ---
 
-## P0 — Blocks framework coherence
+## P0 — All resolved
 
-### Q-01 · Which annual prices are correct?
+Questions are preserved, not deleted — they are decision history. Each now names the
+decision that settled it.
+
+### Q-01 · Which annual prices are correct? — **RESOLVED by [PO-006](../decisions/product-owner/PO-006-canonical-subscription-pricing.md)**
+Canonical: $8.99 / $13.99 / $18.99 monthly · **$83.99 / $129.99 / $179.99 annual**. The
+business plan's $89.99 / $139.99 / $189.99 are `SUPERSEDED BY PO-006`. Stripe
+configuration remains unverified → IG-01.
+
+<details><summary>Original question</summary>
+
 → C-01
 
 The PRD says $83.99 / $129.99 / $179.99. The business plan says $89.99 / $139.99 /
@@ -24,7 +33,15 @@ $189.99. Monthly prices agree; only annual disagrees.
 one, and picking one is a business decision, not an editorial one. Whichever is wrong is
 either live in Stripe today or about to be entered.
 
-### Q-02 · How are author and narrator obligations tracked until a payout engine exists?
+</details>
+
+### Q-02 · How are creator obligations tracked until a payout engine exists? — **RESOLVED by [PO-008](../decisions/product-owner/PO-008-creator-obligation-accrual.md)**
+The obligation is created **at redemption**; absence of a settlement engine does not defer
+it. Lifecycle EARNED → PENDING → PAYABLE → PAID with ADJUSTED/REVERSED.
+`ACCOUNTING REVIEW REQUIRED`. The engineering gap stays open → IG-02.
+
+<details><summary>Original question</summary>
+
 → C-03
 
 The 45/36/9/2.22/7.78 split is documented, but no payout or settlement code exists.
@@ -35,7 +52,15 @@ it accrues. The framework must state either "obligations are tracked by X" or "o
 are not yet tracked" — and the second sentence has consequences that deserve your explicit
 acknowledgement rather than my inference. Likely needs accountant input.
 
-### Q-03 · Does "45%" mean Noetia's share or the author-narrator share?
+</details>
+
+### Q-03 · Does "45%" mean Noetia's share or the creator share? — **RESOLVED by [PO-007](../decisions/product-owner/PO-007-canonical-revenue-allocation.md)**
+Both, and never interchangeably. Noetia 45%; creator 45% **only** when author/publisher
+(36%) and narrator (9%) are combined, as in a self-narrated title. "45%" must never appear
+without naming whose share it is.
+
+<details><summary>Original question</summary>
+
 → C-04
 
 Used both ways in the same document, including in author-facing marketing copy.
@@ -44,7 +69,16 @@ Used both ways in the same document, including in author-facing marketing copy.
 split. If the vocabulary is ambiguous, both inherit the ambiguity, and authors read one
 of them.
 
-### Q-04 · Should Engineering Missions be filed into the repository retroactively?
+</details>
+
+### Q-04 · Should Engineering Missions be filed retroactively? — **RESOLVED by [PO-009](../decisions/product-owner/PO-009-engineering-mission-traceability.md)**
+Yes, where reconstructable with reasonable confidence, marked
+`HISTORICAL / PRE-GOVERNANCE BACKFILL` and
+`RECONSTRUCTED SUMMARY` where the original prompt is not repository-resident. Future
+missions are committed at approval time.
+
+<details><summary>Original question</summary>
+
 → C-05
 
 Every mission to date exists only as an instruction plus its commits.
@@ -52,6 +86,8 @@ Every mission to date exists only as an instruction plus its commits.
 **Why it matters:** the Decision Registry's mission tier currently cites commits instead
 of approved missions. Either the missions get filed, or the framework must state that
 mission authorization is not auditable after the fact.
+
+</details>
 
 ---
 
@@ -107,12 +143,13 @@ stated. NOF-001 §10 explicitly forbids assuming exclusion.
 
 ## Summary
 
-| Priority | Count |
-|---|---|
-| P0 | 4 |
-| P1 | 5 |
-| P2 | 4 |
+| Priority | Open | Resolved |
+|---|---|---|
+| P0 | **0** | 4 (PO-006 … PO-009) |
+| P1 | 5 | 0 |
+| P2 | 4 | 0 |
 
-Four P0s, all traceable to a CRITICAL or HIGH contradiction. Answering Q-01 through Q-04
-would let the Economic Framework, Creator Framework, and Decision Registry move from
-`CONFLICTING` to `DECIDED`.
+No P0 question remains open. Resolving them moved the Economic, Creator, and Business
+Model frameworks from `CONFLICTING` to `DECIDED` — though two **implementation gaps**
+(IG-01 Stripe verification, IG-02 settlement engine) remain open and are tracked
+separately, because a settled policy is not a shipped system.

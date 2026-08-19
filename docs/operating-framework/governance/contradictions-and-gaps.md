@@ -9,7 +9,7 @@ coherence or a near-term mission) · **MEDIUM** (should be settled before GA) ·
 
 ---
 
-## C-01 — Annual subscription prices disagree · CRITICAL · Product Owner + Finance
+## C-01 — Annual subscription prices disagree · **RESOLVED — PO-006**
 
 | Source | Individual | Duo | Family |
 |---|---|---|---|
@@ -25,8 +25,12 @@ wrong is either already live and mispriced, or will be entered wrong at setup. T
 cannot be resolved by reading code — the Spanish business plan carries the same figures
 as the English one, so both agree with each other and disagree with the PRD.
 
-**Needs:** a Product Owner ruling on the authoritative annual price, then a single
-source of truth referenced by both documents.
+**Resolved by [PO-006](../decisions/product-owner/PO-006-canonical-subscription-pricing.md):**
+canonical annual pricing is **$83.99 / $129.99 / $179.99**. The business-plan figures are
+`SUPERSEDED BY PO-006` and retained as historical evidence.
+
+**Still open as an implementation gap → IG-01:** Stripe has not been verified against
+this policy. The live price IDs may hold the superseded values.
 
 ---
 
@@ -45,7 +49,7 @@ enforces.
 
 ---
 
-## C-03 — The economic split has no implementation · CRITICAL · Product Owner + Engineering + Accounting
+## C-03 — The economic split has no implementation · **POLICY RESOLVED · IMPLEMENTATION OPEN**
 
 The revenue split is documented — 45% Noetia · 36% author/publisher · 9% narrator ·
 2.22% Causas Noetia · 7.78% marketing ([`01-business-plan.md:183-187`](../../business/en/01-business-plan.md)) —
@@ -57,12 +61,20 @@ computation is `UNKNOWN` at the code level.
 system computing them. The longer this runs, the harder the first reconciliation becomes.
 This is the single largest gap between documented business model and implemented reality.
 
-**Needs:** Product Owner + Engineering to scope a payouts mission; Accounting review of
-how obligations are recognized in the interim. `ACCOUNTING REVIEW REQUIRED`.
+This entry has two halves and only one is closed.
+
+**Policy — RESOLVED.** [PO-007](../decisions/product-owner/PO-007-canonical-revenue-allocation.md)
+fixes the allocation; [PO-008](../decisions/product-owner/PO-008-creator-obligation-accrual.md)
+establishes that the obligation is created **at redemption**, regardless of tooling.
+
+**Implementation — OPEN, HIGH → IG-02.** No settlement or payout engine exists. Deciding
+the policy does not compute a single obligation, and the underlying redemption events
+continue to accumulate. `ACCOUNTING REVIEW REQUIRED` for classification, recognition, tax,
+refunds, liability, Causas treatment, and payout reporting.
 
 ---
 
-## C-04 — "45% royalty" means two different things · HIGH · Product Owner
+## C-04 — "45%" means two different things · **RESOLVED — PO-007**
 
 [`01-business-plan.md:429`](../../business/en/01-business-plan.md) markets "45% royalty —
 highest in the category," while `:183` assigns **45% to Noetia operating revenue**. The
@@ -72,12 +84,14 @@ So "45%" denotes Noetia's share in one place and the author-narrator combined sh
 another. Both can be true, but the collision is a live misreading risk in a document
 shown to authors.
 
-**Needs:** Product Owner to fix the terminology; then a single labelled table in the
-Economic Framework.
+**Resolved by [PO-007](../decisions/product-owner/PO-007-canonical-revenue-allocation.md):**
+Noetia's share is 45%; the creator share is 45% **only** when author/publisher (36%) and
+narrator (9%) are combined, as in a self-narrated title. "45%" may never appear without
+naming whose share it is. Historical marketing text is preserved and marked ambiguous.
 
 ---
 
-## C-05 — Engineering Missions are not filed in the repository · HIGH · Product Owner + Product Architecture
+## C-05 — Engineering Missions are not filed in the repository · **DECISION RESOLVED — PO-009 · IMPLEMENTATION IN PROGRESS**
 
 `docs/engineering-missions/{APPROVED,IN-PROGRESS,COMPLETED}/` contain only `.gitkeep`.
 Every mission issued to date — NEM-002, NEM-003, NEM-005, NEM-006, NEM-006A, NEM-006C,
@@ -90,8 +104,13 @@ approved mission as bounded authorization. If missions are not filed, that autho
 is unauditable after the fact, and the Decision Registry must cite implementation
 (Level 6) where it should cite approved missions (Level 4).
 
-**Needs:** Product Owner ruling on whether missions get filed retroactively, and a
-standing rule that future missions are committed when approved.
+**Resolved by [PO-009](../decisions/product-owner/PO-009-engineering-mission-traceability.md):**
+historical missions are backfilled where reconstructable, marked
+`HISTORICAL / PRE-GOVERNANCE BACKFILL` and `RECONSTRUCTED SUMMARY` where the original
+prompt is not repository-resident. Future missions are committed at approval time.
+
+**Implementation:** backfill performed by NOF-001 — [`docs/engineering-missions/`](../../engineering-missions/).
+Records are reconstructions from commits and produced documentation, never invented wording.
 
 ---
 
@@ -151,13 +170,46 @@ come due.
 
 ---
 
+---
+
+## Implementation gaps
+
+Tracked separately from policy contradictions. **A decided policy is not a shipped
+system**, and collapsing the two would let real gaps disappear behind a resolved question.
+
+### IG-01 — Stripe pricing unverified · HIGH · Operations
+PO-006 fixes canonical pricing; nobody has checked the live Stripe price IDs against it.
+Requires production Stripe access — outside NOF-001's authorization.
+
+### IG-02 — No creator settlement/payout engine · CRITICAL · Engineering + Accounting
+PO-007 and PO-008 decide allocation and accrual. No code computes, records, or reports a
+creator obligation. Redemption events are captured in `token_ledger` / `user_books`, so
+reconstruction is likely possible — but it has never been performed or verified. This is
+the largest gap between decided policy and running system.
+
+### IG-03 — Staging cannot validate Escucha Activa · HIGH · Engineering *(in progress)*
+Formerly C-08. NEM-006C tooling is committed; the full-catalog run is executing.
+
+---
+
 ## Summary
 
-| Severity | Count |
-|---|---|
-| CRITICAL | 2 (C-01, C-03) |
-| HIGH | 4 (C-02, C-04, C-05, C-08) |
-| MEDIUM | 3 (C-06, C-07, C-10) |
-| LOW | 1 (C-09) |
+| Severity | Open policy contradictions | Resolved |
+|---|---|---|
+| CRITICAL | 0 | 2 (C-01, C-03-policy) |
+| HIGH | 1 (C-02) | 3 (C-04, C-05-decision, C-08→IG-03) |
+| MEDIUM | 3 (C-06, C-07, C-10) | 0 |
+| LOW | 1 (C-09) | 0 |
 
-Review markers raised: `ACCOUNTING REVIEW REQUIRED` (C-03).
+| Implementation gaps | Severity |
+|---|---|
+| IG-02 settlement engine | CRITICAL |
+| IG-01 Stripe verification | HIGH |
+| IG-03 staging Escucha Activa | HIGH *(in progress)* |
+
+Review markers raised: `ACCOUNTING REVIEW REQUIRED` (C-03 / PO-008 / IG-02).
+
+**C-02 (Family seats: 5 or 6) remains deliberately unresolved.** Per the continuation
+authorization, the framework must not adopt whichever value the code happens to enforce —
+that would convert an implementation accident into policy. `CONFLICTING — Product Owner
+decision required`.
