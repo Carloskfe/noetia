@@ -225,8 +225,12 @@ services:
     restart: unless-stopped
     deploy:
       resources:
-        limits: { cpus: "0.25", memory: 192M }
-        reservations: { memory: 96M }
+        # 192M OOM-killed this container during the NEM-006C bulk audio mirror:
+        # MinIO buffers multipart upload parts in memory, and staging absorbs a
+        # whole catalog of audio in one burst — a load production never sees.
+        # Production's own MinIO has 256M and idles at ~134 MiB.
+        limits: { cpus: "0.5", memory: 512M }
+        reservations: { memory: 128M }
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
