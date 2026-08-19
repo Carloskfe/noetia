@@ -109,11 +109,27 @@ if [[ $SKIP_MIRROR == 0 && $DRY_RUN == 0 ]]; then
   PROD_NET=$(docker inspect "$PROD_STORAGE_CONTAINER" \
     --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' 2>/dev/null | awk '{print $1}')
   [[ -n "$PROD_NET" ]] || die "could not find production storage container: $PROD_STORAGE_CONTAINER"
-  STAG_NET="${PROJECT}_noetia_staging_net"
 
   STAG_STORAGE_CONTAINER="${PROJECT}-storage-1"
   docker inspect "$STAG_STORAGE_CONTAINER" >/dev/null 2>&1 \
     || die "staging storage container not found: $STAG_STORAGE_CONTAINER"
+
+  # Address both servers by IP on the relevant network. Container names are
+  # unambiguous but not always valid hostnames — the staging project name contains
+  # an underscore and mc rejects it outright ("invalid hostname") — while the
+  # `storage` service alias resolves on BOTH networks, which is exactly the
+  # ambiguity we must not risk when one side is production.
+  net_ip() { docker inspect -f "{{(index .NetworkSettings.Networks \"$2\").IPAddress}}" "$1" 2>/dev/null; }
+  # Staging storage sits on the staging network and on proxy; pick the non-proxy one.
+  STAG_NET=$(docker inspect "$STAG_STORAGE_CONTAINER" \
+    --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{"\n"}}{{end}}' \
+    | grep -v '^proxy$' | grep -v '^$' | head -1)
+  [[ -n "$STAG_NET" ]] || die "could not determine the staging storage network"
+  PROD_IP=$(net_ip "$PROD_STORAGE_CONTAINER" "$PROD_NET")
+  STAG_IP=$(net_ip "$STAG_STORAGE_CONTAINER" "$STAG_NET")
+  [[ -n "$PROD_IP" && -n "$STAG_IP" ]] || die "could not resolve MinIO container IPs"
+  echo "  production storage : $PROD_IP (read-only · network $PROD_NET)"
+  echo "  staging storage    : $STAG_IP (write target · network $STAG_NET)"
 
   log "Phase 1 — mirroring $AUDIO_BUCKET/ production → staging (read-only on production)"
   echo "  ~13 GB over the host's local network. Production is never written to."
@@ -130,8 +146,8 @@ if [[ $SKIP_MIRROR == 0 && $DRY_RUN == 0 ]]; then
     --network "$PROD_NET" \
     -e PROD_AK="$PROD_AK" -e PROD_SK="$PROD_SK" \
     -e STAG_AK="$STAG_AK" -e STAG_SK="$STAG_SK" \
-    -e PROD_HOST="http://${PROD_STORAGE_CONTAINER}:9000" \
-    -e STAG_HOST="http://${STAG_STORAGE_CONTAINER}:9000" \
+    -e PROD_HOST="http://${PROD_IP}:9000" \
+    -e STAG_HOST="http://${STAG_IP}:9000" \
     --entrypoint sh minio/mc -c '
       set -e
       mc alias set prod "$PROD_HOST" "$PROD_AK" "$PROD_SK" >/dev/null
