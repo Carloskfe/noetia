@@ -157,10 +157,12 @@ if [[ $SKIP_MIRROR == 0 && $DRY_RUN == 0 ]]; then
   # ambiguous, which is exactly the kind of ambiguity that writes to the wrong
   # place. `mc mirror` is resumable and skips objects already present with a
   # matching etag, so a re-run after an interruption costs only the remainder.
-  # Both directions are throttled. --limit-download protects production's MinIO,
-  # the production container closest to its memory limit. --limit-upload protects
-  # STAGING's MinIO, which an unthrottled ~250 MiB/s burst OOM-killed twice: it
-  # buffers multipart parts in memory, and a whole catalog arrives at once.
+  # NOT rate-limited, deliberately. --limit-download/--limit-upload starve mc's
+  # multipart reader: it declares a 16 MiB part and then supplies less, and the
+  # copy dies with "ContentLength=16777216 with Body length 5478072". The real
+  # hazard was never bandwidth — it was staging MinIO's 192 MB ceiling, now 512 MB.
+  # Production is protected by the 30s health poll below, which stops the mirror
+  # outright rather than merely slowing it.
   MIRROR_CID=$(docker create \
     --network "$PROD_NET" \
     -e PROD_AK="$PROD_AK" -e PROD_SK="$PROD_SK" \
@@ -172,7 +174,7 @@ if [[ $SKIP_MIRROR == 0 && $DRY_RUN == 0 ]]; then
       mc alias set prod "$PROD_HOST" "$PROD_AK" "$PROD_SK" >/dev/null
       mc alias set stag "$STAG_HOST" "$STAG_AK" "$STAG_SK" >/dev/null
       mc mb --ignore-existing stag/audio
-      mc mirror --limit-download 100MiB --limit-upload 100MiB prod/audio stag/audio
+      mc mirror prod/audio stag/audio
     ')
   [[ -n "$MIRROR_CID" ]] || die "could not create the mirror container"
   docker network connect "$STAG_NET" "$MIRROR_CID" || die "could not attach staging network"
