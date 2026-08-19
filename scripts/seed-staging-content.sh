@@ -181,7 +181,33 @@ if [[ $SKIP_MIRROR == 0 && $DRY_RUN == 0 ]]; then
       mc alias set prod "$PROD_HOST" "$PROD_AK" "$PROD_SK" >/dev/null
       mc alias set stag "$STAG_HOST" "$STAG_AK" "$STAG_SK" >/dev/null
       mc mb --ignore-existing stag/audio
-      mc mirror --disable-multipart prod/audio stag/audio
+      # Sequential, one object at a time — NOT `mc mirror`.
+      #
+      # mirror copies 4 objects concurrently and repeatedly died mid-stream on
+      # large objects ("ContentLength=16777216 with Body length 4488072",
+      # ~21 MB in, on two different books). The objects are NOT corrupt: a
+      # single `mc cat` of pride-and-prejudice-audio.mp3 returned all
+      # 377,786,808 bytes cleanly. Production MinIO runs on a 256 MB limit, and
+      # four concurrent large reads appear to push it into dropping streams.
+      #
+      # A sequential copy is the one access pattern we have directly observed
+      # working. It is slower and that is an acceptable trade for a staging
+      # refresh. Objects already present are skipped, so this resumes.
+      # mc ls --recursive prints "[date time UTC] SIZE STORAGECLASS path"; the
+      # object key is the last field (audio keys are slugs, never spaced).
+      mc ls --recursive prod/audio | awk "{print \$NF}" > /tmp/objects
+      total=$(wc -l < /tmp/objects); n=0; copied=0; skipped=0
+      while IFS= read -r obj; do
+        [ -z "$obj" ] && continue
+        n=$((n+1))
+        if mc stat "stag/audio/$obj" >/dev/null 2>&1; then
+          skipped=$((skipped+1)); continue
+        fi
+        echo "[$n/$total] $obj"
+        mc cp "prod/audio/$obj" "stag/audio/$obj" || exit 1
+        copied=$((copied+1))
+      done < /tmp/objects
+      echo "sequential copy complete: $copied copied, $skipped already present, $total total"
     ')
   [[ -n "$MIRROR_CID" ]] || die "could not create the mirror container"
   docker network connect "$STAG_NET" "$MIRROR_CID" || die "could not attach staging network"
