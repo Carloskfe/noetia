@@ -131,6 +131,23 @@ if [[ $SKIP_MIRROR == 0 && $DRY_RUN == 0 ]]; then
   echo "  production storage : $PROD_IP (read-only · network $PROD_NET)"
   echo "  staging storage    : $STAG_IP (write target · network $STAG_NET)"
 
+  # Both endpoints must actually be accepting connections. A recreated MinIO reports
+  # "Started" within seconds but needs ~10-30s before it serves requests, and the
+  # mirror otherwise dies at alias setup with "connection refused".
+  wait_healthy() {
+    local c="$1" tries=40 st
+    while (( tries-- > 0 )); do
+      st=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$c" 2>/dev/null)
+      [[ "$st" == "healthy" ]] && return 0
+      [[ "$st" == "running" ]] && return 0   # container without a healthcheck
+      sleep 3
+    done
+    return 1
+  }
+  echo "  waiting for both MinIO endpoints to accept connections…"
+  wait_healthy "$PROD_STORAGE_CONTAINER" || die "production storage never became healthy — investigate before mirroring"
+  wait_healthy "$STAG_STORAGE_CONTAINER" || die "staging storage never became healthy (check: docker logs $STAG_STORAGE_CONTAINER)"
+
   log "Phase 1 — mirroring $AUDIO_BUCKET/ production → staging (read-only on production)"
   echo "  ~13 GB over the host's local network. Production is never written to."
 
