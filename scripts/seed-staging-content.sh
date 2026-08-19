@@ -157,12 +157,19 @@ if [[ $SKIP_MIRROR == 0 && $DRY_RUN == 0 ]]; then
   # ambiguous, which is exactly the kind of ambiguity that writes to the wrong
   # place. `mc mirror` is resumable and skips objects already present with a
   # matching etag, so a re-run after an interruption costs only the remainder.
-  # NOT rate-limited, deliberately. --limit-download/--limit-upload starve mc's
-  # multipart reader: it declares a 16 MiB part and then supplies less, and the
-  # copy dies with "ContentLength=16777216 with Body length 5478072". The real
-  # hazard was never bandwidth — it was staging MinIO's 192 MB ceiling, now 512 MB.
-  # Production is protected by the 30s health poll below, which stops the mirror
-  # outright rather than merely slowing it.
+  # --disable-multipart, and NOT rate-limited.
+  #
+  # Some production objects report a size larger than the bytes they actually
+  # serve (probable residue of the migrate-audio-to-minio multipart migration).
+  # mc then plans two 16 MiB parts, the source stream ends early, and the copy
+  # dies with "ContentLength=16777216 with Body length 4488072" on partNumber=2.
+  # A single PUT copies whatever bytes exist and is unaffected; these objects are
+  # tens of MB, well within staging MinIO's 512 MB.
+  #
+  # Rate limits were tried first and did NOT cause this — the error recurs
+  # without them — so they are gone: they only slowed the copy. Production stays
+  # protected by the 30s health poll, which stops the mirror outright rather than
+  # merely throttling it.
   MIRROR_CID=$(docker create \
     --network "$PROD_NET" \
     -e PROD_AK="$PROD_AK" -e PROD_SK="$PROD_SK" \
@@ -174,7 +181,7 @@ if [[ $SKIP_MIRROR == 0 && $DRY_RUN == 0 ]]; then
       mc alias set prod "$PROD_HOST" "$PROD_AK" "$PROD_SK" >/dev/null
       mc alias set stag "$STAG_HOST" "$STAG_AK" "$STAG_SK" >/dev/null
       mc mb --ignore-existing stag/audio
-      mc mirror prod/audio stag/audio
+      mc mirror --disable-multipart prod/audio stag/audio
     ')
   [[ -n "$MIRROR_CID" ]] || die "could not create the mirror container"
   docker network connect "$STAG_NET" "$MIRROR_CID" || die "could not attach staging network"
