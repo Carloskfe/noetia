@@ -99,9 +99,20 @@ Feasibility against live data is **unverified**; that belongs to the settlement 
 
 ## Breakage
 
-`OPEN` — paid tokens expire at 90 days. Whether unredeemed paid tokens constitute
-breakage revenue, and how that is recognized, has no decision.
+`OPEN` — paid tokens expire at 90 days. Whether unredeemed paid tokens constitute breakage
+revenue, and how that is recognized, has no decision. [NOF-002](analysis/creator-economics-stress-test.md)
+§6 models it at **25% of gross cash** under a 75% redemption rate, and found that no policy
+states whether Marketing and Causas allocations arise at payment or at redemption (C-11).
 `ACCOUNTING REVIEW REQUIRED`.
+
+## Stress-test result
+
+[NOF-002](analysis/creator-economics-stress-test.md) established the model's key structural
+property: because a token's basis *is* the cash attributable to it, **creator obligation is
+capped at 45% × redemption rate of gross cash** — Model A cannot promise more than it
+collected. Cash also always precedes the obligation, so there is no structural liquidity
+risk. The identified risk is channel cost, not allocation: standard app-store commission
+would leave Noetia ~15% of gross before operating costs.
 
 ## Cost control
 

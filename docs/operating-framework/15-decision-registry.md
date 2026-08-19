@@ -91,6 +91,12 @@ none has a PO decision file.
 
 ---
 
+## Analysis informing these decisions
+
+| Analysis | Subject | Outcome |
+|---|---|---|
+| [NOF-002 creator economics stress test](analysis/creator-economics-stress-test.md) | Model A (actual consideration) under 11 scenarios | Allocation structurally sound (creator ≤45% of cash); GATE D = **NO** — NEM-007 blocked on IG-04, C-11, breakage residual, Q-14 |
+
 ## How to use this registry
 
 **Answering "why does Noetia work this way?"** — find the behavior, read its authority

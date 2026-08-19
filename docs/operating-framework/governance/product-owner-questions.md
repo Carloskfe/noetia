@@ -112,6 +112,14 @@ owed.
 **Why it matters:** it is the last open policy fragment in the creator-obligation chain,
 and it needs `ACCOUNTING REVIEW` rather than a product ruling alone. No rule was invented.
 
+### Q-15 · Is Causas Noetia 2.22% of every payment, or of each qualifying redemption? — **NEW (NOF-002)** → C-11
+The business plan says payment; PO-007 says redemption. Modelled difference: **$30,633 vs
+$22,975 per year** at 10,000 subscribers — 25%, widening as redemption falls.
+
+**Why it matters:** it is a **public commitment**, and the same ruling settles whether
+Marketing and Causas allocations arise on tokens that expire unredeemed — currently
+unstated, and assumed away in the NOF-002 model. `ACCOUNTING REVIEW REQUIRED`.
+
 ### Q-08 · When does the free-library sunset actually trigger?
 → C-10. "6–12 months" with no start date, and "50+ author titles" with no owner watching
 the count.
@@ -155,7 +163,7 @@ stated. NOF-001 §10 explicitly forbids assuming exclusion.
 | Priority | Open | Resolved |
 |---|---|---|
 | P0 | **0** | 4 (PO-006 … PO-009) |
-| P1 | 6 | 0 |
+| P1 | 7 | 0 |
 | P2 | 4 | 0 |
 
 No P0 question remains open. Resolving them moved the Economic, Creator, and Business

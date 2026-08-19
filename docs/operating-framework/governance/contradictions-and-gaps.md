@@ -170,6 +170,27 @@ come due.
 
 ---
 
+## C-11 — Causas Noetia allocation basis: payment or redemption? · **HIGH** · Product Owner + Accounting
+
+Found by [NOF-002](../analysis/creator-economics-stress-test.md) §7.
+
+| Source | Basis |
+|---|---|
+| [`01-business-plan.md:14,47,85`](../../business/en/01-business-plan.md) | "2.22% of **every payment**" |
+| [PO-007](../decisions/product-owner/PO-007-canonical-revenue-allocation.md) | 2.22% per **qualifying token redemption** |
+
+These fund Causas differently, and the gap widens as redemption falls. Modelled at 10,000
+subscribers with 75% redemption: **$30,633/yr** on a payment basis versus **$22,975/yr** on
+a redemption basis — a 25% difference.
+
+**Why it matters:** Causas Noetia is a **public commitment**. If the implemented basis is
+per-redemption while the public claim is per-payment, the claim overstates funding. It also
+determines whether Marketing and Causas allocations arise on tokens that expire unredeemed
+— currently unstated, and assumed away in the NOF-002 model.
+
+**Needs:** Product Owner ruling on the basis, and whether Marketing/Causas arise at payment
+or at redemption. `ACCOUNTING REVIEW REQUIRED`. → Q-15
+
 ---
 
 ## Implementation gaps
@@ -180,6 +201,12 @@ system**, and collapsing the two would let real gaps disappear behind a resolved
 ### IG-01 — Stripe pricing unverified · HIGH · Operations
 PO-006 fixes canonical pricing; nobody has checked the live Stripe price IDs against it.
 Requires production Stripe access — outside NOF-001's authorization.
+
+### IG-04 — No creator attribution in the schema · CRITICAL · Product + Engineering
+Found by [NOF-002](../analysis/creator-economics-stress-test.md) §12. No rights holder,
+narrator, or self-narrated flag exists per book. A settlement engine can compute **how much**
+is owed but not **who** is owed it. This is the hard blocker on NEM-007, ahead of every
+policy question.
 
 ### IG-02 — No creator settlement/payout engine · CRITICAL · Engineering + Accounting
 PO-007 (allocation), PO-008 (accrual), and **PO-010 (gross value basis)** together make the
@@ -204,6 +231,8 @@ Formerly C-08. NEM-006C tooling is committed; the full-catalog run is executing.
 | HIGH | 1 (C-02) | 3 (C-04, C-05-decision, C-08→IG-03) |
 | MEDIUM | 3 (C-06, C-07, C-10) | 0 |
 | LOW | 1 (C-09) | 0 |
+
+| C-11 Causas basis | HIGH — **new (NOF-002)** |
 
 | Implementation gaps | Severity |
 |---|---|

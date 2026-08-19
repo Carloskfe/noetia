@@ -44,6 +44,27 @@ amount is the token's gross value per
 consideration attributable to that token, which differs between monthly and annual plans.
 No settlement engine exists → [IG-02](governance/contradictions-and-gaps.md#implementation-gaps).
 
+## What a creator actually earns
+
+[NOF-002](analysis/creator-economics-stress-test.md) modelled it. For a **self-narrated**
+title the combined 45% yields, per redemption:
+
+| Token source | Creator receives |
+|---|---|
+| Add-on, 1 token | **$4.4955** |
+| Individual monthly | $4.0455 |
+| Individual annual | $3.1496 |
+| Family monthly | $2.8485 |
+| **Family annual** | **$2.2499** |
+
+**A 99.8% spread for the same title**, determined by how the reader subscribes — invisible
+to the creator and outside their control. Intentional under Model A, but it must be
+communicated deliberately: "45% royalty" without the PO-007 qualification invites a creator
+to expect the top of that range.
+
+Where the narrator is a separate party, these split 36/9 — e.g. a Family-annual redemption
+pays $1.7999 to the author/publisher and $0.4500 to the narrator.
+
 ## Compensation models
 
 `PARTIALLY DECIDED` — royalty is decided (PO-007). The business plan references **advance**

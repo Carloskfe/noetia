@@ -17,7 +17,8 @@ none were found. Sequencing reflects dependencies and current engineering realit
 
 | Item | Why now | Blocked by |
 |---|---|---|
-| **Creator settlement / payout engine** | IG-02 — the largest policy-to-system gap; obligations accrue with nothing recording them | **Policy now complete** (PO-007/008/010). Remaining: `ACCOUNTING REVIEW` + discount allocation (Q-14) |
+| **Creator attribution in the schema** | IG-04 — no rights holder, narrator, or self-narrated flag per book. **The hard blocker on NEM-007** (NOF-002 §12) | Product + schema decision |
+| **Creator settlement / payout engine** (NEM-007) | IG-02 | **GATE D = NO** (NOF-002): blocked on IG-04, C-11 Causas basis, breakage residual, Q-14 |
 | **Stripe pricing verification** | IG-01 — live prices unverified against PO-006 | Production Stripe access |
 | **NEM-006B** — production PG16 restore-compatibility proof | Prerequisite for any pgvector production work | Staging content (NEM-006C) |
 | **Backup & restore procedure** | No documented, tested procedure exists | — |
