@@ -13,7 +13,15 @@ controlled · the restore procedure is documented · **restoration has actually 
 Noetia currently satisfies **one to three** of these for PostgreSQL, and **none** for
 everything else.
 
-## Current posture: **Level 0 — partially protected, entirely unverified**
+## Posture: **Level 0 → Level 1 in progress** (NEM-009)
+
+**Repository-side complete.** Backup, off-site, MinIO, monitoring and restore tooling exist;
+`.gitignore` and `init.sh` defects are fixed; an isolated restore has been **executed and
+validated**. **Activation requires operator action** — see [EXTERNAL-ACTIONS.md](EXTERNAL-ACTIONS.md).
+
+Until §3–§6 of that document are done, **backups still live only on the production host.**
+
+### Original NOF-003 assessment
 
 A PostgreSQL backup script exists (`infra/server/backup-db.sh`) and is more than nothing.
 It is also same-server only, PostgreSQL only, unencrypted, unmonitored, undocumented, and
@@ -38,7 +46,11 @@ and every production secret, and leave a PostgreSQL dump on the same lost disk.*
 | [retention-policy.md](retention-policy.md) | Recommended schedules and privacy interaction |
 | [restore-test-plan.md](restore-test-plan.md) | What a restore must prove |
 | [cost-and-maturity-plan.md](cost-and-maturity-plan.md) | Staged levels with costs |
-| [implementation-gaps.md](implementation-gaps.md) | IG-DR-01…IG-DR-12 |
+| [implementation-gaps.md](implementation-gaps.md) | IG-DR-01…IG-DR-12 with NEM-009 status |
+| [EXTERNAL-ACTIONS.md](EXTERNAL-ACTIONS.md) | **What the operator must do to activate protection** |
+| [DR-RUNBOOK.md](DR-RUNBOOK.md) | Operational disaster recovery runbook |
+| [secret-recovery.md](secret-recovery.md) | Credential recovery (names only) |
+| [stripe-reconciliation.md](stripe-reconciliation.md) | Post-restore payment reconciliation |
 
 ## The five findings that matter most
 

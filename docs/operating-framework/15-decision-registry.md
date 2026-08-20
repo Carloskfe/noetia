@@ -30,6 +30,12 @@ decision record*. Promoting them is a Product Owner act, not an editorial one.
 | PO-011 | PO | Causas recognition basis (payment-level) | DECIDED | Economics | [PO-011](decisions/product-owner/PO-011-causas-recognition-basis.md) | NOT IMPLEMENTED → IG-02 · `ACCOUNTING REVIEW REQUIRED` |
 | PO-012 | PO | Marketing & breakage treatment | DECIDED | Economics | [PO-012](decisions/product-owner/PO-012-marketing-and-breakage-treatment.md) | NOT IMPLEMENTED → IG-02 · `ACCOUNTING REVIEW REQUIRED` |
 | PO-013 | PO | Discount attribution | DECIDED | Economics | [PO-013](decisions/product-owner/PO-013-discount-attribution.md) | NOT IMPLEMENTED → IG-02 |
+| PO-014 | PO | Recovery point objectives | DECIDED (targets) | Operations | [PO-014](decisions/product-owner/PO-014-recovery-point-objectives.md) | Tooling delivered; **not yet met** — no off-site copy |
+| PO-015 | PO | Recovery time objectives | DECIDED (targets) | Operations | [PO-015](decisions/product-owner/PO-015-recovery-time-objectives.md) | Restore proven in isolation; **unmeasured against production** |
+| PO-016 | PO | Reconstructable content | DECIDED | Operations | [PO-016](decisions/product-owner/PO-016-reconstructable-content.md) | Manifest tooling delivered |
+| PO-017 | PO | Financial/creator retention | DECIDED (boundary) | Economics | [PO-017](decisions/product-owner/PO-017-financial-retention.md) | `ACCOUNTING/LEGAL REVIEW REQUIRED` |
+| PO-018 | PO | Disaster declaration authority | DECIDED | Governance | [PO-018](decisions/product-owner/PO-018-disaster-declaration-authority.md) | Encoded in DR runbook (🔐 steps) |
+| PO-019 | PO | SSH exposure standard (port 222) | DECIDED | Security | [PO-019](decisions/product-owner/PO-019-ssh-exposure-standard.md) | ✅ `init.sh` corrected and verified |
 | ADR-001 | ADR | AI provider abstraction & model routing | ACCEPTED | Architecture | [ADR-001](../architecture/adr/ADR-001-ai-provider-abstraction-and-model-routing.md) | PLANNED |
 | ADR-002 | ADR | Permission-aware content intelligence | ACCEPTED | Rights | [ADR-002](../architecture/adr/ADR-002-permission-aware-content-intelligence.md) | PLANNED |
 | ADR-003 | ADR | Source-aware hybrid intelligence | ACCEPTED | AI | [ADR-003](../architecture/adr/ADR-003-source-aware-hybrid-intelligence.md) | PLANNED |
@@ -75,6 +81,7 @@ wording was invented.
 | NOF-002 | Creator economics stress test | COMPLETE | [analysis](analysis/creator-economics-stress-test.md) · `ae385cf` |
 | NEM-007 | Creator rights & economic attribution | **Phase A COMPLETE · Phase B NOT AUTHORIZED** | PO-011/012/013 recorded; schema work gated on NEM-006C |
 | NOF-003 | Backup, restore & disaster recovery framework | COMPLETE (documentation) | [resilience/](resilience/README.md) — recommends NEM-009 |
+| NEM-009 | Backup/restore/DR implementation — Level 1 | **PARTIAL** — repository complete; activation blocked on external actions | PO-014…019; restore executed and validated |
 
 ---
 

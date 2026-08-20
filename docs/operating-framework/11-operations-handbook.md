@@ -31,6 +31,10 @@ Traefik v2.11 at `/opt/traefik` terminates TLS for both via Let's Encrypt HTTP-0
 | Incidents — Traefik 502/404, unhealthy containers, DB, MinIO, SSL | [`incident-response.md`](../incident-response.md) |
 | Monitoring and Grafana access | [`grafana-monitoring.md`](../grafana-monitoring.md) |
 | Secret rotation | [`secrets-rotation.md`](../secrets-rotation.md) |
+| **Disaster recovery** | [`resilience/DR-RUNBOOK.md`](resilience/DR-RUNBOOK.md) |
+| **Activate backups** | [`resilience/EXTERNAL-ACTIONS.md`](resilience/EXTERNAL-ACTIONS.md) |
+| **Test a restore** | `infra/server/restore-db.sh --file <dump> --project noetia_restore_test` |
+| **Check backup health** | `infra/server/check-backups.sh` |
 | Stripe configuration | [`stripe-setup.md`](../stripe-setup.md) |
 | Whisper sync pipeline | [`sync-procedures.md`](../sync-procedures.md) · [`whisper-sync-troubleshooting.md`](../whisper-sync-troubleshooting.md) *(living)* |
 | Content ingestion | [`CLAUDE.md` § Content Ingestion](../../CLAUDE.md) |
@@ -69,18 +73,17 @@ is why it was missed.
 
 | System | Protection |
 |---|---|
-| PostgreSQL | Dump to `/opt/backups/postgres` — **same server**, unencrypted, unmonitored, never restore-tested |
-| MinIO (~13 GB + uploads) | **None** |
-| Secrets (`.env.production`) | **None** — and not gitignored (IG-DR-02) |
-| Redis / Meilisearch | None — reconstructable by design |
+| PostgreSQL | Custom-format dumps to `/opt/backups/postgres`; verified on write; **still same-server until off-site is provisioned** |
+| MinIO | Tooling ready (irreplaceable classes only) — **not yet active** |
+| Secrets | `.gitignore` **fixed**; off-server storage still an operator action |
+| Redis / Meilisearch | None — reconstructable by design (PO-014 Tier 3) |
 
 **A total server loss today would destroy every book, audio file, user upload, and production
 secret, leaving a PostgreSQL dump on the same lost disk.**
 
-Note the documentation conflict (C-DR-01): [`incident-response.md`](../incident-response.md)
-§4 states `/opt/noetia/backups/` with 7-day retention; the script uses `/opt/backups/postgres`
-with 7 daily + 4 weekly. **Neither is confirmed against the running server** — verification
-commands are in [resilience/state-inventory.md](resilience/state-inventory.md).
+C-DR-01 is resolved: the canonical path is **`/opt/backups/postgres`** and
+`incident-response.md` has been corrected. Whether the schedule actually runs on the host is
+still unconfirmed — see [resilience/EXTERNAL-ACTIONS.md](resilience/EXTERNAL-ACTIONS.md) §1.
 
 ## Known deferred maintenance
 

@@ -9,10 +9,15 @@ build/
 .next/
 out/
 
-# Environment
+# Environment — real secret files must NEVER be staged.
+# `/opt/noetia` and `/opt/noetia-staging` are themselves git checkouts that hold
+# .env.production / .env.staging, so an unguarded `git add .` on the server would
+# stage live credentials. The three patterns below previously matched neither
+# file (NEM-009 / IG-DR-02). Committed `*.example` templates stay tracked.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.*.example
 
 # Logs
 *.log

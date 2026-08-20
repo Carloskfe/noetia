@@ -123,7 +123,16 @@ docker logs noetia-db-1 --tail 30
 docker compose --env-file .env.production -f docker-compose.server.yml restart db
 ```
 
-**Backups:** daily cron runs at 2 AM, 7-day rolling retention. Backup files are at `/opt/noetia/backups/` on the host.
+**Backups:** canonical location **`/opt/backups/postgres`** (NEM-009 — an earlier version of this
+line said `/opt/noetia/backups/`, which was never the path the script used). Custom-format
+dumps: hourly Tier-0 kept 48 h, daily kept 30 d, Sunday kept 12 weeks.
+
+**Restore — never against production.** Validate in isolation first:
+```bash
+/opt/noetia/infra/server/restore-db.sh --file /opt/backups/postgres/<newest>.dump --project noetia_restore_test
+```
+Health check: `/opt/noetia/infra/server/check-backups.sh`.
+Full procedure: [`operating-framework/resilience/DR-RUNBOOK.md`](operating-framework/resilience/DR-RUNBOOK.md).
 
 ---
 
