@@ -205,10 +205,30 @@ export class StagingContentService {
       }
       row.hasText = Boolean(book.textFileKey);
 
-      // ── Audio: keys are title slugs, so a prod mirror is portable across
-      //    databases with different book UUIDs (audio-source-resolver.ts:53).
-      const audioKey = minioAudioKey(title);
-      const audioPresent = await opts.audioObjectExists(audioKey);
+      // ── Audio ──────────────────────────────────────────────────────────
+      // Keys are USUALLY the title slug (audio-source-resolver.ts), which is what
+      // makes a mirror portable across databases with different book UUIDs. But
+      // not always: some titles carry a hand-set legacy key — e.g. Fábulas y
+      // Verdades is stored as `books/fabulas-pombo.mp3` (see fix-pombo-audio.ts),
+      // not `books/fabulas-y-verdades-audio.mp3`. Trusting the computed slug alone
+      // reported a title as MISSING_AUDIO whose object had been copied correctly.
+      //
+      // The database is authoritative for where a book's audio actually lives, so
+      // prefer its key and fall back to the convention. `http(s)` values are
+      // external sources with no object to find.
+      const storedKey = book.audioStreamKey && !/^https?:/i.test(book.audioStreamKey)
+        ? book.audioStreamKey
+        : null;
+      const computedKey = minioAudioKey(title);
+      let audioKey: string | null = null;
+      for (const candidate of [storedKey, computedKey]) {
+        if (!candidate) continue;
+        if (await opts.audioObjectExists(candidate)) {
+          audioKey = candidate;
+          break;
+        }
+      }
+      const audioPresent = audioKey !== null;
       row.hasAudio = audioPresent;
       if (audioPresent) {
         row.provenance = 'production-public-domain-mirror';

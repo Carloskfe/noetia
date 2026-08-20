@@ -276,6 +276,45 @@ describe('StagingContentService.stageBook', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it('finds audio under a legacy non-slug key recorded in the database', async () => {
+    // Fábulas y Verdades is stored as books/fabulas-pombo.mp3, not the slug.
+    const legacy = 'books/fabulas-pombo.mp3';
+    const seen: string[] = [];
+    const { service } = await buildService({
+      book: makeBook({ audioStreamKey: legacy }),
+      syncMap: { syncCoverage: 0.95, phrases: [] as any },
+    });
+    const row = await service.stageBook(TITLE, {
+      transcriptionsDir: makeCorpus(['niebla.merged.vtt']),
+      audioObjectExists: jest.fn(async (k: string) => {
+        seen.push(k);
+        return k === legacy; // the slug-derived key does NOT exist
+      }),
+      dryRun: false,
+    });
+    expect(row.hasAudio).toBe(true);
+    expect(row.status).toBe('COMPLETE');
+    expect(seen[0]).toBe(legacy); // stored key is tried first
+  });
+
+  it('ignores an external http audio URL and falls back to the slug key', async () => {
+    const { service } = await buildService({
+      book: makeBook({ audioStreamKey: 'https://archive.org/whatever.mp3' }),
+      syncMap: { syncCoverage: 0.95, phrases: [] as any },
+    });
+    const checked: string[] = [];
+    const row = await service.stageBook(TITLE, {
+      transcriptionsDir: makeCorpus(['niebla.merged.vtt']),
+      audioObjectExists: jest.fn(async (k: string) => {
+        checked.push(k);
+        return k === 'books/niebla-audio.mp3';
+      }),
+      dryRun: false,
+    });
+    expect(checked).not.toContain('https://archive.org/whatever.mp3');
+    expect(row.hasAudio).toBe(true);
+  });
+
   it('is idempotent: an already-wired audio key is not re-saved', async () => {
     const save = jest.fn();
     const { service } = await buildService({
