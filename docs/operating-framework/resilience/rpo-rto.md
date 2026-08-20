@@ -3,6 +3,20 @@
 **NOF-003** · Recommendations, not approved policy — the acceptable-loss decision is the
 Product Owner's (Q-DR-01).
 
+## Two RPOs, never one (PO-020 / NEM-009 §18)
+
+Under the zero-cost architecture a single RPO figure would be misleading, because the
+independent copy depends on a machine that is not always online:
+
+| | Question it answers | Current |
+|---|---|---|
+| **Local RPO** | How much is lost while the VPS is alive? | ≤1 h **once hourly dumps are scheduled** |
+| **Independent RPO** | How much is lost if the VPS or Contabo account disappears? | **UNBOUNDED — no independent copy exists yet** |
+
+`backup-pull.sh --status` prints the independent figure; `check-backups.sh` exports it as
+`noetia_backup_offsite_age_hours` with `-1` meaning none exists. Reporting only the local
+number would imply protection Noetia does not have.
+
 ## Recovery Point Objective — acceptable data loss
 
 | Tier | Data | Recommended RPO | Today |

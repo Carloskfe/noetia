@@ -36,6 +36,7 @@ decision record*. Promoting them is a Product Owner act, not an editorial one.
 | PO-017 | PO | Financial/creator retention | DECIDED (boundary) | Economics | [PO-017](decisions/product-owner/PO-017-financial-retention.md) | `ACCOUNTING/LEGAL REVIEW REQUIRED` |
 | PO-018 | PO | Disaster declaration authority | DECIDED | Governance | [PO-018](decisions/product-owner/PO-018-disaster-declaration-authority.md) | Encoded in DR runbook (🔐 steps) |
 | PO-019 | PO | SSH exposure standard (port 222) | DECIDED | Security | [PO-019](decisions/product-owner/PO-019-ssh-exposure-standard.md) | ✅ `init.sh` corrected and verified |
+| PO-020 | PO | Zero-cost resilience constraint ($0/mo) | DECIDED (current stage) | Operations | [PO-020](decisions/product-owner/PO-020-zero-cost-resilience-constraint.md) | Architecture delivered; activation pending operator |
 | ADR-001 | ADR | AI provider abstraction & model routing | ACCEPTED | Architecture | [ADR-001](../architecture/adr/ADR-001-ai-provider-abstraction-and-model-routing.md) | PLANNED |
 | ADR-002 | ADR | Permission-aware content intelligence | ACCEPTED | Rights | [ADR-002](../architecture/adr/ADR-002-permission-aware-content-intelligence.md) | PLANNED |
 | ADR-003 | ADR | Source-aware hybrid intelligence | ACCEPTED | AI | [ADR-003](../architecture/adr/ADR-003-source-aware-hybrid-intelligence.md) | PLANNED |
@@ -81,7 +82,7 @@ wording was invented.
 | NOF-002 | Creator economics stress test | COMPLETE | [analysis](analysis/creator-economics-stress-test.md) · `ae385cf` |
 | NEM-007 | Creator rights & economic attribution | **Phase A COMPLETE · Phase B NOT AUTHORIZED** | PO-011/012/013 recorded; schema work gated on NEM-006C |
 | NOF-003 | Backup, restore & disaster recovery framework | COMPLETE (documentation) | [resilience/](resilience/README.md) — recommends NEM-009 |
-| NEM-009 | Backup/restore/DR implementation — Level 1 | **PARTIAL** — repository complete; activation blocked on external actions | PO-014…019; restore executed and validated |
+| NEM-009 | Backup/restore/DR — Level 1 + zero-cost activation | **PARTIAL** — repository complete; independent copy pending operator | PO-014…020; restore executed; $0 pull model designed |
 
 ---
 

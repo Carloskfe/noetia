@@ -4,8 +4,12 @@
 # Encrypts a local backup and pushes it to an INDEPENDENT destination, so a
 # recovery point survives loss of the production host, disk, or Contabo account.
 #
-#   backup-offsite.sh <file>       # encrypt + upload one file
+#   backup-offsite.sh <file>       # encrypt into the local spool (+ push if configured)
 #   backup-offsite.sh --selftest   # prove encrypt/decrypt round-trips, no upload
+#
+# ZERO-COST DEFAULT (PO-020): encrypt locally, let an external machine PULL the
+# ciphertext over SSH. Production never gets credentials that could delete the
+# external copies — which is exactly what makes them survive a host compromise.
 #
 # INERT UNTIL CONFIGURED. Without /opt/noetia/.env.backup it exits 0 with a
 # notice, so it never breaks the local backup that calls it.
@@ -45,22 +49,36 @@ fi
 set -a; . "$CONF"; set +a
 
 : "${BACKUP_AGE_RECIPIENT:?BACKUP_AGE_RECIPIENT missing}"
-: "${BACKUP_REMOTE:?BACKUP_REMOTE missing (e.g. b2:noetia-backups/postgres)}"
 command -v age >/dev/null || { log "age not installed"; exit 1; }
-command -v rclone >/dev/null || { log "rclone not installed"; exit 1; }
 
-ENC="${SRC}.age"
+# Encrypt in place, into the local encrypted spool. Under PO-020 (zero cost) the
+# default model is PULL: the workstation fetches ciphertext over SSH, and
+# production never holds credentials that could delete the external copies.
+ENC_DIR="${BACKUP_ENC_DIR:-/opt/backups/postgres/encrypted}"
+mkdir -p "$ENC_DIR"
+ENC="$ENC_DIR/$(basename "$SRC").age"
+
 age -r "$BACKUP_AGE_RECIPIENT" -o "$ENC" "$SRC" || { log "encryption failed"; exit 1; }
-log "encrypted $(basename "$ENC") ($(du -h "$ENC" | cut -f1))"
+log "encrypted → $(basename "$ENC") ($(du -h "$ENC" | cut -f1))"
 
-# --immutable where the remote supports it; append-only credentials are the
-# stronger control and are described in EXTERNAL-ACTIONS.md.
-if rclone copy "$ENC" "$BACKUP_REMOTE" --no-traverse 2>&1 | tail -3; then
-  log "uploaded to $BACKUP_REMOTE"
-  rm -f "$ENC"
-  exit 0
+# Retain a bounded spool so the pull side can catch up after being offline.
+ENC_KEEP="${BACKUP_ENC_KEEP:-14}"
+mapfile -t old_enc < <(find "$ENC_DIR" -name '*.age' -type f -printf '%T@ %p\n' 2>/dev/null \
+                         | sort -rn | tail -n +$((ENC_KEEP+1)) | cut -d' ' -f2-)
+for f in "${old_enc[@]:-}"; do [[ -n "$f" ]] && rm -f "$f"; done
+
+# Optional PUSH: only when a remote is configured. Not required under PO-020 and
+# deliberately absent by default — a push model would require production to hold
+# credentials capable of deleting the very copies meant to survive its compromise.
+if [[ -n "${BACKUP_REMOTE:-}" ]]; then
+  command -v rclone >/dev/null || { log "rclone not installed"; exit 1; }
+  if rclone copy "$ENC" "$BACKUP_REMOTE" --no-traverse 2>&1 | tail -3; then
+    log "uploaded to $BACKUP_REMOTE"
+  else
+    log "upload FAILED (encrypted copy retained locally for pull)"
+    exit 1
+  fi
 else
-  log "upload FAILED"
-  rm -f "$ENC"
-  exit 1
+  log "no BACKUP_REMOTE set — encrypted copy awaits PULL (PO-020 zero-cost model)"
 fi
+exit 0

@@ -78,7 +78,7 @@ All 20 deliverables are at v0.1.
 | [Documentation inventory](governance/documentation-inventory.md) | 96 documents classified, with canonical destinations |
 | [Contradictions & gaps](governance/contradictions-and-gaps.md) | Conflicts and implementation gaps, tracked separately |
 | [Product Owner questions](governance/product-owner-questions.md) | Open questions by priority; resolved ones kept as history |
-| [Product Owner decisions](decisions/product-owner/) | PO-005 … PO-019 |
+| [Product Owner decisions](decisions/product-owner/) | PO-005 … PO-020 |
 | [Resilience & disaster recovery](resilience/README.md) | NOF-003 — backup posture, failure model, RPO/RTO |
 
 ---

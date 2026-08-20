@@ -1,128 +1,112 @@
 # Resilience — Required External Actions
 
-**NEM-009** · Repository-side work is complete. The actions below need Product Owner or
-operator access and **cannot** be performed from the repository. Until they are done, backups
-remain **on the production host only** — the scenario worth insuring against (DR-07/08/13) is
-still unmitigated.
+**NEM-009** · Repository work is complete. These need operator or Product Owner access.
+Governed by [PO-020](../decisions/product-owner/PO-020-zero-cost-resilience-constraint.md):
+**nothing here costs money.**
 
 **Never put secret values in Git, in a mission report, or in this file.**
 
+> **Until §A4–A6 are done, every backup still lives on the production host, and loss of the
+> VPS or the Contabo account remains unrecoverable.**
+
 ---
 
-## 1. Verify what is actually running · no cost
+# A · REQUIRED NOW — $0.00
+
+## A1 · Find out what is actually running
 
 ```bash
 ls -la /opt/backups/postgres/ 2>/dev/null || echo "MISSING — backups have never run here"
-ls -la /opt/noetia/backups/   2>/dev/null || echo "MISSING — the path named in incident-response.md"
 crontab -l | grep -i backup   || echo "NO backup cron installed"
 tail -20 /opt/backups/postgres/backup.log 2>/dev/null
 ```
 
-Resolves IG-DR-01 and confirms which side of C-DR-01 reflects reality.
+Settles IG-DR-01. The scripts existing proves nothing about them running.
 
-## 2. Install the schedule · no cost
+## A2 · Measure before scheduling hourly
 
 ```bash
-cd /opt/noetia && git pull origin main   # once NEM-009 is merged
+cd /opt/noetia && git pull origin main     # once NEM-009 merges
+/opt/noetia/infra/server/backup-db.sh --measure-only
+```
+
+Prints duration and size, keeping nothing. **If a dump takes more than a few seconds or visibly
+loads the database, stop and report** — hourly logical dumps would then be the wrong tool and
+Level 2/PITR is the answer, not a heavier schedule.
+
+## A3 · Size the irreplaceable set
+
+```bash
+docker exec noetia-storage-1 du -sh /data/images 2>/dev/null
+docker exec noetia-storage-1 du -sh /data/images/backgrounds/user 2>/dev/null || echo "no user uploads yet"
+docker exec -i noetia-db-1 psql -U noetia -d noetia -tAc "SELECT COUNT(*) FROM books WHERE \"uploadedById\" IS NOT NULL;"
+```
+
+Expected today: **zero author uploads** (all 84 titles were ingested) and few or no user
+backgrounds — so the irreplaceable set is likely tiny. That makes protecting it free now.
+
+## A4 · Generate the encryption key — **on your own machine, never the server**
+
+```bash
+# ON YOUR WORKSTATION
+sudo apt-get install -y age          # or: brew install age
+age-keygen -o ~/noetia-backup-key.txt
+```
+
+- **Public key** (`age1…`) → the server.
+- **Private key file** → your password manager / encrypted storage. **Never on the server, never in Git.**
+
+This is the one credential no provider can reissue. Lose it and every encrypted backup becomes
+permanently unreadable. Record *where it lives* in the DR runbook — never its value.
+
+## A5 · Enable encryption on the server
+
+```bash
+sudo apt-get install -y age
+sudo nano /opt/noetia/.env.backup      # nano — never paste multi-line into the shell
+```
+
+```
+BACKUP_AGE_RECIPIENT=age1...          # PUBLIC key only
+# BACKUP_REMOTE intentionally unset — zero-cost model is PULL, not push
+```
+
+```bash
+sudo chmod 600 /opt/noetia/.env.backup
+git -C /opt/noetia check-ignore -v .env.backup     # must match
+/opt/noetia/infra/server/backup-offsite.sh --selftest
+```
+
+## A6 · Pull an independent copy — **the action that changes the risk profile**
+
+```bash
+# ON YOUR WORKSTATION
+export NOETIA_SSH_HOST=<production-host>
+/opt/noetia/infra/server/backup-pull.sh --status     # expect: UNBOUNDED
+/opt/noetia/infra/server/backup-pull.sh
+```
+
+Roughly **1–2 GB** of workstation storage covers 30 encrypted recovery points at current
+database size. Run it after each work session; a weekly cadence gives an independent RPO of
+about 7 days, which is worlds better than unbounded.
+
+## A7 · Install the schedule
+
+```bash
 crontab -e
 ```
 
 ```cron
 # Noetia backups (NEM-009)
-0  2 * * *   /opt/noetia/infra/server/backup-db.sh        >> /opt/backups/postgres/cron.log 2>&1
-0  * * * *   /opt/noetia/infra/server/backup-db.sh --tier0 >> /opt/backups/postgres/cron.log 2>&1
-30 3 * * *   /opt/noetia/infra/server/backup-minio.sh      >> /opt/backups/minio.log 2>&1
-15 * * * *   /opt/noetia/infra/server/check-backups.sh --nagios >> /opt/backups/health.log 2>&1
+0  2 * * *  /opt/noetia/infra/server/backup-db.sh              >> /opt/backups/postgres/cron.log 2>&1
+0  * * * *  /opt/noetia/infra/server/backup-db.sh --tier0      >> /opt/backups/postgres/cron.log 2>&1   # only after A2
+30 3 * * *  /opt/noetia/infra/server/backup-minio.sh           >> /opt/backups/minio.log 2>&1
+15 * * * *  /opt/noetia/infra/server/check-backups.sh --nagios >> /opt/backups/health.log 2>&1
 ```
 
-**Before enabling the hourly Tier-0 line**, measure impact (NEM-009 §7):
+Confirm it actually fired the next day — an installed cron is not a proven cron.
 
-```bash
-/opt/noetia/infra/server/backup-db.sh --measure-only
-```
-
-If a dump takes more than a few seconds or visibly loads the database, **stop** and report —
-hourly logical dumps would be the wrong tool and Level 2 / PITR should be considered instead.
-
-## 3. Choose an off-site destination · ~$1–5/month · **Product Owner decision**
-
-Requirements — not a product recommendation:
-
-- **outside the Contabo account** (that is the entire point);
-- S3-compatible, so `rclone` works without custom code;
-- supports **versioning or object lock** (ransomware, DR-13);
-- supports **append-only / restricted credentials** so a host compromise cannot delete history;
-- ~20 GB initially.
-
-Candidates meeting these: Backblaze B2, Cloudflare R2, Wasabi, Hetzner Storage Box.
-
-**STOP before provisioning anything paid.** The NEM-009 guardrail is **$10/month incremental**;
-20 GB at commodity rates is roughly $0.10–$2/month, so this should sit far inside it.
-
-## 4. Create the backup credential · least privilege
-
-Create a credential that can **write and list, but not delete**. If the provider supports
-object lock or immutability on a bucket, enable it for weekly recovery points.
-
-A backup credential must never be a production admin credential (NEM-009 §10).
-
-## 5. Generate the encryption key · **the private key must not live on the server**
-
-```bash
-apt-get install -y age rclone
-age-keygen -o noetia-backup-key.txt        # RUN THIS ON YOUR WORKSTATION, NOT THE SERVER
-```
-
-- **Public key** → the server, in `.env.backup` as `BACKUP_AGE_RECIPIENT`.
-- **Private key** → your password manager / vault, **never** on the server and **never** in Git.
-
-The server can then encrypt backups it cannot itself read. A host compromise yields no ability
-to decrypt historical backups.
-
-**A backup whose key is unrecoverable is not a backup.** Record where the private key lives in
-the DR runbook — the location, never the value.
-
-Verify the tooling round-trips before relying on it:
-
-```bash
-/opt/noetia/infra/server/backup-offsite.sh --selftest
-```
-
-## 6. Create `/opt/noetia/.env.backup` · use `nano`, never a multi-line paste
-
-```
-BACKUP_AGE_RECIPIENT=age1...      # PUBLIC key only
-BACKUP_REMOTE=b2:noetia-backups/postgres
-```
-
-Then `chmod 600 /opt/noetia/.env.backup` and configure `rclone config` for the remote.
-
-`.env.backup` matches the `.env.*` ignore rule added by NEM-009 — verify with
-`git check-ignore -v .env.backup`.
-
-## 7. Second Git remote · free · **Product Owner action**
-
-Protects the 1,743-file VTT corpus and all infrastructure definitions if GitHub becomes
-unavailable (DR-14). Create an empty repository with a second provider, then:
-
-```bash
-cd /opt/noetia
-git remote add mirror <url>
-git push --mirror mirror
-```
-
-Add to cron weekly. **Confirm the mirror repository is private.**
-
-## 8. Store secrets off-server · **Product Owner action**
-
-`.env.production` currently exists **only** on the host. Its loss blocks every restore — the
-database dump is inert without `DB_PASS`.
-
-Store a copy in the password manager already used for production credentials, and record its
-location in the DR runbook. Inventory of what must be recoverable (names only) is in
-[state-inventory.md](state-inventory.md).
-
-## 9. First real restore test · after 1–8
+## A8 · First restore from a real backup
 
 ```bash
 /opt/noetia/infra/server/restore-db.sh \
@@ -130,8 +114,63 @@ location in the DR runbook. Inventory of what must be recoverable (names only) i
   --project noetia_restore_test
 ```
 
-Runs in an isolated container, touches no production service, and prints **measured** restore
-time plus ownership and token integrity. Tear down afterwards with the command it prints.
+Isolated container; touches no production service. Prints ownership and token integrity plus
+**measured restore time — Noetia's first real recovery number.** Tear down with the command it
+prints. Stronger still: decrypt a *pulled* copy on your workstation and restore that, which
+proves the independent path end to end.
 
-This produces Noetia's first real recovery measurement. Until it runs against a production
-dump, the RPO/RTO figures in [rpo-rto.md](rpo-rto.md) remain targets.
+---
+
+# B · OPTIONAL — $0.00
+
+## B1 · Backup metrics in existing Grafana
+
+One additive flag on the node-exporter already running (`docker-compose.server.yml`):
+
+```yaml
+      - '--collector.textfile.directory=/rootfs/opt/backups/metrics'
+```
+
+Then `docker compose ... up -d node-exporter`. Surfaces `noetia_backup_age_hours` and
+`noetia_backup_offsite_age_hours` with no new service. **Alert on
+`noetia_backup_offsite_age_hours == -1`** — it means no independent copy exists.
+
+*NEM-009 did not modify production compose; this is deliberately yours to apply.*
+
+## B2 · Second Git remote
+
+Protects the 1,743-file VTT corpus if GitHub becomes unavailable (DR-14). Free tiers exist at
+GitLab/Codeberg.
+
+```bash
+cd /opt/noetia && git remote add mirror <url> && git push --mirror mirror
+```
+
+**Confirm the mirror is private.** Never a blocker for database protection.
+
+## B3 · Contabo snapshot before risky changes
+
+3 slots already included. Useful, but **same provider** — it does not satisfy DR-08 and must
+never be recorded as off-site.
+
+## B4 · Store `.env.production` off-server
+
+Age-encrypt with the A4 public key and keep it with the private key in your password manager.
+Without it, a restore cannot start — the dump is inert without `DB_PASS`.
+
+---
+
+# C · DEFERRED — would require spend
+
+**Not authorized under PO-020.** Listed so the gap is visible rather than forgotten.
+
+| Item | ~Cost | Buys |
+|---|---|---|
+| Paid object storage (B2/R2/Wasabi) | $1–5/mo | Continuous independent RPO without manual pulls |
+| Object lock / immutability | included above | Ransomware protection (DR-13) |
+| Second VPS | $5–15/mo | Warm standby, lower RTO |
+| Managed secret vault | $0–10/mo | Stronger secret custody |
+| PITR / WAL archiving | storage | Tier-0 RPO ≤ 15 min |
+
+The first row is the only one worth revisiting soon: ~$1–5/month removes the dependency on
+someone remembering to run a pull.

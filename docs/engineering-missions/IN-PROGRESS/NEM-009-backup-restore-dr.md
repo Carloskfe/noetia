@@ -13,9 +13,19 @@ custom-format verified backups · off-site encryption tooling (inert until confi
 MinIO backup for irreplaceable classes · backup health monitoring · **isolated restore
 executed and validated** · DR runbook · secret recovery · Stripe reconciliation.
 
+## Zero-cost continuation (PO-020)
+Constraint: **$0.00/month**. Delivered a genuinely independent $0 path — encrypt on the server
+with a public key, **pull** ciphertext to Product-Owner-controlled storage (`backup-pull.sh`),
+private key never on the server. Pull beats push: production holds no credential able to delete
+the external copies. Monitoring reuses the deployed node-exporter. RPO is now reported as two
+numbers, local and independent, because one would overstate protection.
+
+Not achievable at $0 and left **OPEN**: continuous independent RPO, and immutable/object-locked
+backups. Both cost ~$1–5/month and are deferred, not hidden.
+
 ## Not delivered — requires operator/Product Owner
-Off-site destination provisioning · cron installation · secrets stored off-server · Git mirror ·
-restore against a real production dump.
+Cron installation · encryption key generation · **the first pull (no independent copy exists
+yet)** · secrets stored off-server · Git mirror · restore against a real production dump.
 
 **Until the off-site destination exists, backups remain on the production host and DR-07/08/13
 are unmitigated.**
