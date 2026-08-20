@@ -127,6 +127,28 @@ describe('StagingContentService.resolveTranscript', () => {
     expect(path.basename(service.resolveTranscript(TITLE, dir)!)).toBe('niebla.merged.vtt');
   });
 
+  it('does not let English Genesis pick up the Spanish Génesis transcript', async () => {
+    const { service } = await buildService({});
+    // Both titles fold to the slug "genesis"; only the alias separates them.
+    const dir = makeCorpus(['genesis.merged.vtt', 'genesis-kjv.merged.vtt']);
+    expect(path.basename(service.resolveTranscript('Genesis', dir)!)).toBe(
+      'genesis-kjv.merged.vtt',
+    );
+  });
+
+  it('prefers the whole-book -kjv transcript over a per-chapter directory', async () => {
+    const { service } = await buildService({});
+    // Without the alias this returned 01_exodus.vtt — chapters 1-6 only.
+    const dir = makeCorpus([
+      'exodus-kjv.merged.vtt',
+      path.join('Exodus', '01_exodus.vtt'),
+      path.join('Exodus', '02_exodus.vtt'),
+    ]);
+    expect(path.basename(service.resolveTranscript('Exodus', dir)!)).toBe(
+      'exodus-kjv.merged.vtt',
+    );
+  });
+
   it('falls back to a per-chapter directory named as the title', async () => {
     const { service } = await buildService({});
     const dir = makeCorpus([path.join('Acts', 'acts_01.vtt'), path.join('Acts', 'acts_02.vtt')]);

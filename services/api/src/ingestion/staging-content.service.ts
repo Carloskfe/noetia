@@ -66,6 +66,18 @@ export interface StagingContentReport {
  * A wrong guess here is self-correcting: the ≥90% gate rejects a bad alignment.
  */
 export const VTT_ALIASES: Record<string, string> = {
+  // English KJV Bible books. Two separate traps live here:
+  //  1. `Genesis` (EN) and `Génesis` (ES) both slug to `genesis`, so without an
+  //     alias the English book silently picks up the Spanish Reina Valera
+  //     transcript and aligns at 0%.
+  //  2. Exodus/Ephesians/Philippians have no `<slug>.merged.vtt` at all, so the
+  //     resolver fell through to the per-chapter DIRECTORY and used only the
+  //     first file ("Exodus chapters 1-6"), leaving the rest of the book
+  //     untimed. The whole-book transcript is the `-kjv` merged file.
+  Genesis: 'genesis-kjv',
+  Exodus: 'exodus-kjv',
+  Ephesians: 'ephesians-kjv',
+  Philippians: 'philippians-kjv',
   'Don Juan Tenorio': 'don-juan',
   'Don Quijote de la Mancha — Vol. I': 'don-quijote-vol-1',
   'Don Quijote de la Mancha — Vol. II': 'don-quijote-vol-2',
@@ -136,6 +148,10 @@ export class StagingContentService {
       if (fs.existsSync(candidate)) return candidate;
     }
 
+    // LAST RESORT: a per-chapter directory. This returns only the FIRST file,
+    // which times just the opening chapters and drags coverage far below the
+    // gate. Whenever a whole-book `*.merged.vtt` exists under a different name,
+    // add an explicit alias above rather than relying on this path.
     const dir = path.join(transcriptionsDir, title);
     if (fs.existsSync(dir) && fs.statSync(dir).isDirectory()) {
       const vtts = fs
