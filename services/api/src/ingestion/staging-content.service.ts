@@ -85,6 +85,17 @@ export const VTT_ALIASES: Record<string, string> = {
   Leyendas: 'rimas-y-leyendas',
 };
 
+/**
+ * Titles whose audio object does NOT follow the `books/<slug>-audio.mp3` convention.
+ *
+ * These keys were hand-set in PRODUCTION (see fix-pombo-audio.ts). Staging rows are
+ * created fresh by seed-ingestion, which never sets audioStreamKey, so the mapping
+ * cannot be recovered from the staging database — it has to be stated here.
+ */
+export const AUDIO_KEY_ALIASES: Record<string, string> = {
+  'Fábulas y Verdades': 'books/fabulas-pombo.mp3',
+};
+
 /** Catalogue entries deliberately excluded from staging until rights are settled. */
 export const RIGHTS_PENDING_TITLES = new Set(['Magnifica Humanitas']);
 
@@ -221,7 +232,7 @@ export class StagingContentService {
         : null;
       const computedKey = minioAudioKey(title);
       let audioKey: string | null = null;
-      for (const candidate of [storedKey, computedKey]) {
+      for (const candidate of [storedKey, AUDIO_KEY_ALIASES[title], computedKey]) {
         if (!candidate) continue;
         if (await opts.audioObjectExists(candidate)) {
           audioKey = candidate;

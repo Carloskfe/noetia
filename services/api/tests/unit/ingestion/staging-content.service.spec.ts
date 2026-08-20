@@ -315,6 +315,21 @@ describe('StagingContentService.stageBook', () => {
     expect(row.hasAudio).toBe(true);
   });
 
+  it('uses an explicit audio-key alias when staging has no stored key', async () => {
+    // Staging rows come from seed-ingestion, which never sets audioStreamKey, so a
+    // production-only legacy key can only be recovered from the alias table.
+    const { service } = await buildService({
+      book: makeBook({ title: 'Fábulas y Verdades', audioStreamKey: null }),
+      syncMap: { syncCoverage: 0.95, phrases: [] as any },
+    });
+    const row = await service.stageBook('Fábulas y Verdades', {
+      transcriptionsDir: makeCorpus(['fabulas-y-verdades.merged.vtt']),
+      audioObjectExists: jest.fn(async (k: string) => k === 'books/fabulas-pombo.mp3'),
+      dryRun: false,
+    });
+    expect(row.hasAudio).toBe(true);
+  });
+
   it('is idempotent: an already-wired audio key is not re-saved', async () => {
     const save = jest.fn();
     const { service } = await buildService({
