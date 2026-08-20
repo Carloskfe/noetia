@@ -56,17 +56,31 @@ Alpine healthchecks must use `127.0.0.1` — `busybox wget` resolves `localhost`
 **Production reliability outranks any staging task.** Tooling that reads production
 throttles and monitors production health, and stops rather than finishing.
 
-## Backup and restore
+## Backup, restore and disaster recovery
 
-`OPEN — a documented, tested backup and restore procedure was not found.` Staging exists
-partly to rehearse production recovery
-([`staging/README.md`](../staging/README.md)), and pgvector restore compatibility is
-scoped to NEM-006B, but **no routine production backup schedule, retention policy, or
-verified restore drill is recorded anywhere in the corpus.**
+Full analysis: [resilience/](resilience/README.md) (NOF-003).
 
-For a platform holding permanent user libraries and creator content, this is the most
-serious operational gap the inventory surfaced. Recommended for the next operations
-mission — recorded, not invented.
+**Correction to the NOF-001 finding.** NOF-001 reported that no backup schedule or retention
+policy was recorded anywhere. That was partly wrong: `infra/server/backup-db.sh` exists and
+defines both — 7 daily plus 4 weekly PostgreSQL dumps. It is referenced by no document, which
+is why it was missed.
+
+**Current posture: Level 0 — partially protected, entirely unverified.**
+
+| System | Protection |
+|---|---|
+| PostgreSQL | Dump to `/opt/backups/postgres` — **same server**, unencrypted, unmonitored, never restore-tested |
+| MinIO (~13 GB + uploads) | **None** |
+| Secrets (`.env.production`) | **None** — and not gitignored (IG-DR-02) |
+| Redis / Meilisearch | None — reconstructable by design |
+
+**A total server loss today would destroy every book, audio file, user upload, and production
+secret, leaving a PostgreSQL dump on the same lost disk.**
+
+Note the documentation conflict (C-DR-01): [`incident-response.md`](../incident-response.md)
+§4 states `/opt/noetia/backups/` with 7-day retention; the script uses `/opt/backups/postgres`
+with 7 daily + 4 weekly. **Neither is confirmed against the running server** — verification
+commands are in [resilience/state-inventory.md](resilience/state-inventory.md).
 
 ## Known deferred maintenance
 

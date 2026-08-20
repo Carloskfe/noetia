@@ -21,7 +21,7 @@ none were found. Sequencing reflects dependencies and current engineering realit
 | **Creator settlement / payout engine** (NEM-008) | IG-02 | NOF-002 GATE D blockers: C-11, breakage residual and Q-14 are **now resolved** (PO-011/012/013); **IG-04 attribution remains**, plus `ACCOUNTING REVIEW` |
 | **Stripe pricing verification** | IG-01 — live prices unverified against PO-006 | Production Stripe access |
 | **NEM-006B** — production PG16 restore-compatibility proof | Prerequisite for any pgvector production work | Staging content (NEM-006C) |
-| **Backup & restore procedure** | No documented, tested procedure exists | — |
+| **Backup & restore (NEM-009 candidate)** | NOF-003: 6 CRITICAL gaps — no off-site copy, no MinIO backup, no secret backup, no tested restore, unverified execution, secrets not gitignored | Level 1 items are cheap; `.gitignore` fix is one line |
 | **Family seat resolution** | C-02 — a marketing claim and an enforcement rule disagree | Product Owner (Q-05) |
 
 ## LATER — approved direction, dependencies outstanding

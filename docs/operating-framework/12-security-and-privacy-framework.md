@@ -26,9 +26,16 @@ personal analytics.
 Catalog content is **not** PII — NEM-006C mirrors public-domain audio while copying no user
 data.
 
-### Secrets are never committed
-`.env.production` and `.env.staging` are gitignored and live only on the host. Rotation
-policy: [`secrets-rotation.md`](../secrets-rotation.md).
+### Secrets are never committed — **but the mechanism is currently absent**
+Policy intent is that `.env.production` and `.env.staging` live only on the host. **Neither is
+actually gitignored:** `git check-ignore` matches no rule, and `.gitignore` covers only `.env`,
+`.env.local`, `.env.*.local`. Since `/opt/noetia` is itself a git checkout containing
+`.env.production`, a `git add .` there would stage live production secrets.
+
+`CLAUDE.md` instructs operators to "confirm with `.gitignore` before any `git add .`" —
+following that today yields **false assurance**. Registered as
+[IG-DR-02](resilience/implementation-gaps.md), CRITICAL. Rotation policy:
+[`secrets-rotation.md`](../secrets-rotation.md).
 
 ### Never log credentials or PII
 No JWT payloads, passwords, raw tokens, or user PII in logs. API errors surface as
@@ -90,8 +97,8 @@ explicit authorization.
 | Gap | Note |
 |---|---|
 | **Regulatory posture** | No GDPR/CCPA/other assessment exists. Do not claim compliance → `PRIVACY REVIEW REQUIRED` |
-| **Data retention / deletion** | No policy found for account deletion, data export, or retention windows |
-| **Backup security** | No documented backup procedure → see [11-operations-handbook](11-operations-handbook.md) |
+| **Data retention / deletion** | No policy for account deletion, export, or retention windows — and it cannot be reconciled with backup retention until one exists (IG-DR-11) |
+| **Backup security** | Backups are unencrypted and never leave the host → [resilience/backup-security.md](resilience/backup-security.md) |
 | **Incident disclosure** | Technical playbooks exist; no user-notification policy |
 
 These are recorded as absences, not drafted as policy.

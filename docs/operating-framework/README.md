@@ -79,6 +79,7 @@ All 20 deliverables are at v0.1.
 | [Contradictions & gaps](governance/contradictions-and-gaps.md) | Conflicts and implementation gaps, tracked separately |
 | [Product Owner questions](governance/product-owner-questions.md) | Open questions by priority; resolved ones kept as history |
 | [Product Owner decisions](decisions/product-owner/) | PO-005 … PO-013 |
+| [Resilience & disaster recovery](resilience/README.md) | NOF-003 — backup posture, failure model, RPO/RTO |
 
 ---
 

@@ -199,6 +199,22 @@ redemption-level, and residual value is `BREAKAGE / RETAINED ECONOMIC VALUE`.
 `ACCOUNTING REVIEW REQUIRED` remains open for recognition, refunds, reversals, taxation,
 donation mechanics, and reporting.
 
+## C-DR-01 — Backup path and retention documented incorrectly · MEDIUM · Operations
+
+Found by [NOF-003](../resilience/implementation-gaps.md).
+
+| Source | Path | Retention |
+|---|---|---|
+| [`incident-response.md:126`](../../incident-response.md) | `/opt/noetia/backups/` | 7-day rolling |
+| `infra/server/backup-db.sh` | `/opt/backups/postgres` | 7 daily + 4 weekly Sunday |
+
+Both path and schedule disagree, and the script is referenced by **no** document. An operator
+following the incident-response playbook during a real incident would search a directory that
+does not exist. Neither source has been confirmed against the running server.
+
+**Needs:** verify on the host, then correct whichever is wrong. Commands in
+[resilience/state-inventory.md](../resilience/state-inventory.md).
+
 ---
 
 ## Implementation gaps
@@ -260,6 +276,12 @@ Formerly C-08. NEM-006C tooling is committed; the full-catalog run is executing.
 | LOW | 1 (C-09) | 0 |
 
 | C-11 Causas basis | HIGH — **new (NOF-002)** |
+
+| C-DR-01 backup path/retention | MEDIUM — **new (NOF-003)** |
+
+**Resilience gaps IG-DR-01 … IG-DR-12** are registered separately in
+[resilience/implementation-gaps.md](../resilience/implementation-gaps.md) — 6 CRITICAL,
+4 HIGH, 2 MEDIUM.
 
 | Implementation gaps | Severity |
 |---|---|

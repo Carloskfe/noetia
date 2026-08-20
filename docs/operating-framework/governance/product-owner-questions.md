@@ -134,6 +134,13 @@ Marketing and Causas allocations arise on tokens that expire unredeemed — curr
 unstated, and assumed away in the NOF-002 model. `ACCOUNTING REVIEW REQUIRED`.
 </details>
 
+### Q-DR-01…Q-DR-05 · Resilience decisions — **NEW (NOF-003)**
+Acceptable data loss (recommend ≤1 h for ownership/tokens; today ~24 h same-server) ·
+acceptable downtime (recommend ≤4 h reader/auth) · whether 13 GB of public-domain audio needs
+off-site replication · long-term retention for creator-obligation reconstruction · **who is
+authorized to declare a disaster**. Full statements in
+[resilience/implementation-gaps.md](../resilience/implementation-gaps.md).
+
 ### Q-08 · When does the free-library sunset actually trigger?
 → C-10. "6–12 months" with no start date, and "50+ author titles" with no owner watching
 the count.

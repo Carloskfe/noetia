@@ -74,6 +74,7 @@ wording was invented.
 | NOF-001 | Operating Framework foundation | ACCEPTED (v0.1) | [record](../engineering-missions/IN-PROGRESS/NOF-001-operating-framework.md) · `64e6bf9`, `7fa7f29`, `0086145` |
 | NOF-002 | Creator economics stress test | COMPLETE | [analysis](analysis/creator-economics-stress-test.md) · `ae385cf` |
 | NEM-007 | Creator rights & economic attribution | **Phase A COMPLETE · Phase B NOT AUTHORIZED** | PO-011/012/013 recorded; schema work gated on NEM-006C |
+| NOF-003 | Backup, restore & disaster recovery framework | COMPLETE (documentation) | [resilience/](resilience/README.md) — recommends NEM-009 |
 
 ---
 
@@ -104,6 +105,7 @@ none has a PO decision file.
 | Analysis | Subject | Outcome |
 |---|---|---|
 | [NOF-002 creator economics stress test](analysis/creator-economics-stress-test.md) | Model A (actual consideration) under 11 scenarios | Allocation structurally sound (creator ≤45% of cash); GATE D = **NO** — NEM-007 blocked on IG-04, C-11, breakage residual, Q-14 |
+| [NOF-003 resilience & disaster recovery](resilience/README.md) | Backup/restore posture across every stateful system | **Level 0 — partially protected, entirely unverified.** 6 CRITICAL gaps; server loss today is unrecoverable |
 
 ## How to use this registry
 

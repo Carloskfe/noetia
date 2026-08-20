@@ -43,6 +43,13 @@ Traefik changes are additive (new routers); staging teardown removes only stagin
 migrations are forward-only with corrective follow-ups. Mobile OTA covers JS-only changes —
 native changes require a full build, which is a **release** decision, not a hotfix.
 
+### Recoverability is a design property, not an operational afterthought
+State must be classifiable as canonical or reconstructable, and the reconstructable path must
+be real. Two decisions already pay for themselves: the **VTT corpus lives in Git**, keeping
+sync-map recovery at minutes rather than days of GPU work; and **Meilisearch is rebuildable
+from PostgreSQL**, demonstrated in NEM-006C. Conversely, **object keys derived from title
+slugs** make an object store portable across databases. See [resilience/](resilience/README.md).
+
 ### Observability is not optional
 Prometheus, Grafana, cAdvisor, node-exporter, and Sentry are deployed. Health checks gate
 Traefik routing — an unhealthy container is removed from the route rather than serving

@@ -99,7 +99,8 @@ The repository's most epistemically careful corpus — already marks
 | `staging/README.md`, `RUNBOOK.md`, `EXTERNAL-ACTIONS.md` | Staging architecture and operations | 11-operations |
 | `staging/data-and-sanitization.md` | No production PII in staging | 12-security-privacy |
 | `staging/pgvector-validation.md`, `promotion-checklist.md` | pgvector evidence, promotion gate | 09-architecture · 10-engineering |
-| `incident-response.md` | Traefik, container, DB, MinIO playbooks | 11-operations |
+| `incident-response.md` | Traefik, container, DB, MinIO playbooks | 11-operations — **contains an incorrect backup path (C-DR-01)** |
+| `infra/server/backup-db.sh` | PostgreSQL dump + retention — **referenced by no document until NOF-003** | 11-operations · resilience/ |
 | `database-migrations.md` | Migration history and golden rules | 09-architecture · 11-operations |
 | `secrets-rotation.md` | Secret rotation policy | 12-security-privacy |
 | `grafana-monitoring.md` | Monitoring and access | 11-operations |
