@@ -123,7 +123,7 @@ docker logs noetia-db-1 --tail 30
 docker compose --env-file .env.production -f docker-compose.server.yml restart db
 ```
 
-**Backups:** daily cron runs at 2 AM, 7-day rolling retention. Backup files are at `/opt/noetia/backups/` on the host.
+**Backups:** daily cron runs at 2 AM, 7-day rolling retention. Backup files are at `/opt/noetia/backups/` on the host. Encrypted offsite copies and restore steps: [`operations/offsite-backups.md`](operations/offsite-backups.md).
 
 ---
 

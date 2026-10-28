@@ -621,5 +621,6 @@ All docs live in `docs/`. Engineering-relevant docs:
 | [grafana-monitoring.md](docs/grafana-monitoring.md) | Monitoring, Tailscale access, password reset |
 | [incident-response.md](docs/incident-response.md) | Playbooks — Traefik 502, container unhealthy, DB, MinIO, SSL |
 | [secrets-rotation.md](docs/secrets-rotation.md) | Which secrets need rotation and how |
+| [operations/offsite-backups.md](docs/operations/offsite-backups.md) | Encrypted offsite backups (age + restricted SSH, daily systemd timer) — architecture, verification, restore, known gaps |
 | [business/](docs/business/) | Business plans, PM docs, technical architecture (EN + ES) |
 | [store-listings/](docs/store-listings/) | App Store privacy labels, Google Play data safety |
