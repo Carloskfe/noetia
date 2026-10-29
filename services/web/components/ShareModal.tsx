@@ -391,7 +391,7 @@ export default function ShareModal({
                     textAlign,
                   }}
                 >
-                  "{editedText}"
+                  &ldquo;{editedText}&rdquo;
                 </p>
                 <div
                   className="w-8 border-t mt-1"

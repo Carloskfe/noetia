@@ -1,9 +1,8 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Book } from '../books/book.entity';
 import { Subscription } from '../subscriptions/subscription.entity';
-import { User } from '../users/user.entity';
 import { ClubBook } from './club-book.entity';
 import { ClubMember } from './club-member.entity';
 import { Club } from './club.entity';

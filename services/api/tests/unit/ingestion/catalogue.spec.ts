@@ -137,21 +137,22 @@ describe('English self-development first-wave entries', () => {
 
 // ── Spanish free-library second wave (added 2026-06-30) ──────────────────────
 describe('Spanish free-library second-wave entries', () => {
-  // [title, wikisourceTitle, librivoxAudioUrl slug fragment]
+  // [title, first Wikisource page (wikisourceTitle, or wikisourceTitles[0]), librivoxAudioUrl slug fragment]
+  // The bare titles are disambiguation/index pages, so each points at its real text.
   const secondWave: Array<[string, string, string]> = [
-    ['El Príncipe', 'El príncipe', 'el-principe-by-niccolo-machiavelli'],
-    ['María', 'María', 'maria-by-jorge-isaacs'],
-    ['Rimas', 'Rimas (Bécquer)', 'rimas-by-gustavo-adolfo-becquer'],
-    ['Meditaciones', 'Meditaciones', 'meditaciones-by-marcus-aurelius'],
-    ['Cartas a Lucilio', 'Cartas a Lucilio', 'cartas-a-lucilio-seleccionadas-by-lucius-annaeus-seneca'],
-    ['La Edad de Oro', 'La Edad de Oro', 'la-edad-de-oro-by-jose-marti'],
+    ['El Príncipe', 'El príncipe (Sánchez Rojas tr.)', 'el-principe-by-niccolo-machiavelli'],
+    ['María', 'María (Isaacs)', 'maria-by-jorge-isaacs'],
+    ['Rimas', 'Rimas (Bécquer, 1885)', 'rimas-by-gustavo-adolfo-becquer'],
+    ['Meditaciones', 'Soliloquios', 'meditaciones-by-marcus-aurelius'],
+    ['Cartas a Lucilio', 'Cartas a Lucilio (Wikisource tr.)/Carta 1', 'cartas-a-lucilio-seleccionadas-by-lucius-annaeus-seneca'],
+    ['La Edad de Oro', 'La Edad de Oro/Prólogo', 'la-edad-de-oro-by-jose-marti'],
   ];
 
   it.each(secondWave)('%s is a Spanish Wikisource entry with a LibriVox URL', (title, ws, slug) => {
     const e = CATALOGUE.find((c) => c.title === title);
     expect(e).toBeDefined();
     expect(e!.source).toBe('wikisource');
-    expect(e!.wikisourceTitle).toBe(ws);
+    expect(e!.wikisourceTitle ?? e!.wikisourceTitles?.[0]).toBe(ws);
     // language defaults to 'es' when omitted — none of these set it
     expect(e!.language).toBeUndefined();
     expect(e!.librivoxAudioUrl).toBe(`https://librivox.org/${slug}/`);

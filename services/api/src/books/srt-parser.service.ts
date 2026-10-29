@@ -42,7 +42,7 @@ export class SrtParserService {
     return { phrases, source };
   }
 
-  private parseTimestamp(ts: string, separator: ',' | '.'): number {
+  private parseTimestamp(ts: string, _separator: ',' | '.'): number {
     // Handle both separators regardless of format (defensive)
     const normalized = ts.replace(',', '.').replace('.', '.');
     // Split on last occurrence of the separator between seconds and milliseconds

@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'crypto';
 import Stripe from 'stripe';
-import { MoreThan, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { EmailService } from '../email/email.service';
 import { PushService } from '../push/push.service';
 import { TokenLedger } from '../subscriptions/token-ledger.entity';
