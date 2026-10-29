@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, IsNull, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Book, BookCategory } from './book.entity';
 import { CreateBookDto } from './dto/create-book.dto';
 import { HostingTier, HOSTING_TIER_LIMITS, User } from '../users/user.entity';

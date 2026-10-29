@@ -23,7 +23,7 @@
  * Default gap is 2 seconds.
  */
 
-import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync } from 'fs';
 import { join, extname, basename } from 'path';
 import { execFileSync } from 'child_process';
 import { pickChapterMp3s } from './audio-source-resolver';
