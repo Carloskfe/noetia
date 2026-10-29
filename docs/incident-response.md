@@ -123,7 +123,7 @@ docker logs noetia-db-1 --tail 30
 docker compose --env-file .env.production -f docker-compose.server.yml restart db
 ```
 
-**Backups:** daily cron runs at 2 AM, 7-day rolling retention. Backup files are at `/opt/noetia/backups/` on the host. Encrypted offsite copies and restore steps: [`operations/offsite-backups.md`](operations/offsite-backups.md).
+**Backups:** daily cron runs at 2 AM, 7-day rolling retention. Backup files are at `/opt/noetia/backups/` on the host. Encrypted offsite copies and restore steps: [`operations/offsite-backups.md`](operations/offsite-backups.md). The offsite copy is operator-assisted, not unattended: it needs the Windows host + Ubuntu VM running and the SSH key unlocked after each VM reboot. Before relying on it in an incident, confirm the latest `.age` file date. For offsite-job failures (SSH denied, share missing, service failing) see its [§9 Troubleshooting](operations/offsite-backups.md#9-troubleshooting).
 
 ---
 
