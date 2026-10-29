@@ -30,13 +30,18 @@ jobs:
             echo "── Pulling latest code ──────────────────────────"
             git pull origin main
 
-            echo "── Stopping and removing existing containers ────"
-            docker compose --env-file .env.production -f docker-compose.server.yml down --remove-orphans --timeout 30 2>/dev/null || true
-            docker ps -a --filter "name=noetia-" -q | xargs -r docker rm -f 2>/dev/null || true
-            docker network rm noetia_noetia_net 2>/dev/null || true
+            # Build while the current containers keep serving. (A full `down` used to
+            # run first, which took the whole stack — db included — offline for the
+            # entire build, ~6 min per deploy. The name conflicts it worked around came
+            # from racing deploys, which the concurrency group above now prevents.)
+            echo "── Building images (site stays up) ──────────────"
+            docker compose --env-file .env.production -f docker-compose.server.yml build
 
-            echo "── Building and starting containers ─────────────"
-            docker compose --env-file .env.production -f docker-compose.server.yml up -d --build
+            # Recreates only services whose image/config changed; db, cache, storage
+            # and search keep running. --wait fails the deploy if a service never
+            # turns healthy.
+            echo "── Recreating changed containers ────────────────"
+            docker compose --env-file .env.production -f docker-compose.server.yml up -d --remove-orphans --wait --wait-timeout 300
 
             echo "── Running migrations ───────────────────────────"
             docker compose --env-file .env.production -f docker-compose.server.yml exec -T -e DB_HOST=db api npm run migration:run:prod

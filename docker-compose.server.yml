@@ -46,6 +46,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+      # Traefik only routes to healthy containers — probe every 5s while starting
+      # so a recreated container takes traffic in seconds, not after the first 30s interval.
+      start_interval: 5s
     deploy:
       resources:
         limits:
@@ -101,6 +104,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+      # Traefik only routes to healthy containers — probe every 5s while starting
+      # so a recreated container takes traffic in seconds, not after the first 30s interval.
+      start_interval: 5s
     deploy:
       resources:
         limits:
