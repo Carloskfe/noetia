@@ -10,6 +10,13 @@ async function dismissTutorialIfVisible(page: any) {
   }
 }
 
+// Paged is the default layout and has no <h1> (the title lives in the top bar), so wait
+// for the title text and the first rendered phrase — works in both paged and scroll.
+async function expectReaderLoaded(page: any, title: string) {
+  await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
+  await expect(page.locator('span[data-phrase-index="0"]').first()).toBeVisible();
+}
+
 const MOCK_BOOK = {
   id: BOOK_ID,
   title: 'Cien años de soledad',
@@ -78,7 +85,7 @@ test.describe('Flow: highlight → share', () => {
     });
 
     await page.goto(`/reader/${BOOK_ID}`);
-    await expect(page.getByRole('heading', { name: 'Cien años de soledad' })).toBeVisible();
+    await expectReaderLoaded(page, 'Cien años de soledad');
     await dismissTutorialIfVisible(page);
 
     const firstPhrase = page.locator('span[data-phrase-index="0"]');
@@ -126,7 +133,7 @@ test.describe('Flow: highlight → share', () => {
     );
 
     await page.goto(`/reader/${BOOK_ID}`);
-    await expect(page.getByRole('heading', { name: 'Cien años de soledad' })).toBeVisible();
+    await expectReaderLoaded(page, 'Cien años de soledad');
     await dismissTutorialIfVisible(page);
 
     // Open fragment sheet via top bar
@@ -156,7 +163,7 @@ test.describe('Flow: highlight → share', () => {
     );
 
     await page.goto(`/reader/${BOOK_ID}`);
-    await expect(page.getByRole('heading', { name: 'Cien años de soledad' })).toBeVisible();
+    await expectReaderLoaded(page, 'Cien años de soledad');
     await dismissTutorialIfVisible(page);
 
     // Open fragment sheet
