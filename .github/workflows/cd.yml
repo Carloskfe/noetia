@@ -6,7 +6,10 @@ on:
 
 concurrency:
   group: deploy-production
-  cancel-in-progress: true
+  # Queue, don't cancel: killing a deploy mid-script can leave prod half-recreated
+  # or with migrations unrun (a cancel after the old `down` step caused a ~4 min
+  # outage on 2026-10-29). A queued run still deploys the latest main.
+  cancel-in-progress: false
 
 jobs:
   deploy:
