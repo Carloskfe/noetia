@@ -28,6 +28,8 @@ services:
     build:
       context: ./services/api
       target: production
+    # tini as PID 1 forwards SIGTERM to node (PID 1 ignores signals it doesn't handle)
+    init: true
     env_file: .env.production
     environment:
       NODE_ENV: production
