@@ -94,7 +94,8 @@ test.describe('Flow: sign-up → read', () => {
 
     // ── Step 4: navigate to reader and verify it loads ────────────────────────
     await page.goto(`/reader/${BOOK_ID}`);
-    await expect(page.getByRole('heading', { name: 'El Quijote' })).toBeVisible();
+    // Paged (the default layout) has no <h1>; the title is in the top bar.
+    await expect(page.getByText('El Quijote', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('En un lugar de la Mancha')).toBeVisible();
   });
 
