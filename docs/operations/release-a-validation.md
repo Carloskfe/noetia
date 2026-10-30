@@ -49,3 +49,33 @@ Coverage thresholds (80%) remain unmet for api branches, web, and mobile — pre
 4. **Test-mode token packs on staging** — staging `token_packages` need **test-mode** Stripe price IDs (staging-only configuration; PO action in Stripe test mode).
 5. **Run the flows** with Stripe test cards: buy a pack (free account) → webhook → balance → unlock → read; subscriber unlock; household member unlock; per-title endpoint 410; owned-book regression; mobile against the staging API.
 6. Record results here; then request deployment approval.
+
+## 5. Regression review (2026-10-30) — authorization, payment, entitlement
+
+Full source diff `main..release/acquisition-a` reviewed (API, web, mobile).
+
+| # | Finding | Severity | Outcome |
+|---|---|---|---|
+| RV-1 | **Mobile downloaded copies:** removing the app-level paywall let a canceled subscriber open the app and read downloaded copies of paid books never acquired — the reader loaded the offline copy before any check | **High (entitlement regression introduced by NEM-012)** | **Fixed** (`5363b6f`): online, the reader re-checks access and shows the unlock panel on denial; 3 unit tests. Offline, the copy still opens → open decision NEM-013 O-2 |
+| RV-2 | Webhook granted per-title ownership without checking `payment_status` | Medium (pre-existing) | **Fixed in NEM-015**: `paid` / `no_payment_required` or `async_payment_succeeded` only |
+| RV-3 | Token-pack and gift fulfilment also ignore `payment_status` | Low (pre-existing; card-only checkouts complete as `paid`) | **Not changed** (out of scope; protected behaviour). Recommend the billing-foundation mission |
+| RV-4 | `POST /subscriptions/books/:id/redeem` accepts a **free** book, spending a token for nothing | Low (pre-existing; no UI offers it) | Not changed; recommend rejecting free books in a follow-up |
+| RV-5 | Content-access decision (`SubscriptionGuard`) | — | Unchanged except `bookId` on denials — legacy streaming intact (NEM-013 still DRAFT) |
+| RV-6 | Retired purchase route | — | 410 before any service or Stripe call; JWT still required |
+| RV-7 | Redemption transaction | — | Single transaction, `FOR UPDATE SKIP LOCKED`, `ON CONFLICT DO NOTHING`, status-guarded spend; proven by the real-DB suite and the CI revert check |
+| RV-8 | Mobile `DownloadButton` lets legacy-streaming subscribers download non-owned books | Pre-existing | Belongs to NEM-013 (offline revalidation) |
+
+Agent permissions: no change to `.claude/settings.local.json` is part of any PR; no permission was expanded. That file is tracked in the repository (it was accidentally committed once and reverted on PR #12) — recommend `.gitignore` + untracking it, with PO approval.
+
+## 6. Final-approval evidence checklist
+
+| Evidence | Status |
+|---|---|
+| Staging W1–W11, M1–M4 (`release-a-staging-validation-plan.md` §3) | ⏳ operator |
+| Reconciliation baseline counts (§4 of the plan) | ⏳ operator |
+| PR reviews #11, #12, #13, #14 (Product Architecture) | ⏳ |
+| Recovery drill (`release-a-recovery-plan.md` §2) | ✅ local drill passed |
+| Real-DB integration in CI + revert check | ✅ |
+| Local real-stack validation (§1) | ✅ |
+| Merge method agreed: merge commit, not squash | ⏳ PO |
+| Open decisions B-2, B-3, B-5, B-10, B-11 | Not blocking Release A, except B-5 if expiry copy is wanted |
