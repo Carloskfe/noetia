@@ -55,7 +55,7 @@ PO-021, PO-023 · NEM-011 · audit 2026-10-29 · [impact assessment](../../archi
 
 ## 6. Out of scope
 
-Removing subscription all-access streaming (NEM-013) · free samples · per-title purchase UI (pending decision B-1) · pricing, Stripe, plans · token expiry rules · Noetia+ · schema changes.
+Removing subscription all-access streaming (NEM-013) · free samples · per-title purchase (discontinued — PO-021 Amendment 1 / B-1; endpoint retired by NEM-015) · pricing, Stripe, plans · token expiry rules · Noetia+ · schema changes.
 
 ## 7. Product rules
 
@@ -114,7 +114,7 @@ Update `docs/technical-baseline/05-api.md` (new/changed endpoints) and the NEM-0
 |---|---|---|
 | **O-1** | Validation environment: staging (`staging.noetia.app`, Stripe **test** mode) requires the unmerged NEM-006A/006C staging work; otherwise validation is local + E2E against mocks only | Use staging; decide NEM-006A/006C merge (also blocks NEM-010 D1) |
 | **O-2** | Should paid-book cards show a "Read sample" action now? | No — samples are a later mission (rights-dependent) |
-| **O-3** | Per-title purchase button (decision B-1) | Not shown until B-1 is decided |
+| ~~O-3~~ | ~~Per-title purchase button~~ | **Resolved by B-1:** never shown — token redemption is the only acquisition path |
 
 ## 17. Stop conditions
 
