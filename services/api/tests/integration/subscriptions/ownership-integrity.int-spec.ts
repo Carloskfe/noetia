@@ -14,6 +14,8 @@ import { SubscriptionGuard } from '../../../src/subscriptions/subscription.guard
 import { SubscriptionInvite } from '../../../src/subscriptions/subscription-invite.entity';
 import { SubscriptionsService } from '../../../src/subscriptions/subscriptions.service';
 import { TokenLedger } from '../../../src/subscriptions/token-ledger.entity';
+import { StripeProcessedEvent } from '../../../src/subscriptions/stripe-processed-event.entity';
+import { WebhooksService } from '../../../src/subscriptions/webhooks.service';
 import { User } from '../../../src/users/user.entity';
 import { createTestDatabase } from '../helpers/test-db';
 
@@ -304,5 +306,55 @@ describe('free-account token acquisition', () => {
     await expect(service.getSubscriptionStatus(member.id)).resolves.toMatchObject({
       isLinkedMember: true, ownTokenBalance: 1, tokenBalance: 2, availableTokens: 3,
     });
+  });
+});
+
+// ── 5. Retired direct title purchase (NEM-015) ───────────────────────────────
+
+describe('legacy title purchases after retirement', () => {
+  let webhooks: WebhooksService;
+  beforeAll(() => {
+    webhooks = new WebhooksService(service, { fulfillGift: jest.fn() } as any, db.dataSource.getRepository(StripeProcessedEvent));
+  });
+
+  const completed = (id: string, userId: string, bookId: string, paymentStatus = 'paid') => ({
+    id, type: 'checkout.session.completed',
+    data: { object: { id: `cs_${id}`, mode: 'payment', payment_status: paymentStatus, metadata: { userId, bookId } } },
+  });
+
+  it('a pre-retirement session delivered twice creates exactly one purchase ownership', async () => {
+    const user = await makeUser();
+    const paid = await makeBook({ isFree: false });
+    await webhooks.handleEvent(completed('evt_tp_1', user.id, paid.id));
+    await webhooks.handleEvent(completed('evt_tp_1', user.id, paid.id)); // Stripe redelivery
+    await webhooks.handleEvent(completed('evt_tp_1b', user.id, paid.id)); // a distinct duplicate event
+
+    const rows = await userBooks.findBy({ userId: user.id, bookId: paid.id });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].purchaseType).toBe('purchase');
+  });
+
+  it('a delayed payment grants nothing until it succeeds, then grants once', async () => {
+    const user = await makeUser();
+    const paid = await makeBook({ isFree: false });
+    await webhooks.handleEvent(completed('evt_tp_2', user.id, paid.id, 'unpaid'));
+    expect(await userBooks.countBy({ userId: user.id, bookId: paid.id })).toBe(0);
+
+    await webhooks.handleEvent({
+      id: 'evt_tp_2_ok', type: 'checkout.session.async_payment_succeeded',
+      data: { object: { id: 'cs_evt_tp_2', mode: 'payment', payment_status: 'paid', metadata: { userId: user.id, bookId: paid.id } } },
+    });
+    expect(await userBooks.countBy({ userId: user.id, bookId: paid.id, purchaseType: 'purchase' })).toBe(1);
+  });
+
+  it('an existing purchase stays readable after cancellation and cannot be removed', async () => {
+    const user = await makeUser();
+    const sub = await subs.save(subs.create({ userId: user.id, stripeCustomerId: `cus_it_${user.id}`, status: 'active', linkedUserIds: [] } as Partial<Subscription>));
+    const paid = await makeBook({ isFree: false });
+    await webhooks.handleEvent(completed('evt_tp_3', user.id, paid.id));
+    await subs.update(sub.id, { status: 'canceled' });
+
+    await expect(guard.canActivate(contextFor(user.id, paid.id))).resolves.toBe(true);
+    await expect(library.removeBook(user.id, paid.id)).rejects.toBeInstanceOf(ConflictException);
   });
 });

@@ -261,30 +261,6 @@ export class SubscriptionsService {
     return { url: session.url };
   }
 
-  async createPurchaseSession(userId: string, bookId: string): Promise<{ url: string }> {
-    const book = await this.bookRepo.findOneBy({ id: bookId, isPublished: true });
-    if (!book) throw new NotFoundException('Book not found');
-    if (!book.priceCents) throw new BadRequestException({ error: 'book_not_for_sale' });
-    const customerId = await this.getOrCreateStripeCustomer(userId);
-    const session = await this.requireStripe().checkout.sessions.create({
-      customer: customerId,
-      payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: 'usd',
-          unit_amount: book.priceCents,
-          product_data: { name: book.title, metadata: { bookId: book.id } },
-        },
-        quantity: 1,
-      }],
-      mode: 'payment',
-      metadata: { bookId: book.id, userId },
-      success_url: `${this.webUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${this.webUrl}/billing/cancel`,
-    });
-    return { url: session.url! };
-  }
-
   async createTokenPackageSession(userId: string, packageId: string): Promise<{ url: string }> {
     const pkg = await this.plansService.findTokenPackageById(packageId);
     if (!pkg) throw new BadRequestException({ error: 'invalid_token_package' });

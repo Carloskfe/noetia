@@ -328,27 +328,9 @@ describe('SubscriptionsService', () => {
     });
   });
 
-  describe('createPurchaseSession', () => {
-    it('returns checkout url for a book with a price', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue({ id: 'bk1', title: 'Test Book', priceCents: 1500, isPublished: true });
-      mockUsersService.findById.mockResolvedValue({ id: 'u1', stripeCustomerId: 'cus_1' });
-      mockStripe.checkout.sessions.create.mockResolvedValue({ url: 'https://checkout.stripe.com/pay' });
-
-      const result = await service.createPurchaseSession('u1', 'bk1');
-      expect(result).toEqual({ url: 'https://checkout.stripe.com/pay' });
-      expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
-        expect.objectContaining({ mode: 'payment', metadata: { bookId: 'bk1', userId: 'u1' } }),
-      );
-    });
-
-    it('throws NotFoundException for unknown or unpublished book', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue(null);
-      await expect(service.createPurchaseSession('u1', 'ghost')).rejects.toThrow(NotFoundException);
-    });
-
-    it('throws BadRequestException when book has no price', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue({ id: 'bk1', priceCents: null, isPublished: true });
-      await expect(service.createPurchaseSession('u1', 'bk1')).rejects.toThrow(BadRequestException);
+  describe('direct title purchase (retired — NEM-015)', () => {
+    it('no longer exposes a way to create a per-title Checkout Session', () => {
+      expect((service as any).createPurchaseSession).toBeUndefined();
     });
   });
 
