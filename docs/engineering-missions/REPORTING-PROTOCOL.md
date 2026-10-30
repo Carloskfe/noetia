@@ -1,6 +1,6 @@
 # Engineering Reporting & Chain of Command Protocol
 
-**Status:** PROPOSAL — not in force until the Product Owner approves it (governance change, §4).
+**Status:** PROPOSAL — **ready for governance review**; not in force until the Product Owner approves it (governance change, §4).
 **Relationship to existing governance:** extends [`README.md`](README.md) (roles, lifecycle, authorization levels). Where the two differ, `README.md` governs until this proposal is approved; differences are listed in §7.
 
 ## 1. Authority
@@ -69,6 +69,6 @@ The Product Owner and Product Architecture can understand current development st
 
 | # | Topic | `README.md` today | This proposal | Recommendation |
 |---|---|---|---|---|
-| P-1 | Status vocabulary | One lifecycle ending in COMPLETED (review **and** acceptance) | Adds Merged / Deployed | Keep the lifecycle unchanged and record Merged / Deployed as a separate **delivery state** (as in §2): a mission can be Deployed but not yet Completed (awaiting acceptance) |
+| P-1 | Status vocabulary | One lifecycle ending in COMPLETED (review **and** acceptance) | Adds Merged / Deployed | **Recommended (Product Architecture, 2026-10-30):** preserve the existing mission lifecycle unchanged and track merge / deployment separately as a **delivery state** (§2) — a mission can be Deployed but not yet Completed (awaiting acceptance) |
 | P-2 | Product Architecture | Owns mission drafting and implementation review | Named reviewer/adviser (ChatGPT) without independent authorization | Consistent; adopt the explicit "does not authorize" wording |
 | P-3 | Registry | None (missions filed by folder) | `REGISTRY.md` | Adopt; folders keep the documents, the registry indexes them |
