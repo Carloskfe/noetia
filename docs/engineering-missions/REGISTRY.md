@@ -27,10 +27,11 @@
 | PO-021 (+ Amendment 1 / B-1) | Token-based acquisition; per-title purchase discontinued | [#12](https://github.com/Carloskfe/noetia/pull/12) | Not merged |
 | PO-022 | Independent Noetia+ subscription | [#12](https://github.com/Carloskfe/noetia/pull/12) | Not merged |
 | PO-023 | Subscription-free acquisition | [#12](https://github.com/Carloskfe/noetia/pull/12) | Not merged |
+| PO-024 | Token expiration, cancellation and gifting (resolves B-5) | [#17](https://github.com/Carloskfe/noetia/pull/17) (draft) | Not merged — 15 open questions; proposed missions M-1…M-5 |
 | PO-005 … PO-020 | AI, pricing, economics, resilience | `nem-009-resilience-impl` | Not merged |
 | PO-001 … PO-004 | Noetia+ / AI foundations | `docs/noetia-plus/PRODUCT-DECISIONS.md` | Merged |
 
-Open business decisions: **B-2, B-3, B-5, B-10, B-11** (see the [impact assessment](../architecture/impact-assessments/PO-021-023-acquisition-and-noetia-plus.md) §7, PR #12).
+Open business decisions: **B-2, B-3, B-10, B-11** (B-5 resolved by PO-024, PR #17) (see the [impact assessment](../architecture/impact-assessments/PO-021-023-acquisition-and-noetia-plus.md) §7, PR #12).
 
 ## Historical / other
 
