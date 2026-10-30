@@ -1,7 +1,7 @@
 # NOETIA ENGINEERING MISSION — NEM-011
 ## P0 Subscription Integrity: Paid-Book Acquisition & Atomic Token Redemption
 
-**Status:** IN PROGRESS → awaiting Product Owner review of the PR (not merged, not deployed)
+**Status:** IN PROGRESS → implementation complete; **deploy BLOCKED until NEM-012 ("Unlock with token") is ready and validated** (PO decision D1). Not merged, not deployed.
 **Mission type:** REMEDIATION
 **Implementation authorization:** FULL-WITHIN-SCOPE (§5)
 **Schema changes:** NOT AUTHORIZED — none required (see §9)
@@ -140,7 +140,15 @@ No new metrics. Rejections surface as typed 403/409 errors (`acquisition_require
 - This mission record.
 - `scripts/sql/nem-011-ownership-reconciliation.sql` (read-only, validated against seeded scenarios: each defect signature counted exactly; a write inside it is rejected by Postgres).
 
-## 16. Open decisions (Product Owner)
+## 16. Product Owner decisions (2026-10-29)
+
+| # | Decision | Effect on NEM-011 |
+|---|---|---|
+| **D1** | **Approved** — a follow-up mission implements "Unlock with token" in the customer experience. **Do not deploy NEM-011 until that acquisition flow is ready and validated.** | Deploy gated on NEM-012; NEM-011 ships in the same release (see the coordinated rollout plan) |
+| **D2** | **Approved** — a read-only production reconciliation procedure; historical ownership records are not changed, deleted, or revoked | Procedure: [`docs/operations/nem-011-ownership-reconciliation.md`](../../operations/nem-011-ownership-reconciliation.md) (validated, two read-only layers) |
+| **D3** | **Approved in principle** — CI integration of the real-PostgreSQL tests on isolated, ephemeral infrastructure, only within an explicitly scoped mission | Prepared as NEM-014 (DRAFT); no CI change in NEM-011 |
+
+Original analysis, kept for the record:
 
 | # | Decision | Why it matters | Recommendation |
 |---|---|---|---|
