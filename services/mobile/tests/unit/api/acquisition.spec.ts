@@ -92,6 +92,17 @@ it('sends customers to the token packs, never to a per-title purchase', () => {
   expect(TOKENS_URL).toBe('https://noetia.app/pricing#tokens');
 });
 
+it('uses the build\'s web origin, so a staging build never opens the production checkout', () => {
+  const previous = process.env.EXPO_PUBLIC_WEB_URL;
+  process.env.EXPO_PUBLIC_WEB_URL = 'https://staging.noetia.app/';
+  jest.isolateModules(() => {
+    const { TOKENS_URL: stagingUrl } = require('../../../src/api/acquisition');
+    expect(stagingUrl).toBe('https://staging.noetia.app/pricing#tokens');
+  });
+  if (previous === undefined) delete process.env.EXPO_PUBLIC_WEB_URL;
+  else process.env.EXPO_PUBLIC_WEB_URL = previous;
+});
+
 describe('checkBookAccess (downloaded copies, NEM-012 review)', () => {
   it('allows when the server returns the book', async () => {
     get.mockResolvedValue({ id: 'b1', isFree: false });

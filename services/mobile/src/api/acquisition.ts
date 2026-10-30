@@ -3,7 +3,10 @@ import { apiClient } from './client';
 // Book acquisition by token (PO-021 / PO-023, NEM-012). Paid books are only ever
 // acquired by redeeming a token — there is no per-title purchase (B-1).
 
-export const TOKENS_URL = 'https://noetia.app/pricing#tokens';
+// Follows the build's web origin like the API follows EXPO_PUBLIC_API_URL, so a
+// staging build never sends a tester to the production checkout.
+const WEB_URL = (process.env.EXPO_PUBLIC_WEB_URL ?? 'https://noetia.app').replace(/\/+$/, '');
+export const TOKENS_URL = `${WEB_URL}/pricing#tokens`;
 
 export type AccessDenial = {
   reason: 'subscription_required' | 'payment_required' | 'acquisition_required';
