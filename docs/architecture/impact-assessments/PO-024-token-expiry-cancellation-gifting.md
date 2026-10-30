@@ -1,6 +1,6 @@
 # Impact Assessment — PO-024 Token Expiration, Cancellation, and Gifting
 
-**Date:** 2026-10-30 · **Nature:** documentation only — no code, migration, Stripe, data, or deployment change
+**Date:** 2026-10-30 (updated: 1-token purchase clarified by the PO) · **Nature:** documentation only — no code, migration, Stripe, data, or deployment change
 **Decision:** [PO-024](../../operating-framework/decisions/product-owner/PO-024-token-expiration-cancellation-gifting.md)
 **Code baseline:** `main` (production). Where the unmerged Release A branch (PR #14) differs, it is noted; Release A does not change any rule below.
 
@@ -23,7 +23,7 @@
 
 | # | Where | Conflict with PO-024 | Proposed amendment (needs approval) |
 |---|---|---|---|
-| T-1 | `docs/PRD.md` § Token Mechanics | "Paid tokens expire 90 days after issuance" applies to **all** paid tokens; the PRD does not single out the 1-token purchase. PO-024 sets **six calendar months** for 3/5/10 | "Subscription tokens and 1-token purchases expire 90 days after issuance; tokens from 3-, 5- and 10-token packages expire six calendar months after issuance; gifted tokens expire 90 days after the gift date (PO-024)." |
+| T-1 | `docs/PRD.md` § Token Mechanics | "Paid tokens expire 90 days after issuance" applies to **all** paid tokens. PO-024 sets **six calendar months** for 3/5/10; the 1-token purchase stays at 90 days by **explicit PO decision** (rule 8), so the PRD is wrong only for 3/5/10 | "Subscription tokens and 1-token purchases expire 90 days after issuance; tokens from 3-, 5- and 10-token packages expire six calendar months after issuance; gifted tokens expire 90 days after the gift date (PO-024)." |
 | T-2 | Terms of Service (`web/lib/legal/terms-of-service.ts:31, 128`) | "Tokens are valid for 90 days from issuance" | Legal update with T-1's wording + giftability + no re-gifting |
 | T-3 | Web pricing copy (`web/lib/i18n/{en,es}.ts:371/373`) | "Additional tokens expire 90 days after purchase" — wrong for 3/5/10 | Per-package expiry copy |
 | T-4 | Code: `TOKEN_EXPIRY_DAYS = 90` for every `paid` token; test `creates paid tokens with 90-day expiry` | 3/5/10 packages need six months | Source-aware expiry (mission M-3) |
@@ -43,7 +43,7 @@
 | 5 | Cancel → no renewal after the paid cycle | ✅ monthly · ❌ **annual drip stops at `canceling`** (T-5) | Defect | **M-1** |
 | 6 | Issued tokens usable until expiry after cancel | ✅ owner · ⚠️ household members lose pool access (T-6) | Decision | M-1 (after Q-6) |
 | 7 | Acquired books permanent after cancel | ✅ guard checks ownership first; NEM-011 (Release A) protects rows | — | — |
-| 8 | 1-token purchase giftable, 90 days | ⚠️ 90 days ✅; giftable ❌ | Gifting not built | M-4 |
+| 8 | 1-token purchase giftable, **exactly 90 days** (explicit PO decision 2026-10-30) | ⚠️ 90 days ✅ (already `TOKEN_EXPIRY_DAYS`); giftable ❌ | Gifting not built; source must be recorded as a giftable package token (M-2) | M-2, M-4 |
 | 9 | 3/5/10 giftable, **six calendar months** | ❌ 90 days; ❌ giftable | Expiry + gifting | M-3, M-4 |
 | 10 | Only valid, eligible tokens giftable | ❌ | Eligibility needs origin data | M-2, M-4 |
 | 11 | Gifted = 90 days from gift date | ⚠️ gift cards mint 90 days from **claim** | Definition (Q-2) | M-4 |
@@ -94,7 +94,7 @@ PO-024 is consistent with [PO-022](../../operating-framework/decisions/product-o
 
 | # | Question | Why it matters | Recommended default |
 |---|---|---|---|
-| Q-1 | Keep 90 days for the 1-token purchase while 3/5/10 get six months? | Inconsistent value per token; copy complexity | Confirm, or align the 1-token purchase to six months |
+| ~~Q-1~~ | ~~Keep 90 days for the 1-token purchase?~~ | — | **Resolved 2026-10-30 (PO):** exactly 90 days from issuance, giftable |
 | Q-2 | Are **gift-card** tokens "gifted tokens" (rules 11–12)? Is the "gift date" the purchase, the send, or the claim? | Expiry start and re-giftability | Yes, gifted; 90 days from **claim**; not re-giftable |
 | Q-3 | Cap a gifted token's expiry at the original's remaining validity? | Prevents extension/refresh abuse (E-2) | Keep rule 11 (90 days from gift date) but allow gifting only while the original has **at least 30 days** left — no cap arithmetic, and no last-minute refresh. (Capping at the original expiry would amend rule 11 and needs explicit approval.) |
 | Q-4 | Redemption order with mixed expiries | Customer value (E-1) | **Earliest-expiry first**, ties → non-giftable first |
@@ -116,7 +116,7 @@ PO-024 is consistent with [PO-022](../../operating-framework/decisions/product-o
 |---|---|---|---|---|
 | 1 | **M-1 Cancellation & drip correctness** | Annual drip includes `canceling` until `currentPeriodEnd` (T-5); optional calendar-month drip (E-6); explicit household rule (Q-6) | Q-6, Q-7 | Low; customer-impacting defect today |
 | 2 | **M-2 Token provenance & lineage** | Additive migration (§4), issuance writes `source`/`giftable`/references, heuristic backfill with an unparseable-rows report | Q-14; coordination with the settlement mission (basis field) | Medium (migration on a financial ledger; additive only) |
-| 3 | **M-3 Source-aware expiry & redemption order** | Six calendar months for 3/5/10; 90 days elsewhere; redemption order per Q-4; tests | M-2; Q-1, Q-4, Q-12, Q-14 | Medium (affects every redemption) |
+| 3 | **M-3 Source-aware expiry & redemption order** | Six calendar months for 3/5/10; 90 days for subscription and 1-token purchases; redemption order per Q-4; tests | M-2; Q-4, Q-12, Q-14 | Medium (affects every redemption) |
 | 4 | **M-4 Peer token gifting** | Transfer with eligibility, `gifted` status, new recipient token (90 days, non-giftable), atomic locking, audit trail, claim flow, notifications; gift-card alignment (Q-2) | M-2, M-3; Q-2, Q-3, Q-5, Q-9…Q-11 | High (new money-equivalent transfer path) |
 | 5 | **M-5 Copy & legal** | PRD (T-1), ToS (T-2), pricing and gift copy (T-3, T-8), unlock-screen expiry display (E-12) | Decisions; legal review | Low (customer-facing, legal) |
 | 6 | **Settlement linkage** (NEM-007 B / NEM-008) | Basis carried across gifts (E-11, Q-15) | M-2 | — |
