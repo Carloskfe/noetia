@@ -1,7 +1,7 @@
 # Coordinated Rollout — Acquisition Integrity, Unlock with Token, Ownership Enforcement
 
 **Date:** 2026-10-29 · **Status:** PROPOSED — for Product Owner review · **Nothing here is merged or deployed.**
-**Missions:** NEM-011 (PR #11, implemented) · NEM-012 (DRAFT) · NEM-013 (DRAFT) · NEM-014 (DRAFT) · NEM-015 (DRAFT)
+**Missions:** NEM-011 (PR #11, implemented) · NEM-012 (IN PROGRESS) · NEM-013 (DRAFT) · NEM-014 (IN PROGRESS) · NEM-015 (DRAFT)
 **Decisions:** PO-021 (+ Amendment 1, B-1) / PO-022 / PO-023 (PR #12) · NEM-011 D1–D3
 
 ## Why order matters
@@ -26,7 +26,7 @@ NEM-015 (retire) ──┘        │
 
 | Step | What | Gate to proceed |
 |---|---|---|
-| 0 | Approve NEM-012, NEM-013, NEM-014, NEM-015 specs; merge the PO-021…023 record (PR #12) | PO approval |
+| 0 | NEM-012 + NEM-014 authorized (2026-10-29); NEM-015 approval pending; merge the PO-021…023 record (PR #12) | PO approval |
 | 1 | **NEM-014** — add the CI job **on the release branch** (stacked on `fix/nem-011-subscription-integrity`) so PR CI runs the real-database tests | Job green; revert-check fails as expected |
 | 2 | **NEM-012** and **NEM-015** — build on the same release branch | Their acceptance criteria + tests green in CI |
 | 3 | **Validate Release A** on staging with Stripe **test** mode (or, if staging is not available, record that validation was local + mocked E2E only) | PO sign-off on the validation report |

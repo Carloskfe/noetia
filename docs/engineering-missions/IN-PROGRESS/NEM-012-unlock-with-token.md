@@ -1,13 +1,13 @@
 # NOETIA ENGINEERING MISSION — NEM-012
 ## "Unlock with Token" — Book Acquisition Customer Experience
 
-**Status:** DRAFT
+**Status:** IN PROGRESS — implementation authorized by the Product Owner (Product Architecture review of PR #13, 2026-10-29)
 **Mission type:** IMPLEMENTATION
 **Implementation authorization:** LIMITED (§5)
 **Schema changes:** NOT AUTHORIZED (none expected)
 **Infrastructure changes:** NOT AUTHORIZED
-**Production deployment:** AUTHORIZED WITH CONDITIONS (§14) — together with NEM-011, after validation
-**Product Owner approval:** REQUIRED (decision D1 approved 2026-10-29; this specification not yet approved)
+**Production deployment:** NOT AUTHORIZED — separate Product Owner approval required
+**Product Owner approval:** GRANTED for implementation within §5 (2026-10-29). Merging and deployment are **not** authorized.
 
 > Reminder: **APPROVED ≠ EXECUTE.** Executed only on an explicit Product Owner instruction naming NEM-012.
 
@@ -18,6 +18,17 @@
 NEM-011 (PR #11) closes the paid-book acquisition bypass and makes redemption atomic. But **no screen calls token redemption**: `POST /subscriptions/books/:bookId/redeem` exists and no web or mobile client uses it. Customers can buy token packs (`/pricing`) and claim gift tokens, yet cannot spend them. The bypassed "+" button was the de-facto acquisition path. PO decision D1: **NEM-011 is not deployed until this flow is ready and validated.**
 
 PO-021 / PO-023 (PR #12) make ownership the only route to paid content and allow subscription-free acquisition, so this flow is the core customer path, not an add-on.
+
+## 1a. Conditions set at authorization (2026-10-29)
+
+1. Deployment **not authorized** — separate PO approval.
+2. **Active subscribers must see a visible unlock action** for a paid book they do not own, even while legacy streaming still lets them read it.
+3. **Free accounts see their own available token balance.**
+4. The mobile app is accessible to **free accounts and users with canceled subscriptions**.
+5. **Owned-book reading, progress, highlights, and Escucha Activa are preserved.**
+6. NEM-013 (ownership-only enforcement) stays DRAFT — this mission changes nobody's read access.
+7. Strictly token-based acquisition (B-1): **no per-title purchase is offered anywhere.**
+8. No stacked branch is merged into `main` without explicit approval; no production Stripe products, prices, secrets, or data are created or changed.
 
 ## 2. Objective
 
@@ -102,7 +113,7 @@ Log/metric counters for unlock attempts by outcome (`success`, `no_tokens_remain
 
 ## 14. Deployment / rollout
 
-Ships **together with NEM-011** as one release (see the coordinated rollout plan). Validation (O-1) before merge. Rollback: revert the combined merge; no schema change.
+**Not authorized.** When approved, ships together with NEM-011 and NEM-015 as Release A (coordinated rollout plan). Validation (O-1) before merge. Rollback: revert the combined merge; no schema change.
 
 ## 15. Documentation deliverables
 

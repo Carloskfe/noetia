@@ -1,13 +1,13 @@
 # NOETIA ENGINEERING MISSION — NEM-014
 ## CI Integration of Real-PostgreSQL Tests (ephemeral, isolated)
 
-**Status:** DRAFT
+**Status:** IN PROGRESS — implementation authorized by the Product Owner (2026-10-29), limited to §5
 **Mission type:** INFRASTRUCTURE
 **Implementation authorization:** LIMITED — `.github/workflows/ci.yml` (one new job) and the testing section of `CLAUDE.md` only
 **Schema changes:** NOT AUTHORIZED
 **Infrastructure changes:** SPECIFICALLY AUTHORIZED — CI configuration only (§5), on approval
 **Production deployment:** NOT APPLICABLE (CI only; `cd.yml` untouched)
-**Product Owner approval:** REQUIRED (D3 approved in principle 2026-10-29; this specification not yet approved)
+**Product Owner approval:** GRANTED for implementation within §5 (2026-10-29). Merging is **not** authorized.
 
 > Reminder: **APPROVED ≠ EXECUTE.** Executed only on an explicit Product Owner instruction naming NEM-014.
 
@@ -99,7 +99,7 @@ Merge only on approval. If the job proves flaky, it can be removed by reverting 
 
 | # | Question | Recommended default |
 |---|---|---|
-| **O-1** | Land the job on the NEM-011 branch (so PR #11 is validated by CI before merge) or on `main` after NEM-011 | **On the NEM-011 / NEM-012 release branch** — the tests exist only there, and CI evidence before merge is the point |
+| ~~O-1~~ | ~~Where the job lands~~ | **Resolved:** on the coordinated release branch (`release/acquisition-a`) |
 | **O-2** | Make the job a required status check? | Not until it has run green for a few weeks; branch protection currently requires no checks |
 
 ## 17. Stop conditions
