@@ -259,16 +259,38 @@ describe('SubscriptionsService', () => {
   });
 
   describe('getSubscriptionStatus', () => {
-    it('returns none when no subscription record', async () => {
+    it('returns a free account\'s own token balance when there is no subscription (PO-023)', async () => {
       mockSubRepo.findOne.mockResolvedValue(null);
+      mockQb.getOne.mockResolvedValue(null);
+      mockTokenRepo.count.mockResolvedValue(3);
       const result = await service.getSubscriptionStatus('u1');
-      expect(result).toEqual({ status: 'none' });
+      expect(result).toEqual({ status: 'none', tokenBalance: 3, availableTokens: 3, isLinkedMember: false });
     });
 
-    it('returns subscription data when record exists', async () => {
+    it('returns zero balance for a free account with no tokens', async () => {
+      mockSubRepo.findOne.mockResolvedValue(null);
+      mockQb.getOne.mockResolvedValue(null);
+      mockTokenRepo.count.mockResolvedValue(0);
+      const result = await service.getSubscriptionStatus('u1');
+      expect(result).toMatchObject({ status: 'none', availableTokens: 0 });
+    });
+
+    it('returns subscription data with available tokens when record exists', async () => {
       mockSubRepo.findOne.mockResolvedValue({ status: 'active', planId: 'p1', currentPeriodEnd: new Date(), trialEnd: null });
+      mockTokenRepo.count.mockResolvedValue(2);
       const result = await service.getSubscriptionStatus('u1');
       expect(result.status).toBe('active');
+      expect(result).toMatchObject({ tokenBalance: 2, availableTokens: 2, isLinkedMember: false });
+    });
+
+    it('adds a linked member\'s own tokens to the shared pool for availableTokens', async () => {
+      mockSubRepo.findOne.mockResolvedValue(null);
+      mockQb.getOne.mockResolvedValue({ userId: 'owner1', status: 'active', planId: 'p1', plan: { name: 'Duo', maxProfiles: 2 } });
+      mockTokenRepo.count
+        .mockResolvedValueOnce(1) // member's own tokens
+        .mockResolvedValueOnce(2); // owner's shared pool
+      const result = await service.getSubscriptionStatus('member1');
+      expect(result).toMatchObject({ isLinkedMember: true, tokenBalance: 2, ownTokenBalance: 1, availableTokens: 3 });
     });
   });
 

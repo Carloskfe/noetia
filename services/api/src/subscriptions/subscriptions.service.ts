@@ -353,6 +353,8 @@ export class SubscriptionsService {
         .where(':userId = ANY(sub."linkedUserIds")', { userId })
         .andWhere('sub.status IN (:...statuses)', { statuses: ACTIVE_STATUSES })
         .getOne();
+      // A member's own tokens (packs, gifts) are spent before the shared pool.
+      const ownTokenBalance = await this.getActiveTokenCount(userId);
       if (ownerSub) {
         const tokenBalance = await this.getActiveTokenCount(ownerSub.userId);
         return {
@@ -363,10 +365,18 @@ export class SubscriptionsService {
           currentPeriodEnd: ownerSub.currentPeriodEnd,
           trialEnd: ownerSub.trialEnd,
           tokenBalance,
+          ownTokenBalance,
+          availableTokens: ownTokenBalance + tokenBalance,
           isLinkedMember: true,
         };
       }
-      return { status: 'none' as const };
+      // Free account: no subscription is needed to hold or redeem tokens (PO-023).
+      return {
+        status: 'none' as const,
+        tokenBalance: ownTokenBalance,
+        availableTokens: ownTokenBalance,
+        isLinkedMember: false,
+      };
     }
     const tokenBalance = await this.getActiveTokenCount(userId);
     return {
@@ -377,6 +387,7 @@ export class SubscriptionsService {
       currentPeriodEnd: sub.currentPeriodEnd,
       trialEnd: sub.trialEnd,
       tokenBalance,
+      availableTokens: tokenBalance,
       isLinkedMember: false,
     };
   }

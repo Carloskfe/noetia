@@ -274,3 +274,35 @@ describe('ownership after cancellation', () => {
     await expect(guard.canActivate(contextFor(user.id, other.id))).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
+
+// ── 4. Subscription-free acquisition (NEM-012 / PO-023) ──────────────────────
+
+describe('free-account token acquisition', () => {
+  it('a free account sees its own balance, unlocks a paid book, and the balance drops by one', async () => {
+    const user = await makeUser();
+    await giveTokens(user.id, 2); // e.g. a token pack bought without any subscription
+    const paid = await makeBook({ isFree: false });
+
+    await expect(service.getSubscriptionStatus(user.id)).resolves.toMatchObject({
+      status: 'none', tokenBalance: 2, availableTokens: 2,
+    });
+
+    await service.redeemToken(user.id, paid.id);
+
+    await expect(service.getSubscriptionStatus(user.id)).resolves.toMatchObject({ availableTokens: 1 });
+    await expect(guard.canActivate(contextFor(user.id, paid.id))).resolves.toBe(true);
+    expect((await userBooks.findOneByOrFail({ userId: user.id, bookId: paid.id })).purchaseType).toBe('token');
+  });
+
+  it('a linked member\'s available tokens include their own tokens and the shared pool', async () => {
+    const owner = await makeUser();
+    const member = await makeUser();
+    await subs.save(subs.create({ userId: owner.id, stripeCustomerId: `cus_it_${owner.id}`, status: 'active', linkedUserIds: [member.id] } as Partial<Subscription>));
+    await giveTokens(owner.id, 2);
+    await giveTokens(member.id, 1);
+
+    await expect(service.getSubscriptionStatus(member.id)).resolves.toMatchObject({
+      isLinkedMember: true, ownTokenBalance: 1, tokenBalance: 2, availableTokens: 3,
+    });
+  });
+});
