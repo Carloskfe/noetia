@@ -138,7 +138,7 @@ Numbers are assigned at approval; letters avoid reserving IDs.
 ## 8. Decision Registry rows to add (when `docs/operating-framework/` lands on `main`)
 
 ```
-| PO-021 | PO | Token-based book acquisition (ownership-based access) | DECIDED | Business, access | [PO-021](decisions/product-owner/PO-021-token-based-book-acquisition.md) | NOT IMPLEMENTED |
+| PO-021 | PO | Token-based book acquisition (ownership-based access); **Amendment 1 (B-1, CLOSED 2026-10-29): strictly token-based — per-title purchase discontinued** | DECIDED | Business, access | [PO-021](decisions/product-owner/PO-021-token-based-book-acquisition.md) | NOT IMPLEMENTED (endpoint retirement: NEM-015) |
 | PO-022 | PO | Independent Noetia+ subscription | DECIDED | Business, billing | [PO-022](decisions/product-owner/PO-022-independent-noetia-plus-subscription.md) | NOT IMPLEMENTED |
 | PO-023 | PO | Subscription-free book acquisition | DECIDED | Business, billing | [PO-023](decisions/product-owner/PO-023-subscription-free-book-acquisition.md) | PARTIAL |
 ```
