@@ -71,3 +71,21 @@ export async function fetchOwnership(bookId: string): Promise<boolean | null> {
     return null;
   }
 }
+
+export type BookAccess<T> =
+  | { kind: 'allowed'; book: T }
+  | { kind: 'denied'; denial: AccessDenial }
+  | { kind: 'unknown' };
+
+/**
+ * Asks the server whether the user may read the book now. `unknown` means the
+ * server could not be reached (offline) or answered with an unrelated error.
+ */
+export async function checkBookAccess<T>(bookId: string): Promise<BookAccess<T>> {
+  try {
+    return { kind: 'allowed', book: await apiClient.get<T>(`/books/${encodeURIComponent(bookId)}`) };
+  } catch (err) {
+    const denial = readAccessDenial(err);
+    return denial ? { kind: 'denied', denial } : { kind: 'unknown' };
+  }
+}

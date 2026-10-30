@@ -5,6 +5,7 @@ jest.mock('../../../src/api/client', () => ({
 import { apiClient } from '../../../src/api/client';
 import {
   TOKENS_URL,
+  checkBookAccess,
   availableTokensOf,
   fetchAvailableTokens,
   fetchOwnership,
@@ -89,4 +90,24 @@ describe('fetchOwnership', () => {
 
 it('sends customers to the token packs, never to a per-title purchase', () => {
   expect(TOKENS_URL).toBe('https://noetia.app/pricing#tokens');
+});
+
+describe('checkBookAccess (downloaded copies, NEM-012 review)', () => {
+  it('allows when the server returns the book', async () => {
+    get.mockResolvedValue({ id: 'b1', isFree: false });
+    await expect(checkBookAccess('b1')).resolves.toEqual({ kind: 'allowed', book: { id: 'b1', isFree: false } });
+    expect(get).toHaveBeenCalledWith('/books/b1');
+  });
+
+  it('denies a canceled subscriber\'s downloaded copy of a book they never acquired', async () => {
+    get.mockRejectedValue(apiError(403, { error: 'subscription_required', bookId: 'b1' }));
+    await expect(checkBookAccess('b1')).resolves.toEqual({
+      kind: 'denied', denial: { reason: 'subscription_required', bookId: 'b1' },
+    });
+  });
+
+  it('reports unknown when offline, so an owned download still opens without network', async () => {
+    get.mockRejectedValue(new TypeError('Network request failed'));
+    await expect(checkBookAccess('b1')).resolves.toEqual({ kind: 'unknown' });
+  });
 });

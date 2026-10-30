@@ -6,7 +6,7 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../api/client';
-import { AccessDenial, fetchOwnership, readAccessDenial } from '../../api/acquisition';
+import { AccessDenial, checkBookAccess, fetchOwnership, readAccessDenial } from '../../api/acquisition';
 import { UnlockPanel } from '../../components/UnlockPanel';
 import { clubsApi, ClubMember } from '../../api/clubs';
 import { AudioPlayerBar } from '../../components/AudioPlayerBar';
@@ -121,6 +121,17 @@ export function ReaderScreen() {
       // Check offline cache first
       const cached = await loadChapter(bookId, 0);
       if (cached?.phrases?.length) {
+        // A downloaded copy is shown only while the server still grants access.
+        // The app-level paywall that used to stop canceled subscribers before this
+        // point is gone (NEM-012). Offline (`unknown`) the download is used as before.
+        const access = await checkBookAccess<BookData>(bookId);
+        if (access.kind === 'denied') {
+          setDenial(access.denial);
+          return;
+        }
+        if (access.kind === 'allowed' && access.book?.isFree === false) {
+          fetchOwnership(bookId).then((owned) => setCanUnlock(owned === false));
+        }
         setPhrases(cached.phrases as SyncPhrase[]);
         const progress = await apiClient.get<{ phraseIndex?: number }>(`/books/${bookId}/progress`).catch(() => null);
         const frags = await apiClient.get<ApiFragment[]>(`/books/${bookId}/fragments`).catch(() => []);
