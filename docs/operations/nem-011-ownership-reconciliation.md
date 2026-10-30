@@ -11,6 +11,7 @@
 | 1 | How is ownership distributed across acquisition types (`free` / `token` / `purchase` / `courtesy`) and current book status? |
 | 2–3 | How many `'free'` rows exist on books that are **not** free now (the G1 bypass signature), split into author titles and catalogue titles, and how many of those users can read anyway through current streaming? |
 | 4a–c | G2 signatures: token ownership with no spent token, books paid with several tokens, tokens spent with no ownership |
+| 5a–c | **B-1** direct per-title purchases: books the purchase endpoint would sell today, historical `purchase` ownership rows, detail for Stripe cross-checking |
 
 Output contains **UUIDs only** — no emails or names. Treat it as internal; share **counts**, not row listings.
 
@@ -35,7 +36,7 @@ scp -P 222 scripts/sql/nem-011-ownership-reconciliation.sql root@84.247.140.175:
 ```bash
 sha256sum /tmp/nem011-reconciliation.sql
 ```
-Reviewed hash (commit `5723b2a`): `f5fc9cd7a4a3d820dc01f58255537995175b632acd94746ed84019888e980b9a`. If it differs, **stop**.
+Reviewed hash (B-1 revision, see PR #11 history): `7f8c50bb4fba002bbc4aa5ac33d44672f4cd497a3127244eee80f5621c4c081e`. If it differs, **stop**.
 
 **3. Run it read-only and keep the output on the server:**
 ```bash
@@ -47,18 +48,28 @@ Expected: `exit=0`, and the file ends with `ROLLBACK`.
 ```bash
 grep -vE '^ [0-9a-f]{8}-' /root/nem011-reconciliation-*.txt | tail -60
 ```
-This prints the summary tables and hides the UUID detail rows of section 3.
+This prints the summary tables and hides the UUID detail rows of sections 3 and 5c.
 
 **5. Clean up the copy:**
 ```bash
 rm /tmp/nem011-reconciliation.sql
 ```
 
+## Stripe cross-check for B-1 (read-only, operator)
+
+Direct purchases are Checkout Sessions in `mode: payment` with `metadata.bookId` (token packs carry `metadata.tokenPackageId` instead; gifts `metadata.type = gift`). The database stores **no payment reference** for a `purchase` row, so Stripe is the only record of the amount paid.
+
+1. **Use a restricted key with read-only access to Checkout Sessions and Charges**, on the operator's own machine. Never paste a key into chat, tickets, or the server terminal.
+2. **Open sessions (pending purchases):** `stripe checkout sessions list --status=open --limit=100` → keep those whose `metadata.bookId` is set. Sessions created by the code expire after Stripe's default 24 hours (no `expires_at` is set), so anything open now can still complete within a day.
+3. **Completed purchases:** in the Dashboard, *Developers → Events*, filter `checkout.session.completed` and inspect `metadata.bookId`; or `stripe checkout sessions list --status=complete --limit=100`, paging as needed. Compare with section 5b/5c (`userId` + `bookId`).
+4. **Refunds/disputes on those payments** — record them; the application has no refund handling (audit G7).
+5. Record counts only in the decision log; no Stripe object is created, changed, or cancelled.
+
 ## When to run
 
 | Run | Purpose |
 |---|---|
-| **Baseline** — before the coordinated NEM-011 + NEM-012 deploy | Size historical impact for decision B-10 |
+| **Baseline** — before the coordinated NEM-011 + NEM-012 deploy | Size historical impact for decision B-10; B-1 history and exposure (section 5 + Stripe cross-check) |
 | **Post-deploy** — 24 h after | G1 counts must not grow for rows `addedAt` after the deploy time; G2 4a–4c must not grow |
 | **Before NEM-013** (entitlement enforcement) | Historical bypass rows become those users' only access path once streaming ends |
 

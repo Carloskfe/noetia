@@ -4,6 +4,8 @@
 -- Owner can decide what (if anything) to do about existing rows.
 --   G1  paid books added through POST /library/:bookId (recorded purchaseType='free')
 --   G2  non-atomic token redemption (double spends, tokens spent with no book)
+--   B-1 direct per-title purchases (discontinued by PO decision B-1): history and
+--       current exposure of POST /subscriptions/books/:bookId/purchase
 --
 -- SAFETY
 --   * Every statement is a SELECT inside a READ ONLY transaction that is rolled
@@ -112,5 +114,35 @@ WHERE t.status = 'redeemed' AND t."bookId" IS NOT NULL
       AND (ub."userId" = t."userId"
            OR ub."userId" = ANY(COALESCE((SELECT s."linkedUserIds" FROM subscriptions s
                                           WHERE s."userId" = t."userId"), '{}'))));
+
+-- ── 5. B-1 direct per-title purchases ─────────────────────────────────────────
+-- 5a. Exposure: books the purchase endpoint would sell today (published + priced).
+--     Nothing in the application sets priceCents; any row here was set by hand.
+SELECT COUNT(*) FILTER (WHERE "isPublished")                    AS purchasable_now,
+       COUNT(*)                                                 AS books_with_price,
+       COUNT(*) FILTER (WHERE "isPublished" AND "isFree")       AS purchasable_but_free,
+       MIN("priceCents") AS min_price_cents, MAX("priceCents") AS max_price_cents
+FROM books
+WHERE "priceCents" IS NOT NULL;
+
+-- 5b. History: ownership acquired by direct purchase. The database stores NO
+--     payment reference for these rows — Stripe (metadata bookId + userId) is the
+--     only record of what was paid.
+SELECT COUNT(*)                     AS purchase_rows,
+       COUNT(DISTINCT ub."userId")  AS users,
+       COUNT(DISTINCT ub."bookId")  AS books,
+       MIN(ub."addedAt")            AS first_purchase,
+       MAX(ub."addedAt")            AS last_purchase,
+       COUNT(*) FILTER (WHERE b."isFree") AS on_books_free_now
+FROM user_books ub
+JOIN books b ON b.id = ub."bookId"
+WHERE ub."purchaseType" = 'purchase';
+
+-- 5c. Detail for Stripe cross-checking (UUIDs only).
+SELECT ub."userId", ub."bookId", ub."addedAt", b."priceCents" AS current_price_cents
+FROM user_books ub
+JOIN books b ON b.id = ub."bookId"
+WHERE ub."purchaseType" = 'purchase'
+ORDER BY ub."addedAt" DESC;
 
 ROLLBACK;
