@@ -3,6 +3,20 @@
 **Release:** `release/acquisition-a` (draft PR #14) · **Status:** PLAN — not executed · **Production:** untouched by every step below.
 **Rules:** no secret is pasted into chat, a ticket, or a commit; every server command is **one line** (CLAUDE.md, 2026-05-12 incident); staging auto-deploy stays **unarmed** (no `staging` branch); NEM-006A/006C are **not merged** anywhere.
 
+## 0. STOP GATE — staging must never call the production API
+
+`main` (and therefore `release/acquisition-a`) builds the web image with `ENV NEXT_PUBLIC_API_URL=https://noetia.app/api` hard-coded (`services/web/Dockerfile:19`). Deploying the release branch to staging **without** NEM-006A's fix `3c71e5a` (build args, carried by `nem-006c-staging-content`) would make the staging website call **production** — every unlock and token test would write production data.
+
+Two one-line checks on the host; **stop** unless both pass:
+```bash
+cd /opt/noetia-staging && git merge-base --is-ancestor 3c71e5a HEAD && echo STAGING-BUILD-FIX-PRESENT
+```
+(after the build)
+```bash
+docker exec noetia_staging-web-1 sh -c "grep -rlF 'https://noetia.app/api' /app/.next | head -3; echo ---; grep -rlF 'https://staging.noetia.app/api' /app/.next | head -1"
+```
+Pass = **nothing** above `---` and at least one file below it.
+
 ## 1. Minimum staging dependency (NEM-006A / 006C)
 
 Staging infrastructure (`docker-compose.staging.yml`, staging web build isolation, `docs/staging/RUNBOOK.md`) exists only on `nem-006c-staging-content` (which contains NEM-006A). Release A needs it **only to run on the staging host** — nothing from it is needed in the release itself.
@@ -53,7 +67,7 @@ cd /opt/noetia-staging && git fetch origin && git checkout -B validation/release
 ```bash
 cd /opt/noetia-staging && docker compose -p noetia_staging --env-file .env.staging -f docker-compose.staging.yml up -d --build --remove-orphans
 ```
-No migration is introduced by Release A. Afterwards restore the previous staging checkout (`git checkout <previous branch>`, then rebuild) and delete `validation/release-a` on the host.
+Then run the §0 bundle check **before any test**. No migration is introduced by Release A. Staging CD cannot be used: `cd-staging.yml` triggers on a `staging` branch (deliberately absent) and its `workflow_dispatch` is unavailable while the workflow file is not on `main`. Afterwards restore the previous staging checkout (`git checkout <previous branch>`, then rebuild) and delete `validation/release-a` on the host.
 
 ## 3. Validation matrix (evidence required for each row)
 
@@ -82,3 +96,29 @@ Record every result in `docs/operations/release-a-validation.md` §5 (new sectio
 ## 4. Reconciliation baseline (operator-supervised, production read-only)
 
 Run per `docs/operations/nem-011-ownership-reconciliation.md` — checksum check, forced read-only session, counts only (sections 1–5), plus the Stripe live-mode **read-only** checks (open sessions, unpaid sessions, failed deliveries, completed per-title sessions). Paste the **count** summaries (no UUID rows) into the validation record. This is the only production touch in the plan, and it is read-only.
+
+## 5. Open PRs — dependencies and blockers (2026-10-30)
+
+| PR | Content | Mergeable | Dependency | Blocker |
+|---|---|---|---|---|
+| [#14](https://github.com/Carloskfe/noetia/pull/14) (draft) | Release A: NEM-011/012/014/015 | yes | Contains **#11** and **#13** in full. Staging run needs host-local `nem-006c-staging-content` (§0–§2) | Staging W1–W11/M1–M4; reconciliation baseline; reviews; merge method (**merge commit, not squash** — recovery plan); deployment approval |
+| [#11](https://github.com/Carloskfe/noetia/pull/11) | NEM-011 only | yes | Subset of #14 | **Must not be merged on its own** — `main` deploys production and D1 forbids NEM-011 without NEM-012. Not a draft today. Recommendation: close as superseded by #14 once #14 is approved (PO decision) |
+| [#13](https://github.com/Carloskfe/noetia/pull/13) | NEM-012…015 mission drafts + rollout plan | yes | Subset of #14 (#14 carries newer versions) | Superseded by #14; recommendation: close with #14's approval |
+| [#12](https://github.com/Carloskfe/noetia/pull/12) | PO-021…023 + impact assessment | yes | Links to PO-006…013 resolve only when `nem-009-resilience-impl` lands; #14's docs link to #12's files | Product Architecture review |
+| [#10](https://github.com/Carloskfe/noetia/pull/10) | NEM-010 draft | yes | NEM-010 D1 = the same staging decision as this plan | PO decisions D1, D3 |
+| [#16](https://github.com/Carloskfe/noetia/pull/16) (draft) | Reporting protocol + registry | yes | none | PO approval (governance change) |
+
+No two PRs change the same file. Every merge to `main` triggers a production deploy (docs-only merges rebuild nothing, but still run CD).
+
+## 6. Next execution phase — Product Owner approval requested
+
+Approval is requested for **staging-only** actions, run by the operator with the agent guiding and recording evidence:
+
+1. Read-only host pre-checks (§2b).
+2. Stripe **test-mode** configuration: webhook endpoint + test prices (§2c.1–2) — creates **test-mode** Stripe objects only.
+3. **Staging** data changes: test price IDs, one paid book, test-account email confirmation (§2c.3–4, §3).
+4. Host-local validation checkout + manual staging deploy (§2d), gated by §0.
+5. Validation matrix W1–W11, M1–M4 (§3) and evidence recording.
+6. Supervised, read-only production reconciliation + Stripe live **read-only** checks (§4).
+
+Explicitly **not** requested: production deployment, merging any PR, production data or Stripe live-mode changes, secrets entered by the agent, arming staging auto-deploy, merging NEM-006A/006C.
