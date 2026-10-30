@@ -17,6 +17,8 @@ Established by **NEM-004** (the transition mission). Governance applies fully to
 | `README.md` | This framework (roles, lifecycle, authorization, principles). |
 | `MISSION-TEMPLATE.md` | Required starting point for every new mission. |
 | `REVIEW-CHECKLIST.md` | Product Architecture's post-mission review checklist. |
+| `REGISTRY.md` | *(proposal)* Index of every mission: lifecycle, delivery state, PRs, blockers, next action. |
+| `REPORTING-PROTOCOL.md` | *(proposal)* Reporting & chain-of-command protocol — not in force until approved. |
 | `DEFINITION-OF-DONE.md` | When a mission is truly complete. |
 | `DRAFT/` | Missions under discussion — **never executable**. |
 | `APPROVED/` | Product-Owner-accepted specs — **approval ≠ execute**. |
