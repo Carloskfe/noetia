@@ -59,7 +59,7 @@ rm /tmp/nem011-reconciliation.sql
 
 Direct purchases are Checkout Sessions in `mode: payment` with `metadata.bookId` (token packs carry `metadata.tokenPackageId` instead; gifts `metadata.type = gift`). The database stores **no payment reference** for a `purchase` row, so Stripe is the only record of the amount paid.
 
-1. **Use a restricted key with read-only access to Checkout Sessions and Charges**, on the operator's own machine. Never paste a key into chat, tickets, or the server terminal.
+1. **Use a restricted key with read-only access to Checkout Sessions and Charges**, on the operator's own machine (Stripe CLI; confirm flag names with `stripe checkout sessions list --help`). Never paste a key into chat, tickets, or the server terminal.
 2. **Open sessions (pending purchases):** `stripe checkout sessions list --status=open --limit=100` → keep those whose `metadata.bookId` is set. Sessions created by the code expire after Stripe's default 24 hours (no `expires_at` is set), so anything open now can still complete within a day.
 3. **Completed purchases:** in the Dashboard, *Developers → Events*, filter `checkout.session.completed` and inspect `metadata.bookId`; or `stripe checkout sessions list --status=complete --limit=100`, paging as needed. Compare with section 5b/5c (`userId` + `bookId`).
 4. **Refunds/disputes on those payments** — record them; the application has no refund handling (audit G7).
