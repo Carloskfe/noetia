@@ -1,21 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(~/.local/node_modules/.bin/pnpm *)",
-      "Bash(git add *)",
-      "Bash(git commit -m ' *)",
-      "Bash(git push *)",
-      "Bash(curl -sL \"https://en.wikisource.org/w/api.php?action=parse&page=Bible%20\\(King%20James\\)/Matthew&prop=text&format=json&formatversion=2\" -H \"User-Agent: Noetia-Ingestion/1.0\" -o matthew_raw.json)",
-      "Bash(python3 -c \"import json; d=json.load\\(open\\('matthew_raw.json'\\)\\); print\\('keys:', list\\(d.keys\\(\\)\\)\\); print\\('text len:', len\\(d.get\\('parse',{}\\).get\\('text',''\\)\\)\\)\")",
-      "Bash(cat)",
-      "Bash(base64 -w0 odisea-diag.sql)",
-      "Bash(base64 -w0 dq-redo.sh)",
-      "Bash(docker compose exec -T db psql -U noetia -d noetia -tA -c ' *)",
-      "Bash(docker compose *)",
-      "Bash(curl -s -o /dev/null -w \"status: %{http_code}\\\\n\" \"https://noetia.app/api/shares/nonexistent-xyz\")",
-      "Bash(curl -s \"https://noetia.app/api/shares/nonexistent-xyz\")",
-      "Bash(curl -s -o /dev/null -w \"status: %{http_code}\\\\n\" \"https://noetia.app/s/nonexistent-xyz\")",
-      "Bash(curl -s -o /dev/null -w \"home: %{http_code}\\\\n\" \"https://noetia.app/\")"
+      "Bash(~/.local/node_modules/.bin/pnpm *)"
     ]
   }
 }
