@@ -20,7 +20,3 @@ export async function fetchSubscriptionStatus(): Promise<SubscriptionStatus> {
     return 'none';
   }
 }
-
-export function requiresPaywall(status: SubscriptionStatus): boolean {
-  return status === 'none' || status === 'canceled' || status === 'past_due';
-}
