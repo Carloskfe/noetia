@@ -542,6 +542,15 @@ Rule: replace `src/` with `tests/unit/`, suffix `.spec` (TS) or prefix `test_` (
 - Mock ALL external dependencies (databases, APIs, third-party clients). No test should touch a real database or make a real network call.
 - Tests must be fully isolated — no shared state between test cases.
 
+### Integration tests (real PostgreSQL) — `services/api/tests/integration/`
+
+The unit rules above (mock everything, `tests/unit/` only) apply to **unit** tests. Behaviour that only a real database can prove — transactions, row locks, unique constraints, concurrency — is tested separately (NEM-011, NEM-014):
+
+- Location: `services/api/tests/integration/**/*.int-spec.ts`, config `services/api/jest.integration.config.js`. Never in `tests/unit/`.
+- Each test file creates its own database on a **throwaway** server and runs every migration; the harness refuses non-loopback hosts.
+- Local: `docker run -d --rm --name nem-it-pg -e POSTGRES_PASSWORD=it -e POSTGRES_USER=it -e POSTGRES_DB=it -p 127.0.0.1:55432:5432 postgres:16-alpine`, then `INTEGRATION_DATABASE_URL=postgres://it:it@127.0.0.1:55432/it npm run test:integration` in `services/api`.
+- CI: the `api — integration tests (PostgreSQL)` job runs them against an ephemeral service container. Never point them at a shared, staging, or production database.
+
 ### Run commands per service
 
 | Service     | Run tests                        | Run with coverage                          | Coverage threshold |
