@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -11,7 +10,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'crypto';
 import Stripe from 'stripe';
-import { EntityManager, In, LessThan, MoreThan, Repository } from 'typeorm';
+import { In, LessThan, MoreThan, Repository } from 'typeorm';
 import { EmailService } from '../email/email.service';
 import { PushService } from '../push/push.service';
 import { Book } from '../books/book.entity';
@@ -114,64 +113,34 @@ export class SubscriptionsService {
 
     await this.expireStaleTokens(userId);
 
-    // One transaction: lock one token, record ownership, spend the token. Any
-    // failure rolls back both, and the row lock means concurrent requests (the
-    // same user, or Duo/Family members sharing a pool) can never take the same
-    // token (NEM-011).
-    await this.tokenRepo.manager.transaction(async (em) => {
-      // Try the user's own token pool first; fall back to linked plan owner's pool
-      let token = await this.lockOldestActiveToken(em, userId);
-
-      if (!token) {
-        const ownerSub = await em
-          .getRepository(Subscription)
-          .createQueryBuilder('sub')
-          .where(':userId = ANY(sub."linkedUserIds")', { userId })
-          .andWhere('sub.status IN (:...statuses)', { statuses: ACTIVE_STATUSES })
-          .getOne();
-
-        if (ownerSub) {
-          await this.expireStaleTokens(ownerSub.userId);
-          token = await this.lockOldestActiveToken(em, ownerSub.userId);
-        }
-      }
-
-      if (!token) throw new ForbiddenException({ error: 'no_tokens_remaining' });
-
-      // ON CONFLICT DO NOTHING: a concurrent redemption of the same book that
-      // committed first makes this a no-op — roll back so no token is spent.
-      const inserted = await em
-        .createQueryBuilder()
-        .insert()
-        .into(UserBook)
-        .values({ userId, bookId, purchaseType: 'token' })
-        .orIgnore()
-        .execute();
-      if (!inserted.raw?.length) throw new BadRequestException({ error: 'already_owned' });
-
-      const spent = await em.update(TokenLedger, { id: token.id, status: 'active' }, {
-        status: 'redeemed',
-        redeemedAt: new Date(),
-        bookId,
-      });
-      // The row lock makes this unreachable; the status guard keeps it a hard invariant.
-      if (spent.affected !== 1) throw new ConflictException({ error: 'token_unavailable' });
+    // Try the user's own token pool first; fall back to linked plan owner's pool
+    let tokenOwnerId = userId;
+    let token = await this.tokenRepo.findOne({
+      where: { userId, status: 'active', expiresAt: MoreThan(new Date()) },
+      order: { issuedAt: 'ASC' },
     });
-  }
 
-  /** Oldest active, unexpired token in `ownerId`'s pool, row-locked; tokens another transaction holds are skipped. */
-  private lockOldestActiveToken(em: EntityManager, ownerId: string): Promise<TokenLedger | null> {
-    return em
-      .getRepository(TokenLedger)
-      .createQueryBuilder('t')
-      .where('t.userId = :ownerId', { ownerId })
-      .andWhere('t.status = :status', { status: 'active' })
-      .andWhere('t.expiresAt > :now', { now: new Date() })
-      .orderBy('t.issuedAt', 'ASC')
-      .limit(1)
-      .setLock('pessimistic_write')
-      .setOnLocked('skip_locked')
-      .getOne();
+    if (!token) {
+      const ownerSub = await this.subRepo
+        .createQueryBuilder('sub')
+        .where(':userId = ANY(sub."linkedUserIds")', { userId })
+        .andWhere('sub.status IN (:...statuses)', { statuses: ACTIVE_STATUSES })
+        .getOne();
+
+      if (ownerSub) {
+        tokenOwnerId = ownerSub.userId;
+        await this.expireStaleTokens(tokenOwnerId);
+        token = await this.tokenRepo.findOne({
+          where: { userId: tokenOwnerId, status: 'active', expiresAt: MoreThan(new Date()) },
+          order: { issuedAt: 'ASC' },
+        });
+      }
+    }
+
+    if (!token) throw new ForbiddenException({ error: 'no_tokens_remaining' });
+
+    await this.tokenRepo.update(token.id, { status: 'redeemed', redeemedAt: new Date(), bookId });
+    await this.userBookRepo.insert({ userId, bookId, purchaseType: 'token' });
   }
 
   /**
@@ -353,8 +322,6 @@ export class SubscriptionsService {
         .where(':userId = ANY(sub."linkedUserIds")', { userId })
         .andWhere('sub.status IN (:...statuses)', { statuses: ACTIVE_STATUSES })
         .getOne();
-      // A member's own tokens (packs, gifts) are spent before the shared pool.
-      const ownTokenBalance = await this.getActiveTokenCount(userId);
       if (ownerSub) {
         const tokenBalance = await this.getActiveTokenCount(ownerSub.userId);
         return {
@@ -365,18 +332,10 @@ export class SubscriptionsService {
           currentPeriodEnd: ownerSub.currentPeriodEnd,
           trialEnd: ownerSub.trialEnd,
           tokenBalance,
-          ownTokenBalance,
-          availableTokens: ownTokenBalance + tokenBalance,
           isLinkedMember: true,
         };
       }
-      // Free account: no subscription is needed to hold or redeem tokens (PO-023).
-      return {
-        status: 'none' as const,
-        tokenBalance: ownTokenBalance,
-        availableTokens: ownTokenBalance,
-        isLinkedMember: false,
-      };
+      return { status: 'none' as const };
     }
     const tokenBalance = await this.getActiveTokenCount(userId);
     return {
@@ -387,7 +346,6 @@ export class SubscriptionsService {
       currentPeriodEnd: sub.currentPeriodEnd,
       trialEnd: sub.trialEnd,
       tokenBalance,
-      availableTokens: tokenBalance,
       isLinkedMember: false,
     };
   }
