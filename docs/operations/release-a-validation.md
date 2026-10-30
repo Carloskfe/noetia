@@ -79,3 +79,13 @@ Agent permissions: no change to `.claude/settings.local.json` is part of any PR;
 | Local real-stack validation (§1) | ✅ |
 | Merge method agreed: merge commit, not squash | ⏳ PO |
 | Open decisions B-2, B-3, B-5, B-10, B-11 | Not blocking Release A, except B-5 if expiry copy is wanted |
+
+## 7. Staging isolation review (2026-10-30)
+
+| # | Finding | Severity | Status |
+|---|---|---|---|
+| ISO-1 | Release A's web image hard-codes the production API; staging is safe **only** with NEM-006A's build-arg fix | Critical if missed | Gate 1 (plan §0); verified by two local builds: 0 vs 43 production references |
+| ISO-2 | Production and staging share the bare hostnames `api` and `storage` on the `proxy` network | **Unknown — possibly production-affecting, pre-existing since 2026-08-18** | Gate 2 (plan §0), read-only measurement by the operator; remedy needs PO approval |
+| ISO-3 | Mobile "Get tokens" opened the production checkout from any build | High for staging tests | Fixed `a7aae70` (`EXPO_PUBLIC_WEB_URL`); 199/199 mobile tests |
+| ISO-4 | No code guard against a live Stripe key or live webhook events on staging | Medium | Operator check (`sk_live_` count = 0); guard recommended as a follow-up mission |
+| ISO-5 | Database, Redis, Meilisearch | Isolated: `db`, `cache`, `search` are on each stack's private network only | — |

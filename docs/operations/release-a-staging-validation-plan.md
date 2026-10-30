@@ -17,6 +17,27 @@ docker exec noetia_staging-web-1 sh -c "grep -rlF 'https://noetia.app/api' /app/
 ```
 Pass = **nothing** above `---` and at least one file below it.
 
+**Verified locally 2026-10-30** (production web image built twice with the staging build args, bundles searched, images deleted afterwards):
+
+| Build | Production API refs | Staging API refs |
+|---|---|---|
+| Release A + `nem-006c-staging-content` (validation checkout) | **0** | 43 |
+| Release A alone (negative control) | **43** | 0 |
+
+### Gate 2 — production and staging must not resolve each other's services
+
+Both stacks put `api`, `web` and `storage` on the shared Traefik `proxy` network, and both address each other by those bare names (`INTERNAL_API_URL=http://api:4000`, `MINIO_ENDPOINT=storage`). Docker does not guarantee which container a name shared across attached networks resolves to, so **this must be measured, not assumed** — and it concerns **production** as well (e.g. production's `/s/<id>` server-rendered share page and production uploads), since staging went live on 2026-08-18. Read-only, one line each:
+```bash
+docker inspect -f '{{.Name}} {{range $n,$v := .NetworkSettings.Networks}}{{$n}}={{$v.IPAddress}} {{end}}' $(docker ps -q --filter name=noetia-api-1 --filter name=noetia-storage-1 --filter name=noetia_staging-api-1 --filter name=noetia_staging-storage-1)
+```
+```bash
+for c in noetia-api-1 noetia_staging-api-1; do for i in 1 2 3; do docker exec $c node -e "require('dns').lookup('storage',{all:true},(e,a)=>console.log('$c',e||a.map(x=>x.address).join(',')))"; done; done
+```
+```bash
+for c in noetia-web-1 noetia_staging-web-1; do for i in 1 2 3; do docker exec $c node -e "require('dns').lookup('api',{all:true},(e,a)=>console.log('$c',e||a.map(x=>x.address).join(',')))"; done; done
+```
+Pass = every lookup returns **only** IPs of its own stack's containers. **Fail → STOP and report to the Product Owner**: the remedy (unique hostnames such as `noetia-api-1` / `noetia_staging-api-1` in each stack's `INTERNAL_API_URL` and `MINIO_ENDPOINT`) is a **production and staging configuration change** needing explicit approval.
+
 ## 1. Minimum staging dependency (NEM-006A / 006C)
 
 Staging infrastructure (`docker-compose.staging.yml`, staging web build isolation, `docs/staging/RUNBOOK.md`) exists only on `nem-006c-staging-content` (which contains NEM-006A). Release A needs it **only to run on the staging host** — nothing from it is needed in the release itself.
@@ -30,7 +51,7 @@ Staging infrastructure (`docker-compose.staging.yml`, staging web build isolatio
 |---|---|---|
 | SSH to the host (`-p 222`) to run the one-line commands below | Operator | Claude does not receive credentials; the operator runs commands and pastes **outputs** (no `.env` values) |
 | Stripe Dashboard in **Test mode** | Operator | Test-mode objects only; nothing in live mode |
-| A device/simulator with an Expo dev build | Operator / developer | `EXPO_PUBLIC_API_URL=https://staging.noetia.app/api` (the staging API is not behind basic auth since NEM-006A `15e5762`) |
+| A device/simulator with an Expo dev build | Operator / developer | `EXPO_PUBLIC_API_URL=https://staging.noetia.app/api` **and** `EXPO_PUBLIC_WEB_URL=https://staging.noetia.app` (without it, "Get tokens" opens the **production** checkout — fixed in `a7aae70`, but the variable must be set). The staging API is not behind basic auth since NEM-006A `15e5762` |
 
 ### 2b. Read-only pre-checks on the host (paste outputs)
 ```bash
@@ -46,8 +67,12 @@ grep -E '^STRIPE_SECRET_KEY=' /opt/noetia-staging/.env.staging | sed -E 's/.*sk_
 grep -cE '^STRIPE_WEBHOOK_SECRET=whsec_' /opt/noetia-staging/.env.staging
 ```
 ```bash
-grep -E '^(NEXT_PUBLIC_API_URL|DB_NAME|APP_ENV)=' /opt/noetia-staging/.env.staging
+grep -E '^(NEXT_PUBLIC_API_URL|DB_NAME|APP_ENV|WEB_URL|MINIO_PUBLIC_URL)=' /opt/noetia-staging/.env.staging
 ```
+```bash
+grep -cE '^STRIPE_SECRET_KEY=sk_live_' /opt/noetia-staging/.env.staging
+```
+(must print `0`). Note: the API has **no** code-level guard refusing a live key on staging — this check is the only protection (recommended follow-up: refuse to start when `APP_ENV=staging` and the key is `sk_live_`, and reject `livemode: true` webhook events on staging).
 **Stop** unless: staging containers healthy · `STRIPE MODE: test` · webhook secret present (`1`) · API URL is `staging.noetia.app` · `DB_NAME=noetia_staging`.
 
 ### 2c. Stripe test-mode configuration (Dashboard, Test mode ON)
@@ -111,6 +136,20 @@ Run per `docs/operations/nem-011-ownership-reconciliation.md` — checksum check
 No two PRs change the same file. Every merge to `main` triggers a production deploy (docs-only merges rebuild nothing, but still run CD).
 
 ## 6. Next execution phase — Product Owner approval requested
+
+### 6a. What needs which authorization
+
+| Category | Items | Authorization |
+|---|---|---|
+| Read-only checks | §0 gates 1–2, §2b pre-checks | Covered by the current phase — **operator executes** (no change) |
+| **Test-mode Stripe objects** | Webhook endpoint for `staging.noetia.app`; test prices for a token pack and one plan; test customers/subscriptions created by the matrix | **Separate PO approval** (Stripe configuration change, test mode only) |
+| **Staging configuration** | `STRIPE_WEBHOOK_SECRET` (and test key if missing) in `.env.staging` — entered by the operator | **Separate PO approval** (secret change, staging) |
+| **Staging data** | Test price IDs in `token_packages`/`plans`; one book set `isFree=false`; test-account email confirmation | **Separate PO approval** (staging data change) |
+| **Staging deployment** | Host-local validation checkout + manual rebuild (§2d); restore afterwards | **Separate PO approval** (deployment, staging) |
+| Production, read-only | Reconciliation baseline + Stripe live read-only checks (§4) | **Separate PO approval** (production access, read-only) |
+| Production changes | Gate-2 remedy if it fails; any merge; any deploy | **Not requested** |
+
+### 6b. Execution steps
 
 Approval is requested for **staging-only** actions, run by the operator with the agent guiding and recording evidence:
 
