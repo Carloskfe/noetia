@@ -29,6 +29,8 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   // Close the HTTP server + DB pool on SIGTERM so `docker stop` (every deploy)
   // exits in ~1s instead of hitting the 10s kill timeout with /api unrouted.
+  // Requires `init: true` in docker-compose.server.yml. A clean stop exits 143
+  // (Nest re-raises SIGTERM after closing); 137 means it was SIGKILLed.
   app.enableShutdownHooks();
   const port = process.env.API_PORT ?? 4000;
   await app.listen(port);
