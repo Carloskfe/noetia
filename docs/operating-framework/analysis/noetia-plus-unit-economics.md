@@ -9,7 +9,7 @@
 
 | # | Requirement | How this assessment treats it |
 |---|---|---|
-| W-1 | Noetia+ is a premium add-on that **requires an active basic subscription** | Modelled as the operating premise. **Conflicts with PO-022 and PO-023 rules 6–8**; amendments are *drafted* in [`noetia-plus-po-022-023-amendment-drafts.md`](noetia-plus-po-022-023-amendment-drafts.md), records untouched |
+| W-1 | Noetia+ is a premium add-on that **requires an active basic subscription** | **Direction APPROVED by the Product Owner (2026-10-30)**: no standalone Noetia+ for free or token-pack-only accounts; cancelling Noetia+ never cancels basic; Noetia+ entitlement ends when basic ends. Billing, refunds, grace periods, and synchronization **pending**. Amendment wording for PO-022 / PO-023 in [`noetia-plus-po-022-023-amendment-drafts.md`](noetia-plus-po-022-023-amendment-drafts.md); records not yet amended |
 | W-2 | Combined Individual + Noetia+ monthly price **≤ $14.99** | Noetia+ monthly price `P ≤ $6.00` |
 | W-3 | Causas 2.22% + Marketing 7.78% **also apply to Noetia+** revenue | **Primary case** (`a = 10%`). The 0% case is kept only as a reference column |
 | W-4 | W-3 is a **planning assumption** pending financial-policy approval and accounting/legal review | Not an amendment to PO-011/PO-012; PO-022 leaves the question open |
@@ -53,7 +53,7 @@ PO-005…PO-020 and NOF-002 live on the unmerged branch `nem-009-resilience-impl
 
 | # | Finding |
 |---|---|
-| X-1 | **W-1 dependency** vs **PO-022** and **PO-023 rules 6–8** → explicit amendment required (drafts prepared, not applied) |
+| X-1 | **W-1 dependency (approved direction)** vs **PO-022** and **PO-023 rules 6–8** → amendment wording drafted for PO review; records not yet amended. Related documents to reconcile: amendment drafts C-3…C-6 |
 | X-2 | COGS bands differ: PO-001 (15/25/35) vs NEM-003 summary (15/30/45). **PO-001 governs** |
 | X-3 | Annual price: PO-006 $83.99 vs production display $89.00 vs ToS $80.99 |
 | X-4 | **Causas/Marketing on Noetia+**: W-3 assumes yes (planning only); PO-022 leaves it pending; ToS promises Causas on "every payment" |
@@ -215,12 +215,12 @@ Every discounted annual Noetia+ price puts the $1.50 target in Caution. Annual N
 
 | Area | Implication |
 |---|---|
-| **Policy** | Contradicts PO-022 ("does not require a book-token subscription"; own lifecycle and cancellation) and PO-023 rules 6–8. Amendments drafted separately; **not applied** |
-| **Addressable market** | Shrinks to Individual (and possibly Duo/Family) subscribers. Free accounts and token-pack-only buyers (PO-021/023) lose Noetia+ access |
-| **Entitlement** | Noetia+ active ⇔ basic `active`/`trialing`/`canceling` **and** Noetia+ item active; suspended with basic `past_due`; ends with basic |
-| **Book ownership** | Unchanged: owned books, notes, highlights, fragments survive any cancellation (PO-021/022 preserved) |
-| **Cancellation** | Basic cancellation cascades to Noetia+; Noetia+ cancellation leaves basic untouched |
-| **Interval** | Noetia+ interval must match basic (monthly↔monthly, annual↔annual) |
+| **Policy** | Direction **approved** (2026-10-30). PO-022 / PO-023 records still state independence until the drafted amendments are applied |
+| **Addressable market** | Shrinks to basic subscribers (which plans qualify — Individual, Duo/Family — is **pending**). Free accounts and token-pack-only buyers cannot purchase or maintain Noetia+ (**approved**) |
+| **Entitlement** | Noetia+ requires an active basic subscription and ends when basic ends (**approved**). Which states count as "active", and behaviour during `past_due`, are **pending**; the analysis models suspension as one option |
+| **Book ownership** | Unchanged: owned books, notes, highlights, fragments, and issued tokens survive any cancellation (PO-021/022/024 preserved) |
+| **Cancellation** | Noetia+ cancellation leaves basic untouched (**approved**). Basic ending ends Noetia+ entitlement (**approved**); exact timing and billing synchronization **pending** |
+| **Interval** | Matching intervals are the analysis's working model; **not decided** |
 | **Schema** | One combined Stripe subscription fits the existing one-subscription-per-user constraint (`uq_subscriptions_user`) better than two subscriptions, but **entitlements must be modelled per item** |
 | **Webhook** | `webhooks.service.ts` reads only `items.data[0]` and `lines.data[0]` → a two-item subscription would be misread today. Implementation mission required |
 | **Duo / Family** | Whether linked members (no own subscription) qualify is open (Q-E7) |
@@ -266,13 +266,13 @@ Every discounted annual Noetia+ price puts the $1.50 target in Caution. Annual N
 
 | # | Question | Owner |
 |---|---|---|
-| Q-E1 | Approve the drafted amendments to PO-022 / PO-023 (dependency)? | PO |
+| Q-E1 | Dependency direction **approved 2026-10-30**. Remaining: approve the amendment **wording** and its application to the PO-022 / PO-023 records | PO |
 | Q-E2 | Confirm Causas 2.22% + Marketing 7.78% on Noetia+ as policy (W-3 → decision), with legal review of the ToS "every payment" wording | PO + legal |
 | Q-E3 | Who bears payment fees; fee allocation key for a combined charge | PO + accounting |
 | Q-E4 | Revenue recognition: token deferral, Noetia+ ratable recognition, line-level refunds | Accounting |
 | Q-E5 | Canonical annual price (X-3) | PO |
 | Q-E6 | Noetia+ refund/credit when basic ends mid-period; billing during `past_due` | PO |
-| Q-E7 | Duo/Family linked members' Noetia+ eligibility | PO |
+| Q-E7 | Which plans count as "basic subscription" (Individual; Duo/Family owners; linked members) and which states count as "active" | PO |
 | Q-E8 | Fair-use limits and customer-facing units | PO |
 | Q-E9 | Tax regime and markets; are allocations computed on tax-inclusive or net revenue? | PO + tax |
 | Q-E10 | Retire stale NEM-003 COGS bands in favour of PO-001 | Product Architecture |
