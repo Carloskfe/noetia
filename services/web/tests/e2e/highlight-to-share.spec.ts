@@ -66,6 +66,10 @@ test.describe('Flow: highlight → share', () => {
     await page.route(`**/books/${BOOK_ID}/fragments`, (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) }),
     );
+    // The reader checks ownership of paid books (NEM-012 unlock action); the user owns this one.
+    await page.route('**/library/ids', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([BOOK_ID]) }),
+    );
   });
 
   test.skip('user selects text, saves fragment, and sees counter increment', async ({ page }) => {
@@ -160,6 +164,9 @@ test.describe('Flow: highlight → share', () => {
     );
     await page.route(`**/books/${BOOK_ID}/fragments`, (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([SHARE_FRAGMENT]) }),
+    );
+    await page.route('**/library/ids', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([BOOK_ID]) }),
     );
 
     await page.goto(`/reader/${BOOK_ID}`);

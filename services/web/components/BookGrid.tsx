@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { useTranslation } from '@/lib/i18n';
 
 const LANG_LABELS: Record<string, string> = {
   en: 'EN',
@@ -28,6 +29,7 @@ type Props = {
 };
 
 export function BookGrid({ books, libraryBookIds, onAdd }: Props) {
+  const { t } = useTranslation();
   return (
     <div className="grid grid-cols-2 gap-4 pb-6">
       {books.map((book) => {
@@ -60,8 +62,23 @@ export function BookGrid({ books, libraryBookIds, onAdd }: Props) {
               <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{book.author}</p>
             </Link>
 
-            {/* Only free books can be added; paid books are acquired with a token or a purchase (NEM-011). */}
-            {onAdd && book.isFree === true && (
+            {/* Paid books are acquired only with a token (PO-021 Amendment 1): unowned paid
+                books link to the unlock flow; free books keep "+" (NEM-011, NEM-012). */}
+            {onAdd && book.isFree === false && !inLibrary && (
+              <Link
+                href={`/reader/${book.id}?unlock=1`}
+                aria-label={t.acquisition.cardUnlock}
+                title={t.acquisition.cardUnlock}
+                className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow transition bg-white/90 text-gray-600 hover:bg-blue-600 hover:text-white"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className="w-4 h-4" aria-hidden="true">
+                  <rect x="5" y="11" width="14" height="9" rx="2" />
+                  <path strokeLinecap="round" d="M8 11V8a4 4 0 018 0v3" />
+                </svg>
+              </Link>
+            )}
+
+            {onAdd && (book.isFree === true || (book.isFree === false && inLibrary)) && (
               <button
                 onClick={(e) => { e.preventDefault(); if (!inLibrary) onAdd(book.id); }}
                 aria-label={inLibrary ? 'En tu biblioteca' : 'Agregar a tu biblioteca'}

@@ -14,6 +14,10 @@ jest.mock('next/image', () => ({
   },
 }));
 
+jest.mock('@/lib/i18n', () => ({
+  useTranslation: () => ({ t: { acquisition: { cardUnlock: 'Unlock with a token' } } }),
+}));
+
 import React, { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { BookGrid } from '@/components/BookGrid';
@@ -41,6 +45,10 @@ function addButtons(): HTMLButtonElement[] {
   return Array.from(container.querySelectorAll('button'));
 }
 
+function unlockLinks(): HTMLAnchorElement[] {
+  return Array.from(container.querySelectorAll('a[aria-label="Unlock with a token"]'));
+}
+
 describe('BookGrid add-to-library button (NEM-011)', () => {
   it('offers "add" on a free book and calls onAdd with its id', () => {
     const onAdd = jest.fn();
@@ -52,15 +60,27 @@ describe('BookGrid add-to-library button (NEM-011)', () => {
     expect(onAdd).toHaveBeenCalledWith('free-1');
   });
 
-  it('never offers "add" on a paid book — it would create ownership without payment', () => {
-    act(() => root.render(<BookGrid books={[paidBook]} onAdd={jest.fn()} />));
+  it('never offers "add" on a paid book — it offers the token unlock flow instead (NEM-012)', () => {
+    const onAdd = jest.fn();
+    act(() => root.render(<BookGrid books={[paidBook]} onAdd={onAdd} />));
     expect(addButtons()).toHaveLength(0);
+    const [unlock] = unlockLinks();
+    expect(unlock.getAttribute('href')).toBe('/reader/paid-1?unlock=1');
+    act(() => unlock.click());
+    expect(onAdd).not.toHaveBeenCalled();
   });
 
-  it('hides "add" when the free flag is missing (fails closed)', () => {
+  it('shows an owned paid book as in the library, with no unlock action', () => {
+    act(() => root.render(<BookGrid books={[paidBook]} libraryBookIds={new Set(['paid-1'])} onAdd={jest.fn()} />));
+    expect(unlockLinks()).toHaveLength(0);
+    expect(addButtons()[0].getAttribute('aria-label')).toBe('En tu biblioteca');
+  });
+
+  it('offers neither add nor unlock when the free flag is missing (fails closed)', () => {
     const { isFree: _omit, ...unknownBook } = freeBook;
     act(() => root.render(<BookGrid books={[unknownBook]} onAdd={jest.fn()} />));
     expect(addButtons()).toHaveLength(0);
+    expect(unlockLinks()).toHaveLength(0);
   });
 
   it('shows the in-library state and does not re-add a free book already in the library', () => {
@@ -76,6 +96,7 @@ describe('BookGrid add-to-library button (NEM-011)', () => {
   it('renders no buttons at all without an onAdd handler', () => {
     act(() => root.render(<BookGrid books={[freeBook, paidBook]} />));
     expect(addButtons()).toHaveLength(0);
+    expect(unlockLinks()).toHaveLength(0);
     expect(container.textContent).toContain('Libre');
     expect(container.textContent).toContain('De pago');
   });
