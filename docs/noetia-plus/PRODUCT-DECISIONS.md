@@ -59,3 +59,13 @@ Final retail price · exact fair-use/quotation technical thresholds · final AI 
 
 ## Legal
 This document is **product policy, not legal advice.** Before commercial rollout of licensed-content AI features, obtain legal review of licensing agreements, quotation policies, publisher AI permissions, content-processing terms, and provider data handling. The architecture is deliberately configurable so it is not blocked on that review.
+
+---
+
+## Later decisions affecting Noetia+ (2026-10-29)
+Recorded under `docs/operating-framework/decisions/product-owner/` (the operating-framework location):
+- **[PO-021](../operating-framework/decisions/product-owner/PO-021-token-based-book-acquisition.md)** — Token-based book acquisition: subscriptions never unlock paid books; access = ownership.
+- **[PO-022](../operating-framework/decisions/product-owner/PO-022-independent-noetia-plus-subscription.md)** — Noetia+ is a separate, independently purchasable subscription with its own entitlement and billing lifecycle.
+- **[PO-023](../operating-framework/decisions/product-owner/PO-023-subscription-free-book-acquisition.md)** — Free accounts may buy and redeem tokens; all subscriptions are optional and may be held together.
+
+Impact on this design (e.g. `08-entitlements-and-subscription.md`): [impact assessment](../architecture/impact-assessments/PO-021-023-acquisition-and-noetia-plus.md) §2 C-08, C-09.
