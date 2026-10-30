@@ -813,7 +813,7 @@ export const en = {
       success: {
         title: (n: number) => `${n} ${n === 1 ? 'token received' : 'tokens received'}!`,
         body: 'You can now use your tokens to unlock books in your library.',
-        cta: 'Go to my library',
+        cta: 'Choose a book to unlock',
       },
       error: {
         title: 'Invalid gift',
@@ -827,6 +827,26 @@ export const en = {
         gift_not_found: 'We could not find this gift.',
       },
     },
+  },
+  acquisition: {
+    title: 'Unlock this book',
+    subtitle: 'Use 1 token to keep it in your library forever.',
+    balance: (n: number): string => (n === 1 ? 'You have 1 token' : `You have ${n} tokens`),
+    checkingBalance: 'Checking your tokens…',
+    unlock: 'Unlock with 1 token',
+    unlocking: 'Unlocking…',
+    getTokens: 'Get tokens',
+    noTokens: "You don't have tokens yet. Get a token pack — no subscription needed.",
+    confirmEmail: 'Confirm your email to unlock books. Check your inbox.',
+    signIn: 'Sign in to unlock',
+    alreadyOwned: 'This book is already in your library.',
+    openBook: 'Open book',
+    error: 'Something went wrong. Try again.',
+    readingWithPlan: 'You can read this with your plan. Unlock it to keep it forever.',
+    paymentPending: 'Your plan payment is pending. You can still unlock books with tokens.',
+    topBarUnlock: 'Unlock',
+    cardUnlock: 'Unlock with a token',
+    close: 'Close',
   },
 };
 

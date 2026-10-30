@@ -80,6 +80,47 @@ jobs:
       - name: Run tests with coverage
         run: pnpm --filter @noetia/${{ matrix.service }} test:cov
 
+  # ── Integration tests — api against a throwaway PostgreSQL (NEM-014) ────────
+  # Ephemeral service container: created and destroyed with this job, no secrets,
+  # no route to production. Each test file migrates its own database.
+  integration-tests-api:
+    name: api — integration tests (PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: it
+          POSTGRES_PASSWORD: it
+          POSTGRES_DB: it
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U it"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run integration tests
+        run: pnpm --filter @noetia/api test:integration
+        env:
+          INTEGRATION_DATABASE_URL: postgres://it:it@127.0.0.1:5432/it
+
   # ── Unit tests — Python (image-gen) ─────────────────────────────────────────
   unit-tests-python:
     name: image-gen — unit tests (≥80% coverage)

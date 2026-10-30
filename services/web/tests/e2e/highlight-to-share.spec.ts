@@ -66,6 +66,15 @@ test.describe('Flow: highlight → share', () => {
     await page.route(`**/books/${BOOK_ID}/fragments`, (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) }),
     );
+    // The reader checks ownership of paid books (NEM-012 unlock action); the user owns this one.
+    await page.route('**/library/ids', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([BOOK_ID]) }),
+    );
+    // Dismissing the reader tutorial syncs onboarding state; unmocked, the fake token
+    // 401s and the app redirects to /login mid-test (pre-existing flake).
+    await page.route('**/users/me/onboarding', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ welcome: 'completed', welcomeStep: 0, tours: {} }) }),
+    );
   });
 
   test.skip('user selects text, saves fragment, and sees counter increment', async ({ page }) => {
@@ -160,6 +169,9 @@ test.describe('Flow: highlight → share', () => {
     );
     await page.route(`**/books/${BOOK_ID}/fragments`, (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([SHARE_FRAGMENT]) }),
+    );
+    await page.route('**/library/ids', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([BOOK_ID]) }),
     );
 
     await page.goto(`/reader/${BOOK_ID}`);

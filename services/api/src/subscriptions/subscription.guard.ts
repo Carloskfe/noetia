@@ -40,8 +40,12 @@ export class SubscriptionGuard implements CanActivate {
 
     const sub = userId ? await this.subRepo.findOneBy({ userId }) : null;
 
+    // `bookId` lets clients offer "Unlock with token" on the denial (NEM-012). The
+    // access decision itself is unchanged — ownership-only enforcement is NEM-013.
+    const denial = bookId ? { bookId } : {};
+
     if (sub?.status === 'past_due') {
-      throw new ForbiddenException({ error: 'payment_required', billingPortalHint: true });
+      throw new ForbiddenException({ error: 'payment_required', billingPortalHint: true, ...denial });
     }
 
     if (!sub || !ACTIVE_STATUSES.includes(sub.status)) {
@@ -54,7 +58,7 @@ export class SubscriptionGuard implements CanActivate {
           .getOne();
         if (ownerSub) return true;
       }
-      throw new ForbiddenException({ error: 'subscription_required' });
+      throw new ForbiddenException({ error: 'subscription_required', ...denial });
     }
 
     return true;

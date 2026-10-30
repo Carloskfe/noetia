@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  GoneException,
   HttpCode,
   Param,
   Post,
@@ -80,11 +81,16 @@ export class SubscriptionsController {
     return this.subscriptionsService.syncSubscription(req.user.id);
   }
 
+  /**
+   * Retired (NEM-015 / PO-021 Amendment 1): paid books are acquired only by
+   * redeeming a token. The route stays registered so callers get a clear 410
+   * rather than a 404; no Stripe session is ever created. Purchases started
+   * before retirement are still fulfilled by the Stripe webhook.
+   */
   @Post('books/:bookId/purchase')
-  @HttpCode(200)
-  @UseGuards(JwtAuthGuard, EmailConfirmedGuard)
-  purchaseBook(@Request() req: any, @Param('bookId') bookId: string) {
-    return this.subscriptionsService.createPurchaseSession(req.user.id, bookId);
+  @UseGuards(JwtAuthGuard)
+  purchaseBook(): never {
+    throw new GoneException({ error: 'title_purchase_discontinued' });
   }
 
   @Post('books/:bookId/redeem')

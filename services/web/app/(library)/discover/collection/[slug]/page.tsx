@@ -13,6 +13,7 @@ type Book = {
   coverUrl: string | null;
   category: string;
   language: string;
+  isFree: boolean;
 };
 
 type CollectionDetail = {

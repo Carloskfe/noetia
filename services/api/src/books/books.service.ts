@@ -5,6 +5,11 @@ import { Book, BookCategory } from './book.entity';
 import { CreateBookDto } from './dto/create-book.dto';
 import { HostingTier, HOSTING_TIER_LIMITS, User } from '../users/user.entity';
 
+export type BookSummary = Pick<
+  Book,
+  'id' | 'title' | 'author' | 'coverUrl' | 'description' | 'language' | 'category' | 'isFree'
+>;
+
 @Injectable()
 export class BooksService {
   constructor(
@@ -60,6 +65,26 @@ export class BooksService {
     const book = await this.repo.findOneBy({ id });
     if (!book) throw new NotFoundException('Book not found');
     return book;
+  }
+
+  /**
+   * Public catalogue metadata for one published book — what an "Unlock with
+   * token" screen shows before the reader has access. Never includes storage
+   * keys or file URLs (NEM-012).
+   */
+  async findSummary(id: string): Promise<BookSummary> {
+    const book = await this.repo.findOneBy({ id, isPublished: true });
+    if (!book) throw new NotFoundException('Book not found');
+    return {
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      coverUrl: book.coverUrl,
+      description: book.description,
+      language: book.language,
+      category: book.category,
+      isFree: book.isFree,
+    };
   }
 
   findPending(): Promise<Book[]> {

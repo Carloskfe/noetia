@@ -11,7 +11,7 @@ Provider: **Stripe** (`stripe` SDK). Module: `services/api/src/subscriptions`.
 `SubscriptionsService` creates Stripe Checkout Sessions for three purchase types:
 - `createCheckoutSession(userId, planId)` — subscription.
 - `createTokenPackageSession(userId, packageId)` — token bundle (metadata `tokenPackageId`).
-- `createPurchaseSession(userId, bookId)` — single paid book (metadata `bookId`).
+- ~~`createPurchaseSession(userId, bookId)`~~ — **removed by NEM-015** (Release A branch): `POST books/:bookId/purchase` answers `410 title_purchase_discontinued`. The webhook still fulfils pre-retirement sessions (metadata `bookId`) once payment is confirmed, including `checkout.session.async_payment_succeeded`.
 - `createPortalSession(userId)` — Stripe billing portal.
 Customer resolution: `getOrCreateStripeCustomer` persists `stripeCustomerId` on the user. Gift-card checkout is handled by `GiftsService` (`POST /gifts/checkout`).
 
