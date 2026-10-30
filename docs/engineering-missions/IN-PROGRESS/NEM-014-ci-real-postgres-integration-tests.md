@@ -106,6 +106,18 @@ Merge only on approval. If the job proves flaky, it can be removed by reverting 
 
 STOP if the job would need a secret, a production or staging connection, a paid runner, or any change to `cd.yml` or existing jobs.
 
-## 18–19. Completion report and review
+## 18. Completion report (2026-10-29)
 
-Per README Completion Report Standard; Product Architecture review per `REVIEW-CHECKLIST.md`.
+**Status:** implemented on `release/acquisition-a` (draft PR #14) — not merged.
+
+| Criterion | Result |
+|---|---|
+| 1 — job passes on NEM-011 code, fails when the fix is reverted | PR #14: **18/18 pass**. Throwaway PR #15 (pre-NEM-011 `library.service.ts` + `subscriptions.service.ts`): **9/18 fail** — G1, G1b, pre-existing-rows, G2 (2 of 5 rounds), G2b, G2c, free-account balance ×2. PR #15 closed, branch deleted, never merged |
+| 2 — under 5 minutes | **53 s** |
+| 3 — no other job changed, no secret added | Diff: one new job + `CLAUDE.md` testing note |
+
+**Changed files:** `.github/workflows/ci.yml` (job `api — integration tests (PostgreSQL)`), `CLAUDE.md` (§ Testing — integration tests). **Note:** CI runs only on pull requests to `main`, so the job runs on PRs, not on branch pushes.
+
+## 19. Product Architecture review
+
+Per `REVIEW-CHECKLIST.md`. Verdict: _pending_.

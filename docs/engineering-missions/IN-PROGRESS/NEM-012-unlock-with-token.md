@@ -131,6 +131,27 @@ Update `docs/technical-baseline/05-api.md` (new/changed endpoints) and the NEM-0
 
 STOP if: the flow needs a schema change; an owned-book reading path must change; any change to who can read what (that is NEM-013); a native module is needed on mobile (breaks OTA).
 
-## 18–19. Completion report and review
+## 18. Completion report (2026-10-29)
 
-Per README Completion Report Standard; Product Architecture review per `REVIEW-CHECKLIST.md`.
+**Status:** implementation complete on `release/acquisition-a` (draft PR #14) — **not merged, not deployed** (deployment NOT AUTHORIZED).
+
+| Condition (§1a) | Result |
+|---|---|
+| 2 — visible unlock for active subscribers under legacy streaming | Reader top bar **Unlock** + dialog when a paid book is readable but not owned (web); header **Desbloquear** + modal (mobile); Discover/collection cards link unowned paid books to `/reader/:id?unlock=1` |
+| 3 — free accounts see their balance | `GET /subscriptions/me` returns `tokenBalance` / `availableTokens` with no subscription row (unit + real-DB integration test); shown in the unlock UI and the existing profile token line |
+| 4 — mobile accessible to free and canceled users | App-level paywall removed (`entryState` has no subscription gate); `PaywallScreen` deleted |
+| 5 — owned reading, progress, highlights, Escucha Activa preserved | Reader paths for owned/free books unchanged; E2E owned-book regression + existing reader E2E pass; guard access decision untouched |
+| 6 — NEM-013 stays DRAFT | Nobody's read access changed; denials only gained `bookId` |
+| 7 — no per-title purchase | No purchase UI anywhere; tests assert it on web and mobile |
+
+**Changed files** — API: `subscriptions/subscriptions.service.ts` (balances), `subscriptions/subscription.guard.ts` (403 `bookId`), `books/books.service.ts` + `books.controller.ts` (`GET /books/:id/summary`). Web: `lib/acquisition.ts`, `components/UnlockPanel.tsx`, `components/ReaderTopBar.tsx`, `components/BookGrid.tsx`, `app/(reader)/reader/[id]/page.tsx`, `app/(auth)/gift/claim/page.tsx`, `app/(billing)/pricing/page.tsx` (`#tokens` anchor), `lib/i18n/{en,es}.ts`. Mobile: `api/acquisition.ts`, `auth/entry-state.ts`, `components/UnlockPanel.tsx`, `screens/reader/ReaderScreen.tsx`, `navigation/RootNavigator.tsx`, `api/subscriptions.ts`, `i18n/{en,es}.ts`; deleted `screens/PaywallScreen.tsx`. Docs: `technical-baseline/05-api.md`.
+
+**Database:** none. **Tests:** api unit 945/945, integration 18/18 (+2 free-account / household balance); web unit 337/337 (+lib/acquisition, UnlockPanel, BookGrid, ReaderTopBar); web E2E `acquire-to-read` 4/4 locally (skipped against production until deployed), full E2E 13/13 ×3 locally; mobile unit 195/195. Coverage: api branches 68.83→69.33%; web all four metrics up (functions 51.74→53.03%); mobile statements 29.61→31.03%. Thresholds unchanged.
+
+**Deviations:** 403 body carries `bookId` but not the balance (the guard does not read the token ledger; clients read `/subscriptions/me`). The existing `highlight-to-share` E2E gained `/library/ids` and `/users/me/onboarding` mocks — the latter fixes a pre-existing redirect race reproduced on `main`'s code.
+
+**Risks / follow-ups:** remove the production skip in `acquire-to-read.spec.ts` after deployment; validation on staging (O-1) still pending — see the coordinated rollout plan.
+
+## 19. Product Architecture review
+
+Per `REVIEW-CHECKLIST.md`. Verdict: _pending_.
