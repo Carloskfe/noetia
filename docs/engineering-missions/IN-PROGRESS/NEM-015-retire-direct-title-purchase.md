@@ -1,13 +1,13 @@
 # NOETIA ENGINEERING MISSION — NEM-015
 ## Retire Direct Per-Title Purchase (B-1)
 
-**Status:** DRAFT
+**Status:** IN PROGRESS — implementation authorized by the Product Owner (Release A preparation, 2026-10-29)
 **Mission type:** REMEDIATION
 **Implementation authorization:** LIMITED (§5)
 **Schema changes:** NOT AUTHORIZED (none needed)
 **Infrastructure changes:** NOT AUTHORIZED
-**Production deployment:** AUTHORIZED WITH CONDITIONS — only inside Release A (NEM-011 + NEM-012 + NEM-015), see the coordinated rollout plan
-**Product Owner approval:** REQUIRED (B-1 approved 2026-10-29; this specification not yet approved)
+**Production deployment:** NOT AUTHORIZED — separate explicit Product Owner approval required; when approved, only inside Release A (NEM-011 + NEM-012 + NEM-014 + NEM-015)
+**Product Owner approval:** GRANTED for implementation within §5 (2026-10-29). Merging and deployment are **not** authorized.
 
 > Reminder: **APPROVED ≠ EXECUTE.** Executed only on an explicit Product Owner instruction naming NEM-015.
 
@@ -31,7 +31,11 @@ NEM-011 (same release branch). Pre-deploy: reconciliation §5 + Stripe open-sess
 
 1. `POST /subscriptions/books/:bookId/purchase` → **`410 Gone { error: 'title_purchase_discontinued' }`**, before any Stripe call. The route stays registered (a clear error, not a 404).
 2. `createPurchaseSession` removed from the service; no new Checkout Sessions with `metadata.bookId`.
-3. **Webhook fulfilment kept:** `checkout.session.completed` with `metadata.bookId` still calls `addPurchasedBook` (idempotent), so a session created before retirement — which can complete up to Stripe's default 24 h later — is honoured. Each such late fulfilment logs one line (`late_title_purchase_fulfilled`, session id only).
+3. **Webhook fulfilment kept, permanently, and payment-aware** (PO safeguard 4 — obligations do not end 24 h after creation):
+   - `checkout.session.completed` with `metadata.bookId` → ownership only when `payment_status` is `paid` or `no_payment_required`; `unpaid` (a delayed payment method) is logged and waits.
+   - `checkout.session.async_payment_succeeded` → ownership (idempotent); `async_payment_failed` → nothing granted, logged.
+   - Each late fulfilment logs `late_title_purchase_fulfilled session=<id> via=<completed|async_succeeded>` — session id only.
+   - Token-pack and gift handling unchanged.
 4. `docs/PRD.md` § Monetization updated per the impact assessment §2b; `docs/technical-baseline/05-api.md` / `08-subscriptions.md` updated.
 5. `books.priceCents` left in the schema (column removal would be a schema change; out of scope) — documented as unused.
 
@@ -65,6 +69,17 @@ Reader/Escucha Activa untouched; token-pack and gift checkouts (`mode: payment` 
 
 Inside Release A only. Rollback = revert the release (would re-open the endpoint — emergency only).
 
+## 15a. Pending-obligation timeline (investigation, 2026-10-29)
+
+| Window | Source of a late event | Handling |
+|---|---|---|
+| ≤ 24 h after creation | An **open** Checkout Session can still complete (Stripe's maximum session expiry; the code sets none, so the default applies) | Fulfilled on `checkout.session.completed` (paid) |
+| ≤ ~3 days | Stripe **retries** a webhook delivery that failed | Same handler; `stripe_processed_events` + idempotent insert make redelivery safe |
+| Days | **Delayed payment methods** report the outcome via `async_payment_succeeded/failed`. The code requests `payment_method_types: ['card']`, so this should not occur — handled anyway | Fulfil on success, nothing on failure |
+| Months | **Refunds and disputes** on historical purchases | **Not handled by the application** (audit G7); ownership is never revoked automatically. Operator cross-check in the reconciliation runbook; accounting treatment is B-11 |
+
+Implication: the webhook path for `metadata.bookId` stays in the code permanently (O-1 default), and the retirement is safe at any time — no session can be *created* after deploy, and every session created before it is honoured on confirmed payment.
+
 ## 16. Open decisions
 
 | # | Question | Recommended default |
@@ -76,6 +91,21 @@ Inside Release A only. Rollback = revert the release (would re-open the endpoint
 
 STOP if retirement requires changing any `user_books` row, a schema change, or a Stripe configuration change; or if the Stripe check shows open per-title sessions whose completion cannot be honoured.
 
-## 18–19. Completion report and review
+## 18. Completion report (2026-10-29)
 
-Per README Completion Report Standard; Product Architecture review per `REVIEW-CHECKLIST.md`.
+**Status:** implemented on `release/acquisition-a` (draft PR #14) — not merged, not deployed.
+
+| Criterion | Evidence |
+|---|---|
+| 1 — 410 for any book, no Stripe call | `subscriptions.controller.spec.ts` (410 body, no service/Stripe call); route keeps `JwtAuthGuard` only (unconfirmed-email users also get 410) |
+| 2 — pre-retirement session fulfilled once | Integration: duplicate + redelivered `checkout.session.completed` → one `purchase` row; unit: paid / `no_payment_required` |
+| 2a — delayed payment | Integration: `unpaid` grants nothing; `async_payment_succeeded` grants once; unit: `async_payment_failed` grants nothing |
+| 3 — token packs and gifts unchanged | Existing webhook unit tests pass; async events for packs/gifts are ignored (unit) |
+| 4 — existing purchases readable, not removable | Integration: purchase ownership survives subscription cancellation; `removeBook` → 409 |
+| 5 — no new `purchase` rows after retirement | Only source is the webhook for pre-existing sessions; verified by the reconciliation §5b post-deploy run |
+
+**Changed files:** `services/api/src/subscriptions/subscriptions.controller.ts`, `subscriptions.service.ts` (removed `createPurchaseSession`), `webhooks.service.ts`; tests `tests/unit/subscriptions/{subscriptions.controller,subscriptions.service,webhooks.service}.spec.ts`, `tests/integration/subscriptions/ownership-integrity.int-spec.ts`; docs `docs/PRD.md`, `docs/technical-baseline/{05-api,08-subscriptions}.md`.
+
+## 19. Product Architecture review
+
+Per `REVIEW-CHECKLIST.md`. Verdict: _pending_.

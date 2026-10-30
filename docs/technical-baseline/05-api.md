@@ -36,7 +36,7 @@ Full HTTP surface (verified from `@Controller`/`@Get/@Post/@Patch/@Delete` decor
 ### Subscriptions `/subscriptions`
 `GET plans · token-packages · me · linked-users`; `POST checkout · tokens/purchase · portal · cancel · resume · sync · books/:bookId/purchase · books/:bookId/redeem · invite · invite/accept`; `DELETE linked-users/:userId · invite/:inviteId`.
 
-**NEM-012 (Release A branch):** `GET me` now returns `tokenBalance` and `availableTokens` for accounts **without** a subscription, and `ownTokenBalance` + `availableTokens` (own + shared pool) for linked members. `POST books/:bookId/redeem` is the only paid-book acquisition path (PO-021 Amendment 1); `books/:bookId/purchase` is slated for retirement (NEM-015). Content-guard 403s (`subscription_required`, `payment_required`) carry `bookId`.
+**NEM-012 (Release A branch):** `GET me` now returns `tokenBalance` and `availableTokens` for accounts **without** a subscription, and `ownTokenBalance` + `availableTokens` (own + shared pool) for linked members. `POST books/:bookId/redeem` is the only paid-book acquisition path (PO-021 Amendment 1); `books/:bookId/purchase` is **retired** — `410 { error: 'title_purchase_discontinued' }`, no Stripe call (NEM-015). Content-guard 403s (`subscription_required`, `payment_required`) carry `bookId`.
 
 ### Webhooks `/webhooks`
 `POST stripe` (signature-verified — see [08](08-subscriptions.md)).

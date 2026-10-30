@@ -6,7 +6,7 @@
 **Implementation authorization:** LIMITED — `.github/workflows/ci.yml` (one new job) and the testing section of `CLAUDE.md` only
 **Schema changes:** NOT AUTHORIZED
 **Infrastructure changes:** SPECIFICALLY AUTHORIZED — CI configuration only (§5), on approval
-**Production deployment:** NOT APPLICABLE (CI only; `cd.yml` untouched)
+**Production deployment:** NOT AUTHORIZED — separate explicit Product Owner approval required to merge (CI only; `cd.yml` untouched)
 **Product Owner approval:** GRANTED for implementation within §5 (2026-10-29). Merging is **not** authorized.
 
 > Reminder: **APPROVED ≠ EXECUTE.** Executed only on an explicit Product Owner instruction naming NEM-014.

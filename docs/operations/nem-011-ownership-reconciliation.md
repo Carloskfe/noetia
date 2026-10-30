@@ -61,6 +61,8 @@ Direct purchases are Checkout Sessions in `mode: payment` with `metadata.bookId`
 
 1. **Use a restricted key with read-only access to Checkout Sessions and Charges**, on the operator's own machine (Stripe CLI; confirm flag names with `stripe checkout sessions list --help`). Never paste a key into chat, tickets, or the server terminal.
 2. **Open sessions (pending purchases):** `stripe checkout sessions list --status=open --limit=100` → keep those whose `metadata.bookId` is set. Sessions created by the code expire after Stripe's default 24 hours (no `expires_at` is set), so anything open now can still complete within a day.
+2b. **Completed but not yet paid (delayed payment methods):** in the same listing, sessions with `payment_status: unpaid` and `metadata.bookId` are awaiting an asynchronous outcome that can arrive days later. The code requests card payments only, so none are expected; record any found. NEM-015 grants ownership only on `async_payment_succeeded`.
+2c. **Failed webhook deliveries:** Dashboard → *Developers → Webhooks* → the `…/api/webhooks/stripe` endpoint → failed deliveries. Stripe retries for up to about 3 days; any failed `checkout.session.*` event with `metadata.bookId` is a purchase still to be fulfilled.
 3. **Completed purchases:** in the Dashboard, *Developers → Events*, filter `checkout.session.completed` and inspect `metadata.bookId`; or `stripe checkout sessions list --status=complete --limit=100`, paging as needed. Compare with section 5b/5c (`userId` + `bookId`).
 4. **Refunds/disputes on those payments** — record them; the application has no refund handling (audit G7).
 5. Record counts only in the decision log; no Stripe object is created, changed, or cancelled.
