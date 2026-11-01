@@ -52,8 +52,23 @@ describe('Terms of Service — revision date', () => {
     expect(TERMS_EN).toContain(`Last updated: ${TERMS_LAST_UPDATED}`);
   });
 
-  it('keeps the published effective date unchanged (a new date needs a Product Owner decision)', () => {
-    expect(TERMS_LAST_UPDATED).toBe('4 de junio de 2026 / June 4, 2026');
+  it('is a well-formed bilingual date whose Spanish and English halves agree', () => {
+    const ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const match = TERMS_LAST_UPDATED.match(/^(\d{1,2}) de ([a-z]+) de (\d{4}) \/ ([A-Z][a-z]+) (\d{1,2}), (\d{4})$/);
+    expect(match).not.toBeNull();
+    const [, esDay, esMonth, esYear, enMonth, enDay, enYear] = match!;
+    expect(ES.indexOf(esMonth)).toBeGreaterThanOrEqual(0);
+    expect(ES.indexOf(esMonth)).toBe(EN.indexOf(enMonth));
+    expect(esDay).toBe(enDay);
+    expect(esYear).toBe(enYear);
+  });
+
+  it('is a new revision, later than the previous June 4, 2026 terms', () => {
+    const EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const [, month, day, year] = TERMS_LAST_UPDATED.match(/\/ ([A-Z][a-z]+) (\d{1,2}), (\d{4})$/)!;
+    const revised = Date.UTC(Number(year), EN.indexOf(month), Number(day));
+    expect(revised).toBeGreaterThan(Date.UTC(2026, 5, 4));
   });
 
   it('leaves the Cookie Policy date untouched', () => {

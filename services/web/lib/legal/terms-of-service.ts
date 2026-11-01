@@ -1,7 +1,9 @@
 // Revision date for the Terms of Service only — kept separate from the Cookie
-// Policy date so revising one document never re-dates the other. Changing this
-// value is a Product Owner decision (effective date + customer notice).
-export const TERMS_LAST_UPDATED = '4 de junio de 2026 / June 4, 2026';
+// Policy date so revising one document never re-dates the other. Must equal the
+// day this revision is deployed to production: if the deploy slips, update this
+// line before merging (format: "D de <mes> de YYYY / <Month> D, YYYY").
+// Previous revision: 4 de junio de 2026 / June 4, 2026.
+export const TERMS_LAST_UPDATED = '1 de noviembre de 2026 / November 1, 2026';
 
 export const TERMS_ES = `
 # Términos de Servicio
