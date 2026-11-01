@@ -67,6 +67,27 @@ describe('PushService', () => {
       );
     });
 
+    it('uses the customer-facing plan name for legacy internal names (es)', async () => {
+      mockTokenRepo.findBy.mockResolvedValue([{ token: 'ExponentPushToken[abc]' }]);
+      mockUserRepo.findOneBy.mockResolvedValue({ uiLanguage: 'es' });
+
+      await service.sendToUser('u1', 'invite_accepted', { planName: 'Dual Reader Monthly' });
+
+      const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
+      expect(body).toContain('Alguien se unió a tu plan Dúo en Noetia');
+      expect(body).not.toContain('Dual Reader');
+    });
+
+    it('uses the customer-facing plan name for legacy internal names (en)', async () => {
+      mockTokenRepo.findBy.mockResolvedValue([{ token: 'ExponentPushToken[abc]' }]);
+      mockUserRepo.findOneBy.mockResolvedValue({ uiLanguage: 'en' });
+
+      await service.sendToUser('u1', 'invite_accepted', { planName: 'Family' });
+
+      const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
+      expect(body).toContain('Someone joined your Family plan on Noetia');
+    });
+
     it('sends push for gift_claimed with correct token count', async () => {
       mockTokenRepo.findBy.mockResolvedValue([{ token: 'ExponentPushToken[xyz]' }]);
       mockUserRepo.findOneBy.mockResolvedValue({ uiLanguage: 'es' });

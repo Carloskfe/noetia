@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { PushToken } from './push-token.entity';
+import { customerPlanName } from '../subscriptions/plan-display';
 
 interface NotificationPayload {
   title: string;
@@ -17,8 +18,8 @@ function buildContent(lang: string, type: string, vars: Record<string, unknown>)
       return {
         title: en ? 'Invitation accepted' : 'Invitación aceptada',
         body: en
-          ? `Someone joined your ${vars.planName} plan on Noetia`
-          : `Alguien se unió a tu plan ${vars.planName} en Noetia`,
+          ? `Someone joined your ${customerPlanName(String(vars.planName), lang)} plan on Noetia`
+          : `Alguien se unió a tu plan ${customerPlanName(String(vars.planName), lang)} en Noetia`,
         data: { type },
       };
     case 'gift_claimed': {
