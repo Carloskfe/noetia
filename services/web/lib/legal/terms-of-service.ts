@@ -1,10 +1,13 @@
-import { LAST_UPDATED } from './cookie-policy';
+// Revision date for the Terms of Service only — kept separate from the Cookie
+// Policy date so revising one document never re-dates the other. Changing this
+// value is a Product Owner decision (effective date + customer notice).
+export const TERMS_LAST_UPDATED = '4 de junio de 2026 / June 4, 2026';
 
 export const TERMS_ES = `
 # Términos de Servicio
 
 **Versión MVP — sujeta a revisión legal**
-Última actualización: ${LAST_UPDATED}
+Última actualización: ${TERMS_LAST_UPDATED}
 
 ## 1. Descripción del servicio
 
@@ -22,9 +25,9 @@ Debes tener al menos **18 años** para crear una cuenta y utilizar Noetia. Al re
 
 | Plan | Mensual | Anual |
 |------|---------|-------|
-| Individual | $8,99 USD | $80,99 USD |
-| Dúo (hasta 2 miembros) | $13,99 USD | $125,99 USD |
-| Familia (hasta 4 miembros) | $18,99 USD | $170,99 USD |
+| Individual | $8,99 USD | $83,99 USD |
+| Dúo (hasta 2 miembros) | $13,99 USD | $129,99 USD |
+| Familia (hasta 4 miembros) | $18,99 USD | $179,99 USD |
 
 ### Tokens de acceso a contenido
 
@@ -101,7 +104,7 @@ export const TERMS_EN = `
 # Terms of Service
 
 **MVP Version — subject to legal review**
-Last updated: ${LAST_UPDATED}
+Last updated: ${TERMS_LAST_UPDATED}
 
 ## 1. Service Description
 
@@ -119,9 +122,9 @@ You must be at least **18 years old** to create an account and use Noetia. By re
 
 | Plan | Monthly | Annual |
 |------|---------|--------|
-| Individual | $8.99 USD | $80.99 USD |
-| Duo (up to 2 members) | $13.99 USD | $125.99 USD |
-| Family (up to 4 members) | $18.99 USD | $170.99 USD |
+| Individual | $8.99 USD | $83.99 USD |
+| Duo (up to 2 members) | $13.99 USD | $129.99 USD |
+| Family (up to 4 members) | $18.99 USD | $179.99 USD |
 
 ### Content Access Tokens
 
