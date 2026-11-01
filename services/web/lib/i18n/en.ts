@@ -290,6 +290,7 @@ export const en = {
     noPlan: "You don't have an active plan.",
     viewPlans: 'View plans',
     plan: 'Plan',
+    planFull: (max: number) => `Plan full — ${max} of ${max} users.`,
     statuses: {
       active: 'Active', trialing: 'Trial', canceling: 'Canceling',
       past_due: 'Past due', canceled: 'Canceled', none: 'No plan',
@@ -346,6 +347,7 @@ export const en = {
     currentPlan: 'Your current plan',
     startTrial: 'Start free trial',
     paymentError: 'Could not start payment. Please try again.',
+    planNames: { Individual: 'Individual', Duo: 'Duo', Family: 'Family' },
     planDescriptions: {
       Individual: {
         tagline: 'For readers who want the best.',
