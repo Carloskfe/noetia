@@ -30,7 +30,7 @@ It does **not** implement the feature.
 - **Date:** 2026-11-02
 - **Status:** complete, awaiting PO review
 - **Baseline:** `origin/main` at `6a5e5c0`
-- **Report branch:** `docs/sa-001-smart-book-sharing`, stacked on PR #23's branch (see §11)
+- **Report branch:** `docs/sa-001-smart-book-sharing`, Draft PR [#24](https://github.com/Carloskfe/noetia/pull/24), stacked on PR #23's branch (see §11)
 
 ## 3. Scope and exclusions
 
