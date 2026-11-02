@@ -295,7 +295,7 @@ None of these is approved. Each needs separate Product Owner authorization.
 - This PR adds documentation only:
   - this report
   - `docs/reports/README.md` (reporting protocol and index)
-  - a short pointer to the protocol in `CLAUDE.md`
+  - the mandatory "Agent Reporting Protocol" section in `CLAUDE.md`, so future agent sessions follow it automatically
 
 ## 12. Next recommended action
 

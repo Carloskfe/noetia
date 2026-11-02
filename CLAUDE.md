@@ -31,14 +31,67 @@ Before executing any Noetia Engineering Mission (NEM), read [`docs/engineering-m
 - If mission requirements conflict with current code, approved product policy, security, financial rules, ownership principles, or protected systems (Escucha Activa / reader, permanent book ownership, production data, business-rule engines), **STOP and ask the Product Owner** — do not silently choose.
 - After completing authorized work, **STOP and wait for Product Architecture review** unless explicitly instructed otherwise. A commit, passing tests, or a deployment does not by itself complete a mission.
 
-### Agent reporting protocol
+---
 
-Every substantial mission (audit, investigation, review, legal/policy comparison, bug investigation, implementation, readiness assessment) must leave a Markdown report at `docs/reports/YYYY-MM-DD-<mission-id>-<short-description>.md` and add it to the index in [`docs/reports/README.md`](docs/reports/README.md), which defines the required 12-section structure and publication rules. Read-only missions publish the report in a documentation-only **Draft PR**; implementation missions include it in their own Draft PR. A report never authorizes implementation, merging, or deployment.
+## Agent Reporting Protocol (mandatory)
+
+Established by the Product Owner on 2026-11-02. It applies to **every session**, whether or not the instruction mentions reporting. Details and the report index are in [`docs/reports/README.md`](docs/reports/README.md).
+
+**1. When a report is required.** Every substantial mission produces a Markdown report in the repository:
+- audits and investigations
+- architecture and security reviews
+- legal and policy comparisons
+- bug investigations
+- implementation and testing work
+- production-readiness assessments
+
+Important findings must never exist only in the terminal conversation.
+
+**2. Location.** `docs/reports/YYYY-MM-DD-<mission-id>-<short-description>.md`. Add every report to the index in `docs/reports/README.md`, newest first, with its PR(s). Update an existing mission report rather than creating a duplicate report or PR.
+
+**3. Required sections, in this order:**
+1. Mission and objective
+2. Date and status
+3. Scope and exclusions
+4. Executive summary
+5. Verified findings, with repository file references and line numbers where practical
+6. External references, with official URLs and access dates
+7. Risks: Critical / High / Medium / Low
+8. Recommendations, separating required corrections from optional improvements
+9. Tests and verification performed, including failures and limitations
+10. Open questions and Product Owner decisions required
+11. Changes made, or an explicit statement that no application changes were made
+12. Next recommended action
+
+Label **facts**, **interpretations** and **unverified assumptions** distinctly. Never describe a proposed change as approved or deployed unless that action actually occurred.
+
+**4. Publishing.**
+- **Read-only research missions:**
+  - dedicated documentation branch
+  - commit the report and the index update
+  - open a **Draft PR** containing only those documentation changes
+  - give the Draft PR URL in the final response
+  - do not merge
+- **Implementation missions:**
+  - include the report in the authorized implementation branch and Draft PR
+  - link it from the PR description
+  - update it when findings or test results change
+- Never merge or deploy without explicit Product Owner authorization.
+- Create documentation branches from `origin/main` in a separate `git worktree`, so the user's checkout and its uncommitted files are never disturbed.
+
+**5. Restrictions.**
+- A report does not authorize implementing its recommendations.
+- Never merge, deploy, change production or Stripe, or write to databases without explicit authorization.
+- Never publish credentials, secrets, personal customer data or sensitive production information. Use counts, not customer records.
+- Legal conclusions are internal risk assessments, not legal certification.
+- Preserve Product Owner decisions and list unresolved ones.
+- If publishing to GitHub fails, say so explicitly. Never claim a report is available when it isn't.
 
 ---
 
 ## Table of Contents
 
+0. [Agent Reporting Protocol](#agent-reporting-protocol-mandatory)
 1. [Git Workflow](#git-workflow)
 2. [Tech Stack](#tech-stack)
 3. [Project Structure](#project-structure)
