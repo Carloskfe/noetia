@@ -31,6 +31,10 @@ Before executing any Noetia Engineering Mission (NEM), read [`docs/engineering-m
 - If mission requirements conflict with current code, approved product policy, security, financial rules, ownership principles, or protected systems (Escucha Activa / reader, permanent book ownership, production data, business-rule engines), **STOP and ask the Product Owner** — do not silently choose.
 - After completing authorized work, **STOP and wait for Product Architecture review** unless explicitly instructed otherwise. A commit, passing tests, or a deployment does not by itself complete a mission.
 
+### Agent reporting protocol
+
+Every substantial mission (audit, investigation, review, legal/policy comparison, bug investigation, implementation, readiness assessment) must leave a Markdown report at `docs/reports/YYYY-MM-DD-<mission-id>-<short-description>.md` and add it to the index in [`docs/reports/README.md`](docs/reports/README.md), which defines the required 12-section structure and publication rules. Read-only missions publish the report in a documentation-only **Draft PR**; implementation missions include it in their own Draft PR. A report never authorizes implementation, merging, or deployment.
+
 ---
 
 ## Table of Contents
