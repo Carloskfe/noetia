@@ -27,16 +27,20 @@ describe('pricing page metadata', () => {
 
 describe('customer-facing web source', () => {
   // Retired subscription prices and the legacy plan name must not reappear in
-  // shipped UI copy, metadata or legal text. lib/plan-display.ts is excluded
-  // because it intentionally recognises the legacy internal name.
+  // shipped UI copy or metadata. lib/plan-display.ts is excluded because it
+  // intentionally recognises the legacy internal name. lib/legal/ is excluded
+  // because the Terms of Service annual-price correction ships separately,
+  // behind legal review, with its own stale-value tests
+  // (tests/unit/lib/legal/terms-of-service.spec.ts in that PR).
   const STALE = [/9[.,]99\s*\/\s*(mes|mo)\b/, /\b(80|125|170)[.,]99\b/, /\b89[.,]00\b/, /\b135[.,]00\b/, /Dual Reader/];
   const ROOTS = ['app', 'components', 'lib'];
   const EXCLUDE = new Set([path.join('lib', 'plan-display.ts')]);
+  const EXCLUDE_DIRS = [path.join('lib', 'legal')];
 
   function sourceFiles(dir: string): string[] {
     return fs.readdirSync(path.join(WEB_ROOT, dir), { withFileTypes: true }).flatMap((entry) => {
       const rel = path.join(dir, entry.name);
-      if (entry.isDirectory()) return sourceFiles(rel);
+      if (entry.isDirectory()) return EXCLUDE_DIRS.includes(rel) ? [] : sourceFiles(rel);
       return /\.(ts|tsx)$/.test(entry.name) && !EXCLUDE.has(rel) ? [rel] : [];
     });
   }
