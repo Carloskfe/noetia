@@ -73,4 +73,4 @@ Update an existing mission report rather than creating duplicate reports or PRs.
 
 | Date | Mission | Report | PR(s) | Status |
 |---|---|---|---|---|
-| 2026-11-02 | NOF-004 | [Terms of Service legal benchmark audit (Amazon, Kindle, Google Play, NY and US law)](2026-11-02-NOF-004-legal-benchmark-audit.md) | Report PR: [docs/nof-004-legal-benchmark-audit](https://github.com/Carloskfe/noetia/pulls?q=head%3Adocs%2Fnof-004-legal-benchmark-audit) (Draft). Related: [#21](https://github.com/Carloskfe/noetia/pull/21), [#22](https://github.com/Carloskfe/noetia/pull/22) (Draft, untouched) | Complete; awaiting PO review |
+| 2026-11-02 | NOF-004 | [Terms of Service legal benchmark audit (Amazon, Kindle, Google Play, NY and US law)](2026-11-02-NOF-004-legal-benchmark-audit.md) | Report PR: [#23](https://github.com/Carloskfe/noetia/pull/23) (Draft). Related: [#21](https://github.com/Carloskfe/noetia/pull/21), [#22](https://github.com/Carloskfe/noetia/pull/22) (Draft, untouched) | Complete; awaiting PO review |

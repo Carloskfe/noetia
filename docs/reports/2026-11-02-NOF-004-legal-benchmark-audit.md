@@ -17,7 +17,7 @@ International requirements are flagged for later review. The findings go to the 
 | | |
 |---|---|
 | Audit performed | 2026-11-02 |
-| Report published | 2026-11-02 (this documentation-only Draft PR) |
+| Report published | 2026-11-02, documentation-only Draft PR [#23](https://github.com/Carloskfe/noetia/pull/23) (not merged) |
 | Status | **Complete; awaiting Product Owner review.** No recommendation is approved, implemented, merged or deployed. |
 | Repository baseline | `main` at `6a5e5c0`. Published legal documents dated "4 de junio de 2026 / June 4, 2026" (`services/web/lib/legal/cookie-policy.ts:1`). |
 | Related PRs (left untouched) | [#21](https://github.com/Carloskfe/noetia/pull/21) (NOF-004 presentation, Draft) · [#22](https://github.com/Carloskfe/noetia/pull/22) (Terms annual-price correction, Draft, approval-gated) |
