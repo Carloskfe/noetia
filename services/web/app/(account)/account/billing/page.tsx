@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@/lib/i18n';
+import { planLabel } from '@/lib/plan-display';
 
 interface SubscriptionStatus {
   status: 'none' | 'trialing' | 'active' | 'canceling' | 'past_due' | 'canceled';
@@ -44,6 +46,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function BillingSettingsPage() {
+  const { t } = useTranslation();
   const [sub, setSub] = useState<SubscriptionStatus | null>(null);
   const [linkedData, setLinkedData] = useState<LinkedUsersData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -152,7 +155,7 @@ export default function BillingSettingsPage() {
       {/* Plan card */}
       <div className="border rounded-xl p-6 bg-white shadow-sm flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <span className="font-medium">{sub?.planName ?? 'Plan'}</span>
+          <span className="font-medium">{planLabel(sub?.planName, t.pricing.planNames) ?? t.billing.plan}</span>
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.color}`}>
             {badge.label}
           </span>
@@ -291,7 +294,7 @@ export default function BillingSettingsPage() {
           )}
 
           {linkedData.isOwner && !hasRoom && (
-            <p className="text-xs text-gray-400 text-center">Plan completo — {maxProfiles} de {maxProfiles} usuarios.</p>
+            <p className="text-xs text-gray-400 text-center">{t.billing.planFull(maxProfiles)}</p>
           )}
         </div>
       )}

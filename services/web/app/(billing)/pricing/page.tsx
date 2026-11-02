@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import CauseSelector from '@/components/CauseSelector';
 import { useTranslation } from '@/lib/i18n';
+import { planKey, planLabel } from '@/lib/plan-display';
 
 type Plan = {
   id: string;
@@ -139,9 +140,10 @@ export default function PricingPage() {
       ) : (
         <div className="grid sm:grid-cols-3 gap-6 mb-16">
           {displayed.map((plan) => {
-            const meta = t.pricing.planDescriptions[plan.name] ?? { tagline: '', highlights: [] };
+            const key = planKey(plan.name);
+            const meta = (key && t.pricing.planDescriptions[key]) || { tagline: '', highlights: [] };
             const isCurrent = plan.id === currentPlanId;
-            const isPopular = plan.name === 'Duo';
+            const isPopular = key === 'Duo';
             return (
               <div
                 key={plan.id}
@@ -154,7 +156,7 @@ export default function PricingPage() {
                     {t.pricing.popular}
                   </span>
                 )}
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">{plan.name}</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">{planLabel(plan.name, t.pricing.planNames)}</p>
                 <div className="mb-1">
                   <span className="text-3xl font-black text-gray-900">{formatPrice(plan.amountCents)}</span>
                   <span className="text-gray-400 text-sm">{interval === 'month' ? t.pricing.perMonth : t.pricing.perYear}</span>

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { Transporter } from 'nodemailer';
+import { customerPlanName } from '../subscriptions/plan-display';
 
 type Lang = 'es' | 'en';
 
@@ -83,8 +84,9 @@ export class EmailService {
     await this.send({ to, subject, html: this.giftConfirmationTemplate(buyerName, recipientEmail, tokenCount, lang) });
   }
 
-  async sendPlanInvite(to: string, inviterName: string, planName: string, token: string, lang: Lang = 'es'): Promise<void> {
+  async sendPlanInvite(to: string, inviterName: string, internalPlanName: string, token: string, lang: Lang = 'es'): Promise<void> {
     const link = `${this.webUrl}/join?token=${token}`;
+    const planName = customerPlanName(internalPlanName, lang);
     const subject = lang === 'en'
       ? `${this.escape(inviterName)} invites you to Noetia ${this.escape(planName)}`
       : `${this.escape(inviterName)} te invita a Noetia ${this.escape(planName)}`;

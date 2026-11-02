@@ -292,6 +292,7 @@ export const es: Translations = {
     noPlan: 'No tienes un plan activo.',
     viewPlans: 'Ver planes',
     plan: 'Plan',
+    planFull: (max: number) => `Plan completo — ${max} de ${max} usuarios.`,
     statuses: {
       active: 'Activo', trialing: 'Trial', canceling: 'Cancelando',
       past_due: 'Pago vencido', canceled: 'Cancelado', none: 'Sin plan',
@@ -348,10 +349,11 @@ export const es: Translations = {
     currentPlan: 'Tu plan actual',
     startTrial: 'Comenzar prueba gratuita',
     paymentError: 'No pudimos iniciar el pago. Intenta de nuevo.',
+    planNames: { Individual: 'Individual', Duo: 'Dúo', Family: 'Familia' },
     planDescriptions: {
       Individual: {
         tagline: 'Para lectores que quieren lo mejor.',
-        highlights: ['1 token por mes', '90 días para usarlo', 'Acceso completo a la biblioteca'],
+        highlights: ['1 token por mes', '90 días para usarlo'],
       },
       Duo: {
         tagline: 'Comparte la experiencia con alguien especial.',
