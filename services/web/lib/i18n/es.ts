@@ -353,7 +353,7 @@ export const es: Translations = {
     planDescriptions: {
       Individual: {
         tagline: 'Para lectores que quieren lo mejor.',
-        highlights: ['1 token por mes', '90 días para usarlo', 'Acceso completo a la biblioteca'],
+        highlights: ['1 token por mes', '90 días para usarlo'],
       },
       Duo: {
         tagline: 'Comparte la experiencia con alguien especial.',

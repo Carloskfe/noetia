@@ -57,6 +57,17 @@ describe('planLabel', () => {
   });
 });
 
+describe('plan copy — unverified claims', () => {
+  // "Full library access" is not an approved claim (PO decision, NOF-004): it
+  // must not appear on any plan card until verified and re-approved.
+  it.each([['en', en], ['es', es]] as const)('%s plan benefits omit "full library access"', (_lang, dict) => {
+    const all = Object.values(dict.pricing.planDescriptions).flatMap((d) => [d.tagline, ...d.highlights]);
+    for (const text of all) {
+      expect(text).not.toMatch(/full library access|acceso completo a la biblioteca/i);
+    }
+  });
+});
+
 describe('plan copy coverage', () => {
   it.each([['en', en], ['es', es]] as const)('%s has a name and description for every plan key', (_lang, dict) => {
     for (const key of ['Individual', 'Duo', 'Family'] as const) {

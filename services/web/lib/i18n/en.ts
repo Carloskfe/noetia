@@ -351,7 +351,7 @@ export const en = {
     planDescriptions: {
       Individual: {
         tagline: 'For readers who want the best.',
-        highlights: ['1 token per month', '90 days to use it', 'Full library access'],
+        highlights: ['1 token per month', '90 days to use it'],
       },
       Duo: {
         tagline: 'Share the experience with someone special.',
