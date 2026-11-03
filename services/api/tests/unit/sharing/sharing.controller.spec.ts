@@ -1,48 +1,51 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { SharingController } from '../../../src/sharing/sharing.controller';
 import { SharingService } from '../../../src/sharing/sharing.service';
+import { ShareLifecycleService } from '../../../src/sharing/share-lifecycle.service';
 import { EventsService } from '../../../src/events/events.service';
 import { Fragment } from '../../../src/fragments/fragment.entity';
 import { Book } from '../../../src/books/book.entity';
 import { JwtAuthGuard } from '../../../src/auth/jwt-auth.guard';
+import { ShareFragmentDto } from '../../../src/sharing/dto/share-fragment.dto';
+import * as eligibility from '../../../src/books/book-eligibility';
 
 const mockSharingService = {
-  generateShareUrl: jest.fn(),
+  createOrReuseShare: jest.fn(),
   getPublicShare: jest.fn(),
 };
+const mockLifecycle = { revoke: jest.fn() };
+const mockEventsService = { emit: jest.fn().mockResolvedValue(undefined) };
+const mockFragmentRepo = { findOneBy: jest.fn() };
+const mockBookRepo = { findOneBy: jest.fn(), increment: jest.fn() };
 
-const shareResult = (pageUrl: string, imageUrl = 'https://cdn.example.com/img.png') => ({ pageUrl, imageUrl });
-
-const mockEventsService = {
-  emit: jest.fn().mockResolvedValue(undefined),
-};
-
-const mockFragmentRepo = {
-  findOneBy: jest.fn(),
-};
-
-const mockBookRepo = {
-  findOneBy: jest.fn(),
-  save: jest.fn(),
-};
-
-const mockUser = { id: 'user-1' };
-const mockFragment = { id: 'frag-1', bookId: 'book-1', text: 'A great quote', themes: ['amor'] } as Fragment;
+const req = { user: { id: 'user-1' } };
+const mockFragment = { id: 'frag-1', userId: 'user-1', bookId: 'book-1', text: 'A great quote', themes: ['amor'] } as Fragment;
 const mockBook = { id: 'book-1', title: 'My Book', author: 'An Author', shareCount: 0 } as Book;
+const dto = (o: Partial<ShareFragmentDto> = {}): ShareFragmentDto =>
+  ({ platform: 'linkedin', format: 'post', ...o }) as ShareFragmentDto;
 
 describe('SharingController', () => {
   let controller: SharingController;
+  let eligible: jest.SpyInstance;
 
   beforeEach(async () => {
     jest.clearAllMocks();
     mockEventsService.emit.mockResolvedValue(undefined);
+    mockFragmentRepo.findOneBy.mockResolvedValue(mockFragment);
+    mockBookRepo.findOneBy.mockResolvedValue(mockBook);
+    mockBookRepo.increment.mockResolvedValue(undefined);
+    mockSharingService.createOrReuseShare.mockResolvedValue({
+      pageUrl: 'https://noetia.app/s/abc', imageUrl: 'https://cdn/img.png', reused: false,
+    });
+    eligible = jest.spyOn(eligibility, 'isBookPubliclyEligible').mockResolvedValue(true);
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SharingController],
       providers: [
         { provide: SharingService, useValue: mockSharingService },
+        { provide: ShareLifecycleService, useValue: mockLifecycle },
         { provide: EventsService, useValue: mockEventsService },
         { provide: getRepositoryToken(Fragment), useValue: mockFragmentRepo },
         { provide: getRepositoryToken(Book), useValue: mockBookRepo },
@@ -53,116 +56,111 @@ describe('SharingController', () => {
       .compile();
 
     controller = module.get<SharingController>(SharingController);
-    jest.clearAllMocks();
   });
+
+  afterEach(() => eligible.mockRestore());
 
   describe('POST /fragments/:id/share', () => {
     it('returns the invite page URL as `url` plus the raw imageUrl', async () => {
-      mockFragmentRepo.findOneBy.mockResolvedValue(mockFragment);
-      mockBookRepo.findOneBy.mockResolvedValue({ ...mockBook });
-      mockSharingService.generateShareUrl.mockResolvedValue(
-        shareResult('https://noetia.app/s/abc1234567', 'https://cdn.example.com/image.png'),
-      );
-      mockBookRepo.save.mockResolvedValue(undefined);
-
-      const result = await controller.share('frag-1', 'linkedin', undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, { user: mockUser });
-
-      expect(result).toEqual({ url: 'https://noetia.app/s/abc1234567', imageUrl: 'https://cdn.example.com/image.png' });
+      const result = await controller.share('frag-1', dto(), req);
+      expect(result).toEqual({ url: 'https://noetia.app/s/abc', imageUrl: 'https://cdn/img.png' });
     });
 
-    it('increments shareCount on the book after generating the URL', async () => {
-      const book = { ...mockBook, shareCount: 4 };
-      mockFragmentRepo.findOneBy.mockResolvedValue(mockFragment);
-      mockBookRepo.findOneBy.mockResolvedValue(book);
-      mockSharingService.generateShareUrl.mockResolvedValue(shareResult('https://noetia.app/s/slugimg', 'https://cdn.example.com/img.png'));
-      mockBookRepo.save.mockResolvedValue(undefined);
-
-      await controller.share('frag-1', 'instagram', undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, { user: mockUser });
-
-      expect(mockBookRepo.save).toHaveBeenCalledWith(expect.objectContaining({ shareCount: 5 }));
+    it('passes the fragment, book, validated body and caller to the service', async () => {
+      const body = dto({ font: 'lora', bgImage: 'data:image/png;base64,AAAA', textScale: 1.2 });
+      await controller.share('frag-1', body, req);
+      expect(mockSharingService.createOrReuseShare).toHaveBeenCalledWith(mockFragment, mockBook, body, 'user-1');
     });
 
-    it('treats null shareCount as 0 before incrementing', async () => {
-      const book = { ...mockBook, shareCount: null as any };
-      mockFragmentRepo.findOneBy.mockResolvedValue(mockFragment);
-      mockBookRepo.findOneBy.mockResolvedValue(book);
-      mockSharingService.generateShareUrl.mockResolvedValue(shareResult('https://noetia.app/s/slugimg', 'https://cdn.example.com/img.png'));
-      mockBookRepo.save.mockResolvedValue(undefined);
-
-      await controller.share('frag-1', 'whatsapp', undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, { user: mockUser });
-
-      expect(mockBookRepo.save).toHaveBeenCalledWith(expect.objectContaining({ shareCount: 1 }));
+    // S1 — cross-user sharing
+    it("rejects sharing another reader's fragment with 404 and renders nothing", async () => {
+      mockFragmentRepo.findOneBy.mockResolvedValue({ ...mockFragment, userId: 'someone-else' });
+      await expect(controller.share('frag-1', dto(), req)).rejects.toThrow(NotFoundException);
+      expect(mockSharingService.createOrReuseShare).not.toHaveBeenCalled();
+      expect(mockBookRepo.increment).not.toHaveBeenCalled();
+      expect(mockEventsService.emit).not.toHaveBeenCalled();
     });
 
-    it('throws NotFoundException when fragment does not exist', async () => {
+    it('throws NotFoundException when the fragment does not exist', async () => {
       mockFragmentRepo.findOneBy.mockResolvedValue(null);
-
-      await expect(
-        controller.share('bad-id', 'linkedin', undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, { user: mockUser }),
-      ).rejects.toThrow(NotFoundException);
-      expect(mockSharingService.generateShareUrl).not.toHaveBeenCalled();
+      await expect(controller.share('missing', dto(), req)).rejects.toThrow(NotFoundException);
     });
 
-    it('throws NotFoundException when book for fragment does not exist', async () => {
-      mockFragmentRepo.findOneBy.mockResolvedValue(mockFragment);
+    it('throws NotFoundException when the book for the fragment does not exist', async () => {
       mockBookRepo.findOneBy.mockResolvedValue(null);
-
-      await expect(
-        controller.share('frag-1', 'linkedin', undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, { user: mockUser }),
-      ).rejects.toThrow(NotFoundException);
-      expect(mockSharingService.generateShareUrl).not.toHaveBeenCalled();
+      await expect(controller.share('frag-1', dto(), req)).rejects.toThrow(NotFoundException);
+      expect(mockSharingService.createOrReuseShare).not.toHaveBeenCalled();
     });
 
-    it('passes styling options to the sharing service', async () => {
-      mockFragmentRepo.findOneBy.mockResolvedValue(mockFragment);
-      mockBookRepo.findOneBy.mockResolvedValue({ ...mockBook });
-      mockSharingService.generateShareUrl.mockResolvedValue(shareResult('https://noetia.app/s/slugstyled', 'https://cdn.example.com/styled.png'));
-      mockBookRepo.save.mockResolvedValue(undefined);
+    // S14 — ineligible books
+    it('rejects shares of unpublished / quality-gated books with 422 book_not_shareable', async () => {
+      eligible.mockResolvedValue(false);
+      await expect(controller.share('frag-1', dto(), req)).rejects.toMatchObject({
+        constructor: UnprocessableEntityException,
+        response: { error: 'book_not_shareable' },
+      });
+      expect(eligible).toHaveBeenCalledWith(mockBookRepo, 'book-1');
+      expect(mockSharingService.createOrReuseShare).not.toHaveBeenCalled();
+    });
 
-      await controller.share('frag-1', 'linkedin', 'square', 'serif', 'gradient', ['#fff', '#000'], '#333', undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, { user: mockUser });
+    // G8 — duplicates
+    it('increments shareCount atomically for a new share', async () => {
+      await controller.share('frag-1', dto(), req);
+      expect(mockBookRepo.increment).toHaveBeenCalledWith({ id: 'book-1' }, 'shareCount', 1);
+    });
 
-      expect(mockSharingService.generateShareUrl).toHaveBeenCalledWith(
-        mockFragment,
-        expect.objectContaining({ id: 'book-1' }),
-        'linkedin',
-        expect.objectContaining({ format: 'square', font: 'serif', bgType: 'gradient', bgColors: ['#fff', '#000'], textColor: '#333' }),
-        'user-1',
+    it('does not increment shareCount when an existing share is re-used', async () => {
+      mockSharingService.createOrReuseShare.mockResolvedValue({
+        pageUrl: 'https://noetia.app/s/abc', imageUrl: 'https://cdn/img.png', reused: true,
+      });
+      await controller.share('frag-1', dto(), req);
+      expect(mockBookRepo.increment).not.toHaveBeenCalled();
+      expect(mockEventsService.emit).toHaveBeenCalledWith(
+        'fragment_shared', 'user-1', 'book-1', expect.objectContaining({ reused: true }),
       );
     });
 
-    it('forwards bgImage, bgFlip, bgFit and textScale to the sharing service', async () => {
-      mockFragmentRepo.findOneBy.mockResolvedValue(mockFragment);
-      mockBookRepo.findOneBy.mockResolvedValue({ ...mockBook });
-      mockSharingService.generateShareUrl.mockResolvedValue(shareResult('https://noetia.app/s/slugflipped', 'https://cdn.example.com/flipped.png'));
-      mockBookRepo.save.mockResolvedValue(undefined);
+    it('emits fragment_shared with platform, format and themes', async () => {
+      await controller.share('frag-1', dto({ platform: 'instagram', format: 'story' }), req);
+      expect(mockEventsService.emit).toHaveBeenCalledWith('fragment_shared', 'user-1', 'book-1', {
+        fragmentId: 'frag-1', platform: 'instagram', format: 'story', themes: ['amor'], reused: false,
+      });
+    });
 
-      await controller.share(
-        'frag-1', 'instagram', 'post', 'playfair', 'image', ['#000'], undefined,
-        undefined, undefined, undefined, undefined, undefined,
-        'data:image/png;base64,AAAA', true, 'contain', undefined, 1.3, { user: mockUser },
-      );
+    it('still responds if the analytics event fails', async () => {
+      mockEventsService.emit.mockRejectedValue(new Error('events down'));
+      await expect(controller.share('frag-1', dto(), req)).resolves.toBeDefined();
+    });
 
-      expect(mockSharingService.generateShareUrl).toHaveBeenCalledWith(
-        mockFragment,
-        expect.objectContaining({ id: 'book-1' }),
-        'instagram',
-        expect.objectContaining({
-          bgImage: 'data:image/png;base64,AAAA', bgFlip: true, bgFit: 'contain', textScale: 1.3,
-        }),
-        'user-1',
+    it('propagates service errors (e.g. quote_not_in_source) without counting a share', async () => {
+      mockSharingService.createOrReuseShare.mockRejectedValue(
+        new UnprocessableEntityException({ error: 'quote_not_in_source' }),
       );
+      await expect(controller.share('frag-1', dto({ text: 'invented words' }), req)).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+      expect(mockBookRepo.increment).not.toHaveBeenCalled();
     });
   });
 
   describe('GET /shares/:id', () => {
     it('delegates to the sharing service', async () => {
-      const payload = { id: 'abc', quote: 'q', imageUrl: 'http://img', book: { id: 'book-1' } };
-      mockSharingService.getPublicShare.mockResolvedValue(payload);
-
-      const result = await controller.getShare('abc');
-
+      mockSharingService.getPublicShare.mockResolvedValue({ id: 'abc' });
+      await expect(controller.getShare('abc')).resolves.toEqual({ id: 'abc' });
       expect(mockSharingService.getPublicShare).toHaveBeenCalledWith('abc');
-      expect(result).toBe(payload);
+    });
+  });
+
+  describe('DELETE /shares/:id', () => {
+    it('revokes the share on behalf of the caller', async () => {
+      mockLifecycle.revoke.mockResolvedValue(undefined);
+      await controller.revoke('abc', req);
+      expect(mockLifecycle.revoke).toHaveBeenCalledWith('abc', 'user-1');
+    });
+
+    it("propagates 404 for someone else's share", async () => {
+      mockLifecycle.revoke.mockRejectedValue(new NotFoundException());
+      await expect(controller.revoke('abc', req)).rejects.toThrow(NotFoundException);
     });
   });
 });

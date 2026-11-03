@@ -1,4 +1,6 @@
-import { shareFragment, getTextColor, getLuminance } from '../../../lib/share-utils';
+import { shareFragment, getTextColor, getLuminance, shareErrorKey } from '../../../lib/share-utils';
+import { en } from '../../../lib/i18n/en';
+import { es } from '../../../lib/i18n/es';
 import { apiFetch } from '../../../lib/api';
 
 jest.mock('../../../lib/api', () => ({ apiFetch: jest.fn() }));
@@ -63,5 +65,43 @@ describe('getLuminance', () => {
   it('is 0 for black and ~1 for white', () => {
     expect(getLuminance('#000000')).toBeCloseTo(0, 5);
     expect(getLuminance('#FFFFFF')).toBeCloseTo(1, 5);
+  });
+});
+
+describe('shareErrorKey (NEM-016)', () => {
+  it('maps a refused (edited) quote to the quotation-integrity message', () => {
+    expect(shareErrorKey({ status: 422, data: { error: 'quote_not_in_source', reason: 'not_in_source' } })).toBe('errorQuoteNotInSource');
+  });
+
+  it('maps omission refusals to specific guidance', () => {
+    expect(shareErrorKey({ status: 422, data: { error: 'quote_not_in_source', reason: 'omission_marker_required' } })).toBe('errorOmissionMarker');
+    expect(shareErrorKey({ status: 422, data: { error: 'quote_not_in_source', reason: 'omission_may_distort' } })).toBe('errorOmissionMeaning');
+    expect(shareErrorKey({ status: 422, data: { error: 'quote_not_in_source', reason: 'omission_too_long' } })).toBe('errorOmissionMeaning');
+  });
+
+  it('maps an unshareable book, a rejected background and rate limiting', () => {
+    expect(shareErrorKey({ status: 422, data: { error: 'book_not_shareable' } })).toBe('errorBookNotShareable');
+    expect(shareErrorKey({ status: 400, data: { error: 'unsupported_background_image' } })).toBe('errorBackground');
+    expect(shareErrorKey({ status: 429, data: { error: 'rate_limited' } })).toBe('errorRateLimited');
+    expect(shareErrorKey({ status: 429 })).toBe('errorRateLimited');
+  });
+
+  it('returns null for anything else so the generic message is shown', () => {
+    expect(shareErrorKey(new Error('network'))).toBeNull();
+    expect(shareErrorKey({ status: 502, data: {} })).toBeNull();
+    expect(shareErrorKey(null)).toBeNull();
+  });
+
+  it('every mapped key has EN and ES copy', () => {
+    for (const k of ['errorQuoteNotInSource', 'errorOmissionMarker', 'errorOmissionMeaning', 'errorBookNotShareable', 'errorRateLimited', 'errorBackground'] as const) {
+      expect(en.shareCard[k]).toBeTruthy();
+      expect(es.shareCard[k]).toBeTruthy();
+    }
+  });
+
+  it('surfaces the API error code from shareFragment so the modal can map it', async () => {
+    mockApiFetch.mockRejectedValueOnce(Object.assign(new Error('x'), { status: 422, data: { error: 'quote_not_in_source' } }));
+    const err = await shareFragment('f', { format: 'ig-post', font: 'playfair', bgType: 'solid', bgColors: ['#000000'] } as any).catch((e) => e);
+    expect(shareErrorKey(err)).toBe('errorQuoteNotInSource');
   });
 });

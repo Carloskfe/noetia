@@ -1,4 +1,5 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { Readable } from 'stream';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { StorageService } from '../../../src/storage/storage.service';
 
@@ -42,6 +43,40 @@ describe('StorageService', () => {
       await expect(
         service.upload('books', 'k', Buffer.from(''), 'text/plain'),
       ).rejects.toThrow('S3 unavailable');
+    });
+  });
+
+  describe('getBuffer / getText', () => {
+    it('reads the object body through the internal client', async () => {
+      mockSend.mockResolvedValue({ Body: Readable.from([Buffer.from('ab'), Buffer.from('c')]) });
+      const buf = await service.getBuffer('images', 'x.png');
+      expect(GetObjectCommand).toHaveBeenCalledWith({ Bucket: 'images', Key: 'x.png' });
+      expect(buf.toString()).toBe('abc');
+    });
+
+    it('getText decodes UTF-8 and defaults to the books bucket', async () => {
+      mockSend.mockResolvedValue({ Body: Readable.from([Buffer.from('señal')]) });
+      await expect(service.getText('t.txt')).resolves.toBe('señal');
+      expect(GetObjectCommand).toHaveBeenCalledWith({ Bucket: 'books', Key: 't.txt' });
+    });
+
+    it('propagates S3 errors', async () => {
+      mockSend.mockRejectedValue(new Error('NoSuchKey'));
+      await expect(service.getBuffer('images', 'missing.png')).rejects.toThrow('NoSuchKey');
+    });
+  });
+
+  describe('delete', () => {
+    it('sends a DeleteObjectCommand for the bucket and key', async () => {
+      mockSend.mockResolvedValue({});
+      await service.delete('images', 'abc.png');
+      expect(DeleteObjectCommand).toHaveBeenCalledWith({ Bucket: 'images', Key: 'abc.png' });
+      expect(mockSend).toHaveBeenCalledTimes(1);
+    });
+
+    it('propagates S3 errors to the caller', async () => {
+      mockSend.mockRejectedValue(new Error('AccessDenied'));
+      await expect(service.delete('images', 'abc.png')).rejects.toThrow('AccessDenied');
     });
   });
 

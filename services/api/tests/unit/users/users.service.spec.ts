@@ -4,6 +4,7 @@ import { DataSource } from 'typeorm';
 import { EmailService } from '../../../src/email/email.service';
 import { UsersService } from '../../../src/users/users.service';
 import { User, AuthProvider } from '../../../src/users/user.entity';
+import { ShareLifecycleService } from '../../../src/sharing/share-lifecycle.service';
 
 const mockRepo = {
   findOneBy: jest.fn(),
@@ -13,8 +14,13 @@ const mockRepo = {
   delete: jest.fn(),
 };
 
-const mockDataSource = { manager: { query: jest.fn() } };
+const mockTxManager = { query: jest.fn(), delete: jest.fn() };
+const mockDataSource = {
+  manager: mockTxManager,
+  transaction: jest.fn(async (cb: (m: typeof mockTxManager) => unknown) => cb(mockTxManager)),
+};
 const mockEmailService = { sendFarewell: jest.fn().mockResolvedValue(undefined) };
+const mockShareLifecycle = { deleteAllForUser: jest.fn().mockResolvedValue([]), purgeImages: jest.fn().mockResolvedValue(undefined) };
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -26,6 +32,7 @@ describe('UsersService', () => {
         { provide: getRepositoryToken(User), useValue: mockRepo },
         { provide: DataSource, useValue: mockDataSource },
         { provide: EmailService, useValue: mockEmailService },
+        { provide: ShareLifecycleService, useValue: mockShareLifecycle },
       ],
     }).compile();
 
@@ -110,46 +117,74 @@ describe('UsersService', () => {
   describe('deleteAccount', () => {
     const user = { id: 'u1', email: 'a@b.com', name: 'Ana' };
 
-    it('deletes all related data then the user record', async () => {
+    beforeEach(() => {
       mockRepo.findOneBy.mockResolvedValue(user);
-      mockDataSource.manager.query.mockResolvedValue(undefined);
-      mockRepo.delete.mockResolvedValue(undefined);
+      mockTxManager.query.mockReset().mockResolvedValue(undefined);
+      mockTxManager.delete.mockReset().mockResolvedValue(undefined);
+      mockDataSource.transaction.mockClear();
+      mockShareLifecycle.deleteAllForUser.mockReset().mockResolvedValue([]);
+      mockShareLifecycle.purgeImages.mockReset().mockResolvedValue(undefined);
+      mockEmailService.sendFarewell.mockReset().mockResolvedValue(undefined);
+    });
+
+    it('deletes all related data then the user record, in one transaction', async () => {
+      await service.deleteAccount('u1');
+
+      expect(mockDataSource.transaction).toHaveBeenCalledTimes(1);
+      expect(mockTxManager.query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM "user_books"'), ['u1']);
+      expect(mockTxManager.query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM "subscriptions"'), ['u1']);
+      expect(mockTxManager.delete).toHaveBeenCalledWith(User, 'u1');
+    });
+
+    it('deletes shares inside the transaction before the user row, and purges images after commit', async () => {
+      const order: string[] = [];
+      mockShareLifecycle.deleteAllForUser.mockImplementation(async (_id: string, m: unknown) => {
+        expect(m).toBe(mockTxManager);
+        order.push('shares');
+        return ['k.png'];
+      });
+      mockTxManager.delete.mockImplementation(async () => { order.push('user'); });
+      mockShareLifecycle.purgeImages.mockImplementation(async () => { order.push('purge'); });
 
       await service.deleteAccount('u1');
 
-      expect(mockDataSource.manager.query).toHaveBeenCalledWith(
-        expect.stringContaining('DELETE FROM "user_books"'), ['u1'],
-      );
-      expect(mockDataSource.manager.query).toHaveBeenCalledWith(
-        expect.stringContaining('DELETE FROM "subscriptions"'), ['u1'],
-      );
-      expect(mockRepo.delete).toHaveBeenCalledWith('u1');
+      expect(mockShareLifecycle.deleteAllForUser).toHaveBeenCalledWith('u1', mockTxManager);
+      expect(mockShareLifecycle.purgeImages).toHaveBeenCalledWith(['k.png']);
+      expect(order).toEqual(['shares', 'user', 'purge']);
+    });
+
+    it('rolls back everything if share deletion fails: no user delete, no purge, no farewell', async () => {
+      mockShareLifecycle.deleteAllForUser.mockRejectedValueOnce(new Error('db down'));
+
+      await expect(service.deleteAccount('u1')).rejects.toThrow('db down');
+      expect(mockTxManager.delete).not.toHaveBeenCalled();
+      expect(mockShareLifecycle.purgeImages).not.toHaveBeenCalled();
+      expect(mockEmailService.sendFarewell).not.toHaveBeenCalled();
+    });
+
+    it('does not purge or e-mail if the user delete fails', async () => {
+      mockTxManager.delete.mockRejectedValueOnce(new Error('fk'));
+      await expect(service.deleteAccount('u1')).rejects.toThrow('fk');
+      expect(mockShareLifecycle.purgeImages).not.toHaveBeenCalled();
+      expect(mockEmailService.sendFarewell).not.toHaveBeenCalled();
     });
 
     it('sends farewell email after deletion', async () => {
-      mockRepo.findOneBy.mockResolvedValue(user);
-      mockDataSource.manager.query.mockResolvedValue(undefined);
-      mockRepo.delete.mockResolvedValue(undefined);
-
       await service.deleteAccount('u1');
-
       expect(mockEmailService.sendFarewell).toHaveBeenCalledWith('a@b.com', 'Ana', 'es');
     });
 
     it('does nothing when user does not exist', async () => {
       mockRepo.findOneBy.mockResolvedValue(null);
       await service.deleteAccount('ghost');
-      expect(mockRepo.delete).not.toHaveBeenCalled();
+      expect(mockDataSource.transaction).not.toHaveBeenCalled();
+      expect(mockShareLifecycle.deleteAllForUser).not.toHaveBeenCalled();
     });
 
     it('completes deletion even if farewell email fails', async () => {
-      mockRepo.findOneBy.mockResolvedValue(user);
-      mockDataSource.manager.query.mockResolvedValue(undefined);
-      mockRepo.delete.mockResolvedValue(undefined);
       mockEmailService.sendFarewell.mockRejectedValue(new Error('SMTP down'));
-
       await expect(service.deleteAccount('u1')).resolves.toBeUndefined();
-      expect(mockRepo.delete).toHaveBeenCalledWith('u1');
+      expect(mockTxManager.delete).toHaveBeenCalledWith(User, 'u1');
     });
   });
 

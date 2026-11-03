@@ -10,6 +10,7 @@ import { CreateFragmentDto } from './dto/create-fragment.dto';
 import { UpdateFragmentDto } from './dto/update-fragment.dto';
 import { FragmentTaggerService } from './fragment-tagger.service';
 import { EventsService } from '../events/events.service';
+import { ShareLifecycleService } from '../sharing/share-lifecycle.service';
 
 @Injectable()
 export class FragmentsService {
@@ -18,6 +19,7 @@ export class FragmentsService {
     private readonly repo: Repository<Fragment>,
     private readonly tagger: FragmentTaggerService,
     private readonly events: EventsService,
+    private readonly shareLifecycle: ShareLifecycleService,
   ) {}
 
   async create(userId: string, dto: CreateFragmentDto): Promise<Fragment> {
@@ -58,7 +60,15 @@ export class FragmentsService {
   async remove(id: string, userId: string): Promise<void> {
     const fragment = await this.repo.findOneBy({ id });
     if (!fragment || fragment.userId !== userId) throw new ForbiddenException();
-    await this.repo.remove(fragment);
+    // Deleting a fragment withdraws its public shares (SA-001 D07, NEM-016):
+    // revocation, the image-deletion outbox rows and the delete commit together.
+    // Combining fragments does not revoke: the reader is merging, not withdrawing.
+    const imageKeys = await this.repo.manager.transaction(async (m) => {
+      const keys = await this.shareLifecycle.revokeForFragment(id, m);
+      await m.delete(Fragment, { id });
+      return keys;
+    });
+    await this.shareLifecycle.purgeImages(imageKeys);
   }
 
   async combine(userId: string, fragmentIds: string[]): Promise<Fragment> {
@@ -81,7 +91,9 @@ export class FragmentsService {
     const combined = this.repo.create({
       userId,
       bookId: validFragments[0].bookId,
-      text: validFragments.map((f) => f.text).join(' … '),
+      // `[…]` is the approved omission marker (SA-001 C1); the combined quote is
+      // verified against the book when it is shared.
+      text: validFragments.map((f) => f.text).join(' […] '),
     });
 
     const saved = await this.repo.save(combined);
