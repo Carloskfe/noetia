@@ -127,6 +127,9 @@ export const es: MobileTranslations = {
     openImage: 'Abrir imagen',
     tryAgain: 'Intentar de nuevo',
     error: 'No se pudo generar la imagen. Inténtalo de nuevo.',
+    errorQuoteNotInSource: 'Este texto no coincide con las palabras del libro. Puedes acortar la cita, pero no cambiarla; añade tus propias ideas como nota.',
+    errorBookNotShareable: 'Este libro no está disponible para compartir en este momento.',
+    errorRateLimited: 'Has creado muchas tarjetas en poco tiempo. Inténtalo de nuevo en unos minutos.',
     flip: 'Reflejar fondo',
     flipAria: 'Reflejar la imagen de fondo horizontalmente',
     fit: {

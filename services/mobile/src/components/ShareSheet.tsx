@@ -1,11 +1,39 @@
 import React, { useState } from 'react';
 import {
-  ActivityIndicator, Image, Linking, Modal, ScrollView, Share,
+  ActivityIndicator, Image, Linking, Modal, Platform as RNPlatform, ScrollView, Share,
   StyleSheet, Switch, Text, TouchableOpacity, View,
 } from 'react-native';
 import { apiClient } from '../api/client';
 import { useTranslation } from '../i18n';
 import { BG_PRESETS, buildSharePayload, Platform } from '../lib/share-backgrounds';
+
+/**
+ * Native share-sheet content for a quote card. React Native only honours `url`
+ * on iOS; on Android the link must be part of `message` or it is dropped (G10).
+ */
+export function buildShareContent(
+  text: string,
+  pageUrl: string,
+  os: string,
+): { message: string; url?: string } {
+  return os === 'ios' ? { message: text, url: pageUrl } : { message: `${text}\n\n${pageUrl}` };
+}
+
+type SharingStrings = {
+  error: string;
+  errorQuoteNotInSource: string;
+  errorBookNotShareable: string;
+  errorRateLimited: string;
+};
+
+/** Maps an API share error to reader-facing copy. */
+export function shareErrorMessage(err: unknown, strings: SharingStrings): string {
+  const e = err as { status?: number; data?: { error?: string } } | null;
+  if (e?.data?.error === 'quote_not_in_source') return strings.errorQuoteNotInSource;
+  if (e?.data?.error === 'book_not_shareable') return strings.errorBookNotShareable;
+  if (e?.status === 429) return strings.errorRateLimited;
+  return strings.error;
+}
 
 const PLATFORMS: Array<{ id: Platform; color: string; icon: string }> = [
   { id: 'instagram', color: '#E1306C', icon: '📸' },
@@ -28,7 +56,9 @@ export function ShareSheet({ fragmentId, fragmentText, visible, onClose }: Props
   const [flip, setFlip] = useState(false);
   const [bold, setBold] = useState(false);
   const [italic, setItalic] = useState(false);
+  // The API returns `url` (the public share page) and `imageUrl` (the PNG card).
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [pageUrl, setPageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,6 +71,7 @@ export function ShareSheet({ fragmentId, fragmentText, visible, onClose }: Props
     setBold(false);
     setItalic(false);
     setImageUrl(null);
+    setPageUrl(null);
     setLoading(false);
     setError('');
   }
@@ -55,6 +86,7 @@ export function ShareSheet({ fragmentId, fragmentText, visible, onClose }: Props
     setLoading(true);
     setError('');
     setImageUrl(null);
+    setPageUrl(null);
     try {
       const payload = buildSharePayload(
         selected,
@@ -65,19 +97,21 @@ export function ShareSheet({ fragmentId, fragmentText, visible, onClose }: Props
         },
         { bold, italic },
       );
-      const res = await apiClient.post<{ url: string }>(`/fragments/${fragmentId}/share`, payload);
-      setImageUrl(res.url);
-    } catch {
-      setError(t.sharing.error);
+      const res = await apiClient.post<{ url: string; imageUrl?: string }>(`/fragments/${fragmentId}/share`, payload);
+      // G10: "Open image" must open the card, not the share page.
+      setImageUrl(res.imageUrl ?? res.url);
+      setPageUrl(res.url);
+    } catch (err) {
+      setError(shareErrorMessage(err, t.sharing));
     } finally {
       setLoading(false);
     }
   }
 
   async function handleShare() {
-    if (!imageUrl) return;
+    if (!pageUrl) return;
     try {
-      await Share.share({ url: imageUrl, message: fragmentText });
+      await Share.share(buildShareContent(fragmentText, pageUrl, RNPlatform.OS));
     } catch {}
   }
 

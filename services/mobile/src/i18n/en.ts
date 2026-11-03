@@ -125,6 +125,9 @@ export const en = {
     openImage: 'Open image',
     tryAgain: 'Try again',
     error: 'Could not generate the image. Try again.',
+    errorQuoteNotInSource: "This text doesn't match the book's wording. You can shorten a quote, but not change it — add your own thoughts as a note.",
+    errorBookNotShareable: "This book isn't available for sharing right now.",
+    errorRateLimited: "You've created a lot of cards in a short time. Try again in a few minutes.",
     flip: 'Mirror background',
     flipAria: 'Mirror the background image horizontally',
     fit: {
