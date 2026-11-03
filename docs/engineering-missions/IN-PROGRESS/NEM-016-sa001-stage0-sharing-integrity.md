@@ -1,10 +1,10 @@
 # NOETIA ENGINEERING MISSION — NEM-016
 ## SA-001 Stage 0: sharing security and integrity corrections
 
-**Status:** IN PROGRESS → awaiting REVIEW (implementation complete on branch, Draft PR open)
+**Status:** IN PROGRESS → awaiting REVIEW. Rev 2 (independent-review follow-up) is complete; Draft PR #25 is open and not merged.
 **Mission type:** REMEDIATION
 **Implementation authorization:** FULL-WITHIN-SCOPE (implementation, tests, Draft PR)
-**Schema changes:** ADDITIVE ONLY (migration 068: two nullable columns, two indexes)
+**Schema changes:** ADDITIVE ONLY (migration 068: three nullable columns, two indexes, one outbox table; never deployed)
 **Infrastructure changes:** NOT AUTHORIZED (none made)
 **Production deployment:** NOT AUTHORIZED. No merge, no deploy, no production migration.
 **Product Owner approval:** GRANTED 2026-11-02 ("SA-001 Stage 0 — Authorized for implementation, testing, and Draft PR preparation")
@@ -95,7 +95,7 @@ Observability:
 - the C1 resolution and the NEM-016 index row in PR #24
 
 ## 16. Open decisions
-Report §10:
+Report §10 (rev 2 adds the C1 thresholds, legacy combined fragments, the deploy approach and S18). Rev 1 items:
 - legacy-share audit and clean-up
 - orphan shares of deleted accounts
 - rate-limit values
@@ -112,6 +112,14 @@ None triggered:
 
 ## 18. Completion report
 The report linked above.
+
+**Rev 2 (2026-11-02):** the PO authorized "Review, corrections within the previously approved Stage 0 scope, tests, and documentation". No merge, deployment, production migration, production data change or irreversible clean-up. Report §13 covers:
+- fail-closed renderer validation
+- the C1 reconciliation
+- the transactional outbox
+- the 068 readiness assessment
+- the read-only legacy audit tool
+- new finding S18
 
 ## 19. Product Architecture review
 Pending. Verdict: —
