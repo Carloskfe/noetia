@@ -6,6 +6,8 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../api/client';
+import { AccessDenial, checkBookAccess, fetchOwnership, readAccessDenial } from '../../api/acquisition';
+import { UnlockPanel } from '../../components/UnlockPanel';
 import { clubsApi, ClubMember } from '../../api/clubs';
 import { AudioPlayerBar } from '../../components/AudioPlayerBar';
 import { DownloadButton } from '../../components/DownloadButton';
@@ -37,6 +39,7 @@ interface ApiFragment {
 interface BookData {
   textFileUrl?: string;
   audioStreamKey?: string;
+  isFree?: boolean;
 }
 
 const PROGRESS_DEBOUNCE = 3000;
@@ -58,6 +61,12 @@ export function ReaderScreen() {
   const [savingFragment, setSavingFragment]   = useState(false);
   const [loading, setLoading]                  = useState(true);
   const [error, setError]                      = useState('');
+  // Acquisition (NEM-012): a denied paid book shows the unlock panel; a paid book
+  // readable through the plan but not owned gets an Unlock action in the header.
+  const [denial, setDenial]                    = useState<AccessDenial | null>(null);
+  const [canUnlock, setCanUnlock]              = useState(false);
+  const [showUnlock, setShowUnlock]            = useState(false);
+  const [reloadKey, setReloadKey]              = useState(0);
   const [showClubPicker, setShowClubPicker]    = useState(false);
   const [clubPickerClubs, setClubPickerClubs]  = useState<ClubMember[]>([]);
   const [clubComment, setClubComment]          = useState('');
@@ -92,17 +101,37 @@ export function ReaderScreen() {
           >
             <Text style={[styles.headerBtnText, selectionMode && styles.headerBtnTextActive]}>✎</Text>
           </TouchableOpacity>
+          {canUnlock && (
+            <TouchableOpacity
+              onPress={() => setShowUnlock(true)}
+              style={[styles.headerBtn, styles.unlockBtn]}
+              accessibilityLabel={t.acquisition.topBarUnlock}
+            >
+              <Text style={styles.unlockBtnText}>{t.acquisition.topBarUnlock}</Text>
+            </TouchableOpacity>
+          )}
           <DownloadButton bookId={bookId} />
         </View>
       ),
     });
-  }, [bookId, bookTitle, navigation, selectionMode, t]);
+  }, [bookId, bookTitle, navigation, selectionMode, canUnlock, t]);
 
   useEffect(() => {
     async function loadContent() {
       // Check offline cache first
       const cached = await loadChapter(bookId, 0);
       if (cached?.phrases?.length) {
+        // A downloaded copy is shown only while the server still grants access.
+        // The app-level paywall that used to stop canceled subscribers before this
+        // point is gone (NEM-012). Offline (`unknown`) the download is used as before.
+        const access = await checkBookAccess<BookData>(bookId);
+        if (access.kind === 'denied') {
+          setDenial(access.denial);
+          return;
+        }
+        if (access.kind === 'allowed' && access.book?.isFree === false) {
+          fetchOwnership(bookId).then((owned) => setCanUnlock(owned === false));
+        }
         setPhrases(cached.phrases as SyncPhrase[]);
         const progress = await apiClient.get<{ phraseIndex?: number }>(`/books/${bookId}/progress`).catch(() => null);
         const frags = await apiClient.get<ApiFragment[]>(`/books/${bookId}/fragments`).catch(() => []);
@@ -122,6 +151,10 @@ export function ReaderScreen() {
       setSavedIndex(progress?.phraseIndex ?? 0);
       savedPhraseIds.current = new Set((frags ?? []).map((f) => f.startPhraseIndex));
 
+      if (book?.isFree === false) {
+        fetchOwnership(bookId).then((owned) => setCanUnlock(owned === false));
+      }
+
       if (book?.audioStreamKey) setAudioUrl(book.audioStreamKey);
 
       if (syncMap?.phrases?.length) {
@@ -136,8 +169,14 @@ export function ReaderScreen() {
       }
     }
 
-    loadContent().catch(() => setError(t.reader.errorBook)).finally(() => setLoading(false));
-  }, [bookId]);
+    loadContent()
+      .catch((err) => {
+        const denied = readAccessDenial(err);
+        if (denied) setDenial(denied);
+        else setError(t.reader.errorBook);
+      })
+      .finally(() => setLoading(false));
+  }, [bookId, reloadKey]);
 
   useEffect(() => {
     if (savedIndex > 0 && phrases.length > 0 && !audioMode) {
@@ -308,6 +347,19 @@ export function ReaderScreen() {
   }, [selectionMode, selectedIndices]);
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#4F46E5" /></View>;
+
+  if (denial) {
+    return (
+      <View style={styles.center}>
+        <UnlockPanel
+          bookId={bookId}
+          bookTitle={bookTitle}
+          reason={denial.reason}
+          onUnlocked={() => { setDenial(null); setLoading(true); setReloadKey((k) => k + 1); }}
+        />
+      </View>
+    );
+  }
 
   if (error) {
     return (
@@ -492,6 +544,17 @@ export function ReaderScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+      <Modal visible={showUnlock} transparent animationType="fade" onRequestClose={() => setShowUnlock(false)}>
+        <View style={styles.unlockOverlay}>
+          <UnlockPanel
+            bookId={bookId}
+            bookTitle={bookTitle}
+            readableWithPlan
+            onUnlocked={() => { setCanUnlock(false); setShowUnlock(false); }}
+            onClose={() => setShowUnlock(false)}
+          />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -499,6 +562,9 @@ export function ReaderScreen() {
 const styles = StyleSheet.create({
   container:         { flex: 1, backgroundColor: '#fff' },
   center:            { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  unlockBtn:         { backgroundColor: '#4F46E5', paddingHorizontal: 10 },
+  unlockBtnText:     { color: '#fff', fontSize: 13, fontWeight: '600' },
+  unlockOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 16 },
   content:           { padding: 20, paddingBottom: 60 },
   contentWithPlayer: { paddingBottom: 120 },
   phrase:            { fontSize: 17, lineHeight: 28, color: '#1F2937', marginBottom: 2 },

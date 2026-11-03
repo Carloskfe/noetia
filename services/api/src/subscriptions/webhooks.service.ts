@@ -60,6 +60,14 @@ export class WebhooksService {
           await this.handleCheckoutCompleted(event);
         }
         break;
+      // Delayed payment methods report their outcome after the session completes.
+      // Only legacy title purchases act on them (NEM-015); see handleTitlePurchase.
+      case 'checkout.session.async_payment_succeeded':
+        await this.handleAsyncPaymentSucceeded(event);
+        break;
+      case 'checkout.session.async_payment_failed':
+        this.logAsyncPaymentFailed(event);
+        break;
       case 'invoice.paid':
         await this.handleInvoicePaid(event);
         break;
@@ -91,8 +99,46 @@ export class WebhooksService {
     if (tokenPackageId) {
       await this.subscriptionsService.issueTokensForPurchasedPackage(tokenPackageId, userId);
     } else if (bookId) {
-      await this.subscriptionsService.addPurchasedBook(userId, bookId);
+      await this.handleTitlePurchase(session, userId, bookId, 'completed');
     }
+  }
+
+  /**
+   * Legacy per-title purchases (retired by NEM-015 — no new sessions can start).
+   * Sessions created before retirement keep being honoured for as long as Stripe
+   * reports them: completion up to 24 h after creation, webhook retries for days,
+   * and delayed payment methods whose outcome arrives later still. Ownership is
+   * granted only once payment is confirmed; `addPurchasedBook` is idempotent.
+   */
+  private async handleTitlePurchase(
+    session: any,
+    userId: string,
+    bookId: string,
+    via: 'completed' | 'async_succeeded',
+  ): Promise<void> {
+    if (via === 'completed' && session.payment_status === 'unpaid') {
+      this.logger.log(`title_purchase_awaiting_payment session=${session.id}`);
+      return;
+    }
+    await this.subscriptionsService.addPurchasedBook(userId, bookId);
+    this.logger.log(`late_title_purchase_fulfilled session=${session.id} via=${via}`);
+  }
+
+  private async handleAsyncPaymentSucceeded(event: any): Promise<void> {
+    const session = event.data.object;
+    const { bookId, userId, tokenPackageId, type } = session.metadata ?? {};
+    if (bookId && userId && !tokenPackageId && type !== 'gift') {
+      await this.handleTitlePurchase(session, userId, bookId, 'async_succeeded');
+      return;
+    }
+    // Token-pack and gift checkouts are card-only and complete synchronously;
+    // they are fulfilled on checkout.session.completed and unchanged here.
+    this.logger.log(`Unhandled async payment success for session ${session.id}`);
+  }
+
+  private logAsyncPaymentFailed(event: any): void {
+    const session = event.data.object;
+    this.logger.warn(`async_payment_failed session=${session.id} — nothing granted`);
   }
 
   private async handleCheckoutCompleted(event: any): Promise<void> {

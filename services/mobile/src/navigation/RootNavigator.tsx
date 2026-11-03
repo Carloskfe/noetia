@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { fetchSubscriptionStatus, requiresPaywall } from '../api/subscriptions';
 import { AuthProvider } from '../auth/AuthContext';
+import { entryState } from '../auth/entry-state';
 import { isLoggedIn } from '../auth/token-storage';
 import { OnboardingTour } from '../components/OnboardingTour';
 import { TourProvider } from '../components/TourContext';
@@ -11,10 +11,9 @@ import { ConsentScreen } from '../screens/ConsentScreen';
 import { LanguageScreen } from '../screens/LanguageScreen';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
-import { PaywallScreen } from '../screens/PaywallScreen';
 import { MainNavigator } from './MainNavigator';
 
-type AppState = 'loading' | 'language' | 'consent' | 'login' | 'register' | 'paywall' | 'app';
+type AppState = 'loading' | 'language' | 'consent' | 'login' | 'register' | 'app';
 
 async function resolveInitialState(): Promise<AppState> {
   const [hasLang, consent, authed] = await Promise.all([
@@ -22,11 +21,8 @@ async function resolveInitialState(): Promise<AppState> {
     consentIsCurrent(),
     isLoggedIn(),
   ]);
-  if (!hasLang) return 'language';
-  if (!consent) return 'consent';
-  if (!authed) return 'login';
-  const status = await fetchSubscriptionStatus();
-  return requiresPaywall(status) ? 'paywall' : 'app';
+  // No subscription gate — see entryState (NEM-012).
+  return entryState({ hasLanguage: hasLang, consentCurrent: consent, loggedIn: authed });
 }
 
 function AppNavigator() {
@@ -36,9 +32,8 @@ function AppNavigator() {
     resolveInitialState().then(setState);
   }, []);
 
-  async function handleAuthenticated() {
-    const status = await fetchSubscriptionStatus();
-    setState(requiresPaywall(status) ? 'paywall' : 'app');
+  function handleAuthenticated() {
+    setState('app');
   }
 
   if (state === 'loading') {
@@ -57,7 +52,6 @@ function AppNavigator() {
   if (state === 'register') return (
     <RegisterScreen onRegister={handleAuthenticated} onLogin={() => setState('login')} />
   );
-  if (state === 'paywall') return <PaywallScreen onSubscribed={() => setState('app')} />;
 
   return (
     <AuthProvider onLogout={() => setState('login')}>

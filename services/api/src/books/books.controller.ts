@@ -94,6 +94,14 @@ export class BooksController {
     return this.booksService.findPending();
   }
 
+  // Public metadata only (no file URLs) — feeds the unlock screen when the
+  // reader is denied the full book (NEM-012).
+  @Get(':id/summary')
+  @Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
+  findSummary(@Param('id') id: string) {
+    return this.booksService.findSummary(id);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard, SubscriptionGuard)
   async findOne(@Param('id') id: string) {

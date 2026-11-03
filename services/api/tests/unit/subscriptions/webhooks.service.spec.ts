@@ -103,6 +103,56 @@ describe('WebhooksService', () => {
       expect(mockSubscriptionsService.upsertFromWebhook).not.toHaveBeenCalled();
     });
 
+    describe('legacy title purchases after retirement (NEM-015)', () => {
+      it('fulfils a paid pre-retirement session', async () => {
+        await service.handleEvent(makeEvent('checkout.session.completed', {
+          id: 'cs_1', mode: 'payment', payment_status: 'paid', metadata: { bookId: 'bk_1', userId: 'u_1' },
+        }) as any);
+        expect(mockSubscriptionsService.addPurchasedBook).toHaveBeenCalledWith('u_1', 'bk_1');
+      });
+
+      it('fulfils a no_payment_required session (e.g. 100% discount)', async () => {
+        await service.handleEvent(makeEvent('checkout.session.completed', {
+          id: 'cs_2', mode: 'payment', payment_status: 'no_payment_required', metadata: { bookId: 'bk_1', userId: 'u_1' },
+        }) as any);
+        expect(mockSubscriptionsService.addPurchasedBook).toHaveBeenCalledWith('u_1', 'bk_1');
+      });
+
+      it('does NOT grant ownership while a delayed payment is still unpaid', async () => {
+        await service.handleEvent(makeEvent('checkout.session.completed', {
+          id: 'cs_3', mode: 'payment', payment_status: 'unpaid', metadata: { bookId: 'bk_1', userId: 'u_1' },
+        }) as any);
+        expect(mockSubscriptionsService.addPurchasedBook).not.toHaveBeenCalled();
+      });
+
+      it('grants ownership when the delayed payment later succeeds', async () => {
+        await service.handleEvent(makeEvent('checkout.session.async_payment_succeeded', {
+          id: 'cs_3', mode: 'payment', payment_status: 'paid', metadata: { bookId: 'bk_1', userId: 'u_1' },
+        }, 'evt_async_ok') as any);
+        expect(mockSubscriptionsService.addPurchasedBook).toHaveBeenCalledWith('u_1', 'bk_1');
+      });
+
+      it('grants nothing when the delayed payment fails', async () => {
+        await service.handleEvent(makeEvent('checkout.session.async_payment_failed', {
+          id: 'cs_3', mode: 'payment', metadata: { bookId: 'bk_1', userId: 'u_1' },
+        }, 'evt_async_fail') as any);
+        expect(mockSubscriptionsService.addPurchasedBook).not.toHaveBeenCalled();
+        expect(mockSubscriptionsService.issueTokensForPurchasedPackage).not.toHaveBeenCalled();
+      });
+
+      it('leaves async events for token packs and gifts untouched', async () => {
+        await service.handleEvent(makeEvent('checkout.session.async_payment_succeeded', {
+          id: 'cs_4', mode: 'payment', metadata: { tokenPackageId: 'pkg', userId: 'u_1' },
+        }, 'evt_async_pkg') as any);
+        await service.handleEvent(makeEvent('checkout.session.async_payment_succeeded', {
+          id: 'cs_5', mode: 'payment', metadata: { type: 'gift' },
+        }, 'evt_async_gift') as any);
+        expect(mockSubscriptionsService.addPurchasedBook).not.toHaveBeenCalled();
+        expect(mockSubscriptionsService.issueTokensForPurchasedPackage).not.toHaveBeenCalled();
+        expect(mockGiftsService.fulfillGift).not.toHaveBeenCalled();
+      });
+    });
+
     it('handles checkout.session.completed (payment mode) — issues tokens for token package', async () => {
       const event = makeEvent('checkout.session.completed', {
         mode: 'payment',

@@ -17,6 +17,8 @@ import FragmentPopover from '@/components/FragmentPopover';
 import FragmentSheet from '@/components/FragmentSheet';
 import ChapterSheet from '@/components/ChapterSheet';
 import ReaderTopBar from '@/components/ReaderTopBar';
+import { UnlockDialog, UnlockScreen } from '@/components/UnlockPanel';
+import { AccessDenial, fetchOwnership, readAccessDenial, wantsUnlock } from '@/lib/acquisition';
 import PhraseRenderer from '@/components/PhraseRenderer';
 import PagedReader from '@/components/PagedReader';
 import ReaderTutorial, { hasSeenReaderTutorial } from '@/components/ReaderTutorial';
@@ -41,6 +43,7 @@ type Book = {
   audioStreamUrl: string | null;
   textFileUrl: string | null;
   isFree: boolean;
+  coverUrl?: string | null;
 };
 
 type Mode = 'reading' | 'audio' | 'escucha-activa';
@@ -66,6 +69,11 @@ export default function ReaderPage() {
   const [mode, setMode] = useState<Mode>('reading');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Acquisition (NEM-012): a denied paid book shows the unlock screen; a paid book
+  // readable through the plan but not owned gets a visible Unlock action.
+  const [denial, setDenial] = useState<AccessDenial | null>(null);
+  const [owned, setOwned] = useState<boolean | null>(null);
+  const [showUnlock, setShowUnlock] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -173,6 +181,11 @@ export default function ReaderPage() {
         setBook(bookData);
         if (bookData.isFree) {
           apiFetch(`/library/${bookId}`, { method: 'POST' }).catch(() => {});
+        } else {
+          fetchOwnership(bookId).then((isOwned) => {
+            setOwned(isOwned);
+            if (isOwned === false && wantsUnlock(window.location.search)) setShowUnlock(true);
+          });
         }
         if (syncMapData?.phrases) setPhrases(syncMapData.phrases);
         const saved = progressData?.phraseIndex ?? 0;
@@ -186,7 +199,11 @@ export default function ReaderPage() {
             .catch(() => {});
         }
       })
-      .catch((err) => setError(err.message ?? 'Error loading book'))
+      .catch((err) => {
+        const denied = readAccessDenial(err);
+        if (denied) setDenial(denied);
+        else setError(err.message ?? 'Error loading book');
+      })
       .finally(() => {
         setLoading(false);
         if (!hasSeenReaderTutorial()) setShowTutorial(true);
@@ -616,6 +633,7 @@ export default function ReaderPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (loading) return <LoadingScreen />;
+  if (denial) return <UnlockScreen bookId={bookId} reason={denial.reason} onUnlocked={() => window.location.reload()} />;
   if (error || !book) return <ErrorScreen message={error || t.reader.bookNotFound} />;
 
   const audioUrl = book.audioStreamUrl ?? book.audioFileUrl;
@@ -681,7 +699,20 @@ export default function ReaderPage() {
         progress={readingProgress}
         readingLayout={readingLayout}
         onLayoutToggle={hasSync && mode === 'reading' ? () => setReadingLayout((l) => (l === 'paged' ? 'scroll' : 'paged')) : undefined}
+        onUnlock={owned === false ? () => setShowUnlock(true) : undefined}
       />
+
+      {showUnlock && owned === false && (
+        <UnlockDialog
+          bookId={bookId}
+          title={book.title}
+          author={book.author}
+          coverUrl={book.coverUrl}
+          readableWithPlan
+          onUnlocked={() => { setOwned(true); setShowUnlock(false); }}
+          onClose={() => setShowUnlock(false)}
+        />
+      )}
 
       {/* Hidden audio element — uses M4B stream URL for browser-native playback */}
       {audioUrl && (

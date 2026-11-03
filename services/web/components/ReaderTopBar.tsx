@@ -23,6 +23,8 @@ type Props = {
   /** Current text layout; when onLayoutToggle is set a scroll/paged toggle shows. */
   readingLayout?: ReadingLayout;
   onLayoutToggle?: () => void;
+  /** Set when the user can read this paid book but does not own it — shows an Unlock action (NEM-012). */
+  onUnlock?: () => void;
 };
 
 export default function ReaderTopBar({
@@ -42,6 +44,7 @@ export default function ReaderTopBar({
   progress,
   readingLayout,
   onLayoutToggle,
+  onUnlock,
 }: Props) {
   const { t } = useTranslation();
   const atMin = fontSize === FONT_SIZES[0];
@@ -148,6 +151,15 @@ export default function ReaderTopBar({
       )}
 
       {/* Reading layout toggle — scroll ↔ paged */}
+      {onUnlock && (
+        <button
+          onClick={onUnlock}
+          className="flex-shrink-0 h-8 px-3 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition"
+        >
+          {t.acquisition.topBarUnlock}
+        </button>
+      )}
+
       {onLayoutToggle && (
         <button
           onClick={onLayoutToggle}

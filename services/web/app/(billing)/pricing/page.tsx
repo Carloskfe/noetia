@@ -194,7 +194,7 @@ export default function PricingPage() {
 
       {/* Token packages */}
       {packages.length > 0 && (
-        <div className="border-t border-gray-100 pt-12">
+        <div id="tokens" className="border-t border-gray-100 pt-12 scroll-mt-16">
           <div className="text-center mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-1">{t.pricing.tokens.title}</h2>
             <p className="text-sm text-gray-500">{t.pricing.tokens.subtitle}</p>

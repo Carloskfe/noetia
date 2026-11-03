@@ -187,8 +187,9 @@ Authors / Publishers / Companies
 
 Noetia follows a hybrid model inspired by Audible.
 
-#### Pay-per-Title
-- Fixed price set by the publisher; permanently unlocks reading + listening
+#### ~~Pay-per-Title~~ — `SUPERSEDED BY PO-021 Amendment 1` (2026-10-29)
+- ~~Fixed price set by the publisher; permanently unlocks reading + listening~~
+- **Paid books are acquired only by redeeming a token.** Tokens come from book-token plans, token packages (no subscription required), and gift cards. Books acquired by an earlier direct purchase remain permanently owned. (Endpoint retirement: NEM-015.)
 
 #### Monthly Subscription Plans
 
@@ -203,7 +204,7 @@ Noetia follows a hybrid model inspired by Audible.
 - Paid tokens expire 90 days after issuance; promo/courtesy tokens expire in 30 days
 - FIFO redemption — oldest token consumed first
 - Token packages for one-time purchase: 1 / 3 / 5 / 10 tokens
-- Subscribers can also purchase titles at list price without spending a token
+- ~~Subscribers can also purchase titles at list price without spending a token~~ — `SUPERSEDED BY PO-021 Amendment 1`: token redemption is the only acquisition path
 
 ### 9. Author / Publisher Module ← Priority 2 feature
 - Upload: text (.txt/.epub/.pdf), audio (MP3/M4A), cover image (.jpg/.png), sync file (SRT/VTT)

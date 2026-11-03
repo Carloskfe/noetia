@@ -89,7 +89,7 @@ export default function GiftClaimPage() {
             {t.giftCard.claim.success.title(preview?.tokenCount ?? 0)}
           </h1>
           <p className="text-gray-500 mb-6">{t.giftCard.claim.success.body}</p>
-          <button onClick={() => router.push('/')} className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800">
+          <button onClick={() => router.push('/discover')} className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800">
             {t.giftCard.claim.success.cta}
           </button>
         </div>

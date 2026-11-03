@@ -18,6 +18,7 @@ import { UserType } from '../../../src/users/user.entity';
 const mockBooksService = {
   findAll: jest.fn(),
   findById: jest.fn(),
+  findSummary: jest.fn(),
   findPending: jest.fn(),
   publish: jest.fn(),
   remove: jest.fn(),
@@ -236,6 +237,15 @@ describe('BooksController', () => {
 
       await expect(controller.create({ user: authorUser }, dto, noFiles)).rejects.toThrow(ForbiddenException);
       expect(mockBooksService.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findSummary (NEM-012)', () => {
+    it('delegates to the service and returns its public summary', async () => {
+      const summary = { id: 'b-1', title: 'T', author: 'A', coverUrl: null, description: null, language: 'es', category: 'classic', isFree: false };
+      mockBooksService.findSummary.mockResolvedValue(summary);
+      await expect(controller.findSummary('b-1')).resolves.toEqual(summary);
+      expect(mockBooksService.findSummary).toHaveBeenCalledWith('b-1');
     });
   });
 });

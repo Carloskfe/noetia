@@ -18,6 +18,7 @@ jest.mock('@/lib/i18n', () => ({
         chapters: 'Chapters', fragments: 'Fragments',
         readingProgress: (pct: number) => `Reading progress: ${pct}%`,
       },
+      acquisition: { topBarUnlock: 'Unlock' },
     },
   }),
 }));
@@ -94,5 +95,24 @@ describe('ReaderTopBar progress indicator', () => {
     render({ progress: 0.6 });
     const label = container.querySelector('[aria-label="Reading progress: 60%"]');
     expect(label).not.toBeNull();
+  });
+});
+
+describe('ReaderTopBar unlock action (NEM-012)', () => {
+  const unlockButton = () =>
+    Array.from(container.querySelectorAll('button')).find((b) => b.textContent === 'Unlock');
+
+  it('shows a visible Unlock action when the reader can unlock the book', () => {
+    const onUnlock = jest.fn();
+    render({ ...baseProps, onUnlock });
+    const btn = unlockButton();
+    expect(btn).toBeDefined();
+    act(() => btn!.click());
+    expect(onUnlock).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows no Unlock action for owned or free books', () => {
+    render({ ...baseProps });
+    expect(unlockButton()).toBeUndefined();
   });
 });

@@ -210,6 +210,28 @@ describe('BooksService', () => {
     });
   });
 
+  describe('findSummary (NEM-012)', () => {
+    it('returns public catalogue fields only — no storage keys or file URLs', async () => {
+      mockRepo.findOneBy.mockResolvedValue({
+        id: 'b-1', title: 'T', author: 'A', coverUrl: 'c.png', description: 'd', language: 'es',
+        category: 'classic', isFree: false, isPublished: true,
+        textFileKey: 'books/secret.txt', audioFileKey: 'audio/secret.mp3', audioStreamKey: 'audio/s.m4b', priceCents: 999,
+      });
+
+      const summary = await service.findSummary('b-1');
+
+      expect(mockRepo.findOneBy).toHaveBeenCalledWith({ id: 'b-1', isPublished: true });
+      expect(summary).toEqual({
+        id: 'b-1', title: 'T', author: 'A', coverUrl: 'c.png', description: 'd', language: 'es', category: 'classic', isFree: false,
+      });
+    });
+
+    it('throws NotFoundException for an unpublished or missing book', async () => {
+      mockRepo.findOneBy.mockResolvedValue(null);
+      await expect(service.findSummary('hidden')).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('findPending', () => {
     it('returns books where isPublished is false with uploadedBy relation', async () => {
       const pending = [{ id: 'b-1', isPublished: false, uploadedBy: { id: 'u-1' } }];

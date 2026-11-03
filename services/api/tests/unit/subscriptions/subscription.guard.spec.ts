@@ -106,7 +106,7 @@ describe('SubscriptionGuard', () => {
       mockSubRepo.findOneBy.mockResolvedValue(null);
       await expect(guard.canActivate(makeContext('u1', 'book-id'))).rejects.toThrow(ForbiddenException);
       await expect(guard.canActivate(makeContext('u1', 'book-id'))).rejects.toMatchObject({
-        response: { error: 'subscription_required' },
+        response: { error: 'subscription_required', bookId: 'book-id' },
       });
     });
 
@@ -118,7 +118,7 @@ describe('SubscriptionGuard', () => {
     it('throws 403 payment_required with billingPortalHint for past_due subscriber', async () => {
       mockSubRepo.findOneBy.mockResolvedValue({ status: 'past_due' });
       await expect(guard.canActivate(makeContext('u1', 'book-id'))).rejects.toMatchObject({
-        response: { error: 'payment_required', billingPortalHint: true },
+        response: { error: 'payment_required', billingPortalHint: true, bookId: 'book-id' },
       });
     });
 
@@ -142,8 +142,18 @@ describe('SubscriptionGuard', () => {
     it('throws subscription_required when user is not linked to any active plan', async () => {
       mockQb.getOne.mockResolvedValue(null);
       await expect(guard.canActivate(makeContext('u1', 'book-id'))).rejects.toMatchObject({
-        response: { error: 'subscription_required' },
+        response: { error: 'subscription_required', bookId: 'book-id' },
       });
+    });
+  });
+
+  describe('denial payload (NEM-012)', () => {
+    it('omits bookId when the route has no book param', async () => {
+      mockSubRepo.findOneBy.mockResolvedValue(null);
+      mockQb.getOne.mockResolvedValue(null);
+      const err = await guard.canActivate(makeContext('u1', undefined)).catch((e) => e);
+      expect(err).toBeInstanceOf(ForbiddenException);
+      expect(err.getResponse()).toEqual({ error: 'subscription_required' });
     });
   });
 });
