@@ -8,6 +8,7 @@
 |---|---|---|---|
 | 1 | 2026-11-02 | SA-001 | Initial architecture review; 13 open questions |
 | 2 | 2026-11-02 | SA-001-GOV-001 | Recorded the 13 PO-approved decisions (SA-001-D01…D13). Moved them out of the open questions. Added the staged sequence, dependencies, and new security findings S12–S15 and conflict C1. Re-verified against `origin/main` `6a5e5c0` (unchanged since rev 1). |
+| 3 | 2026-11-02 | NEM-016 | Recorded the PO-approved **C1 quotation-integrity policy**: C1 is resolved at the product-policy level (§5.4). Stage 0 was authorized as **NEM-016** and is implemented in Draft PR [#25](https://github.com/Carloskfe/noetia/pull/25), not merged. Its report covers the remaining engineering items: the `[…]` source-range design and new findings S16/S17. |
 
 **Labels used throughout**
 
@@ -36,7 +37,7 @@ SA-001 is an approved PO decision: **Smart Book Sharing, Option C.** The flow is
 ## 2. Date and status
 
 - **Date:** 2026-11-02, rev 2
-- **Status:** product decisions approved; architecture documented; awaiting a separate PO authorization for Stage 0 (corrective mission). No implementation authorized.
+- **Status:** product decisions approved; C1 resolved at policy level (rev 3); Stage 0 implemented as NEM-016 in Draft PR [#25](https://github.com/Carloskfe/noetia/pull/25), awaiting review. Not merged or deployed. No SA-001 feature implementation is authorized.
 - **Baseline:** `origin/main` at `6a5e5c0`, unchanged between rev 1 and rev 2
 - **PR:** Draft [#24](https://github.com/Carloskfe/noetia/pull/24) on branch `docs/sa-001-smart-book-sharing`, stacked on PR #23's branch (see §11)
 
@@ -91,7 +92,7 @@ Nothing in this report proposes any of these.
    - **S13:** the social-publish endpoint fetches any URL a user supplies.
    - **S14:** the public share API returns book data for unpublished or culled books.
    - **S15:** share inputs aren't validated or limited.
-   - **C1:** "Edit before sharing" lets readers rewrite a fragment's text, which is then presented as the author's words. This conflicts with **D05**.
+   - **C1** *(resolved at policy level in rev 3, see §5.4)*: "Edit before sharing" lets readers rewrite a fragment's text, which is then presented as the author's words. This conflicts with **D05**.
 
    Proposed corrective-mission scope: §8.1.
 5. **Approved routing (D01):** keep `/s/<slug>`; render the book page directly there with the highlighted section; mark it `noindex`, pointing to the canonical `/books/<id>` (D02). The data comes from a new **public, metadata-only** book endpoint.
@@ -131,7 +132,7 @@ Approved on 2026-11-02 (SA-001-GOV-001). These are **product requirements**. The
 | **D02** Search indexing | Eligible public book pages may be indexed. `/s/<slug>` is `noindex`, with the canonical book page identified. No private content, unpublished titles, unauthorized excerpts or revoked reflections exposed through indexing. | `robots: noindex` on `/s/*`. `/books/*` allowed in `robots.ts` and listed in the sitemap only for **eligible** books (published, passing the quality gate, not rights-restricted). Public endpoint 404s for ineligible books. Shared context never in the sitemap. | Exact eligibility rule, e.g. how culled or quality-gated titles are treated |
 | **D03** Public discovery | Public metadata and shared context are viewable without registration. Reading and listening need existing entitlements. Visitors without access see acquisition options from the **separately approved acquisition model**. Keep the book destination and shared context after registration or acquisition. **No new pricing or entitlement rules.** | `GET /books/:id/public` (metadata only). CTA from the visitor's state (§5.4). `next=/s/<slug>` carried through register, login and acquisition return URLs. | The acquisition model is decided (PO-021…023) but its records and implementation are unmerged (PR #12, PR #11). The CTA depends on them (§10.1). |
 | **D04** Reflections and identity | The section shows the quote and **optionally** the reader's reflection, which needs **explicit permission for that share**. The reader is **anonymous by default** and may opt in to attribution. Permission is withdrawable. Private notes are never public by default. | Per-share fields: `reflection` snapshot, `reflectionConsentAt`, `attributionEnabled` plus a display name snapshot, `reflectionWithdrawnAt`. Consent UI in the share flow, default off. Withdrawal from the fragments screen. | Attribution display format (first name, display name, handle); whether withdrawal is also available on mobile at launch |
-| **D05** Quotation integrity | Preserve the author's original wording. Faithful excerpts allowed. Reflections clearly distinguished from quotes. No silent modification; no paraphrase presented as the original. | Card and section text must be a **faithful excerpt** of the book's own text, checked server-side against the source phrases (`startPhraseIndex`…`endPhraseIndex`). Reader text goes only in the reflection field, styled differently. | **Conflict C1** (§5.3): today's free-text edit feature. The faithful-excerpt rule (are elisions with "…" allowed?) needs a PO-approved definition. |
+| **D05** Quotation integrity | Preserve the author's original wording. Faithful excerpts allowed. Reflections clearly distinguished from quotes. No silent modification; no paraphrase presented as the original. | Card and section text must be a **faithful excerpt** of the book's own text, checked server-side against the source phrases (`startPhraseIndex`…`endPhraseIndex`). Reader text goes only in the reflection field, styled differently. C1 **resolved at policy level** (rev 3, §5.4). Remaining engineering design: `[…]` source ranges (NEM-016 report §5.10). |
 | **D06** Copyright and rights | Rights-aware sharing: per-title permissions and restrictions, attribution, documented quote limits, a rights-holder removal procedure, publisher opt-out. No universal safe length is assumed. Exact limits and licensing language need a separate rights and legal assessment. **Not legal certification.** | Per-book rights policy (sharing allowed or blocked, max excerpt length, attribution text). Enforcement at share creation and on public pages. Admin "remove share" and "restrict title" actions. Documented removal-request procedure. Public-domain titles allowed by default. | Values and legal wording come from the rights and legal assessment (§10.1). Author upload terms may need amendment (legal-gated, see NOF-004). |
 | **D07** Permanent links and revocation | No automatic expiry. Readers can revoke publicly displayed shared content. Revocation removes the shared context from Noetia surfaces but keeps the book destination when appropriate. Unavailable books get an availability or discovery fallback. Noetia **can't** guarantee removal of copies already downloaded or posted externally; that limit is documented. | `revokedAt` on shares. A revoked share renders the book page without the section. Revocation also deletes the stored card image from the public bucket, and drops it from `og:image` once platform caches refresh [X-V: Facebook caches images by URL]. User-facing copy states the external-copies limit. | Whether revocation deletes the card image or only unlinks it |
 | **D08** Distribution priorities | **P1:** universal sharing: image download, smart-link copy, native device share. **P2:** better direct publishing. Keep platform-specific behaviour. Keep Pinterest without expanding it. **No social-account connection needed for ordinary sharing.** No internal social network. | Stage 2: Web Share API with files, text and URL, with fallback; RN share fix; WhatsApp and copy-link without OAuth; optional JPEG export. Stage 5: LinkedIn Posts API migration, link in commentary or caption, Instagram publisher fix. | Whether Facebook Page-only publishing stays, or the button is relabelled "Publish to your Page" |
@@ -188,13 +189,30 @@ Verified at `6a5e5c0` and unchanged since rev 1.
 | G10 | Mobile "Open image" opens the invite page; the Android share message omits the link | [V] + [X-S] | D08, D12 |
 | G11 | `visitCount` counts preview crawlers and prefetches | [V] + [A] | D11 |
 | G12 | No per-title rights policy, quote limit or removal procedure | [V] (absent) | D06 |
-| **C1** | **Requirement conflict.** The existing "Edit before sharing" lets readers rewrite fragment text freely (`PATCH /fragments/:id`, plus the `text` override on share), and the result is presented as the author's words with author · title attribution. This conflicts with **D05**; D09 permits this correction. | [V] | D05, D09 |
+| **C1** | **Requirement conflict (resolved at policy level, rev 3; Stage 0 guardrail in NEM-016).** The existing "Edit before sharing" lets readers rewrite fragment text freely (`PATCH /fragments/:id`, plus the `text` override on share), and the result is presented as the author's words with author · title attribution. This conflicts with **D05**; D09 permits this correction. | [V] | D05, D09 |
 
-**How C1 should be resolved is a PO-level product choice** [D]. Engineering options [R]:
-- (a) Restrict card text to excerpts of the source phrases, i.e. trimming, and send reader-written text to the reflection field.
-- (b) Allow edits but render them as a reflection with the original quote shown separately.
+**C1: RESOLVED at the product-policy level** [PO, approved 2026-11-02, rev 3]. The approved quotation-integrity policy:
 
-Option (a) is the closest fit to D05. Either way, existing fragments whose text was edited need handling: re-derive the text from the phrase indices, or flag the fragment.
+1. Original quotations preserve the author's wording.
+2. Continuous excerpt selection and shortening are allowed.
+3. Controlled internal omissions marked `[…]` are allowed when:
+   - the retained words stay in their original order,
+   - they're traceable to source positions, and
+   - the omission doesn't materially distort the meaning.
+4. Reader-authored paraphrases, interpretations and criticism are clearly separated as **reflections**.
+5. Private notes remain editable.
+6. Existing quote-card visual customization is preserved.
+7. Public reflections require explicit consent (D04).
+8. All excerpts remain subject to title-specific rights controls (D06).
+
+**Engineering status.** These are separate from the policy, and none is a product decision.
+
+| Item | Status |
+|---|---|
+| Stage 0 guardrail | **Implemented in NEM-016**, Draft PR [#25](https://github.com/Carloskfe/noetia/pull/25), not merged. Card text is checked against the book's source text. Contiguous excerpts and shortening pass. In-order verbatim passages separated by omission markers pass, with at least 3 words per passage and at most 6 passages. Edited wording is refused with an explanation. Notes and fragment text stay editable; nothing is overwritten. |
+| Verified constraint | Fragments never store source positions today (`startPhraseIndex`/`endPhraseIndex` are never populated), so Stage 0 verifies by wording, not by stored ranges [V]. |
+| "Doesn't materially distort meaning" | **Not automatable in Stage 0.** The design for it is in the NEM-016 report §5.10: source-span representation, server-side reconstruction, meaning-integrity safeguards, handling of previously edited fragments, and one additive migration. It's planned for Stage 3 and awaits review. |
+| Previously edited fragments | Can't be shared as quotes until the reader restores the author's wording. The proposed "restore wording" and "move my words to the note" actions are reader-initiated (§5.10 of the NEM-016 report). |
 
 ### 5.5 Smart-link architecture
 
@@ -378,7 +396,7 @@ Internal references:
 
 ### 8.1 Proposed scope for the separate corrective mission (Stage 0, D12)
 
-**Proposal only. A separate, explicit PO authorization is required. Not started.**
+**Rev 3 update:** the PO authorized this scope as **NEM-016**. It's implemented in Draft PR [#25](https://github.com/Carloskfe/noetia/pull/25), awaiting review, not merged or deployed. The implementation report is `docs/reports/2026-11-02-NEM-016-sa001-stage0-sharing-integrity.md` on that PR. Item 9 was implemented as the wording-level guardrail after C1 was resolved. NEM-016 also found two pre-existing throttling issues, S16 and S17, which aren't fixed there.
 
 Working title: *"SA-001 Stage 0: sharing security and integrity corrections"*. It needs a NEM number assigned under `docs/engineering-missions/`.
 
@@ -392,7 +410,7 @@ Working title: *"SA-001 Stage 0: sharing security and integrity corrections"*. I
 | 6 | Close the server-side request forgery in social publish: accept a share id or a Noetia image URL only | S13 | |
 | 7 | Public share API returns nothing for ineligible books | S14 | |
 | 8 | Share request validation: DTO, length and size limits, rate limit | S15, S2, S8 | |
-| 9 | *(needs a PO product choice first)* Quotation-integrity enforcement for C1 / D05 | C1, S2 | If the PO picks option (a), it can join Stage 0; otherwise Stage 1 |
+| 9 | Quotation-integrity enforcement for C1 / D05 | C1, S2 | C1 resolved at policy level (rev 3). Implemented in NEM-016 as the wording-level guardrail. |
 
 **Out of scope for Stage 0:**
 - public pages
@@ -446,7 +464,7 @@ Working title: *"SA-001 Stage 0: sharing security and integrity corrections"*. I
 | 2 Indexing | D02 |
 | 3 Acquisition CTA | D03, via the separately approved model |
 | 4 Reflections and identity | D04 |
-| 5 Edited quotes | D05 (raises conflict C1) |
+| 5 Edited quotes | D05, plus the C1 policy (rev 3, §5.4) |
 | 6 Copyright | D06 (values pending the legal and rights assessment) |
 | 7 Link permanence | D07 |
 | 8 Channels | D08 |
@@ -460,9 +478,9 @@ Working title: *"SA-001 Stage 0: sharing security and integrity corrections"*. I
 
 | Type | Item | Blocks |
 |---|---|---|
-| Governance | PO authorization and NEM number for Stage 0 (§8.1) | Stage 0, and therefore every later stage |
+| Governance | Stage 0 authorized as **NEM-016**. Draft PR [#25](https://github.com/Carloskfe/noetia/pull/25) awaits Product Architecture review and a PO merge decision; merging applies migration 068 in production. | Stage 0 release, and therefore every later stage |
 | Governance | A NEM mission per feature stage | Stages 1–5 |
-| Product (PO) | **C1** resolution approach, (a) or (b), and the definition of a "faithful excerpt" (are elisions allowed?) | Stage 0 item 9 / Stage 1 |
+| Product (PO) | ~~C1 resolution approach~~: **resolved at policy level (rev 3)**. Remaining: the engineering design for `[…]` source ranges (NEM-016 report §5.10). | Stage 3 |
 | Product and engineering | Acquisition model: PO-021…023 records (PR #12) and NEM-011 (PR #11) are unmerged. `SubscriptionGuard` today grants access by subscription status, which PO-021 changes. | Stage 1 CTA for non-owners (D03), Stage 4 (D10) |
 | Legal and rights | Rights and legal assessment: quote limits, licensing, attribution wording, removal-request procedure, author upload-terms amendment | Public release of copyrighted-title quotes (D06) |
 | Legal and privacy | Privacy and Cookie Policy updates for public reflections, attribution and analytics, plus the deletion statements (S3). Related to the NOF-004 legal work (PR #22, #23). | Stage 3, and any public release involving reflections |
@@ -498,4 +516,8 @@ Working title: *"SA-001 Stage 0: sharing security and integrity corrections"*. I
 
 ## 12. Next recommended action
 
-The PO decides whether to authorize the **Stage 0 corrective mission** (§8.1) and how to resolve **C1**. In parallel, the PO can commission the rights and legal assessment (D06) and the privacy-policy updates (D04, D11). **No implementation until a named mission is explicitly authorized.**
+1. Product Architecture reviews **NEM-016** (Draft PR [#25](https://github.com/Carloskfe/noetia/pull/25)).
+2. The PO decides the open questions in that report: legacy and orphan shares, rate limits, S16/S17, the `[…]` design, and merge timing.
+3. In parallel, the PO can commission the rights and legal assessment (D06) and the privacy-policy updates (D04, D11).
+
+**No SA-001 feature implementation until a named mission is explicitly authorized.**
