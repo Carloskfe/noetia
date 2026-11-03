@@ -227,12 +227,6 @@ def _load_bg_image(bg_image: str) -> Image.Image:
     else:
         raw = _fetch_preset(bg_image)
     return Image.open(io.BytesIO(raw)).convert('RGB')
-    url = _validate_bg_url(bg_image)
-    with _BG_OPENER.open(url, timeout=10) as resp:
-        raw = resp.read(_BG_MAX_BYTES + 1)
-    if len(raw) > _BG_MAX_BYTES:
-        raise ValueError('background image too large')
-    return Image.open(io.BytesIO(raw)).convert('RGB')
 
 
 def _cover_scale(bg: Image.Image, card_w: int, card_h: int) -> Image.Image:

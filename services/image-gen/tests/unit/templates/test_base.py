@@ -338,3 +338,63 @@ class TestRenderFallback:
         rejected = _card(bg_type="image", bg_image="http://api:4000/internal")
         unloadable = _card(bg_type="image", bg_image="data:image/png;base64,AAAA")
         assert rejected == unloadable
+
+
+# ── Static checks on templates/base.py (pre-merge verification) ───────────────
+
+import ast
+import builtins
+import inspect
+
+
+def _base_tree():
+    return ast.parse(inspect.getsource(base_mod))
+
+
+class TestNoDeadCode:
+    def test_no_statement_follows_return_or_raise(self):
+        offenders = []
+
+        def walk_block(stmts, where):
+            for i, st in enumerate(stmts):
+                if isinstance(st, (ast.Return, ast.Raise)) and i < len(stmts) - 1:
+                    offenders.append(f"{where}: line {stmts[i + 1].lineno}")
+                for field in ("body", "orelse", "finalbody"):
+                    walk_block(getattr(st, field, []) or [], where)
+                for h in getattr(st, "handlers", []) or []:
+                    walk_block(h.body, where)
+
+        for node in ast.walk(_base_tree()):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                walk_block(node.body, node.name)
+        assert offenders == [], f"unreachable code after return/raise: {offenders}"
+
+    def test_every_module_level_name_used_is_defined(self):
+        tree = _base_tree()
+        defined = set(dir(builtins)) | set(vars(base_mod))
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                defined.add(node.name)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                args = node.args
+                for a in args.args + args.kwonlyargs + args.posonlyargs:
+                    defined.add(a.arg)
+                for a in (args.vararg, args.kwarg):
+                    if a:
+                        defined.add(a.arg)
+            elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+                defined.add(node.id)
+            elif isinstance(node, (ast.ExceptHandler,)) and node.name:
+                defined.add(node.name)
+            elif isinstance(node, ast.comprehension):
+                for t in ast.walk(node.target):
+                    if isinstance(t, ast.Name):
+                        defined.add(t.id)
+        loaded = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+        assert loaded - defined == set()
+
+    def test_legacy_urllib_fetch_path_is_gone(self):
+        src = inspect.getsource(base_mod)
+        assert "_BG_OPENER" not in src
+        assert "urlopen" not in src
+        assert "urllib.request" not in src
