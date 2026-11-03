@@ -9,6 +9,7 @@
 | 1 | 2026-11-02 | Stage 0 implementation (S1, S2/C1, S3/G9, S8/S15, S12, S13, S14, G8, G10) |
 | 2 | 2026-11-02 | **Independent-review follow-up (§13):** fail-closed renderer host validation with DNS and IP pinning; validator reconciled with the C1 policy; transactional lifecycle with an image-deletion outbox and retry sweep; migration 068 readiness assessment; read-only legacy-share audit tool; new finding S18 |
 | 3 | 2026-11-02 | **Pre-merge verification (§14):** removed dead code left in image-gen by rev 2, with static checks that catch it; canonicalized every accepted omission-marker form; made the read-only audit portable; production audit **not run** (no read-only access); staging checklist; deployment-sequencing assessment. **Recommendation: READY FOR STAGING** (§14.6). |
+| 4 | 2026-11-02 | **Staging preparation (§15):** staging infrastructure assessment; new isolation finding S19 (shared-network DNS aliases); a synthetic CC0 test fixture with verified expected results; a migration-first staging procedure; the acceptance-test matrix. **Classification: CONDITIONAL.** Nothing was executed on staging or production. |
 
 ## 1. Mission and objective
 
@@ -25,7 +26,7 @@ Mission record: `docs/engineering-missions/IN-PROGRESS/NEM-016-sa001-stage0-shar
 - **Date:** 2026-11-02 (rev 2)
 - **Branch:** `fix/nem-016-sa001-stage0-sharing-integrity`, from `origin/main` `6a5e5c0`
 - **Status:** Draft PR #25, awaiting Product Architecture review and PO decisions
-- **Rev 3 recommendation:** **READY FOR STAGING.** Merge stays blocked (§14.6).
+- **Rev 3 recommendation:** READY FOR STAGING (code). **Rev 4 staging classification: CONDITIONAL** (§15.7). Merge stays blocked.
 
 ## 3. Scope and exclusions
 
@@ -612,4 +613,252 @@ This requires every migration to stay **expand-only** (backward-compatible with 
 - **No further code correction is required** for staging.
 
 **Outstanding workflow item:** the **pending preview prompt** is still preserved as a separate item (§13.7), not addressed here.
+
+---
+
+## 15. Staging preparation (rev 4)
+
+Authorization: staging **preparation** only. Nothing was deployed, migrated or modified on staging or production. Every staging or host fact below comes from the `nem-006a-staging` branch at `15e5762` (read from git) and the activation notes of 2026-08-18. The host itself was **not** accessed. Items marked [A] need the read-only host checks in §15.3 P0.
+
+### 15.1 Staging infrastructure assessment
+
+**Assets that exist** (only on the unmerged `nem-006a-staging` branch; 4 commits; `main` is 11 commits ahead):
+
+| Asset | Purpose |
+|---|---|
+| `docker-compose.staging.yml` | Full stack: api, web, image-gen, worker, `pgvector/pgvector:pg16` db, redis, minio, meilisearch. Own volumes (`*-staging`), own network `noetia_staging_net`, memory limits (about 2 GB total). |
+| `.env.staging.example` | Variable template, listed below |
+| `.github/workflows/cd-staging.yml` | Deploys on pushes to a `staging` branch. **Deliberately not armed** (the branch doesn't exist). |
+| `docs/staging/{README,RUNBOOK,EXTERNAL-ACTIONS,data-and-sanitization,promotion-checklist,pgvector-validation}.md` | Procedures and policy |
+| web changes: `Dockerfile` build args, `StagingBanner`, `next.config.js` | Keep the staging browser bundle on the staging API (fix `3c71e5a`) |
+
+**Reuse without touching production: yes**, with a *staging candidate* = this branch plus `nem-006a-staging`. A local dry-run merge (`--no-commit`) of the NEM-016 head with `origin/nem-006a-staging` was **conflict-free**: 14 files added or changed, none overlapping NEM-016. The candidate must **not** be pushed to a branch named `staging`, because that would arm auto-deploy.
+
+**Required services:** api, web, image-gen, db, cache (Redis, for rate limits), storage (MinIO, for card images and fixture text). Worker and search are optional for NEM-016.
+
+**Required variables** (names only; values live in `/opt/noetia-staging/.env.staging`):
+- `APP_ENV`, `WEB_URL`, `API_URL`, `NEXT_PUBLIC_API_URL`, `INTERNAL_API_URL`
+- `DB_*`, `REDIS_URL`, `JWT_SECRET`
+- `MINIO_ENDPOINT`/`PORT`/`ACCESS_KEY`/`SECRET_KEY`/`PUBLIC_URL`
+- `MEILI_*`, `STRIPE_*` (test), `SMTP_*`, `SOCIAL_TOKEN_SECRET`
+
+NEM-016 adds no required variables. `SHARE_BG_ALLOWED_HOSTS` must stay **unset** on staging.
+
+**Independent migration path: yes.** Staging has its own database volume and project. Migrations run inside the staging api container against `db` on `noetia_staging_net`. Production's db, cache and search aren't on the shared network, so `DB_HOST=db` can only reach staging's database.
+
+**Isolation from production:**
+
+| Area | Assessment |
+|---|---|
+| Database, Redis, Meilisearch | **Isolated**: production's are only on `noetia_net` |
+| Volumes | **Isolated**: `*-staging` names; production volumes are never referenced |
+| Traefik routing | **Isolated**: distinct router names and Host rules |
+| E-mail | Relies on `SMTP_HOST` being empty. `EMAIL_SAFE_MODE` is a documented convention, **not implemented in code** [V: no reference in `services/api/src`]. Verify empty SMTP read-only (P0). |
+| Stripe | Test keys by design. Verify the key prefix read-only, without printing it (P0). NEM-016 doesn't call Stripe. |
+| **Object storage and internal API: see S19** | **Possibly not isolated** [A] |
+
+**S19 (new, pre-existing, unverified): DNS-alias collision on the shared `proxy` network.**
+- Production `api`, `web` and `storage` [V `docker-compose.server.yml`] and staging `api`, `web` and `storage` [V `docker-compose.staging.yml`] are all attached to the external `proxy` network.
+- Compose registers each service name as a network alias.
+- Both environments address each other's names: `INTERNAL_API_URL=http://api:4000`, `MINIO_ENDPOINT=storage` [V `.env.staging.example`; production uses the same defaults].
+- A container on both its own network and `proxy` can therefore get **either** environment's container when it resolves `api` or `storage`. Possible effects:
+  - staging web SSR calling the production API
+  - staging api reaching production MinIO, or production api reaching staging MinIO (failing authentication, or succeeding if credentials match)
+- This would affect production too, and has since staging was activated (2026-08-18).
+- The existing runbook isolation tests don't check DNS.
+- **Severity: High** if confirmed. **Verification is read-only** (P0.4).
+- **Fix** (infra mission; not done here): give the `proxy` attachments distinct aliases or no service aliases, and/or address internal services by unique container name.
+
+**Other observations:**
+- The staging API router is reachable **without** basic auth, by design (`15e5762`). Use non-deliverable test accounts (`@staging.invalid`).
+- The `docker-compose.staging.yml` header comment says `-p noetia-staging` (hyphen), but README, RUNBOOK and CD use `noetia_staging`. **Follow `noetia_staging`.** A hyphenated project would create `noetia-staging-*` containers, defeating the documented name-filter separation. Fix the comment later.
+- Staging presets requested from `staging.noetia.app` sit behind basic auth, so image-gen renders the navy fallback. For preset tests, use the public `https://noetia.app/backgrounds/...` (a public static read; no production state touched).
+
+### 15.2 Test-book availability and the proposed fixture
+
+**Why staging sync maps are empty.** Staging was seeded by ingestion with the public-domain catalogue but **no audio** [activation notes]. Sync maps come from Whisper alignment of audio (a Colab procedure), which never ran on staging, so the 84 `sync_maps` rows are placeholders with no phrases and `syncCoverage` NULL.
+
+**Effect on NEM-016:**
+
+| Check | Can existing staging books support it? |
+|---|---|
+| Quote verification | **Yes**: with no phrases, `QuoteIntegrityService` falls back to the book's stored text file (`textFileKey`) |
+| Eligibility (the 90% quality gate) | **No**: every ingested staging book fails it, so sharing returns 422 `book_not_shareable`. That's useful only as the **negative** eligibility test. |
+| Card generation, share and revoke | Blocked by eligibility |
+
+**Rejected alternatives:**
+- Setting `syncCoverage` on a staging row would falsify quality data.
+- Setting `uploadedById` on an ingested book would misrepresent provenance.
+- Importing production books is prohibited.
+
+**Proposed fixture: a synthetic, CC0 text written for these tests.** Added in this revision at `docs/staging/fixtures/nem-016-quote-fixture.txt` (13 lines; Spanish with one English paragraph; no third-party content). It's uploaded through the **real admin upload flow** (`POST /books`, multipart `textFile`):
+- Admin uploads are published immediately and set `uploadedById`, which is the documented author-upload exemption from the quality gate, so the book is genuinely eligible.
+- No sync map exists, so verification uses the text file, the same path as author titles.
+
+**Fixture cases, verified against the branch validator (`checkQuoteAgainstSource`):**
+
+| ID | Card text | Expected |
+|---|---|---|
+| Q1 | `leyó despacio cada línea` | accept, 1 span |
+| Q2 | `«La lectora abrió el cuaderno al amanecer.»` | accept (edge quotes, added `.`) |
+| Q3 | `¿Esperas… qué?` | accept (the author's own ellipsis) |
+| Q4 | `La lectora abrió el cuaderno otra vez […] satisfecha con lo aprendido.` | accept, 2 spans |
+| Q5 | same as Q4 with typed `[...]` | accept; rendered and stored as `[…]` |
+| Q6 | `La lectora abrió el cuaderno […] lo cerró de golpe` | accept: backtracks past the first occurrence, whose gap contains "No" |
+| N1 | `leyó rápido cada línea` | 422 `not_in_source` |
+| N2 | `leyó despacio cada línea?` | 422 `not_in_source` |
+| N3 | `La lectora leyó todo el cuaderno` | 422 `not_in_source` |
+| N4 | Q4 with a bare `…` | 422 `omission_marker_required` |
+| N5 | `La lectora abrió el cuaderno al amanecer […] cada frase tenía su propio peso.` | 422 `omission_may_distort` (drops "No… ninguna") |
+| N6 | `The reader opened the notebook at dawn […] close it again until the evening` | 422 `omission_may_distort` (drops "not") |
+| N7 | Q4's passages reversed | 422 `not_in_source` |
+| N8 | `La lectora […] golpe […] peso` | 422 `segment_too_short` |
+| N9 | Q4 with `(…)` | 422 `not_in_source` |
+
+**Fixture creation steps** (staging execution approval required; [W-DB] [W-S3]):
+1. A staging admin test account. If none exists, creating one, or granting `isAdmin` to a synthetic account, is a DB change.
+2. `POST https://staging.noetia.app/api/books` with `title=Cuaderno de pruebas de citas (NEM-016)`, `author=Equipo Noetia (texto sintético, CC0)`, `language=es`, `category=classic`, and `textFile=@docs/staging/fixtures/nem-016-quote-fixture.txt`. (`isFree` isn't part of `CreateBookDto` and would be stripped. The book is therefore non-free, which doesn't matter: fragments are created through the API below, and sharing doesn't check reading entitlement.)
+3. Confirm it appears in `GET /api/books`.
+4. **Removal:** admin `DELETE /api/books/<id>`, or restore from the P0 dump.
+
+### 15.3 Migration-first staging procedure (prepared, not executed)
+
+Alias, per RUNBOOK: `alias dcs='docker compose -p noetia_staging --env-file .env.staging -f docker-compose.staging.yml'`. Run from `/opt/noetia-staging`; every command is single-line.
+
+**P0. Pre-flight (read-only on staging and production)**
+1. `cd /opt/noetia-staging && git status --short && git rev-parse --abbrev-ref HEAD && dcs ps`: the clean staging checkout; services healthy.
+2. `dcs exec -T db psql -U noetia -d noetia_staging -c "SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 3;"` and `docker exec -i noetia-db-1 psql -U noetia -d noetia -c "SELECT COUNT(*) FROM migrations;"`.
+   - Expected: production at 067. Staging may be at 066 (activated before PR #20); the candidate then applies **067 + 068** together.
+   - 067 is a reversible plan-price data migration.
+3. `grep -c '^SMTP_HOST=$' .env.staging; grep -c '^STRIPE_SECRET_KEY=sk_test_' .env.staging; grep -c '^SHARE_BG_ALLOWED_HOSTS=' .env.staging`: expected `1`, `1`, `0`. Prints counts only, never values.
+4. **S19 check:**
+   - `docker exec noetia_staging-api-1 getent hosts api storage`
+   - `docker exec noetia_staging-web-1 getent hosts api`
+   - `docker exec noetia-api-1 getent hosts api storage`
+   - `docker exec noetia-web-1 getent hosts api`
+   - compare each with `docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}={{$v.IPAddress}} {{end}}' <container>`
+   - **Any cross-environment address means STOP**, and S19 becomes an infra fix before staging execution.
+5. `dcs exec -T db pg_dump -U noetia -d noetia_staging -Fc > /root/staging-pre-nem016-$(date +%F).dump`: a restore point (writes a host file only).
+6. Restore point for staging object storage: none exists. Card images and the fixture text written during tests can't be restored from the DB dump. That's acceptable: they're test data.
+
+**P1. Candidate** (on the host, local merge; nothing pushed)
+- `git fetch origin && git checkout -B staging-candidate/nem-016 origin/fix/nem-016-sa001-stage0-sharing-integrity && git merge --no-ff --no-edit origin/nem-006a-staging`
+- Expected: a clean merge, as in the dry run.
+
+**P2. Build** (no service change; the old staging app keeps serving)
+- `dcs build api web image-gen`
+
+**P3. Compatibility check, then migrate FIRST** (new image, one-off container)
+- `dcs run --rm --no-deps -e DB_HOST=db api node node_modules/typeorm/cli.js migration:show -d dist/data-source.js`: lists 067/068 as pending (read-only).
+- `dcs run --rm --no-deps -e DB_HOST=db api npm run migration:run:prod`: one transaction with `lock_timeout` 10s; all or nothing.
+
+**P4. Confirm the migration**
+- `dcs exec -T db psql -U noetia -d noetia_staging -c "SELECT column_name FROM information_schema.columns WHERE table_name='shares' AND column_name IN ('revokedAt','configHash','quoteProvenance');" -c "SELECT to_regclass('card_image_deletions');" -c "SELECT indexname FROM pg_indexes WHERE tablename='shares';"`
+- Expected: 3 columns, the table, `IDX_shares_createdById` and `UQ_shares_creator_config_live`.
+- **Forward-compatibility test (A13):** with 068 applied and the **old** staging app still serving, create one share through the old app. It must succeed.
+
+**P5. Start the updated services**
+- `dcs up -d --remove-orphans --wait --wait-timeout 300`
+
+**P6. Health and regression**
+- RUNBOOK "Verify staging" (api `/health`, web 200, `/api/books` 200)
+- `dcs logs --tail 200 api image-gen | grep -iE "error|exception"`
+- RUNBOOK "Confirm production unaffected"
+- then the §15.4 matrix
+
+**Recovery**
+
+| Failure at | State | Action |
+|---|---|---|
+| P0 / P1 / P2 | Nothing changed | Fix and retry |
+| P3 | The migration transaction rolled back; the old app still serves (it's 068-agnostic) | Inspect (lock or permissions), retry. **No data change.** |
+| P5 | Unhealthy containers on the new code; 068 applied | `git checkout <previous staging commit> && dcs up -d --build`. The old code is forward-compatible with 068. Safe before any revocation; after test revocations, the old code would re-serve them (staging test data only). |
+| Schema rollback | — | `migration:revert` (068 `down`) **refuses** while revoked shares or queued deletions exist. For a full return: `pg_restore` the P0 dump. That's destructive on the staging DB and needs approval; MinIO objects aren't restored. |
+
+**Irreversible on staging:**
+- MinIO card-image deletions (revocation, fragment and account deletion)
+- deletion of test accounts
+- the outbox drained
+- 067 can be reverted, but `revert` steps back one migration at a time, so 068 would be reverted first
+
+### 15.4 Staging acceptance-test matrix
+
+Base: `API=https://staging.noetia.app/api`. Tokens come from `POST $API/auth/login` for test users A and B (`@staging.invalid`).
+
+**Prerequisites:**
+- P0–P5 done
+- the fixture book `F` uploaded (§15.2)
+- A has a fragment `fA` on `F` containing Q4's source sentence, created with `POST $API/fragments {"bookId":"<F>","text":"<verbatim sentence>"}`. That needs no reading entitlement; opening the non-free fixture in the reader would.
+- an ingested staging book `I` with a fragment `fI` by A
+
+**Data-impact legend:**
+- **RO** reads only
+- **W-DB** writes staging DB rows
+- **W-S3** writes or deletes staging MinIO objects
+- **W-REDIS** writes staging Redis keys
+- **EXT** may contact an external service
+
+| ID | Area | Steps | Expected | Data |
+|---|---|---|---|---|
+| A1 | Cross-user authorization | B: `POST $API/fragments/$fA/share {"platform":"linkedin"}` | 404; no share row; no image-gen call in the logs | RO |
+| A2 | Faithful quotation | A shares `fA` with `text` = Q1, Q2, Q3 | 200 each; card shows the text; `shares.quoteProvenance` set (spans, sha256) | W-DB, W-S3 |
+| A3 | Faithful quotation (negative) | A shares with `text` = N1, N2, N3 | 422 `quote_not_in_source` / `not_in_source`; the web modal shows "doesn't match the book's wording" | RO |
+| A4 | Internal omissions | A shares Q4, Q5, Q6 | 200; Q5's card and snapshot show `[…]`; Q4 and Q5 give the **same** `/s/<id>` | W-DB, W-S3 |
+| A5 | Internal omissions (negative) | N4, N5, N6, N7, N8, N9 | 422 with the reasons in §15.2; web and mobile show the omission-specific messages | RO |
+| A6 | Background security | `bgImage` = data URI (web preset); `https://noetia.app/backgrounds/imagen-7.jpg` | 200; correct background; watermark unchanged | W-DB, W-S3 |
+| A7 | Background security (negative) | `bgImage` = `http://noetia.app/backgrounds/imagen-1.jpg`, `https://staging.noetia.app/admin`, `http://api:4000/health`, `http://169.254.169.254/`, `file:///etc/passwd`, `data:image/svg+xml;base64,PHN2Zz4=` | 400 `unsupported_background_image`; image-gen logs show no fetch | RO |
+| A8 | Social publish restrictions | **Without** a connected account: `POST $API/social/linkedin/publish` (any `imageUrl`) | 401 `account_not_connected` (the token check comes first) | RO |
+| A8b | Social publish restrictions (optional) | Seed a **fake** encrypted LinkedIn token for A in staging Redis, then publish with an internal or other-host URL, B's card URL, or a revoked card URL | 400 `untrusted_image_source` / 404 `share_not_found`; **no outbound call** (rejected before publishing). The positive path is excluded (it would post to LinkedIn). | W-REDIS |
+| A9 | Duplicate prevention | A: Download, then Copy link, then Publish the same card config, 3 times | same `/s/<id>`; one `shares` row; `books.shareCount` +1 once | W-DB once |
+| A10 | Revocation and image deletion | A: `DELETE $API/shares/<id>`; B tries to revoke A's share | A: 204; `GET $API/shares/<id>` 404; the image URL returns 404 from `storage.staging.noetia.app`; `card_image_deletions` empty. B: 404. | W-DB, W-S3 |
+| A11 | Deletion retry | `dcs pause storage`; A revokes another share; check the outbox; `dcs unpause storage`; wait ≤ 10 min | while paused: share 404, outbox row with `attempts ≥ 1` and `lastError` = class name. After the sweep: row gone, image 404. **Storage is unavailable to staging while paused.** | W-DB, W-S3 |
+| A12 | Fragment and account deletion | A deletes a fragment that has 2 shares; then delete account B (with ≥ 1 share) | fragment gone, its shares revoked, images 404, outbox empty. B: the user, B's fragments and B's shares are gone, images 404. Farewell e-mail not delivered (SMTP empty). | W-DB, W-S3 |
+| A13 | Migration compatibility | P4 forward-compatibility test; P4 schema checks; `migration:show` after P5 | old app works on the 068 schema; 068 marked applied | W-DB (1 share) |
+| A14 | Book eligibility | A shares `fI` (ingested book) | 422 `book_not_shareable` | RO |
+| A14b | Book eligibility (end of run, optional) | admin deletes the fixture `F`; open an existing `/s/<id>` for `F` | page "not found" (the API returns 404) | W-DB, W-S3 |
+| A15 | Rate limiting | A creates 21 **distinct** cards within 10 minutes (vary `textScale`/`textAlign`) | the first 20 return 200; the 21st returns 429 `rate_limited`; re-requesting an existing card still works (re-use isn't charged) | W-DB, W-S3 (20 shares), W-REDIS |
+| A16 | Mobile | Dev or Expo build with `EXPO_PUBLIC_API_URL=https://staging.noetia.app/api` and `EXPO_PUBLIC_WEB_URL=https://noetia.app`; share a card on Android and iOS | "Open image" opens the PNG; Android message = text + `/s/` link; iOS passes `url`; refusal messages appear | W-DB, W-S3 |
+| A17 | Reader content preserved | Before P1 and after the run: `SELECT COUNT(*) FROM fragments` and a checksum of `text` and `note` for pre-existing fragments; reader smoke test (open, save a fragment, add a note) | pre-existing counts and checksums unchanged; legacy edited fragments not rewritten | RO, then W-DB for the smoke test |
+| A18 | Legacy audit rehearsal | Run the portable audit (§14.3) against staging | report produced; DB unchanged | RO |
+
+**Clean-up policy** (PO decision): keep the test data, or remove it through the API and/or restore the P0 dump. MinIO test objects persist unless deleted.
+
+### 15.5 Isolation and security risks
+
+| # | Risk | Level | Mitigation |
+|---|---|---|---|
+| S19 | Possible cross-environment DNS resolution on `proxy` (`api`, `web`, `storage`) | High if confirmed | Read-only check P0.4 before any staging execution; infra fix if confirmed |
+| R1 | Staging API is public (no basic auth) | Medium | Synthetic `@staging.invalid` accounts; NEM-016 rate limits; no production data on staging |
+| R2 | E-mail safety relies on an empty `SMTP_HOST` (`EMAIL_SAFE_MODE` isn't implemented) | Medium | P0.3 check; non-deliverable addresses |
+| R3 | Shared host CPU and memory during builds and renders | Low–Medium | Build in a quiet window; staging limits about 2 GB; "Confirm production unaffected" after each step |
+| R4 | The compose header's `-p noetia-staging` contradicts the docs | Low | Always use `noetia_staging`; fix the comment in a later mission |
+| R5 | Pushing a `staging` branch arms auto-deploy | Medium | The candidate stays host-local, or uses a non-`staging` name |
+| R6 | MinIO test objects can't be restored from the DB dump | Low | Test data only |
+| R7 | Staging presets behind basic auth render the fallback | Low | Use the public `noetia.app` preset URLs |
+
+### 15.6 Product Owner decisions required
+
+1. **Approve the read-only host checks** (P0.1–P0.5). They read production's migration count and run `getent` inside production containers; nothing is changed.
+2. **S19:** if confirmed, authorize an infra mission to fix proxy-network aliases **before** staging execution, and treat it as a production isolation issue.
+3. **Candidate:** a host-local merge (recommended) or a pushed `staging-candidate/nem-016` branch (never `staging`).
+4. **Approve staging execution:**
+   - build
+   - migrate-first (067 + 068)
+   - start
+   - the acceptance tests, including the data changes: the fixture upload and an admin test account, test users A and B, shares and revocations, the MinIO pause (A11), account deletion (A12), the optional fake social token (A8b) and optional fixture deletion (A14b)
+5. **Approve the fixture text** (synthetic, CC0, `docs/staging/fixtures/nem-016-quote-fixture.txt`).
+6. **Clean-up policy** after the run.
+7. Still open: the production audit authorization (§14.3), the deployment option (§14.5) and §10 items 2–8.
+
+### 15.7 Readiness classification: **CONDITIONAL**
+
+Staging verification is fully specified and reproducible, and the code needs no changes. Execution can begin when:
+- (1) the P0 read-only checks pass, **in particular S19 shows no cross-environment resolution**
+- (2) the PO approves staging execution and the listed data changes (§15.6 items 3–6)
+
+**If P0.4 shows a collision, the classification becomes BLOCKED** until an infra fix.
+
+Unchanged: PR #25 is Draft and not merged; PRs #23 and #24 weren't touched; the C1 policy is preserved; Stage 1 and NoetiaX weren't started.
+
+**Outstanding workflow item:** the **pending preview prompt** stays a separate item (§13.7).
 
