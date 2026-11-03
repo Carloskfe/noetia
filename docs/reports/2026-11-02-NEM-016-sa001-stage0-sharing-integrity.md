@@ -944,6 +944,8 @@ Each test made 20 TCP connections per name; each answer is the identity of the c
 
 ### 16.5 Recommended remediation (not implemented)
 
+> **Update:** this remediation is implemented as **NEM-017** in Draft PR [#26](https://github.com/Carloskfe/noetia/pull/26), targeting `nem-006a-staging`. It isn't applied live yet. Its local regression results: 30/30 on the new configuration; the original configuration fails the S19 checks; the rollout rehearsal passed 18/18.
+
 **Smallest safe correction: a dedicated Traefik network for staging (`proxy_staging`).**
 - Staging services leave `proxy`.
 - Traefik joins both networks.
