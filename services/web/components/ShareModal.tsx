@@ -15,6 +15,7 @@ import {
   ShareResult,
   copyToClipboard,
   getTextColor,
+  shareErrorKey,
   shareFragment,
 } from '@/lib/share-utils';
 
@@ -263,12 +264,13 @@ export default function ShareModal({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageUrl, caption: captionEnabled ? note : undefined }),
         });
-        if (!res.ok) throw new Error('publish_failed');
+        if (!res.ok) throw Object.assign(new Error('publish_failed'), { status: res.status });
         const data = (await res.json()) as { postUrl: string };
         setPublishToast({ platform, postUrl: data.postUrl });
         setTimeout(() => setPublishToast(null), 6000);
-      } catch {
-        setPublishError(t.shareCard.errorPublish);
+      } catch (err) {
+        const key = shareErrorKey(err);
+        setPublishError(key ? t.shareCard[key] : t.shareCard.errorPublish);
       } finally {
         setPublishingPlatform(null);
       }
@@ -281,8 +283,9 @@ export default function ShareModal({
     setError(null);
     try {
       return await shareFragment(fragmentId, params);
-    } catch {
-      setError(t.shareCard.errorGenerate);
+    } catch (err) {
+      const key = shareErrorKey(err);
+      setError(key ? t.shareCard[key] : t.shareCard.errorGenerate);
       return null;
     } finally {
       setLoading(false);

@@ -423,7 +423,7 @@ export const es: Translations = {
       cta: 'Entendido',
       items: [
         { title: 'Cómo crear un fragmento', body: 'En el lector, mantén presionado o arrastra sobre cualquier texto y toca "Guardar fragmento".' },
-        { title: 'Editar antes de compartir', body: 'Toca un fragmento para editarlo, añadir una nota o ajustar el texto antes de crear una tarjeta.' },
+        { title: 'Acorta antes de compartir', body: 'Toca un fragmento para acortarlo o añadir una nota con tus propias ideas antes de crear una tarjeta. Las citas conservan las palabras exactas del autor.' },
         { title: 'Convertirlo en tarjeta visual', body: 'Toca "Compartir" en cualquier fragmento para crear una imagen lista para LinkedIn, Instagram y más.' },
       ],
     },
@@ -773,6 +773,10 @@ export const es: Translations = {
     errorGenerate: 'No se pudo generar la imagen',
     errorDownload: 'No se pudo descargar la imagen',
     errorPublish: 'No se pudo publicar. Inténtalo de nuevo.',
+    errorQuoteNotInSource: 'Este texto no coincide con las palabras del libro. Puedes acortar la cita, pero no cambiarla; añade tus propias ideas como nota.',
+    errorBookNotShareable: 'Este libro no está disponible para compartir en este momento.',
+    errorRateLimited: 'Has creado muchas tarjetas en poco tiempo. Inténtalo de nuevo en unos minutos.',
+    errorBackground: 'No se puede usar esa imagen de fondo. Elige otra.',
   },
   giftCard: {
     send: {

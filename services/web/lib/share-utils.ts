@@ -132,6 +132,28 @@ export async function shareFragment(fragmentId: string, params: ShareParams): Pr
   return { pageUrl: data.url as string, imageUrl: (data.imageUrl ?? data.url) as string };
 }
 
+/** shareCard i18n keys for share errors the API reports with a specific code. */
+export type ShareErrorKey =
+  | 'errorQuoteNotInSource'
+  | 'errorBookNotShareable'
+  | 'errorRateLimited'
+  | 'errorBackground';
+
+/**
+ * Maps a share/publish API error to a specific message key, or null for the
+ * generic message. `quote_not_in_source` means the card text isn't the
+ * author's wording (SA-001 D05): shortening is fine, changing it is not.
+ */
+export function shareErrorKey(err: unknown): ShareErrorKey | null {
+  const e = err as { status?: number; data?: { error?: string } } | null;
+  switch (e?.data?.error) {
+    case 'quote_not_in_source': return 'errorQuoteNotInSource';
+    case 'book_not_shareable': return 'errorBookNotShareable';
+    case 'unsupported_background_image': return 'errorBackground';
+  }
+  return e?.status === 429 ? 'errorRateLimited' : null;
+}
+
 export async function copyToClipboard(text: string): Promise<void> {
   await navigator.clipboard.writeText(text);
 }

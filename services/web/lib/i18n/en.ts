@@ -421,7 +421,7 @@ export const en = {
       cta: 'Got it',
       items: [
         { title: 'How to create a fragment', body: 'In the reader, long-press or drag over any text and tap "Save fragment".' },
-        { title: 'Edit before sharing', body: 'Tap a fragment to edit it, add a note or adjust the text before creating a card.' },
+        { title: 'Shorten before sharing', body: 'Tap a fragment to shorten it or add a note with your own thoughts before creating a card. Quotes keep the author’s exact words.' },
         { title: 'Turn it into a visual card', body: 'Tap "Share" on any fragment to create an image ready for LinkedIn, Instagram and more.' },
       ],
     },
@@ -776,6 +776,10 @@ export const en = {
     errorGenerate: 'Could not generate the image',
     errorDownload: 'Could not download the image',
     errorPublish: 'Could not publish. Try again.',
+    errorQuoteNotInSource: "This text doesn't match the book's wording. You can shorten a quote, but not change it — add your own thoughts as a note.",
+    errorBookNotShareable: "This book isn't available for sharing right now.",
+    errorRateLimited: "You've created a lot of cards in a short time. Try again in a few minutes.",
+    errorBackground: "That background image can't be used. Choose another one.",
   },
   giftCard: {
     send: {
