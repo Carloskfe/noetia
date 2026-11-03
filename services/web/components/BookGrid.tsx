@@ -18,6 +18,7 @@ type Book = {
   coverUrl: string | null;
   category: string;
   language: string;
+  isFree?: boolean;
 };
 
 type Props = {
@@ -59,7 +60,8 @@ export function BookGrid({ books, libraryBookIds, onAdd }: Props) {
               <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{book.author}</p>
             </Link>
 
-            {onAdd && (
+            {/* Only free books can be added; paid books are acquired with a token or a purchase (NEM-011). */}
+            {onAdd && book.isFree === true && (
               <button
                 onClick={(e) => { e.preventDefault(); if (!inLibrary) onAdd(book.id); }}
                 aria-label={inLibrary ? 'En tu biblioteca' : 'Agregar a tu biblioteca'}

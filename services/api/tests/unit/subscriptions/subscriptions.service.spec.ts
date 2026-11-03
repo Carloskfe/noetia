@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -51,6 +51,33 @@ const mockUserBookRepo = {
   insert: jest.fn(),
 };
 
+// redeemToken runs in a transaction: the locked token select, the ownership
+// insert and the token spend all go through the transaction's EntityManager.
+const mockLockedTokenQb = {
+  where: jest.fn().mockReturnThis(),
+  andWhere: jest.fn().mockReturnThis(),
+  orderBy: jest.fn().mockReturnThis(),
+  limit: jest.fn().mockReturnThis(),
+  setLock: jest.fn().mockReturnThis(),
+  setOnLocked: jest.fn().mockReturnThis(),
+  getOne: jest.fn(),
+};
+const mockInsertQb = {
+  insert: jest.fn().mockReturnThis(),
+  into: jest.fn().mockReturnThis(),
+  values: jest.fn().mockReturnThis(),
+  orIgnore: jest.fn().mockReturnThis(),
+  execute: jest.fn(),
+};
+const mockEm = {
+  getRepository: jest.fn((entity: unknown) =>
+    entity === TokenLedger
+      ? { createQueryBuilder: () => mockLockedTokenQb }
+      : { createQueryBuilder: () => mockQb },
+  ),
+  createQueryBuilder: jest.fn(() => mockInsertQb),
+  update: jest.fn(),
+};
 const mockTokenRepo = {
   create: jest.fn(),
   save: jest.fn(),
@@ -58,6 +85,7 @@ const mockTokenRepo = {
   count: jest.fn(),
   update: jest.fn(),
   find: jest.fn(),
+  manager: { transaction: jest.fn((work: (em: typeof mockEm) => Promise<unknown>) => work(mockEm)) },
 };
 
 const mockInviteRepo = {
@@ -303,38 +331,86 @@ describe('SubscriptionsService', () => {
   });
 
   describe('redeemToken', () => {
-    it('redeems oldest active token (FIFO) and records book unlock', async () => {
+    beforeEach(() => {
       mockBookRepo.findOneBy.mockResolvedValue({ id: 'bk1', isPublished: true });
-      mockTokenRepo.update.mockResolvedValue(undefined);
-      mockTokenRepo.findOne.mockResolvedValue({ id: 'tok1', status: 'active' });
       mockUserBookRepo.existsBy.mockResolvedValue(false);
-      mockUserBookRepo.insert.mockResolvedValue(undefined);
+      mockTokenRepo.update.mockResolvedValue({});
+      mockLockedTokenQb.getOne.mockResolvedValue({ id: 'tok1', status: 'active' });
+      mockInsertQb.execute.mockResolvedValue({ raw: [{ id: 'ub1' }] });
+      mockEm.update.mockResolvedValue({ affected: 1 });
+      mockQb.getOne.mockResolvedValue(null);
+    });
 
+    it('in one transaction: locks the oldest token, records ownership, spends the token', async () => {
       await service.redeemToken('u1', 'bk1');
-      expect(mockTokenRepo.update).toHaveBeenCalledWith('tok1', expect.objectContaining({ status: 'redeemed', bookId: 'bk1' }));
-      expect(mockUserBookRepo.insert).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 'u1', bookId: 'bk1', purchaseType: 'token' }),
+
+      expect(mockTokenRepo.manager.transaction).toHaveBeenCalledTimes(1);
+      expect(mockLockedTokenQb.orderBy).toHaveBeenCalledWith('t.issuedAt', 'ASC');
+      expect(mockLockedTokenQb.setLock).toHaveBeenCalledWith('pessimistic_write');
+      expect(mockLockedTokenQb.setOnLocked).toHaveBeenCalledWith('skip_locked');
+      expect(mockInsertQb.values).toHaveBeenCalledWith({ userId: 'u1', bookId: 'bk1', purchaseType: 'token' });
+      expect(mockInsertQb.orIgnore).toHaveBeenCalled();
+      expect(mockEm.update).toHaveBeenCalledWith(
+        TokenLedger,
+        { id: 'tok1', status: 'active' },
+        expect.objectContaining({ status: 'redeemed', bookId: 'bk1' }),
       );
     });
 
     it('throws NotFoundException for unknown book', async () => {
       mockBookRepo.findOneBy.mockResolvedValue(null);
       await expect(service.redeemToken('u1', 'ghost')).rejects.toThrow(NotFoundException);
+      expect(mockTokenRepo.manager.transaction).not.toHaveBeenCalled();
     });
 
-    it('throws ForbiddenException when no active tokens remain', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue({ id: 'bk1', isPublished: true });
-      mockTokenRepo.update.mockResolvedValue(undefined);
-      mockTokenRepo.findOne.mockResolvedValue(null);
-      await expect(service.redeemToken('u1', 'bk1')).rejects.toThrow(ForbiddenException);
-    });
-
-    it('throws BadRequestException when book is already owned', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue({ id: 'bk1', isPublished: true });
-      mockTokenRepo.update.mockResolvedValue(undefined);
-      mockTokenRepo.findOne.mockResolvedValue({ id: 'tok1', status: 'active' });
+    it('throws BadRequestException when book is already owned, before touching tokens', async () => {
       mockUserBookRepo.existsBy.mockResolvedValue(true);
       await expect(service.redeemToken('u1', 'bk1')).rejects.toThrow(BadRequestException);
+      expect(mockTokenRepo.manager.transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when no active tokens remain, writing nothing', async () => {
+      mockLockedTokenQb.getOne.mockResolvedValue(null);
+      await expect(service.redeemToken('u1', 'bk1')).rejects.toThrow(ForbiddenException);
+      expect(mockInsertQb.execute).not.toHaveBeenCalled();
+      expect(mockEm.update).not.toHaveBeenCalled();
+    });
+
+    it('uses the owner token pool when a linked user has no own tokens', async () => {
+      mockLockedTokenQb.getOne
+        .mockResolvedValueOnce(null) // linked user has no tokens
+        .mockResolvedValueOnce({ id: 'owner-tok', status: 'active' });
+      mockQb.getOne.mockResolvedValue({ id: 'owner-sub', userId: 'owner1', status: 'active' });
+
+      await service.redeemToken('linked-user', 'bk1');
+
+      expect(mockLockedTokenQb.where).toHaveBeenLastCalledWith('t.userId = :ownerId', { ownerId: 'owner1' });
+      expect(mockEm.update).toHaveBeenCalledWith(TokenLedger, { id: 'owner-tok', status: 'active' }, expect.any(Object));
+      expect(mockInsertQb.values).toHaveBeenCalledWith(expect.objectContaining({ userId: 'linked-user' }));
+    });
+
+    it('throws ForbiddenException when neither the user nor a linked owner has tokens', async () => {
+      mockLockedTokenQb.getOne.mockResolvedValue(null);
+      mockQb.getOne.mockResolvedValue({ id: 'owner-sub', userId: 'owner1', status: 'active' });
+      await expect(service.redeemToken('linked-user', 'bk1')).rejects.toThrow(ForbiddenException);
+      expect(mockEm.update).not.toHaveBeenCalled();
+    });
+
+    it('does not spend a token when a concurrent redemption already recorded ownership', async () => {
+      mockInsertQb.execute.mockResolvedValue({ raw: [] }); // ON CONFLICT DO NOTHING
+      await expect(service.redeemToken('u1', 'bk1')).rejects.toMatchObject({ response: { error: 'already_owned' } });
+      expect(mockEm.update).not.toHaveBeenCalled();
+    });
+
+    it('aborts the transaction if the locked token was not spendable', async () => {
+      mockEm.update.mockResolvedValue({ affected: 0 });
+      await expect(service.redeemToken('u1', 'bk1')).rejects.toThrow(ConflictException);
+    });
+
+    it('propagates ownership insert failures so the transaction rolls back', async () => {
+      mockInsertQb.execute.mockRejectedValue(new Error('insert failed'));
+      await expect(service.redeemToken('u1', 'bk1')).rejects.toThrow('insert failed');
+      expect(mockEm.update).not.toHaveBeenCalled();
     });
   });
 
@@ -647,47 +723,6 @@ describe('SubscriptionsService', () => {
       const entry = mockTokenRepo.create.mock.calls[0][0];
       expect(entry.activatedAt).not.toBeNull();
       expect(entry.type).toBe('courtesy');
-    });
-  });
-
-  describe('redeemToken', () => {
-    it('redeems oldest active token (FIFO) and records book unlock', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue({ id: 'b1', isPublished: true });
-      mockTokenRepo.update.mockResolvedValue({});
-      mockTokenRepo.findOne.mockResolvedValue({ id: 'tok1', status: 'active' });
-      mockUserBookRepo.existsBy.mockResolvedValue(false);
-      mockUserBookRepo.insert.mockResolvedValue({});
-
-      await service.redeemToken('u1', 'b1');
-
-      expect(mockTokenRepo.update).toHaveBeenCalledWith('tok1', expect.objectContaining({ status: 'redeemed', bookId: 'b1' }));
-      expect(mockUserBookRepo.insert).toHaveBeenCalledWith(expect.objectContaining({ purchaseType: 'token' }));
-    });
-
-    it('throws ForbiddenException when no active tokens remain', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue({ id: 'b1', isPublished: true });
-      mockTokenRepo.update.mockResolvedValue({});
-      mockTokenRepo.findOne.mockResolvedValue(null);
-      await expect(service.redeemToken('u1', 'b1')).rejects.toThrow(ForbiddenException);
-    });
-
-    it('throws NotFoundException when book does not exist', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue(null);
-      await expect(service.redeemToken('u1', 'b1')).rejects.toThrow(NotFoundException);
-    });
-
-    it('uses owner token pool when linked user has no own tokens', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue({ id: 'b1', isPublished: true });
-      mockUserBookRepo.existsBy.mockResolvedValue(false);
-      mockTokenRepo.update.mockResolvedValue({});
-      mockTokenRepo.findOne
-        .mockResolvedValueOnce(null) // linked user has no tokens
-        .mockResolvedValueOnce({ id: 'owner-tok', status: 'active' }); // owner has tokens
-      mockQb.getOne.mockResolvedValue({ id: 'owner-sub', userId: 'owner1', status: 'active' });
-      mockUserBookRepo.insert.mockResolvedValue({});
-
-      await service.redeemToken('linked-user', 'b1');
-      expect(mockTokenRepo.update).toHaveBeenCalledWith('owner-tok', expect.objectContaining({ status: 'redeemed' }));
     });
   });
 

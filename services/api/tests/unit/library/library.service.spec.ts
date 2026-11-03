@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test } from '@nestjs/testing';
 import { Book } from '../../../src/books/book.entity';
@@ -8,12 +8,14 @@ import { UserBook } from '../../../src/library/user-book.entity';
 const USER_ID = 'user-1';
 const BOOK_ID = 'book-1';
 
-const mockBook = { id: BOOK_ID, title: 'Test', isPublished: true } as Book;
+const mockBook = { id: BOOK_ID, title: 'Test', isPublished: true, isFree: true } as Book;
+const mockPaidBook = { id: BOOK_ID, title: 'Paid', isPublished: true, isFree: false } as Book;
 const mockEntry = { id: 'ub-1', userId: USER_ID, bookId: BOOK_ID, book: mockBook } as UserBook;
 
 function makeRepo(overrides: Record<string, jest.Mock> = {}) {
   return {
     find: jest.fn(),
+    findOne: jest.fn(),
     insert: jest.fn(),
     delete: jest.fn(),
     existsBy: jest.fn(),
@@ -45,14 +47,25 @@ async function buildService(repoOverrides = {}, bookRepoOverrides = {}) {
 
 describe('LibraryService', () => {
   describe('addBook', () => {
-    it('inserts a new entry when book exists and is published', async () => {
+    it('inserts a free-library entry when the book is published and free', async () => {
       const { service, repo, bookRepo } = await buildService();
       bookRepo.findOneBy.mockResolvedValue(mockBook);
       repo.insert.mockResolvedValue({});
 
       await service.addBook(USER_ID, BOOK_ID);
 
-      expect(repo.insert).toHaveBeenCalledWith({ userId: USER_ID, bookId: BOOK_ID });
+      expect(repo.insert).toHaveBeenCalledWith({ userId: USER_ID, bookId: BOOK_ID, purchaseType: 'free' });
+    });
+
+    it('rejects a paid book with acquisition_required and writes nothing (NEM-011)', async () => {
+      const { service, repo, bookRepo } = await buildService();
+      bookRepo.findOneBy.mockResolvedValue(mockPaidBook);
+
+      await expect(service.addBook(USER_ID, BOOK_ID)).rejects.toThrow(ForbiddenException);
+      await expect(service.addBook(USER_ID, BOOK_ID)).rejects.toMatchObject({
+        response: { error: 'acquisition_required' },
+      });
+      expect(repo.insert).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when book does not exist', async () => {
@@ -80,8 +93,9 @@ describe('LibraryService', () => {
   });
 
   describe('removeBook', () => {
-    it('deletes the user-book entry', async () => {
+    it('deletes a free-library entry', async () => {
       const { service, repo } = await buildService();
+      repo.findOne.mockResolvedValue({ ...mockEntry, purchaseType: 'free', book: mockBook });
       repo.delete.mockResolvedValue({ affected: 1 });
 
       await service.removeBook(USER_ID, BOOK_ID);
@@ -91,9 +105,26 @@ describe('LibraryService', () => {
 
     it('does not throw when entry does not exist', async () => {
       const { service, repo } = await buildService();
-      repo.delete.mockResolvedValue({ affected: 0 });
+      repo.findOne.mockResolvedValue(null);
 
       await expect(service.removeBook(USER_ID, BOOK_ID)).resolves.toBeUndefined();
+      expect(repo.delete).not.toHaveBeenCalled();
+    });
+
+    it.each(['token', 'purchase', 'courtesy'])('never deletes %s-acquired ownership (NEM-011)', async (purchaseType) => {
+      const { service, repo } = await buildService();
+      repo.findOne.mockResolvedValue({ ...mockEntry, purchaseType, book: mockPaidBook });
+
+      await expect(service.removeBook(USER_ID, BOOK_ID)).rejects.toThrow(ConflictException);
+      expect(repo.delete).not.toHaveBeenCalled();
+    });
+
+    it('never deletes a free-typed row on a paid book (pre-NEM-011 rows are preserved)', async () => {
+      const { service, repo } = await buildService();
+      repo.findOne.mockResolvedValue({ ...mockEntry, purchaseType: 'free', book: mockPaidBook });
+
+      await expect(service.removeBook(USER_ID, BOOK_ID)).rejects.toThrow(ConflictException);
+      expect(repo.delete).not.toHaveBeenCalled();
     });
   });
 
