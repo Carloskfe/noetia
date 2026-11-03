@@ -1,7 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import {
   BG_IMAGE_MAX_CHARS,
-  allowedBackgroundHosts,
+  configuredBackgroundHosts,
+  DEFAULT_BG_HOSTS,
   resolveBackgroundImage,
 } from '../../../src/sharing/share-background';
 
@@ -64,20 +65,33 @@ describe('resolveBackgroundImage', () => {
   });
 });
 
-describe('allowedBackgroundHosts', () => {
-  it('includes production, staging and the WEB_URL host', () => {
-    const hosts = allowedBackgroundHosts({ WEB_URL: 'http://localhost:3000' } as NodeJS.ProcessEnv);
-    expect([...hosts].sort()).toEqual(['localhost', 'noetia.app', 'staging.noetia.app']);
+describe('host rules (review follow-up)', () => {
+  it('built-in hosts are https only', () => {
+    expect(() => resolveBackgroundImage('http://noetia.app/backgrounds/imagen-1.jpg', {} as NodeJS.ProcessEnv)).toThrow(BadRequestException);
+    expect(resolveBackgroundImage('https://noetia.app/backgrounds/imagen-1.jpg', {} as NodeJS.ProcessEnv)).toBeDefined();
   });
 
-  it('adds SHARE_BG_ALLOWED_HOSTS entries (e.g. a LAN IP for mobile dev) and ignores a bad WEB_URL', () => {
-    const hosts = allowedBackgroundHosts({ WEB_URL: '::bad::', SHARE_BG_ALLOWED_HOSTS: ' 192.168.1.20 , Example.Test ' } as NodeJS.ProcessEnv);
-    expect(hosts.has('192.168.1.20')).toBe(true);
-    expect(hosts.has('example.test')).toBe(true);
+  it('WEB_URL no longer widens the allowlist (image-gen would refuse it anyway)', () => {
+    expect(() => resolveBackgroundImage('http://localhost:3000/backgrounds/imagen-1.jpg', { WEB_URL: 'http://localhost:3000' } as NodeJS.ProcessEnv)).toThrow(BadRequestException);
+  });
+
+  it.each(['', ' ', ',', ' , '])('an empty SHARE_BG_ALLOWED_HOSTS (%p) adds nothing', (v) => {
+    const e = { SHARE_BG_ALLOWED_HOSTS: v } as NodeJS.ProcessEnv;
+    expect(configuredBackgroundHosts(e).size).toBe(0);
+    expect(() => resolveBackgroundImage('https://evil.example/backgrounds/imagen-1.jpg', e)).toThrow(BadRequestException);
+  });
+
+  it('a configured dev host may use http but only for preset paths', () => {
+    const e = { SHARE_BG_ALLOWED_HOSTS: ' 192.168.1.20 ' } as NodeJS.ProcessEnv;
+    expect(resolveBackgroundImage('http://192.168.1.20:3000/backgrounds/imagen-2.jpg', e)).toBe('http://192.168.1.20:3000/backgrounds/imagen-2.jpg');
+    expect(() => resolveBackgroundImage('http://192.168.1.20:3000/admin', e)).toThrow(BadRequestException);
+  });
+
+  it('exposes exactly the two built-in hosts', () => {
+    expect([...DEFAULT_BG_HOSTS].sort()).toEqual(['noetia.app', 'staging.noetia.app']);
   });
 
   it('uses process.env by default', () => {
-    expect(allowedBackgroundHosts().has('noetia.app')).toBe(true);
     expect(resolveBackgroundImage(PNG)).toBe(PNG);
   });
 });

@@ -1,10 +1,13 @@
 import base64
+import http.client
 import io
+import ipaddress
 import os
 import re
+import socket
+import ssl
 import textwrap
 import urllib.parse
-import urllib.request
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
@@ -106,43 +109,110 @@ def _render_gradient(img: Image.Image, color1: tuple, color2: tuple, direction: 
 
 
 # ── Background image sources (NEM-016 S12) ─────────────────────────────────────
-# The renderer must never fetch an arbitrary URL. Accepted sources:
-#   • data:image/{png,jpeg,webp};base64,…  (web presets and uploads)
-#   • http(s)://<host>/backgrounds/imagen-N.jpg  (the Noetia preset gallery,
-#     sent as an absolute URL by mobile)
-# If BG_IMAGE_ALLOWED_HOSTS (comma-separated) is set, the host must be listed.
-# The API validates the same rules first; this is defence in depth.
+# The renderer must never fetch an arbitrary URL. It fails closed:
+#   • data:image/{png,jpeg,webp};base64,…  (web presets and uploads) — no fetch.
+#   • https://noetia.app|staging.noetia.app/backgrounds/imagen-N.jpg, N = 1–18
+#     (the preset gallery, sent as an absolute URL by mobile).
+#   • Hosts added via SHARE_BG_ALLOWED_HOSTS (comma-separated; the same variable
+#     the API reads, from the shared .env) — for local development only. Only
+#     these may use plain http or resolve to a private / loopback address.
+# Built-in hosts must resolve exclusively to public (global) addresses. The
+# connection is pinned to the address that was checked, so a DNS answer that
+# changes between check and connect (rebinding) cannot redirect the request.
+# Redirects are never followed. An empty or unset variable never widens access.
 _BG_DATA_URI_RE = re.compile(r'^data:image/(?:png|jpe?g|webp);base64,')
-_BG_PRESET_PATH_RE = re.compile(r'^/backgrounds/imagen-\d{1,2}\.jpg$')
+_BG_PRESET_PATH_RE = re.compile(r'^/backgrounds/imagen-(\d{1,2})\.jpg$')
+_BG_PRESET_COUNT = 18
 _BG_MAX_BYTES = 10 * 1024 * 1024
+_BG_TIMEOUT_S = 10
+_BG_DEFAULT_HOSTS = frozenset({'noetia.app', 'staging.noetia.app'})
 
 
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D401
-        return None  # a redirect could point anywhere — refuse to follow it
+def _configured_bg_hosts() -> frozenset:
+    raw = os.environ.get('SHARE_BG_ALLOWED_HOSTS', '')
+    return frozenset(h.strip().lower() for h in raw.split(',') if h.strip())
 
 
-_BG_OPENER = urllib.request.build_opener(_NoRedirect)
+def _validate_bg_url(bg_image: str) -> tuple:
+    """Return (scheme, host, port, path, trusted_local) for an allowed preset URL.
 
-
-def _allowed_bg_hosts() -> set:
-    raw = os.environ.get('BG_IMAGE_ALLOWED_HOSTS', '')
-    return {h.strip().lower() for h in raw.split(',') if h.strip()}
-
-
-def _validate_bg_url(bg_image: str) -> str:
-    """Return the URL if it is an allowed preset background, else raise ValueError."""
+    Raises ValueError for anything else. `trusted_local` is True only for hosts
+    explicitly configured via SHARE_BG_ALLOWED_HOSTS.
+    """
     parts = urllib.parse.urlsplit(bg_image)
     if parts.scheme not in ('http', 'https'):
         raise ValueError('unsupported background scheme')
     if parts.username or parts.password or parts.query or parts.fragment:
         raise ValueError('unsupported background url')
-    if not _BG_PRESET_PATH_RE.match(parts.path or ''):
+    m = _BG_PRESET_PATH_RE.match(parts.path or '')
+    if not m or not 1 <= int(m.group(1)) <= _BG_PRESET_COUNT:
         raise ValueError('background url is not a preset image')
-    allowed = _allowed_bg_hosts()
-    if allowed and (parts.hostname or '').lower() not in allowed:
+    host = (parts.hostname or '').lower()
+    configured = _configured_bg_hosts()
+    if host in _BG_DEFAULT_HOSTS and host not in configured:
+        if parts.scheme != 'https':
+            raise ValueError('preset backgrounds must use https')
+        trusted_local = False
+    elif host in configured:
+        trusted_local = True
+    else:
         raise ValueError('background host not allowed')
-    return bg_image
+    try:
+        port = parts.port or (443 if parts.scheme == 'https' else 80)
+    except ValueError as exc:
+        raise ValueError('invalid background port') from exc
+    return parts.scheme, host, port, parts.path, trusted_local
+
+
+def _resolve_pinned_ip(host: str, port: int, trusted_local: bool) -> str:
+    """Resolve once; every address must be public unless the host is configured."""
+    infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    addrs = sorted({info[4][0] for info in infos})
+    if not addrs:
+        raise ValueError('background host did not resolve')
+    if not trusted_local:
+        for a in addrs:
+            if not ipaddress.ip_address(a.split('%', 1)[0]).is_global:
+                raise ValueError('background host resolves to a non-public address')
+    return addrs[0]
+
+
+class _PinnedHTTPConnection(http.client.HTTPConnection):
+    def __init__(self, host, port, ip, timeout):
+        super().__init__(host, port, timeout=timeout)
+        self._pinned_ip = ip
+
+    def connect(self):
+        self.sock = socket.create_connection((self._pinned_ip, self.port), self.timeout)
+
+
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    def __init__(self, host, port, ip, timeout):
+        super().__init__(host, port, timeout=timeout, context=ssl.create_default_context())
+        self._pinned_ip = ip
+
+    def connect(self):
+        sock = socket.create_connection((self._pinned_ip, self.port), self.timeout)
+        # Certificate is verified against the original hostname (SNI + hostname check).
+        self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
+
+
+def _fetch_preset(bg_image: str) -> bytes:
+    scheme, host, port, path, trusted_local = _validate_bg_url(bg_image)
+    ip = _resolve_pinned_ip(host, port, trusted_local)
+    cls = _PinnedHTTPSConnection if scheme == 'https' else _PinnedHTTPConnection
+    conn = cls(host, port, ip, _BG_TIMEOUT_S)
+    try:
+        conn.request('GET', path, headers={'Host': host, 'User-Agent': 'noetia-image-gen'})
+        resp = conn.getresponse()
+        if resp.status != 200:  # includes 3xx — redirects are never followed
+            raise ValueError(f'background fetch returned {resp.status}')
+        raw = resp.read(_BG_MAX_BYTES + 1)
+    finally:
+        conn.close()
+    if len(raw) > _BG_MAX_BYTES:
+        raise ValueError('background image too large')
+    return raw
 
 
 def _load_bg_image(bg_image: str) -> Image.Image:
@@ -154,7 +224,9 @@ def _load_bg_image(bg_image: str) -> Image.Image:
         raw = base64.b64decode(data)
         if len(raw) > _BG_MAX_BYTES:
             raise ValueError('background image too large')
-        return Image.open(io.BytesIO(raw)).convert('RGB')
+    else:
+        raw = _fetch_preset(bg_image)
+    return Image.open(io.BytesIO(raw)).convert('RGB')
     url = _validate_bg_url(bg_image)
     with _BG_OPENER.open(url, timeout=10) as resp:
         raw = resp.read(_BG_MAX_BYTES + 1)
