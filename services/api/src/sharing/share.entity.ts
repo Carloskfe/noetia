@@ -1,5 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryColumn } from 'typeorm';
-import type { QuoteProvenance } from './quote-integrity.service';
+import type { QuoteProvenance } from './quote-integrity';
 
 /**
  * A public share landing page. Created when a user shares a fragment as a quote

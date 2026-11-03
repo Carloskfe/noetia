@@ -4,18 +4,36 @@
  * a READ ONLY transaction that is rolled back.
  *
  * Requires explicit Product Owner authorization before running against
- * production. Usage (inside the api container):
- *   npx ts-node -r tsconfig-paths/register src/sharing/audit-legacy-shares.ts
- *   # prod image: node dist/sharing/audit-legacy-shares.js
+ * production. Self-contained: it builds its own entity-less connection from the
+ * same DB_* variables, and only needs these compiled files plus the image's
+ * node_modules: sharing/{audit-legacy-shares,legacy-share-audit,quote-integrity}.js,
+ * books/book-eligibility.js, storage/storage.service.js.
+ * See NEM-016 report §14.3 for the exact procedure.
+ *   dev:  npx ts-node -r tsconfig-paths/register src/sharing/audit-legacy-shares.ts
  */
 import 'reflect-metadata';
-import { AppDataSource } from '../data-source';
+import { DataSource } from 'typeorm';
 import { StorageService } from '../storage/storage.service';
 import { runLegacyShareAudit } from './legacy-share-audit';
 
+export function auditDataSource(env: NodeJS.ProcessEnv = process.env): DataSource {
+  return new DataSource({
+    type: 'postgres',
+    host: env.DB_HOST ?? 'db',
+    port: parseInt(env.DB_PORT ?? '5432', 10),
+    database: env.DB_NAME ?? 'noetia',
+    username: env.DB_USER ?? 'noetia',
+    password: env.DB_PASS ?? 'changeme',
+    entities: [],
+    synchronize: false,
+    migrationsRun: false,
+  });
+}
+
 async function main(): Promise<void> {
-  await AppDataSource.initialize();
-  const qr = AppDataSource.createQueryRunner();
+  const ds = auditDataSource();
+  await ds.initialize();
+  const qr = ds.createQueryRunner();
   const storage = new StorageService();
   try {
     await qr.query('START TRANSACTION READ ONLY');
@@ -30,11 +48,13 @@ async function main(): Promise<void> {
   } finally {
     await qr.query('ROLLBACK').catch(() => undefined);
     await qr.release();
-    await AppDataSource.destroy();
+    await ds.destroy();
   }
 }
 
-main().catch((err) => {
-  process.stderr.write(`audit failed: ${(err as Error).message}\n`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    process.stderr.write(`audit failed: ${(err as Error).message}\n`);
+    process.exit(1);
+  });
+}

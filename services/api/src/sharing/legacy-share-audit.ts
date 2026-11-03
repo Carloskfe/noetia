@@ -1,5 +1,5 @@
 import { qualityGateSql } from '../books/book-eligibility';
-import { checkQuoteAgainstSource, normalizeTypography, QuoteFailure } from './quote-integrity.service';
+import { checkQuoteAgainstSource, normalizeTypography, QuoteFailure } from './quote-integrity';
 
 /**
  * NEM-016 legacy-share audit — READ ONLY.
