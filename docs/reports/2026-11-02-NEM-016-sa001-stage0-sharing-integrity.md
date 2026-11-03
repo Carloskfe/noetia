@@ -10,6 +10,7 @@
 | 2 | 2026-11-02 | **Independent-review follow-up (§13):** fail-closed renderer host validation with DNS and IP pinning; validator reconciled with the C1 policy; transactional lifecycle with an image-deletion outbox and retry sweep; migration 068 readiness assessment; read-only legacy-share audit tool; new finding S18 |
 | 3 | 2026-11-02 | **Pre-merge verification (§14):** removed dead code left in image-gen by rev 2, with static checks that catch it; canonicalized every accepted omission-marker form; made the read-only audit portable; production audit **not run** (no read-only access); staging checklist; deployment-sequencing assessment. **Recommendation: READY FOR STAGING** (§14.6). |
 | 4 | 2026-11-02 | **Staging preparation (§15):** staging infrastructure assessment; new isolation finding S19 (shared-network DNS aliases); a synthetic CC0 test fixture with verified expected results; a migration-first staging procedure; the acceptance-test matrix. **Classification: CONDITIONAL.** Nothing was executed on staging or production. |
+| 5 | 2026-11-02 | **S19 isolation verification (§16):** host access unavailable (SSH denied, so no live checks). A local reproduction of the exact network layout **confirms the mechanism**: steady state stays isolated only because of network-name sort order, and when a service is stopped or being recreated, its name **falls through to the other environment, in both directions**. **Staging execution: NO-GO** until remediated. |
 
 ## 1. Mission and objective
 
@@ -26,7 +27,7 @@ Mission record: `docs/engineering-missions/IN-PROGRESS/NEM-016-sa001-stage0-shar
 - **Date:** 2026-11-02 (rev 2)
 - **Branch:** `fix/nem-016-sa001-stage0-sharing-integrity`, from `origin/main` `6a5e5c0`
 - **Status:** Draft PR #25, awaiting Product Architecture review and PO decisions
-- **Rev 3 recommendation:** READY FOR STAGING (code). **Rev 4 staging classification: CONDITIONAL** (§15.7). Merge stays blocked.
+- **Rev 3 recommendation:** READY FOR STAGING (code). Rev 4 classification: CONDITIONAL (§15.7). **Rev 5: staging execution NO-GO** until S19 is remediated (§16.6). Merge stays blocked.
 
 ## 3. Scope and exclusions
 
@@ -850,7 +851,7 @@ Base: `API=https://staging.noetia.app/api`. Tokens come from `POST $API/auth/log
 6. **Clean-up policy** after the run.
 7. Still open: the production audit authorization (§14.3), the deployment option (§14.5) and §10 items 2–8.
 
-### 15.7 Readiness classification: **CONDITIONAL**
+### 15.7 Readiness classification: **CONDITIONAL** (superseded by §16.6: NO-GO until S19 is remediated)
 
 Staging verification is fully specified and reproducible, and the code needs no changes. Execution can begin when:
 - (1) the P0 read-only checks pass, **in particular S19 shows no cross-environment resolution**
@@ -859,6 +860,139 @@ Staging verification is fully specified and reproducible, and the code needs no 
 **If P0.4 shows a collision, the classification becomes BLOCKED** until an infra fix.
 
 Unchanged: PR #25 is Draft and not merged; PRs #23 and #24 weren't touched; the C1 policy is preserved; Stage 1 and NoetiaX weren't started.
+
+**Outstanding workflow item:** the **pending preview prompt** stays a separate item (§13.7).
+
+---
+
+## 16. S19: staging and production network isolation (rev 5)
+
+Authorization: read-only investigation. No infrastructure, network, container, credential, database or deployment change was made on staging or production.
+
+### 16.1 Commands executed and access
+
+| Where | Command | Result |
+|---|---|---|
+| This workstation, against the production host | `ssh -p 222 -o BatchMode=yes … 'echo connected; hostname; docker --version'` | **`Permission denied (publickey,password)`**. No usable key is loaded in this session. Per the mission, I **stopped**: no key unlocking, password or alternative credential was attempted. **No live host command ran** (`docker network inspect`, `docker inspect`, `getent`, `docker compose config` weren't possible). |
+| Repository (read-only) | `git show` of `docker-compose.server.yml` (main), `docker-compose.staging.yml` and `.env.staging.example` (`nem-006a-staging`), `infra/server/traefik/{traefik.yml,docker-compose.yml}`, internal-host defaults in `services/*` | §16.2 |
+| This workstation's Docker 29.9.1 only (local, disposable) | Compose projects mirroring the production and staging network layout, with each container answering TCP with its identity; DNS lookups plus 20 connections per name from the api and web containers; stop and start of single *local* containers (T5) | §16.3. All local containers and networks were removed afterwards (verified: 0 left). Files: `docs/staging/s19-repro/`. |
+
+### 16.2 Configuration findings (repository)
+
+**Shared network.** The external `proxy` network carries:
+- production `api`, `web`, `storage` [V `docker-compose.server.yml`]
+- staging `api`, `web`, `storage` [V `docker-compose.staging.yml`]
+- Traefik [V `infra/server/traefik/docker-compose.yml`; `providers.docker.network: proxy`]
+
+`db`, `cache`, `search`, `image-gen` and `worker` are on their project networks only, in both environments.
+
+**Duplicate aliases.** Compose registers each service name as a DNS alias on **every** network the service joins. The local reproduction showed the alias set `[<container>, <service>, <id>]` on both the project network and the shared network. So `api`, `web` and `storage` are each registered **twice on `proxy`**, once per environment.
+
+**Internal URLs:**
+
+| Caller | Variable | Value | Service on `proxy`? |
+|---|---|---|---|
+| Web SSR | `INTERNAL_API_URL` | `http://api:4000` (code default; staging example file) | yes |
+| API (S3 client) | `MINIO_ENDPOINT` | `storage` | yes |
+| image-gen | `MINIO_ENDPOINT` | `storage` | image-gen is *not* on `proxy`, so its lookup is unambiguous |
+| API | `DB_HOST` | `db` | db is on the project network only |
+| API | `REDIS_URL` | host `cache` | project network only |
+| API | `MEILI_HOST` | `http://search:7700` | project network only |
+
+Production's `.env.production` values weren't readable (no access; secrets file) [A: code defaults assumed].
+
+**Traefik.**
+- Router, service and middleware names are distinct: `noetia-*` vs `noetia-staging-*`.
+- Host rules are distinct: `noetia.app` / `storage.noetia.app` vs `staging.noetia.app` / `storage.staging.noetia.app`.
+- Backends are bound **per container through its own labels**, and Traefik reaches them by container IP on `proxy`, not by DNS service names.
+
+### 16.3 DNS and connection evidence (local reproduction of the real layout)
+
+Each test made 20 TCP connections per name; each answer is the identity of the container that accepted the connection.
+
+| Test | Setup | From | Result |
+|---|---|---|---|
+| T0 | Naming where the staging network sorts **after** the shared network (`s19stg_stg_net` > `s19proxy`) | staging api | `api` → staging 13 / **production 7**; `storage` → **production 13** / staging 7; `db` → staging 20 |
+| T0 | (same) | production api, web | `api`, `web`, `storage`, `db` → production 20/20 |
+| T1, T2 | **Real naming order** (`noetia_noetia_net`, `noetia_staging_noetia_staging_net` < `proxy`); fresh networks per run | staging and production api/web | every name → own environment 20/20 (isolated) |
+| T3 | Real naming, networks declared in reverse order | all | unchanged (isolated). Declaration order doesn't matter. |
+| T4 | Staging project network renamed to sort after the shared network | staging api | `api` → **production 11** / staging 9; `storage` → **production 10** / staging 10 |
+| **T5a** | Real naming; **staging `storage` stopped** | staging api | `storage` → **production storage 20/20** |
+| **T5b** | Real naming; **production `storage` stopped** | production api | `storage` → **staging storage 20/20** |
+| **T5c** | Real naming; **production `api` stopped** (as during a deploy's container recreation) | production web | `api` → **staging api 20/20**; `storage` → **staging storage 20/20** |
+
+**Observed behaviour:**
+- For a container on two networks, Docker's embedded DNS answers from the network whose **name sorts first** where the name is registered.
+- If the name isn't registered there (for example because the service's container is stopped or being recreated), the lookup **falls through to the shared network** and returns the other environment's container. That container is routable, and connections succeed.
+- Steady-state isolation on the real host therefore depends on alphabetical network names, and disappears whenever a same-named service is down.
+
+### 16.4 Isolation evaluation
+
+| # | Question | Classification | Basis |
+|---|---|---|---|
+| 1 | Can staging API traffic resolve production services? | **Confirmed vulnerability**, by reproduction; live observation pending | Staging web SSR → `api` falls through to the **production API** whenever the staging api is down or recreating (T5, mirrored by T5c). Steady state is isolated only by name order (T1–T4). |
+| 2 | Can staging object-storage traffic reach production storage? | **Confirmed vulnerability**, by reproduction | T5a: staging api → **production MinIO 20/20** while staging storage is stopped. Whether requests then *authenticate* depends on whether the staging and production MinIO credentials differ; they couldn't be checked. Even unauthenticated, production storage is reachable and receives staging traffic. |
+| 3 | Can production traffic accidentally resolve staging services? | **Confirmed vulnerability**, by reproduction | T5b, T5c: production api → **staging MinIO** while production storage is down; production web → **staging API** while production api is down. **Every production deploy recreates `api`**, which opens this window for production SSR (e.g. `/s/<id>` share pages) while staging is running. |
+| 4 | Does Traefik routing distinguish the environments? | **Verified isolated (configuration)** | Distinct router, service and middleware names and Host rules; backends bound by per-container labels and container IP. The live router table wasn't inspected (no host access; dashboard disabled). |
+| 5 | Do database connections stay isolated? | **Verified isolated (configuration and reproduction)** | `db`, `cache` and `search` aren't on `proxy` in either environment; `db` resolved only within its own project in every test, including T0 and T4. |
+
+"Live observation pending" means confirmed on Docker 29.9.1 with the identical layout and names. The production host's Docker version wasn't checked; a different version would only change the specifics, not the fact that both environments share a routable network.
+
+**Impact on the staging plan (§15.4):**
+- **A11** (pausing staging MinIO) and any staging restart could send staging API traffic, including NEM-016 image deletions, to **production storage**.
+- Staging deploys recreate staging containers, opening the same window.
+
+### 16.5 Recommended remediation (not implemented)
+
+**Smallest safe correction: a dedicated Traefik network for staging (`proxy_staging`).**
+- Staging services leave `proxy`.
+- Traefik joins both networks.
+- Production services and production config are unchanged.
+- With no staging container on `proxy`, nothing can resolve or route across environments: lookups fail closed (NXDOMAIN) instead of falling through.
+
+| Step | Change | Touches production? |
+|---|---|---|
+| 1 | `docker network create proxy_staging` | No (new, additive network) |
+| 2 | `docker network connect proxy_staging traefik` (live attach; no restart) | Traefik gains a network; production routes unchanged |
+| 3 | Persist step 2 in `infra/server/traefik/docker-compose.yml` (`networks: [proxy, proxy_staging]`, both external) so it survives a Traefik recreation | Config file only; applied on the next Traefik recreation |
+| 4 | `docker-compose.staging.yml` (on `nem-006a-staging`): replace `proxy` with `proxy_staging` for api, web and storage; add label `traefik.docker.network=proxy_staging` to the three routed services; declare `proxy_staging` as external | No |
+| 5 | Recreate staging: `dcs up -d` | No |
+| 6 | Verify: `docker network inspect proxy` lists **no** `noetia_staging-*` containers; `docker network inspect proxy_staging` lists Traefik plus the staging services; staging and production URLs respond; the §16.3 probe from staging api returns staging only. Fall-through can be tested safely by stopping *staging* storage: the lookup must fail, not reach production. | Read-only on production |
+
+**Defence in depth (recommended next, both environments):** environment-specific internal hostnames that exist **only** on each project network.
+- Add aliases `prod-api`/`prod-storage` on `noetia_net` and `staging-api`/`staging-storage` on `noetia_staging_net`.
+- Point `INTERNAL_API_URL` and `MINIO_ENDPOINT` at them.
+- If the own service is down, the name doesn't exist anywhere, so the lookup fails closed.
+- This changes production env and compose, so it needs a production deploy and should get its own change window.
+
+**Rollback (for the primary fix):**
+1. Revert the staging compose to `proxy` and `dcs up -d`.
+2. `docker network disconnect proxy_staging traefik`.
+3. `docker network rm proxy_staging`.
+4. Revert the Traefik compose edit.
+
+Production services stay running throughout. The only production-adjacent step is the live network attach on Traefik (step 2), which doesn't interrupt existing routes.
+
+**Governance:** this is an infrastructure change, so it needs its own NEM mission and PO authorization, a quiet window, and the RUNBOOK "Confirm production unaffected" checks after each step.
+
+**Interim risk reduction (PO decision; changes staging state):** keep the staging stack **stopped** except during authorized sessions, so production's fall-through windows have nothing to reach. While staging runs, don't deploy production.
+
+### 16.6 Remaining staging blockers and recommendation
+
+**Blockers:**
+1. **S19 is confirmed by reproduction.** It needs remediation (§16.5) before any staging execution.
+2. **Live verification** needs host access. That would also confirm the Docker version and the actual `.env` hostnames, without printing secrets.
+3. The earlier §15.6 approvals are still needed: candidate, staging execution and data changes, fixture, clean-up policy.
+4. Production-side exposure exists **today**, independent of NEM-016, while staging is running: during production deploys and any production api or storage restart. That calls for a PO risk decision now.
+
+**RECOMMENDATION FOR STAGING EXECUTION: NO-GO.**
+
+GO once:
+- (a) the `proxy_staging` remediation is applied and verified (§16.5 step 6)
+- (b) the §15.3 P0 read-only checks pass with host access
+- (c) the §15.6 approvals are given
+
+Nothing else changed: PR #25 stays Draft; PRs #23 and #24 weren't touched; the C1 policy is preserved; Stage 1 and NoetiaX weren't started.
 
 **Outstanding workflow item:** the **pending preview prompt** stays a separate item (§13.7).
 

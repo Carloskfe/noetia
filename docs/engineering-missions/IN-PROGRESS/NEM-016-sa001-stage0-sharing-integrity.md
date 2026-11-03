@@ -1,7 +1,7 @@
 # NOETIA ENGINEERING MISSION — NEM-016
 ## SA-001 Stage 0: sharing security and integrity corrections
 
-**Status:** IN PROGRESS → awaiting REVIEW. Rev 3 (pre-merge verification) is complete. Rev 4 staging preparation: **CONDITIONAL** (report §15.7); merge blocked. Draft PR #25 is open and not merged.
+**Status:** IN PROGRESS → awaiting REVIEW. Rev 3 (pre-merge verification) is complete. Rev 5: staging execution **NO-GO** until S19 is remediated (report §16.6); merge blocked. Draft PR #25 is open and not merged.
 **Mission type:** REMEDIATION
 **Implementation authorization:** FULL-WITHIN-SCOPE (implementation, tests, Draft PR)
 **Schema changes:** ADDITIVE ONLY (migration 068: three nullable columns, two indexes, one outbox table; never deployed)
@@ -136,6 +136,12 @@ The report linked above.
 - the acceptance matrix A1–A18
 
 Nothing was executed on staging or production.
+
+**Rev 5 (2026-11-02):** S19 read-only investigation.
+- Host SSH was denied, so there were no live checks.
+- A local reproduction confirmed cross-environment DNS fall-through in both directions.
+- Remediation proposed: a dedicated `proxy_staging` network.
+- Staging NO-GO. No infrastructure was changed.
 
 ## 19. Product Architecture review
 Pending. Verdict: —

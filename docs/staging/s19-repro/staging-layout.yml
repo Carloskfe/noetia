@@ -1,0 +1,16 @@
+# S19 reproduction (NEM-016 report §16) — LOCAL ONLY, never on the server.
+# Mirrors the staging network layout: api/web/storage on the project network + the
+# shared external proxy network; db on the project network only. Names keep the
+# real sort order: "zz" prefix on proxy and projects (noetia_noetia_net < proxy).
+# Run as compose project "zznoetia_staging". Each container answers TCP :9000 with its identity.
+x-svc: &svc
+  image: node:20-alpine
+  command: ["node", "-e", "require('net').createServer(s=>s.end(process.env.WHO+'\\n')).listen(9000)"]
+services:
+  api:     { <<: *svc, environment: { WHO: "stg-api" },     networks: [noetia_staging_net, proxy] }
+  web:     { <<: *svc, environment: { WHO: "stg-web" },     networks: [noetia_staging_net, proxy] }
+  storage: { <<: *svc, environment: { WHO: "stg-storage" }, networks: [noetia_staging_net, proxy] }
+  db:      { <<: *svc, environment: { WHO: "stg-db" },      networks: [noetia_staging_net] }
+networks:
+  noetia_staging_net: { driver: bridge }
+  proxy: { external: true, name: zzproxy }
