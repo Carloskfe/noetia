@@ -4,6 +4,7 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   Post,
   Query,
@@ -24,6 +25,20 @@ import { LinkedInPublisher } from './publishers/linkedin.publisher';
 import { FacebookPublisher } from './publishers/facebook.publisher';
 import { InstagramPublisher } from './publishers/instagram.publisher';
 import { PinterestPublisher } from './publishers/pinterest.publisher';
+import { InjectRepository } from '@nestjs/typeorm';
+import { IsNull, Repository } from 'typeorm';
+import { Share } from '../sharing/share.entity';
+import { cardKeyFromUrl } from '../sharing/share-lifecycle.service';
+import { SOCIAL_PUBLISH_LIMIT, ShareRateLimiter } from '../sharing/share-rate-limiter';
+import { StorageService } from '../storage/storage.service';
+
+/**
+ * Origin that serves public quote-card images (image-gen/storage.py builds
+ * `<origin>/images/<uuid>.png`). Only those URLs may be published (NEM-016 S13).
+ */
+export function cardImageOrigin(env: NodeJS.ProcessEnv = process.env): string {
+  return (env.MINIO_PUBLIC_URL || 'http://storage:9000').replace(/\/+$/, '');
+}
 
 const closePopupHtml = (error?: string) => `
 <!DOCTYPE html><html><body><script>
@@ -36,6 +51,9 @@ export class SocialController {
   constructor(
     @InjectRedis() private readonly redis: Redis,
     private readonly tokenService: SocialTokenService,
+    @InjectRepository(Share) private readonly shareRepo: Repository<Share>,
+    private readonly storage: StorageService,
+    private readonly rateLimiter: ShareRateLimiter,
   ) {}
 
   @Get(':platform/connect')
@@ -153,11 +171,27 @@ export class SocialController {
       throw new UnauthorizedException('account_not_connected');
     }
 
-    const imgRes = await fetch(imageUrl);
-    if (!imgRes.ok) {
+    // S13: never fetch a caller-supplied URL. The image must be one of the
+    // caller's own live quote cards; its bytes are read from storage directly.
+    const key = cardKeyFromUrl(imageUrl);
+    if (typeof imageUrl !== 'string' || !key || imageUrl !== `${cardImageOrigin()}/images/${key}`) {
+      throw new BadRequestException('untrusted_image_source');
+    }
+    const share = await this.shareRepo.findOneBy({
+      imageUrl,
+      createdById: req.user.id,
+      revokedAt: IsNull(),
+    });
+    if (!share) throw new NotFoundException('share_not_found');
+
+    await this.rateLimiter.consume('social_publish', req.user.id, SOCIAL_PUBLISH_LIMIT);
+
+    let imageBuffer: Buffer;
+    try {
+      imageBuffer = await this.storage.getBuffer('images', key);
+    } catch {
       throw new BadGatewayException('image_download_failed');
     }
-    const imageBuffer = Buffer.from(await imgRes.arrayBuffer());
 
     let postUrl: string;
     try {

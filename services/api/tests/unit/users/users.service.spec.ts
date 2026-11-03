@@ -4,6 +4,7 @@ import { DataSource } from 'typeorm';
 import { EmailService } from '../../../src/email/email.service';
 import { UsersService } from '../../../src/users/users.service';
 import { User, AuthProvider } from '../../../src/users/user.entity';
+import { ShareLifecycleService } from '../../../src/sharing/share-lifecycle.service';
 
 const mockRepo = {
   findOneBy: jest.fn(),
@@ -15,6 +16,7 @@ const mockRepo = {
 
 const mockDataSource = { manager: { query: jest.fn() } };
 const mockEmailService = { sendFarewell: jest.fn().mockResolvedValue(undefined) };
+const mockShareLifecycle = { deleteAllForUser: jest.fn().mockResolvedValue(0) };
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -26,6 +28,7 @@ describe('UsersService', () => {
         { provide: getRepositoryToken(User), useValue: mockRepo },
         { provide: DataSource, useValue: mockDataSource },
         { provide: EmailService, useValue: mockEmailService },
+        { provide: ShareLifecycleService, useValue: mockShareLifecycle },
       ],
     }).compile();
 
@@ -126,6 +129,28 @@ describe('UsersService', () => {
       expect(mockRepo.delete).toHaveBeenCalledWith('u1');
     });
 
+    it('deletes the user\'s public shares (and card images) before the user row', async () => {
+      const order: string[] = [];
+      mockRepo.findOneBy.mockResolvedValue(user);
+      mockDataSource.manager.query.mockResolvedValue(undefined);
+      mockShareLifecycle.deleteAllForUser.mockImplementation(async () => { order.push('shares'); return 3; });
+      mockRepo.delete.mockImplementation(async () => { order.push('user'); });
+
+      await service.deleteAccount('u1');
+
+      expect(mockShareLifecycle.deleteAllForUser).toHaveBeenCalledWith('u1', mockDataSource.manager);
+      expect(order).toEqual(['shares', 'user']);
+    });
+
+    it('keeps the user row if share deletion fails (no half-deleted public content)', async () => {
+      mockRepo.findOneBy.mockResolvedValue(user);
+      mockDataSource.manager.query.mockResolvedValue(undefined);
+      mockShareLifecycle.deleteAllForUser.mockRejectedValueOnce(new Error('db down'));
+
+      await expect(service.deleteAccount('u1')).rejects.toThrow('db down');
+      expect(mockRepo.delete).not.toHaveBeenCalled();
+    });
+
     it('sends farewell email after deletion', async () => {
       mockRepo.findOneBy.mockResolvedValue(user);
       mockDataSource.manager.query.mockResolvedValue(undefined);
@@ -140,6 +165,7 @@ describe('UsersService', () => {
       mockRepo.findOneBy.mockResolvedValue(null);
       await service.deleteAccount('ghost');
       expect(mockRepo.delete).not.toHaveBeenCalled();
+      expect(mockShareLifecycle.deleteAllForUser).not.toHaveBeenCalled();
     });
 
     it('completes deletion even if farewell email fails', async () => {

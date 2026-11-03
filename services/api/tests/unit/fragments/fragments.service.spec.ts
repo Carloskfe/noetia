@@ -5,6 +5,7 @@ import { FragmentsService } from '../../../src/fragments/fragments.service';
 import { Fragment } from '../../../src/fragments/fragment.entity';
 import { FragmentTaggerService } from '../../../src/fragments/fragment-tagger.service';
 import { EventsService } from '../../../src/events/events.service';
+import { ShareLifecycleService } from '../../../src/sharing/share-lifecycle.service';
 
 const mockRepo = () => ({
   create: jest.fn(),
@@ -16,6 +17,7 @@ const mockRepo = () => ({
 
 const mockTagger = { tag: jest.fn() };
 const mockEvents = { emit: jest.fn() };
+const mockShareLifecycle = { revokeForFragment: jest.fn() };
 
 const makeFragment = (overrides: Partial<Fragment> = {}): Fragment =>
   ({
@@ -39,6 +41,7 @@ describe('FragmentsService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     mockEvents.emit.mockResolvedValue(undefined);
+    mockShareLifecycle.revokeForFragment.mockResolvedValue(0);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -46,6 +49,7 @@ describe('FragmentsService', () => {
         { provide: getRepositoryToken(Fragment), useFactory: mockRepo },
         { provide: FragmentTaggerService, useValue: mockTagger },
         { provide: EventsService, useValue: mockEvents },
+        { provide: ShareLifecycleService, useValue: mockShareLifecycle },
       ],
     }).compile();
 
@@ -192,10 +196,31 @@ describe('FragmentsService', () => {
       expect(repo.remove).toHaveBeenCalledWith(fragment);
     });
 
+    it('revokes the fragment\'s public shares before deleting it', async () => {
+      const order: string[] = [];
+      repo.findOneBy.mockResolvedValue(makeFragment());
+      mockShareLifecycle.revokeForFragment.mockImplementation(async () => { order.push('revoke'); return 2; });
+      repo.remove.mockImplementation(async () => { order.push('remove'); });
+
+      await service.remove('frag-1', 'user-1');
+
+      expect(mockShareLifecycle.revokeForFragment).toHaveBeenCalledWith('frag-1');
+      expect(order).toEqual(['revoke', 'remove']);
+    });
+
+    it('does not delete the fragment if share revocation fails', async () => {
+      repo.findOneBy.mockResolvedValue(makeFragment());
+      mockShareLifecycle.revokeForFragment.mockRejectedValue(new Error('db down'));
+
+      await expect(service.remove('frag-1', 'user-1')).rejects.toThrow('db down');
+      expect(repo.remove).not.toHaveBeenCalled();
+    });
+
     it('throws ForbiddenException for non-owner', async () => {
       repo.findOneBy.mockResolvedValue(makeFragment({ userId: 'other-user' }));
 
       await expect(service.remove('frag-1', 'user-1')).rejects.toThrow(ForbiddenException);
+      expect(mockShareLifecycle.revokeForFragment).not.toHaveBeenCalled();
     });
 
     it('throws ForbiddenException when fragment not found', async () => {

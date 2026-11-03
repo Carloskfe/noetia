@@ -1,403 +1,253 @@
-import { BadGatewayException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import {
+  BadGatewayException,
+  BadRequestException,
+  HttpException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { SharingService } from '../../../src/sharing/sharing.service';
-import { Fragment } from '../../../src/fragments/fragment.entity';
-import { Book } from '../../../src/books/book.entity';
+import { QueryFailedError } from 'typeorm';
+import { SharingService, shareConfigHash } from '../../../src/sharing/sharing.service';
+import { QuoteIntegrityService } from '../../../src/sharing/quote-integrity.service';
+import { ShareRateLimiter } from '../../../src/sharing/share-rate-limiter';
+import { StorageService } from '../../../src/storage/storage.service';
 import { Share } from '../../../src/sharing/share.entity';
+import { Book } from '../../../src/books/book.entity';
+import { Fragment } from '../../../src/fragments/fragment.entity';
+import { ShareFragmentDto } from '../../../src/sharing/dto/share-fragment.dto';
+import * as eligibility from '../../../src/books/book-eligibility';
+
+const IMG = 'https://storage.noetia.app/images/11111111-2222-4333-8444-555555555555.png';
+const mockFragment = { id: 'frag-1', userId: 'user-1', bookId: 'book-1', text: 'Original quote text' } as Fragment;
+const mockBook = {
+  id: 'book-1', title: 'My Book', author: 'An Author', coverUrl: 'https://c/x.jpg', isFree: true,
+} as Book;
+const dto = (o: Partial<ShareFragmentDto> = {}): ShareFragmentDto =>
+  ({ platform: 'linkedin', format: 'post', ...o }) as ShareFragmentDto;
 
 const mockShareRepo = {
-  create: jest.fn((v: unknown) => v),
-  save: jest.fn(async (v: unknown) => v),
+  create: jest.fn((x) => x),
+  save: jest.fn(),
   findOneBy: jest.fn(),
-  increment: jest.fn(async () => ({ affected: 1 })),
+  increment: jest.fn(),
 };
-const mockBookRepo = {
-  findOneBy: jest.fn(),
-};
+const mockBookRepo = { findOneBy: jest.fn() };
+const mockQuote = { assertFaithfulExcerpt: jest.fn() };
+const mockLimiter = { consume: jest.fn() };
+const mockStorage = { delete: jest.fn() };
 
-const mockFragment = (): Partial<Fragment> => ({
-  id: 'frag-1',
-  userId: 'user-1',
-  bookId: 'book-1',
-  text: 'El conocimiento es poder.',
-  startPhraseIndex: null,
-  endPhraseIndex: null,
-  note: null,
-});
-
-const mockBook = (): Partial<Book> => ({
-  id: 'book-1',
-  title: 'Meditationes Sacrae',
-  author: 'Francis Bacon',
-});
+const okFetch = (url = IMG) =>
+  (global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ url }) }) as unknown as typeof fetch);
+const sentBody = () => JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
 
 describe('SharingService', () => {
   let service: SharingService;
+  let eligible: jest.SpyInstance;
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+    mockShareRepo.findOneBy.mockResolvedValue(null);
+    mockShareRepo.save.mockImplementation(async (x) => x);
+    mockShareRepo.increment.mockResolvedValue(undefined);
+    mockQuote.assertFaithfulExcerpt.mockResolvedValue(undefined);
+    mockLimiter.consume.mockResolvedValue(undefined);
+    mockStorage.delete.mockResolvedValue(undefined);
+    eligible = jest.spyOn(eligibility, 'isBookPubliclyEligible').mockResolvedValue(true);
+    okFetch();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SharingService,
         { provide: getRepositoryToken(Share), useValue: mockShareRepo },
         { provide: getRepositoryToken(Book), useValue: mockBookRepo },
+        { provide: QuoteIntegrityService, useValue: mockQuote },
+        { provide: ShareRateLimiter, useValue: mockLimiter },
+        { provide: StorageService, useValue: mockStorage },
       ],
     }).compile();
-
-    service = module.get<SharingService>(SharingService);
-    jest.clearAllMocks();
-    mockShareRepo.create.mockImplementation((v: unknown) => v);
-    mockShareRepo.save.mockImplementation(async (v: unknown) => v);
+    service = module.get(SharingService);
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
+  afterEach(() => eligible.mockRestore());
 
-  describe('generateShareUrl', () => {
-    it('returns the image URL and a public invite page URL, and persists a share', async () => {
-      const expectedUrl = 'http://storage:9000/images/uuid.png?token=abc';
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: expectedUrl }),
-      } as Response);
+  describe('createOrReuseShare', () => {
+    it('renders a card, persists a share snapshot with creator and config hash, returns both URLs', async () => {
+      const result = await service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1');
 
-      const result = await service.generateShareUrl(
-        mockFragment() as Fragment,
-        mockBook() as Book,
-        'linkedin',
-        {},
-        'user-1',
-      );
-
-      expect(result.imageUrl).toBe(expectedUrl);
+      expect(result.imageUrl).toBe(IMG);
       expect(result.pageUrl).toMatch(/\/s\/[A-Za-z0-9]{10}$/);
-      expect(mockShareRepo.save).toHaveBeenCalledTimes(1);
-      const saved = mockShareRepo.save.mock.calls[0][0] as Share;
+      expect(result.reused).toBe(false);
+      const saved = mockShareRepo.save.mock.calls[0][0];
       expect(saved).toMatchObject({
-        bookId: 'book-1',
-        fragmentId: 'frag-1',
-        quote: 'El conocimiento es poder.',
-        author: 'Francis Bacon',
-        title: 'Meditationes Sacrae',
-        imageUrl: expectedUrl,
-        platform: 'linkedin',
-        createdById: 'user-1',
+        bookId: 'book-1', fragmentId: 'frag-1', quote: 'Original quote text', author: 'An Author',
+        title: 'My Book', imageUrl: IMG, platform: 'linkedin', createdById: 'user-1', revokedAt: null,
       });
-      expect(saved.id).toHaveLength(10);
-      // The persisted slug is the one in the returned page URL.
-      expect(result.pageUrl.endsWith(`/s/${saved.id}`)).toBe(true);
+      expect(saved.configHash).toMatch(/^[0-9a-f]{64}$/);
     });
 
-    it('snapshots the edited text override as the quote', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: 'http://example.com/img.png' }),
-      } as Response);
-
-      await service.generateShareUrl(
-        mockFragment() as Fragment,
-        mockBook() as Book,
-        'linkedin',
-        { textOverride: 'Texto editado.' },
-      );
-
-      const saved = mockShareRepo.save.mock.calls[0][0] as Share;
-      expect(saved.quote).toBe('Texto editado.');
+    // S2 / C1 — unauthorized text overrides
+    it('verifies the rendered text against the book source before rendering', async () => {
+      await service.createOrReuseShare(mockFragment, mockBook, dto({ text: 'quote text' }), 'user-1');
+      expect(mockQuote.assertFaithfulExcerpt).toHaveBeenCalledWith(mockBook, 'quote text');
+      expect(sentBody().text).toBe('quote text');
     });
 
-    it('sends platform and required fields in payload', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: 'http://example.com/img.png' }),
-      } as Response);
+    it('verifies the stored fragment text when no override is given (fragment text is editable)', async () => {
+      await service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1');
+      expect(mockQuote.assertFaithfulExcerpt).toHaveBeenCalledWith(mockBook, 'Original quote text');
+    });
 
-      await service.generateShareUrl(
-        mockFragment() as Fragment,
-        mockBook() as Book,
-        'instagram',
+    it('refuses an unfaithful quote: no render, no share, no rate-limit charge', async () => {
+      mockQuote.assertFaithfulExcerpt.mockRejectedValue(new UnprocessableEntityException({ error: 'quote_not_in_source' }));
+      await expect(
+        service.createOrReuseShare(mockFragment, mockBook, dto({ text: 'words the author never wrote' }), 'user-1'),
+      ).rejects.toThrow(UnprocessableEntityException);
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockShareRepo.save).not.toHaveBeenCalled();
+      expect(mockLimiter.consume).not.toHaveBeenCalled();
+    });
+
+    // S12 — unsafe background URLs
+    it('rejects an arbitrary background URL before calling the renderer', async () => {
+      await expect(
+        service.createOrReuseShare(mockFragment, mockBook, dto({ bgImage: 'http://api:4000/internal' }), 'user-1'),
+      ).rejects.toThrow(BadRequestException);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('forwards an allowed preset background in canonical form', async () => {
+      await service.createOrReuseShare(
+        mockFragment, mockBook, dto({ bgType: 'image', bgImage: 'https://noetia.app/backgrounds/imagen-4.jpg' }), 'user-1',
       );
+      expect(sentBody().bgImage).toBe('https://noetia.app/backgrounds/imagen-4.jpg');
+    });
 
-      const [url, options] = (global.fetch as jest.Mock).mock.calls[0];
-      expect(url).toContain('/generate');
-      const body = JSON.parse(options.body);
-      expect(body).toMatchObject({
-        text: 'El conocimiento es poder.',
-        author: 'Francis Bacon',
-        title: 'Meditationes Sacrae',
-        platform: 'instagram',
+    it('forwards all rendering options to image-gen and omits unset ones', async () => {
+      await service.createOrReuseShare(mockFragment, mockBook, dto({
+        font: 'lora', bgType: 'gradient', bgColors: ['#000000', '#FFFFFF'], textColor: '#FFFFFF',
+        citation: 'Cap. 1', textBold: true, textItalic: true, gradientDir: 'to-right', bgFlip: true,
+        bgFit: 'cover', textAlign: 'left', textScale: 1.2,
+      }), 'user-1');
+      expect(sentBody()).toEqual({
+        text: 'Original quote text', author: 'An Author', title: 'My Book', platform: 'linkedin', format: 'post',
+        font: 'lora', bgType: 'gradient', bgColors: ['#000000', '#FFFFFF'], textColor: '#FFFFFF',
+        citation: 'Cap. 1', textBold: true, textItalic: true, gradientDir: 'to-right', bgFlip: true,
+        bgFit: 'cover', textAlign: 'left', textScale: 1.2,
+      });
+
+      jest.clearAllMocks();
+      okFetch();
+      await service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1');
+      expect(sentBody()).toEqual({
+        text: 'Original quote text', author: 'An Author', title: 'My Book', platform: 'linkedin', format: 'post',
       });
     });
 
-    it('includes all share options in payload when provided', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: 'http://example.com/img.png' }),
-      } as Response);
-
-      await service.generateShareUrl(
-        mockFragment() as Fragment,
-        mockBook() as Book,
-        'instagram',
-        { format: 'story', font: 'playfair', bgType: 'gradient', bgColors: ['#0D1B2A', '#1A4A4A'] },
-      );
-
-      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
-      const body = JSON.parse(options.body);
-      expect(body.format).toBe('story');
-      expect(body.font).toBe('playfair');
-      expect(body.bgType).toBe('gradient');
-      expect(body.bgColors).toEqual(['#0D1B2A', '#1A4A4A']);
+    it('throws BadGatewayException when image generation fails, persisting nothing', async () => {
+      global.fetch = jest.fn().mockResolvedValue({ ok: false }) as unknown as typeof fetch;
+      await expect(service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1')).rejects.toThrow(BadGatewayException);
+      expect(mockShareRepo.save).not.toHaveBeenCalled();
     });
 
-    it('omits optional fields from payload when not provided', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: 'http://example.com/img.png' }),
-      } as Response);
-
-      await service.generateShareUrl(
-        mockFragment() as Fragment,
-        mockBook() as Book,
-        'instagram',
-      );
-
-      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
-      const body = JSON.parse(options.body);
-      expect(body).not.toHaveProperty('format');
-      expect(body).not.toHaveProperty('font');
-      expect(body).not.toHaveProperty('bgType');
-      expect(body).not.toHaveProperty('bgColors');
+    // G8 — duplicate prevention
+    it('returns the existing live share for an identical card without re-rendering', async () => {
+      mockShareRepo.findOneBy.mockResolvedValue({ id: 'EXISTING01', imageUrl: IMG });
+      const result = await service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1');
+      expect(result).toEqual({ pageUrl: expect.stringMatching(/\/s\/EXISTING01$/), imageUrl: IMG, reused: true });
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockShareRepo.save).not.toHaveBeenCalled();
+      expect(mockLimiter.consume).not.toHaveBeenCalled();
+      const where = mockShareRepo.findOneBy.mock.calls[0][0];
+      expect(where.createdById).toBe('user-1');
+      expect(where.revokedAt).toBeDefined(); // IsNull() — revoked shares are never re-used
     });
 
-    it('includes textColor in payload when provided', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: 'http://example.com/img.png' }),
-      } as Response);
+    it('on a concurrent duplicate (unique violation) returns the winner and deletes the extra image', async () => {
+      const err = new QueryFailedError('INSERT', [], Object.assign(new Error('dup'), { code: '23505' }));
+      mockShareRepo.save.mockRejectedValue(err);
+      mockShareRepo.findOneBy.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'WINNER0001', imageUrl: 'https://x/images/w.png' });
 
-      await service.generateShareUrl(
-        mockFragment() as Fragment,
-        mockBook() as Book,
-        'linkedin',
-        { textColor: '#FF0000' },
-      );
+      const result = await service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1');
 
-      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
-      const body = JSON.parse(options.body);
-      expect(body.textColor).toBe('#FF0000');
+      expect(result.reused).toBe(true);
+      expect(result.pageUrl).toMatch(/WINNER0001$/);
+      expect(mockStorage.delete).toHaveBeenCalledWith('images', '11111111-2222-4333-8444-555555555555.png');
     });
 
-    it('omits textColor from payload when not provided', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: 'http://example.com/img.png' }),
-      } as Response);
-
-      await service.generateShareUrl(
-        mockFragment() as Fragment,
-        mockBook() as Book,
-        'linkedin',
-      );
-
-      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
-      const body = JSON.parse(options.body);
-      expect(body).not.toHaveProperty('textColor');
+    it('rethrows other database errors', async () => {
+      mockShareRepo.save.mockRejectedValue(new Error('connection lost'));
+      await expect(service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1')).rejects.toThrow('connection lost');
     });
 
-    it('sends bgFlip=true when the mirror option is set', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: 'http://example.com/img.png' }),
-      } as Response);
+    // S8 — rate limit
+    it('charges the per-user rate limit only for new renders, and stops when exceeded', async () => {
+      mockLimiter.consume.mockRejectedValue(new HttpException({ error: 'rate_limited' }, 429));
+      await expect(service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1')).rejects.toMatchObject({ status: 429 });
+      expect(mockLimiter.consume).toHaveBeenCalledWith('share_create', 'user-1', expect.objectContaining({ limit: 20 }));
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+  });
 
-      await service.generateShareUrl(
-        mockFragment() as Fragment,
-        mockBook() as Book,
-        'instagram',
-        { bgType: 'image', bgImage: 'data:image/png;base64,AAAA', bgFlip: true },
-      );
+  describe('shareConfigHash', () => {
+    const h = (o: Partial<ShareFragmentDto> = {}, user = 'u1', quote = 'q', bg?: string) =>
+      shareConfigHash(user, 'f1', quote, dto(o), bg);
 
-      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
-      const body = JSON.parse(options.body);
-      expect(body.bgFlip).toBe(true);
+    it('is stable for identical input', () => {
+      expect(h({ font: 'lora' })).toBe(h({ font: 'lora' }));
     });
 
-    it('omits bgFlip from payload when not set', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: 'http://example.com/img.png' }),
-      } as Response);
-
-      await service.generateShareUrl(
-        mockFragment() as Fragment,
-        mockBook() as Book,
-        'instagram',
-        { bgType: 'image', bgImage: 'data:image/png;base64,AAAA' },
-      );
-
-      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
-      const body = JSON.parse(options.body);
-      expect(body).not.toHaveProperty('bgFlip');
-    });
-
-    it('forwards bgFit to the image-gen payload when set', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: 'http://example.com/img.png' }),
-      } as Response);
-
-      await service.generateShareUrl(
-        mockFragment() as Fragment,
-        mockBook() as Book,
-        'instagram',
-        { bgType: 'image', bgImage: 'data:image/png;base64,AAAA', bgFit: 'contain' },
-      );
-
-      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
-      const body = JSON.parse(options.body);
-      expect(body.bgFit).toBe('contain');
-    });
-
-    it('omits bgFit from payload when not set', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: 'http://example.com/img.png' }),
-      } as Response);
-
-      await service.generateShareUrl(
-        mockFragment() as Fragment,
-        mockBook() as Book,
-        'instagram',
-        { bgType: 'image', bgImage: 'data:image/png;base64,AAAA' },
-      );
-
-      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
-      const body = JSON.parse(options.body);
-      expect(body).not.toHaveProperty('bgFit');
-    });
-
-    it('forwards textScale to the image-gen payload when set', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: 'http://example.com/img.png' }),
-      } as Response);
-
-      await service.generateShareUrl(
-        mockFragment() as Fragment,
-        mockBook() as Book,
-        'instagram',
-        { textScale: 1.5 },
-      );
-
-      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
-      const body = JSON.parse(options.body);
-      expect(body.textScale).toBe(1.5);
-    });
-
-    it('omits textScale from payload when not set', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: 'http://example.com/img.png' }),
-      } as Response);
-
-      await service.generateShareUrl(
-        mockFragment() as Fragment,
-        mockBook() as Book,
-        'instagram',
-        {},
-      );
-
-      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
-      const body = JSON.parse(options.body);
-      expect(body).not.toHaveProperty('textScale');
-    });
-
-    it('forwards textAlign when set', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: 'http://example.com/img.png' }),
-      } as Response);
-
-      await service.generateShareUrl(
-        mockFragment() as Fragment,
-        mockBook() as Book,
-        'instagram',
-        { textAlign: 'left' },
-      );
-
-      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
-      expect(JSON.parse(options.body).textAlign).toBe('left');
-    });
-
-    it('omits textAlign when not set', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: 'http://example.com/img.png' }),
-      } as Response);
-
-      await service.generateShareUrl(mockFragment() as Fragment, mockBook() as Book, 'instagram');
-
-      const [, options] = (global.fetch as jest.Mock).mock.calls[0];
-      expect(JSON.parse(options.body)).not.toHaveProperty('textAlign');
-    });
-
-    it('throws BadGatewayException when image-gen returns non-200', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        json: async () => ({ error: 'unsupported platform' }),
-      } as Response);
-
-      await expect(
-        service.generateShareUrl(mockFragment() as Fragment, mockBook() as Book, 'tiktok'),
-      ).rejects.toThrow(BadGatewayException);
-    });
-
-    it('throws when fetch rejects', async () => {
-      global.fetch = jest.fn().mockRejectedValueOnce(new Error('ECONNREFUSED'));
-
-      await expect(
-        service.generateShareUrl(mockFragment() as Fragment, mockBook() as Book, 'linkedin'),
-      ).rejects.toThrow();
+    it('differs when any rendering option, the text, the creator or the background changes', () => {
+      const base = h();
+      expect(h({ font: 'lora' })).not.toBe(base);
+      expect(h({ format: 'story' })).not.toBe(base);
+      expect(h({}, 'u2')).not.toBe(base);
+      expect(h({}, 'u1', 'other')).not.toBe(base);
+      expect(h({}, 'u1', 'q', 'data:image/png;base64,AA')).not.toBe(base);
     });
   });
 
   describe('getPublicShare', () => {
-    it('returns the share snapshot with book info and bumps the visit count', async () => {
-      mockShareRepo.findOneBy.mockResolvedValueOnce({
-        id: 'abc123', bookId: 'book-1', quote: 'Una frase.', author: 'A', title: 'T',
-        citation: null, imageUrl: 'http://img/x.png',
-      });
-      mockBookRepo.findOneBy.mockResolvedValueOnce({
-        id: 'book-1', title: 'T', author: 'A', coverUrl: 'http://cov.png', isFree: true,
-      });
+    const share = {
+      id: 'abc', bookId: 'book-1', quote: 'q', author: 'A', title: 'T', citation: null, imageUrl: IMG, revokedAt: null,
+    };
 
-      const res = await service.getPublicShare('abc123');
-
-      expect(res).toMatchObject({
-        id: 'abc123',
-        quote: 'Una frase.',
-        imageUrl: 'http://img/x.png',
-        book: { id: 'book-1', coverUrl: 'http://cov.png', isFree: true },
+    it('returns the snapshot plus public book fields and bumps the visit counter', async () => {
+      mockShareRepo.findOneBy.mockResolvedValue(share);
+      mockBookRepo.findOneBy.mockResolvedValue(mockBook);
+      const result = await service.getPublicShare('abc');
+      expect(result).toEqual({
+        id: 'abc', quote: 'q', author: 'A', title: 'T', citation: null, imageUrl: IMG,
+        book: { id: 'book-1', title: 'My Book', author: 'An Author', coverUrl: 'https://c/x.jpg', isFree: true },
       });
-      expect(mockShareRepo.increment).toHaveBeenCalledWith({ id: 'abc123' }, 'visitCount', 1);
+      expect(mockShareRepo.increment).toHaveBeenCalledWith({ id: 'abc' }, 'visitCount', 1);
     });
 
-    it('still returns the share when the book is gone (book: null)', async () => {
-      mockShareRepo.findOneBy.mockResolvedValueOnce({
-        id: 'abc123', bookId: 'gone', quote: 'q', author: 'A', title: 'T',
-        citation: null, imageUrl: 'http://img/x.png',
-      });
-      mockBookRepo.findOneBy.mockResolvedValueOnce(null);
-
-      const res = await service.getPublicShare('abc123');
-      expect(res.book).toBeNull();
-    });
-
-    it('throws NotFoundException for an unknown slug', async () => {
-      mockShareRepo.findOneBy.mockResolvedValueOnce(null);
+    it('404s for an unknown share', async () => {
+      mockShareRepo.findOneBy.mockResolvedValue(null);
       await expect(service.getPublicShare('nope')).rejects.toThrow(NotFoundException);
+    });
+
+    // S3 / D07 — revoked shares
+    it('404s for a revoked share and does not count the visit', async () => {
+      mockShareRepo.findOneBy.mockResolvedValue({ ...share, revokedAt: new Date() });
+      await expect(service.getPublicShare('abc')).rejects.toThrow(NotFoundException);
+      expect(mockShareRepo.increment).not.toHaveBeenCalled();
+    });
+
+    // S14 — ineligible books
+    it('404s when the book is no longer publicly eligible', async () => {
+      mockShareRepo.findOneBy.mockResolvedValue(share);
+      eligible.mockResolvedValue(false);
+      await expect(service.getPublicShare('abc')).rejects.toThrow(NotFoundException);
+      expect(mockShareRepo.increment).not.toHaveBeenCalled();
+    });
+
+    it('still renders if the visit counter fails', async () => {
+      mockShareRepo.findOneBy.mockResolvedValue(share);
+      mockBookRepo.findOneBy.mockResolvedValue(mockBook);
+      mockShareRepo.increment.mockRejectedValue(new Error('db'));
+      await expect(service.getPublicShare('abc')).resolves.toMatchObject({ id: 'abc' });
     });
   });
 });

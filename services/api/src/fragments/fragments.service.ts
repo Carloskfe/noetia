@@ -10,6 +10,7 @@ import { CreateFragmentDto } from './dto/create-fragment.dto';
 import { UpdateFragmentDto } from './dto/update-fragment.dto';
 import { FragmentTaggerService } from './fragment-tagger.service';
 import { EventsService } from '../events/events.service';
+import { ShareLifecycleService } from '../sharing/share-lifecycle.service';
 
 @Injectable()
 export class FragmentsService {
@@ -18,6 +19,7 @@ export class FragmentsService {
     private readonly repo: Repository<Fragment>,
     private readonly tagger: FragmentTaggerService,
     private readonly events: EventsService,
+    private readonly shareLifecycle: ShareLifecycleService,
   ) {}
 
   async create(userId: string, dto: CreateFragmentDto): Promise<Fragment> {
@@ -58,6 +60,9 @@ export class FragmentsService {
   async remove(id: string, userId: string): Promise<void> {
     const fragment = await this.repo.findOneBy({ id });
     if (!fragment || fragment.userId !== userId) throw new ForbiddenException();
+    // Deleting a fragment withdraws its public shares (SA-001 D07, NEM-016).
+    // Combining fragments does not: the reader is merging, not withdrawing.
+    await this.shareLifecycle.revokeForFragment(id);
     await this.repo.remove(fragment);
   }
 

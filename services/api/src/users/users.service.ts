@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { EmailService } from '../email/email.service';
+import { ShareLifecycleService } from '../sharing/share-lifecycle.service';
 import { AuthProvider, DEFAULT_ONBOARDING_STATE, OnboardingState, User } from './user.entity';
 import { UpdateOnboardingDto } from './dto/update-onboarding.dto';
 
@@ -10,6 +11,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User) private readonly repo: Repository<User>,
     private readonly dataSource: DataSource,
+    private readonly shareLifecycle: ShareLifecycleService,
     private readonly emailService: EmailService,
   ) {}
 
@@ -64,6 +66,9 @@ export class UsersService {
     await manager.query(`DELETE FROM "courtesy_token_quotas" WHERE "creatorId" = $1`, [userId]);
     await manager.query(`DELETE FROM "subscriptions" WHERE "userId" = $1`, [userId]);
     await manager.query(`DELETE FROM "waitlist_entries" WHERE "email" = $1`, [user.email]);
+    // Public shares and their card images (NEM-016). Must run before the user
+    // row goes: fragments cascade with it and identify shares made of them.
+    await this.shareLifecycle.deleteAllForUser(userId, manager);
 
     // Delete user — DB CASCADE covers: fragments, reading_progress
     await this.repo.delete(userId);
