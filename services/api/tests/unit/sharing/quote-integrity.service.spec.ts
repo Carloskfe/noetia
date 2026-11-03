@@ -39,6 +39,23 @@ describe('canonicalizeOmissionMarkers', () => {
     expect(canonicalizeOmissionMarkers('a [...] b [ … ] c')).toBe(`a ${OMISSION_MARKER} b ${OMISSION_MARKER} c`);
   });
 
+  it.each(['[...]', '[....]', '[ ... ]', '[ … ]', '[…]', '[\u2026 ]'])('canonicalizes %p to the approved [ … ]', (m) => {
+    expect(canonicalizeOmissionMarkers(`a ${m} b`)).toBe(`a ${OMISSION_MARKER} b`);
+  });
+
+  it('every marker form the validator accepts is canonicalized (input and display stay consistent)', () => {
+    for (const m of ['[...]', '[....]', '[ ... ]', '[ … ]']) {
+      const q = `rocín flaco y galgo corredor ${m} Una olla de algo más vaca`;
+      expect(check(q).ok).toBe(true);
+      expect(canonicalizeOmissionMarkers(q)).not.toMatch(/\.\.\./);
+      expect(check(canonicalizeOmissionMarkers(q))).toEqual(check(q)); // same verdict and spans
+    }
+  });
+
+  it('does not invent markers: (...) and bare ... are left as typed', () => {
+    expect(canonicalizeOmissionMarkers('a (...) b ... c')).toBe('a (...) b ... c');
+  });
+
   it('leaves bare ellipses alone (they are only valid where the author wrote them)', () => {
     expect(canonicalizeOmissionMarkers('¿Esperas… qué?')).toBe('¿Esperas… qué?');
   });

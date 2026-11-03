@@ -97,6 +97,13 @@ describe('SharingService', () => {
       expect(fragment.text).toBe('rocín flaco y galgo [...] Una olla de algo');
     });
 
+    it('typed [...] and the canonical [ … ] are the same card (same config hash → re-used share)', async () => {
+      await service.createOrReuseShare(mockFragment, mockBook, dto({ text: 'rocín flaco y galgo [...] Una olla de algo' }), 'user-1');
+      await service.createOrReuseShare(mockFragment, mockBook, dto({ text: 'rocín flaco y galgo […] Una olla de algo' }), 'user-1');
+      const [first, second] = mockShareRepo.findOneBy.mock.calls.map((c) => c[0].configHash);
+      expect(first).toBe(second);
+    });
+
     // S2 / C1 — unauthorized text overrides
     it('verifies the rendered text against the book source before rendering', async () => {
       await service.createOrReuseShare(mockFragment, mockBook, dto({ text: 'quote text' }), 'user-1');

@@ -71,9 +71,16 @@ export function normalizeTypography(s: string): string {
     .trim();
 }
 
-/** Renders typed "[...]" / "[ … ]" markers as the approved `[…]`. */
+/**
+ * Input vs display: readers may TYPE the ASCII form "[...]" (or "[ … ]",
+ * "[....]"), but the approved public form is `[…]`. Every marker the validator
+ * treats as an omission is rewritten here, and the sharing service applies this
+ * before verification, de-duplication, rendering and storage — so a card, a
+ * share snapshot and a share page only ever show `[…]`. The reader's stored
+ * fragment is never rewritten.
+ */
 export function canonicalizeOmissionMarkers(quote: string): string {
-  return quote.replace(/\[\s*(?:…|\.{3})\s*\]/g, OMISSION_MARKER);
+  return quote.replace(/\[\s*(?:…|\.{3,})\s*\]/g, OMISSION_MARKER);
 }
 
 export interface QuoteSpan {
