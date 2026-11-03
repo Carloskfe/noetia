@@ -1,7 +1,9 @@
 import base64
 import io
 import os
+import re
 import textwrap
+import urllib.parse
 import urllib.request
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
@@ -103,13 +105,62 @@ def _render_gradient(img: Image.Image, color1: tuple, color2: tuple, direction: 
             )
 
 
+# ── Background image sources (NEM-016 S12) ─────────────────────────────────────
+# The renderer must never fetch an arbitrary URL. Accepted sources:
+#   • data:image/{png,jpeg,webp};base64,…  (web presets and uploads)
+#   • http(s)://<host>/backgrounds/imagen-N.jpg  (the Noetia preset gallery,
+#     sent as an absolute URL by mobile)
+# If BG_IMAGE_ALLOWED_HOSTS (comma-separated) is set, the host must be listed.
+# The API validates the same rules first; this is defence in depth.
+_BG_DATA_URI_RE = re.compile(r'^data:image/(?:png|jpe?g|webp);base64,')
+_BG_PRESET_PATH_RE = re.compile(r'^/backgrounds/imagen-\d{1,2}\.jpg$')
+_BG_MAX_BYTES = 10 * 1024 * 1024
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D401
+        return None  # a redirect could point anywhere — refuse to follow it
+
+
+_BG_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
+def _allowed_bg_hosts() -> set:
+    raw = os.environ.get('BG_IMAGE_ALLOWED_HOSTS', '')
+    return {h.strip().lower() for h in raw.split(',') if h.strip()}
+
+
+def _validate_bg_url(bg_image: str) -> str:
+    """Return the URL if it is an allowed preset background, else raise ValueError."""
+    parts = urllib.parse.urlsplit(bg_image)
+    if parts.scheme not in ('http', 'https'):
+        raise ValueError('unsupported background scheme')
+    if parts.username or parts.password or parts.query or parts.fragment:
+        raise ValueError('unsupported background url')
+    if not _BG_PRESET_PATH_RE.match(parts.path or ''):
+        raise ValueError('background url is not a preset image')
+    allowed = _allowed_bg_hosts()
+    if allowed and (parts.hostname or '').lower() not in allowed:
+        raise ValueError('background host not allowed')
+    return bg_image
+
+
 def _load_bg_image(bg_image: str) -> Image.Image:
-    """Load a background from a data: URI or an http(s) URL as RGB."""
+    """Load a background from an inline image data URI or an allowed preset URL."""
     if bg_image.startswith('data:'):
+        if not _BG_DATA_URI_RE.match(bg_image):
+            raise ValueError('unsupported background data uri')
         _, data = bg_image.split(',', 1)
-        return Image.open(io.BytesIO(base64.b64decode(data))).convert('RGB')
-    with urllib.request.urlopen(bg_image, timeout=10) as resp:
-        return Image.open(resp).convert('RGB')
+        raw = base64.b64decode(data)
+        if len(raw) > _BG_MAX_BYTES:
+            raise ValueError('background image too large')
+        return Image.open(io.BytesIO(raw)).convert('RGB')
+    url = _validate_bg_url(bg_image)
+    with _BG_OPENER.open(url, timeout=10) as resp:
+        raw = resp.read(_BG_MAX_BYTES + 1)
+    if len(raw) > _BG_MAX_BYTES:
+        raise ValueError('background image too large')
+    return Image.open(io.BytesIO(raw)).convert('RGB')
 
 
 def _cover_scale(bg: Image.Image, card_w: int, card_h: int) -> Image.Image:

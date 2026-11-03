@@ -107,3 +107,101 @@ class TestLogoTargetHeight:
     def test_floors_at_the_minimum_height(self):
         # Very narrow cards clamp to the minimum so the mark stays legible.
         assert _logo_target_height(100) == _LOGO_MIN_H
+
+
+# ── Background image sources (NEM-016 S12) ────────────────────────────────────
+
+import pytest
+from unittest import mock
+
+from templates import base as base_mod
+
+
+class _FakeResp:
+    def __init__(self, data: bytes):
+        self._data = data
+
+    def read(self, n=-1):
+        return self._data if n < 0 else self._data[:n]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _png_bytes(color=(10, 200, 10)) -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", (4, 4), color).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+class TestLoadBgImage:
+    def test_accepts_inline_png_data_uri(self):
+        img = base_mod._load_bg_image(_png_data_uri((1, 2, 3)))
+        assert img.getpixel((0, 0)) == (1, 2, 3)
+
+    @pytest.mark.parametrize("uri", [
+        "data:text/html;base64,PGgxPg==",
+        "data:image/svg+xml;base64,PHN2Zz4=",
+    ])
+    def test_rejects_non_raster_data_uris(self, uri):
+        with pytest.raises(ValueError):
+            base_mod._load_bg_image(uri)
+
+    def test_rejects_oversized_data_uri(self, monkeypatch):
+        monkeypatch.setattr(base_mod, "_BG_MAX_BYTES", 10)
+        with pytest.raises(ValueError):
+            base_mod._load_bg_image(_png_data_uri())
+
+    @pytest.mark.parametrize("url", [
+        "file:///etc/passwd",
+        "ftp://noetia.app/backgrounds/imagen-1.jpg",
+        "http://api:4000/health",
+        "http://169.254.169.254/latest/meta-data/",
+        "https://noetia.app/backgrounds/../secret.jpg",
+        "https://noetia.app/backgrounds/imagen-1.jpg?x=1",
+        "https://user:pw@noetia.app/backgrounds/imagen-1.jpg",
+        "https://noetia.app/images/abc.png",
+    ])
+    def test_rejects_non_preset_urls_without_fetching(self, url):
+        with mock.patch.object(base_mod._BG_OPENER, "open") as opener:
+            with pytest.raises(ValueError):
+                base_mod._load_bg_image(url)
+            opener.assert_not_called()
+
+    def test_fetches_allowed_preset_url(self, monkeypatch):
+        monkeypatch.delenv("BG_IMAGE_ALLOWED_HOSTS", raising=False)
+        with mock.patch.object(base_mod._BG_OPENER, "open", return_value=_FakeResp(_png_bytes())) as opener:
+            img = base_mod._load_bg_image("https://noetia.app/backgrounds/imagen-3.jpg")
+        opener.assert_called_once()
+        assert img.getpixel((0, 0)) == (10, 200, 10)
+
+    def test_host_allowlist_enforced_when_configured(self, monkeypatch):
+        monkeypatch.setenv("BG_IMAGE_ALLOWED_HOSTS", "noetia.app, staging.noetia.app")
+        with mock.patch.object(base_mod._BG_OPENER, "open") as opener:
+            with pytest.raises(ValueError):
+                base_mod._load_bg_image("https://evil.example/backgrounds/imagen-1.jpg")
+            opener.assert_not_called()
+        with mock.patch.object(base_mod._BG_OPENER, "open", return_value=_FakeResp(_png_bytes())):
+            assert base_mod._load_bg_image("https://staging.noetia.app/backgrounds/imagen-1.jpg")
+
+    def test_rejects_oversized_download(self, monkeypatch):
+        monkeypatch.setattr(base_mod, "_BG_MAX_BYTES", 5)
+        with mock.patch.object(base_mod._BG_OPENER, "open", return_value=_FakeResp(_png_bytes())):
+            with pytest.raises(ValueError):
+                base_mod._load_bg_image("https://noetia.app/backgrounds/imagen-1.jpg")
+
+    def test_redirects_are_not_followed(self):
+        handler = base_mod._NoRedirect()
+        assert handler.redirect_request(None, None, 302, "Found", {}, "http://internal/") is None
+
+    def test_rejected_source_falls_back_to_default_card(self):
+        # The card still renders with the navy fallback — no fetch, no crash —
+        # identical to any other unloadable background.
+        with mock.patch.object(base_mod._BG_OPENER, "open") as opener:
+            rejected = _card(bg_type="image", bg_image="http://api:4000/internal")
+        opener.assert_not_called()
+        unloadable = _card(bg_type="image", bg_image="data:image/png;base64,AAAA")
+        assert rejected == unloadable
