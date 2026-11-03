@@ -20,6 +20,10 @@ would auto-deploy into a host directory that has no `.env.staging` and an enviro
 has validated. Activate and prove the environment manually first (§10), then arm auto-deploy
 last (§9). Rationale in [§9](#9-github-actions--arm-only-after-10-passes).
 
+## 2b. Dedicated Traefik network — `proxy_staging` (NEM-017)
+Before the first staging deploy, follow RUNBOOK § *Network isolation*: `docker network create proxy_staging` and
+`docker network connect proxy_staging traefik` (live, no restart). Staging never joins production's `proxy` network.
+
 ## 3. Create `.env.staging` on the host
 Copy `.env.staging.example` → `/opt/noetia-staging/.env.staging` and fill **staging-only** values (no production secrets). Includes: staging DB/JWT/MinIO/Meili credentials, `STAGING_BASICAUTH`, Stripe **test** keys, email safety, optional staging OAuth. **Never commit this file.**
 
