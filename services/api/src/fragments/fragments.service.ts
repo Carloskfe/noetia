@@ -60,10 +60,15 @@ export class FragmentsService {
   async remove(id: string, userId: string): Promise<void> {
     const fragment = await this.repo.findOneBy({ id });
     if (!fragment || fragment.userId !== userId) throw new ForbiddenException();
-    // Deleting a fragment withdraws its public shares (SA-001 D07, NEM-016).
-    // Combining fragments does not: the reader is merging, not withdrawing.
-    await this.shareLifecycle.revokeForFragment(id);
-    await this.repo.remove(fragment);
+    // Deleting a fragment withdraws its public shares (SA-001 D07, NEM-016):
+    // revocation, the image-deletion outbox rows and the delete commit together.
+    // Combining fragments does not revoke: the reader is merging, not withdrawing.
+    const imageKeys = await this.repo.manager.transaction(async (m) => {
+      const keys = await this.shareLifecycle.revokeForFragment(id, m);
+      await m.delete(Fragment, { id });
+      return keys;
+    });
+    await this.shareLifecycle.purgeImages(imageKeys);
   }
 
   async combine(userId: string, fragmentIds: string[]): Promise<Fragment> {
@@ -86,7 +91,9 @@ export class FragmentsService {
     const combined = this.repo.create({
       userId,
       bookId: validFragments[0].bookId,
-      text: validFragments.map((f) => f.text).join(' … '),
+      // `[…]` is the approved omission marker (SA-001 C1); the combined quote is
+      // verified against the book when it is shared.
+      text: validFragments.map((f) => f.text).join(' […] '),
     });
 
     const saved = await this.repo.save(combined);

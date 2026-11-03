@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { redisProvider } from '../auth/redis.provider';
 import { Share } from './share.entity';
+import { CardImageDeletion } from './card-image-deletion.entity';
 import { ShareLifecycleService } from './share-lifecycle.service';
 import { ShareRateLimiter } from './share-rate-limiter';
 
@@ -11,7 +12,7 @@ import { ShareRateLimiter } from './share-rate-limiter';
  * can import it without circular module imports.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([Share])],
+  imports: [TypeOrmModule.forFeature([Share, CardImageDeletion])],
   providers: [ShareLifecycleService, ShareRateLimiter, redisProvider],
   exports: [ShareLifecycleService, ShareRateLimiter],
 })

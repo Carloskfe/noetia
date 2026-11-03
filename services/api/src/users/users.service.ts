@@ -57,21 +57,28 @@ export class UsersService {
     const user = await this.repo.findOneBy({ id: userId });
     if (!user) return;
 
-    const manager = this.dataSource.manager;
+    // One transaction: a failure leaves the account (and its public shares)
+    // intact instead of half-deleted.
+    const imageKeys = await this.dataSource.transaction(async (manager) => {
+      // Delete data not covered by DB-level CASCADE on userId
+      await manager.query(`DELETE FROM "user_books" WHERE "userId" = $1`, [userId]);
+      await manager.query(`DELETE FROM "token_ledger" WHERE "userId" = $1`, [userId]);
+      await manager.query(`DELETE FROM "user_cause_preferences" WHERE "userId" = $1`, [userId]);
+      await manager.query(`DELETE FROM "courtesy_token_quotas" WHERE "creatorId" = $1`, [userId]);
+      await manager.query(`DELETE FROM "subscriptions" WHERE "userId" = $1`, [userId]);
+      await manager.query(`DELETE FROM "waitlist_entries" WHERE "email" = $1`, [user.email]);
+      // Public shares (NEM-016). Must run before the user row goes: fragments
+      // cascade with it and identify shares made of them. Card images are queued
+      // for deletion in this same transaction.
+      const keys = await this.shareLifecycle.deleteAllForUser(userId, manager);
 
-    // Delete data not covered by DB-level CASCADE on userId
-    await manager.query(`DELETE FROM "user_books" WHERE "userId" = $1`, [userId]);
-    await manager.query(`DELETE FROM "token_ledger" WHERE "userId" = $1`, [userId]);
-    await manager.query(`DELETE FROM "user_cause_preferences" WHERE "userId" = $1`, [userId]);
-    await manager.query(`DELETE FROM "courtesy_token_quotas" WHERE "creatorId" = $1`, [userId]);
-    await manager.query(`DELETE FROM "subscriptions" WHERE "userId" = $1`, [userId]);
-    await manager.query(`DELETE FROM "waitlist_entries" WHERE "email" = $1`, [user.email]);
-    // Public shares and their card images (NEM-016). Must run before the user
-    // row goes: fragments cascade with it and identify shares made of them.
-    await this.shareLifecycle.deleteAllForUser(userId, manager);
+      // Delete user — DB CASCADE covers: fragments, reading_progress
+      await manager.delete(User, userId);
+      return keys;
+    });
 
-    // Delete user — DB CASCADE covers: fragments, reading_progress
-    await this.repo.delete(userId);
+    // Remove the card images now; failures stay queued for the retry sweep.
+    await this.shareLifecycle.purgeImages(imageKeys);
 
     // Farewell email (best-effort — don't block deletion if it fails)
     if (user.email) {
