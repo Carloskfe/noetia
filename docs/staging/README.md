@@ -29,7 +29,8 @@ PRODUCTION (project: noetia, dir /opt/noetia, main)   STAGING (project: noetia_s
   db: postgres:16-alpine                                db: pgvector/pgvector:pg16   (staging only)
   Stripe LIVE                                           Stripe TEST
   network: noetia_noetia_net                            network: noetia_staging_noetia_staging_net
-  shared: external Traefik "proxy" network (distinct router names: noetia- vs noetia-staging-; hosts noetia.app vs staging.noetia.app)
+  Traefik network: "proxy" (production only)          Traefik network: "proxy_staging" (staging only)
+  Traefik is the only container attached to both; distinct router names (noetia- vs noetia-staging-), hosts noetia.app vs staging.noetia.app
 ```
 
 **Isolation guarantees (§5, §13, §40):**
@@ -38,6 +39,7 @@ PRODUCTION (project: noetia, dir /opt/noetia, main)   STAGING (project: noetia_s
 - **Separate host directory `/opt/noetia-staging`** on the `staging` branch — a staging `git pull` never disturbs production's `/opt/noetia` (on `main`).
 - **Separate deploy trigger.** `cd-staging.yml` runs on the `staging` branch/dispatch only; `cd.yml` (production) is unchanged and untouched.
 - **Separate secrets** via `.env.staging` (DB, JWT, MinIO, Stripe **test**, future AI). No production secret reuse.
+- **No shared container network with production (NEM-017 / S19).** Staging reaches Traefik through its own external network `proxy_staging`; only Traefik is attached to both `proxy` and `proxy_staging`. When staging shared `proxy`, Docker DNS let `api`/`web`/`storage` fall through to the *other* environment whenever a same-named service was down — in both directions. Verified by `infra/tests/network-isolation/run.sh`.
 
 ## Deployment
 See [RUNBOOK.md](RUNBOOK.md). In brief, on the host once prerequisites exist:

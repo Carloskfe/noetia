@@ -1,27 +1,35 @@
 # Staging deployment — permanent pre-production validation layer (NEM-006A).
 #
 # ISOLATION CONTRACT (see docs/staging/README.md):
-#   - Deploy ONLY with an explicit project name so nothing collides with prod:
-#       docker compose -p noetia-staging --env-file .env.staging -f docker-compose.staging.yml up -d
-#   - All named volumes are *-staging and belong to the noetia-staging project;
+#   - Deploy ONLY with the explicit project name noetia_staging (underscore — the
+#     container prefix noetia_staging-* never matches prod's noetia-* names):
+#       docker compose -p noetia_staging --env-file .env.staging -f docker-compose.staging.yml up -d
+#   - All named volumes are *-staging and belong to the noetia_staging project;
 #     production volumes (postgres_data, redis_data, minio_data, meilisearch_data)
 #     are NEVER referenced here.
-#   - Its own bridge network (noetia_staging_net). Shares only the external Traefik
-#     "proxy" network, with distinct router/service/middleware names (noetia-staging-*)
-#     and distinct Host rules (staging.noetia.app). It cannot touch prod routers.
+#   - Its own bridge network (noetia_staging_net) plus a DEDICATED external Traefik
+#     network, "proxy_staging" (NEM-017 / S19). Staging is never attached to prod's
+#     "proxy" network: on a shared network, Docker DNS let `api`/`web`/`storage`
+#     fall through to the other environment whenever a same-named service was down.
+#     Traefik joins both networks and reaches staging containers via the
+#     `traefik.docker.network=proxy_staging` label. Distinct router/service/
+#     middleware names (noetia-staging-*) and Host rules (staging.noetia.app).
 #   - db uses a pgvector-enabled PostgreSQL 16 image (staging only). Production
 #     PostgreSQL stays postgres:16-alpine and is NOT changed by this mission.
 #   - Behind Traefik HTTP basic-auth + noindex so it is not a public Noetia clone.
 #   - No monitoring stack (prod's Prometheus/Grafana/exporters are not duplicated);
-#     diagnose via `docker compose -p noetia-staging logs`.
+#     diagnose via `docker compose -p noetia_staging logs`.
 #
-# Requires: external "proxy" network (prod Traefik), and .env.staging on the host.
+# Requires: external "proxy_staging" network with the Traefik container attached
+# (docs/staging/RUNBOOK.md § Network isolation), and .env.staging on the host.
 
 networks:
   noetia_staging_net:
     driver: bridge
-  proxy:
+  # Dedicated Traefik network for staging (NEM-017). Never prod's "proxy".
+  proxy_staging:
     external: true
+    name: proxy_staging
 
 volumes:
   postgres_data_staging:
@@ -42,7 +50,7 @@ services:
     depends_on:
       db: { condition: service_healthy }
       cache: { condition: service_healthy }
-    networks: [noetia_staging_net, proxy]
+    networks: [noetia_staging_net, proxy_staging]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health"]
@@ -56,7 +64,7 @@ services:
         reservations: { memory: 128M }
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=proxy"
+      - "traefik.docker.network=proxy_staging"
       - "traefik.http.routers.noetia-staging-api.rule=Host(`staging.noetia.app`) && PathPrefix(`/api`)"
       - "traefik.http.routers.noetia-staging-api.entrypoints=websecure"
       - "traefik.http.routers.noetia-staging-api.tls.certresolver=letsencrypt"
@@ -89,7 +97,7 @@ services:
       HOSTNAME: "0.0.0.0"
       NEXT_PUBLIC_APP_ENV: staging   # drives the STAGING banner + noindex
     depends_on: [api]
-    networks: [noetia_staging_net, proxy]
+    networks: [noetia_staging_net, proxy_staging]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000"]
@@ -103,7 +111,7 @@ services:
         reservations: { memory: 128M }
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=proxy"
+      - "traefik.docker.network=proxy_staging"
       # Basic-auth gate (users list from .env.staging → STAGING_BASICAUTH, htpasswd
       # format). Defined here because the web router is its only consumer — keeping
       # it on the api service would make the gate vanish if api ever stopped.
@@ -221,7 +229,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks: [noetia_staging_net, proxy]
+    networks: [noetia_staging_net, proxy_staging]
     restart: unless-stopped
     deploy:
       resources:
@@ -233,7 +241,7 @@ services:
         reservations: { memory: 128M }
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=proxy"
+      - "traefik.docker.network=proxy_staging"
       - "traefik.http.routers.noetia-staging-storage.rule=Host(`storage.staging.noetia.app`)"
       - "traefik.http.routers.noetia-staging-storage.entrypoints=websecure"
       - "traefik.http.routers.noetia-staging-storage.tls.certresolver=letsencrypt"

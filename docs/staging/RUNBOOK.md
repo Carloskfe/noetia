@@ -7,6 +7,25 @@ Convenience alias (host):
 alias dcs='docker compose -p noetia_staging --env-file .env.staging -f docker-compose.staging.yml'
 ```
 
+## Network isolation (NEM-017) — one-time host setup, before the first staging deploy
+Staging must never join production's `proxy` network. Create its dedicated Traefik network and attach the
+**running** Traefik to it live — `docker network connect` does not restart Traefik and leaves production routes untouched:
+```bash
+docker network create proxy_staging
+docker network connect proxy_staging traefik
+docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' traefik   # expect: proxy proxy_staging
+```
+Persist the attachment in `/opt/traefik/docker-compose.yml` (add `proxy_staging` under the service's `networks` and as an
+external network — see `infra/server/traefik/docker-compose.yml`; edit with nano, never paste multi-line over SSH).
+**Do NOT run `docker compose up` in `/opt/traefik` for this** — the changed file makes Compose *recreate* Traefik (a brief
+outage for every site on the host). The file only takes effect at the next planned Traefik maintenance.
+
+Verify isolation after any staging deploy:
+```bash
+docker network inspect proxy -f '{{range .Containers}}{{.Name}} {{end}}'          # must list NO noetia_staging-* container
+docker network inspect proxy_staging -f '{{range .Containers}}{{.Name}} {{end}}'  # traefik + noetia_staging-{api,web,storage}
+```
+
 ## Deploy staging
 ```bash
 cd /opt/noetia-staging
