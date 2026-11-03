@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Readable } from 'stream';
 
@@ -53,11 +53,20 @@ export class StorageService {
   }
 
   async getText(key: string, bucket = 'books'): Promise<string> {
+    return (await this.getBuffer(bucket, key)).toString('utf-8');
+  }
+
+  /** Reads an object through the internal client (never over a public URL). */
+  async getBuffer(bucket: string, key: string): Promise<Buffer> {
     const res = await this.client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
     const stream = res.Body as Readable;
     const chunks: Buffer[] = [];
     for await (const chunk of stream) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    return Buffer.concat(chunks).toString('utf-8');
+    return Buffer.concat(chunks);
+  }
+
+  async delete(bucket: string, key: string): Promise<void> {
+    await this.client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
   }
 
   /** Returns a permanent public URL — requires the bucket to allow public reads (set in prod). */

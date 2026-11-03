@@ -218,7 +218,7 @@ export const CATALOGUE: CatalogueEntry[] = [
     narrativeStartPattern: 'PRIMERA PARTE',
     narrativeEndPattern: 'el que hemos querido ofrecer al lector, está terminado.',
     textPostProcess: (text: string) => {
-      let cleaned = text.replace(/\[Ilustración[^\[]*?\]/g, '');
+      let cleaned = text.replace(/\[Ilustración[^[]*?\]/g, '');
       cleaned = cleaned.replace(/^[ \t]+\[\d+\][^\n]*(\n[ \t]+\S[^\n]*)*\n?/gm, '');
       cleaned = cleaned.replace(/\[\d{1,3}\]/g, '');
       cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
@@ -248,7 +248,7 @@ export const CATALOGUE: CatalogueEntry[] = [
     narrativeEndPattern: 'FIN',
     textPostProcess: (text: string) => {
       // Remove [Ilustración ...] captions — not read aloud, may span multiple lines
-      let cleaned = text.replace(/\[Ilustración[^\[]*?\]/g, '');
+      let cleaned = text.replace(/\[Ilustración[^[]*?\]/g, '');
       // Remove verse line numbers at paragraph starts (Greek line refs, e.g. "1 Háblame")
       cleaned = cleaned.replace(/^\d{1,4} /gm, '');
       // Collapse blank lines left by removed content
@@ -272,7 +272,7 @@ export const CATALOGUE: CatalogueEntry[] = [
     narrativeEndPattern: 'por el Amor que mueve el Sol y las demás estrellas.',
     textPostProcess: (text: string) => {
       // Remove [Ilustración] captions — not read aloud (176 occurrences, one per canto)
-      let cleaned = text.replace(/\[Ilustración[^\[]*?\]/g, '');
+      let cleaned = text.replace(/\[Ilustración[^[]*?\]/g, '');
       // Remove translator's footnote definition blocks, e.g.:
       //   "       [220] Los ojos de la Virgen María."
       // (may wrap onto further indented lines before the next blank line)

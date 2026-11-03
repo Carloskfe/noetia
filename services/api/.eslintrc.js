@@ -1,2 +1,3 @@
 const base = require('../../.eslintrc.base.js');
-module.exports = { ...base, root: true };
+// Deployed migrations are immutable (see CLAUDE.md §Database Migrations), so they are not linted.
+module.exports = { ...base, root: true, ignorePatterns: ['src/migrations/**'] };

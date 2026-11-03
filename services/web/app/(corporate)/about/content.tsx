@@ -96,7 +96,7 @@ export default function AboutContent() {
               <>
                 <p>Existen plataformas para consumir contenido. Existen plataformas para crear contenido. No existía una plataforma donde el acto de leer produjera, directamente, expresión.</p>
                 <p>Eso es lo que construimos.</p>
-                <p>Cuando lees <em>Las Meditaciones</em> y resaltas "La impedimenta para la acción impulsa la acción", ese momento no debería desaparecer en un marcador olvidado. Debería vivir. Debería ser parte de cómo el mundo te conoce.</p>
+                <p>Cuando lees <em>Las Meditaciones</em> y resaltas &ldquo;La impedimenta para la acción impulsa la acción&rdquo;, ese momento no debería desaparecer en un marcador olvidado. Debería vivir. Debería ser parte de cómo el mundo te conoce.</p>
                 <p>Hay millones de personas que leen libros extraordinarios — y casi nadie en su entorno lo sabe. Hay ideas que cambian vidas muriendo en el subrayado de un libro que nadie más ve.</p>
                 <p>Noetia existe para cerrar esa brecha — entre lo que lees y lo que expresas. Entre quién eres intelectualmente y quién apareces siendo públicamente.</p>
               </>
@@ -105,7 +105,7 @@ export default function AboutContent() {
               <>
                 <p>Platforms exist to consume content. Platforms exist to create content. No platform existed where the act of reading directly produced expression.</p>
                 <p>That is what we built.</p>
-                <p>When you read <em>Meditations</em> and highlight "The impediment to action advances action," that moment should not disappear into a forgotten bookmark. It should live. It should be part of how the world knows you.</p>
+                <p>When you read <em>Meditations</em> and highlight &ldquo;The impediment to action advances action,&rdquo; that moment should not disappear into a forgotten bookmark. It should live. It should be part of how the world knows you.</p>
                 <p>There are millions of people reading extraordinary books — and almost no one in their circle knows it. There are ideas that change lives dying in the margin of a book no one else ever sees.</p>
                 <p>Noetia exists to close that gap — between what you read and what you express. Between who you are intellectually and who you appear to be publicly.</p>
               </>

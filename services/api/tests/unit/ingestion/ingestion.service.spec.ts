@@ -517,7 +517,7 @@ describe('IngestionService', () => {
       await service.ingestAllCovers();
 
       expect(global.fetch).not.toHaveBeenCalled();
-      expect(book.coverUrl).toBe('https://covers.openlibrary.org/b/id/12324628-L.jpg');
+      expect(book.coverUrl).toBe('/covers/biblia-reina-valera.png');
       expect(mockBookRepo.save).toHaveBeenCalledWith(book);
     });
   });

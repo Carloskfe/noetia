@@ -7,8 +7,6 @@ import { ClubDiscussion } from './club-discussion.entity';
 import { ClubMember } from './club-member.entity';
 import { ClubsService } from './clubs.service';
 
-const NEARBY_PHRASE_WINDOW = 50;
-
 @Injectable()
 export class ClubDiscussionsService {
   constructor(

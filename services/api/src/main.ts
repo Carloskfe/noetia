@@ -3,7 +3,6 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { SentryGlobalFilter } from '@sentry/nestjs/setup';
-import { APP_FILTER } from '@nestjs/core';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
@@ -28,6 +27,11 @@ async function bootstrap() {
   });
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  // Close the HTTP server + DB pool on SIGTERM so `docker stop` (every deploy)
+  // exits in ~1s instead of hitting the 10s kill timeout with /api unrouted.
+  // Requires `init: true` in docker-compose.server.yml. A clean stop exits 143
+  // (Nest re-raises SIGTERM after closing); 137 means it was SIGKILLed.
+  app.enableShutdownHooks();
   const port = process.env.API_PORT ?? 4000;
   await app.listen(port);
   console.log(`API running on port ${port}`);

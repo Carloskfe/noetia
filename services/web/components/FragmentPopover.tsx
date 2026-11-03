@@ -19,7 +19,7 @@ export default function FragmentPopover({ text, onSave, onCancel, dark = false }
       dark ? 'bg-gray-900 border border-gray-700 text-gray-100' : 'bg-white border border-gray-200',
     ].join(' ')}>
       <p className={['text-xs text-center italic leading-snug line-clamp-2', dark ? 'text-gray-300' : 'text-gray-500'].join(' ')}>
-        "{preview}"
+        &ldquo;{preview}&rdquo;
       </p>
       <div className="flex gap-2 w-full">
         <button

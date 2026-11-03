@@ -1,9 +1,10 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, IsNull, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Book, BookCategory } from './book.entity';
 import { CreateBookDto } from './dto/create-book.dto';
 import { HostingTier, HOSTING_TIER_LIMITS, User } from '../users/user.entity';
+import { qualityGateSql } from './book-eligibility';
 
 @Injectable()
 export class BooksService {
@@ -37,21 +38,8 @@ export class BooksService {
     // Using the join table rather than book.collection VARCHAR so the filter works
     // even when the VARCHAR field was never populated (e.g. books ingested after migrations).
     if (standalone) qb.andWhere('NOT EXISTS (SELECT 1 FROM book_collections bc WHERE bc."bookId" = book.id)');
-    // Quality gate: never surface a title we can't offer cleanly (incomplete /
-    // no audio / poor sync produces errors in front of the user). An INGESTED
-    // (free-library) book must have a Whisper sync map ≥ 90% coverage; if it was
-    // culled below the gate it stays hidden — being isFree=false is NOT a pass
-    // (that previously let culled books like Don Quijote leak into discovery).
-    // Only genuine AUTHOR/publisher uploads (uploadedById set) bypass the gate —
-    // authors manage their own quality through the admin flow.
-    qb.andWhere(`(
-      book."uploadedById" IS NOT NULL
-      OR EXISTS (
-        SELECT 1 FROM sync_maps sm
-        WHERE sm."bookId" = book.id
-          AND sm."syncCoverage" >= 0.90
-      )
-    )`);
+    // Quality gate — see book-eligibility.ts (shared with public sharing).
+    qb.andWhere(qualityGateSql('book'));
     if (limit && limit > 0) qb.take(limit);
     return qb.getMany();
   }

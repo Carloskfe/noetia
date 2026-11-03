@@ -28,6 +28,8 @@ services:
     build:
       context: ./services/api
       target: production
+    # tini as PID 1 forwards SIGTERM to node (PID 1 ignores signals it doesn't handle)
+    init: true
     env_file: .env.production
     environment:
       NODE_ENV: production
@@ -46,6 +48,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+      # Traefik only routes to healthy containers — probe every 5s while starting
+      # so a recreated container takes traffic in seconds, not after the first 30s interval.
+      start_interval: 5s
     deploy:
       resources:
         limits:
@@ -101,6 +106,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+      # Traefik only routes to healthy containers — probe every 5s while starting
+      # so a recreated container takes traffic in seconds, not after the first 30s interval.
+      start_interval: 5s
     deploy:
       resources:
         limits:

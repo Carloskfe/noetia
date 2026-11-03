@@ -1,6 +1,5 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { EmailConfirmedGuard } from '../auth/email-confirmed.guard';
 import { GiftsService } from './gifts.service';
 
 @Controller('gifts')

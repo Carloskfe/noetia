@@ -5,17 +5,21 @@ import { FragmentsService } from '../../../src/fragments/fragments.service';
 import { Fragment } from '../../../src/fragments/fragment.entity';
 import { FragmentTaggerService } from '../../../src/fragments/fragment-tagger.service';
 import { EventsService } from '../../../src/events/events.service';
+import { ShareLifecycleService } from '../../../src/sharing/share-lifecycle.service';
 
+const mockTx = { delete: jest.fn() };
 const mockRepo = () => ({
   create: jest.fn(),
   save: jest.fn(),
   find: jest.fn(),
   findOneBy: jest.fn(),
   remove: jest.fn(),
+  manager: { transaction: jest.fn(async (cb: (m: typeof mockTx) => unknown) => cb(mockTx)) },
 });
 
 const mockTagger = { tag: jest.fn() };
 const mockEvents = { emit: jest.fn() };
+const mockShareLifecycle = { revokeForFragment: jest.fn(), purgeImages: jest.fn() };
 
 const makeFragment = (overrides: Partial<Fragment> = {}): Fragment =>
   ({
@@ -39,6 +43,9 @@ describe('FragmentsService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     mockEvents.emit.mockResolvedValue(undefined);
+    mockShareLifecycle.revokeForFragment.mockResolvedValue([]);
+    mockShareLifecycle.purgeImages.mockResolvedValue(undefined);
+    mockTx.delete.mockReset().mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -46,6 +53,7 @@ describe('FragmentsService', () => {
         { provide: getRepositoryToken(Fragment), useFactory: mockRepo },
         { provide: FragmentTaggerService, useValue: mockTagger },
         { provide: EventsService, useValue: mockEvents },
+        { provide: ShareLifecycleService, useValue: mockShareLifecycle },
       ],
     }).compile();
 
@@ -182,20 +190,56 @@ describe('FragmentsService', () => {
   // ── remove ─────────────────────────────────────────────────────────────────
 
   describe('remove', () => {
-    it('removes fragment for owner', async () => {
-      const fragment = makeFragment();
-      repo.findOneBy.mockResolvedValue(fragment);
-      repo.remove.mockResolvedValue(undefined);
+    it('deletes the fragment for its owner inside a transaction', async () => {
+      repo.findOneBy.mockResolvedValue(makeFragment());
 
       await service.remove('frag-1', 'user-1');
 
-      expect(repo.remove).toHaveBeenCalledWith(fragment);
+      expect(repo.manager.transaction).toHaveBeenCalledTimes(1);
+      expect(mockTx.delete).toHaveBeenCalledWith(Fragment, { id: 'frag-1' });
+    });
+
+    it('revokes shares in the same transaction, then purges their images after commit', async () => {
+      const order: string[] = [];
+      repo.findOneBy.mockResolvedValue(makeFragment());
+      mockShareLifecycle.revokeForFragment.mockImplementation(async (_id: string, m: unknown) => {
+        expect(m).toBe(mockTx);
+        order.push('revoke');
+        return ['k1.png'];
+      });
+      mockTx.delete.mockImplementation(async () => { order.push('delete'); });
+      mockShareLifecycle.purgeImages.mockImplementation(async () => { order.push('purge'); });
+
+      await service.remove('frag-1', 'user-1');
+
+      expect(mockShareLifecycle.revokeForFragment).toHaveBeenCalledWith('frag-1', mockTx);
+      expect(mockShareLifecycle.purgeImages).toHaveBeenCalledWith(['k1.png']);
+      expect(order).toEqual(['revoke', 'delete', 'purge']);
+    });
+
+    it('rolls back (no delete, no purge) if share revocation fails', async () => {
+      repo.findOneBy.mockResolvedValue(makeFragment());
+      mockShareLifecycle.revokeForFragment.mockRejectedValue(new Error('db down'));
+
+      await expect(service.remove('frag-1', 'user-1')).rejects.toThrow('db down');
+      expect(mockTx.delete).not.toHaveBeenCalled();
+      expect(mockShareLifecycle.purgeImages).not.toHaveBeenCalled();
+    });
+
+    it('does not purge images if the fragment delete fails (revocation rolls back with it)', async () => {
+      repo.findOneBy.mockResolvedValue(makeFragment());
+      mockShareLifecycle.revokeForFragment.mockResolvedValue(['k1.png']);
+      mockTx.delete.mockRejectedValue(new Error('fk'));
+
+      await expect(service.remove('frag-1', 'user-1')).rejects.toThrow('fk');
+      expect(mockShareLifecycle.purgeImages).not.toHaveBeenCalled();
     });
 
     it('throws ForbiddenException for non-owner', async () => {
       repo.findOneBy.mockResolvedValue(makeFragment({ userId: 'other-user' }));
 
       await expect(service.remove('frag-1', 'user-1')).rejects.toThrow(ForbiddenException);
+      expect(mockShareLifecycle.revokeForFragment).not.toHaveBeenCalled();
     });
 
     it('throws ForbiddenException when fragment not found', async () => {
@@ -208,10 +252,10 @@ describe('FragmentsService', () => {
   // ── combine ────────────────────────────────────────────────────────────────
 
   describe('combine', () => {
-    it('combines two fragments by joining their texts with " … "', async () => {
+    it('combines two fragments by joining their texts with the approved " […] " omission marker', async () => {
       const frag1 = makeFragment({ id: 'f1', text: 'hello' });
       const frag2 = makeFragment({ id: 'f2', text: 'world' });
-      const combined = makeFragment({ id: 'f3', text: 'hello … world' });
+      const combined = makeFragment({ id: 'f3', text: 'hello […] world' });
 
       repo.findOneBy.mockResolvedValueOnce(frag1).mockResolvedValueOnce(frag2);
       repo.create.mockReturnValue(combined);
@@ -221,17 +265,17 @@ describe('FragmentsService', () => {
       const result = await service.combine('user-1', ['f1', 'f2']);
 
       expect(repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ text: 'hello … world' }),
+        expect.objectContaining({ text: 'hello […] world' }),
       );
       expect(repo.remove).toHaveBeenCalledWith([frag1, frag2]);
       expect(result).toEqual(combined);
     });
 
-    it('combines three fragments in order with " … " separators', async () => {
+    it('combines three fragments in order with " […] " separators', async () => {
       const frag1 = makeFragment({ id: 'f1', text: 'first' });
       const frag2 = makeFragment({ id: 'f2', text: 'second' });
       const frag3 = makeFragment({ id: 'f3', text: 'third' });
-      const combined = makeFragment({ id: 'f4', text: 'first … second … third' });
+      const combined = makeFragment({ id: 'f4', text: 'first […] second […] third' });
 
       repo.findOneBy
         .mockResolvedValueOnce(frag1)
@@ -244,14 +288,14 @@ describe('FragmentsService', () => {
       await service.combine('user-1', ['f1', 'f2', 'f3']);
 
       expect(repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ text: 'first … second … third' }),
+        expect.objectContaining({ text: 'first […] second […] third' }),
       );
     });
 
     it('does not include phrase indices in the combined fragment', async () => {
       const frag1 = makeFragment({ id: 'f1', text: 'hello' });
       const frag2 = makeFragment({ id: 'f2', text: 'world' });
-      const combined = makeFragment({ id: 'f3', text: 'hello … world' });
+      const combined = makeFragment({ id: 'f3', text: 'hello […] world' });
 
       repo.findOneBy.mockResolvedValueOnce(frag1).mockResolvedValueOnce(frag2);
       repo.create.mockReturnValue(combined);
