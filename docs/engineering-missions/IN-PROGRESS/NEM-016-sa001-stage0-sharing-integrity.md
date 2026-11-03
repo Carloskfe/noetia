@@ -1,7 +1,7 @@
 # NOETIA ENGINEERING MISSION — NEM-016
 ## SA-001 Stage 0: sharing security and integrity corrections
 
-**Status:** IN PROGRESS → awaiting REVIEW. Rev 2 (independent-review follow-up) is complete; Draft PR #25 is open and not merged.
+**Status:** IN PROGRESS → awaiting REVIEW. Rev 3 (pre-merge verification) is complete. Recommendation: **READY FOR STAGING**; merge blocked. Draft PR #25 is open and not merged.
 **Mission type:** REMEDIATION
 **Implementation authorization:** FULL-WITHIN-SCOPE (implementation, tests, Draft PR)
 **Schema changes:** ADDITIVE ONLY (migration 068: three nullable columns, two indexes, one outbox table; never deployed)
@@ -120,6 +120,13 @@ The report linked above.
 - the 068 readiness assessment
 - the read-only legacy audit tool
 - new finding S18
+
+**Rev 3 (2026-11-02):** the PO authorized "Code cleanup, testing, staging preparation, and read-only legacy-share audit". Report §14 covers:
+- removing the dead image-gen code, with static checks
+- `[…]` canonicalization of every accepted marker form
+- the portable read-only audit; the production audit was **not run** (no read-only access) and the exact procedure is documented
+- the staging checklist, with data-impact flags
+- the deployment-sequencing assessment, recommending migrate-first
 
 ## 19. Product Architecture review
 Pending. Verdict: —

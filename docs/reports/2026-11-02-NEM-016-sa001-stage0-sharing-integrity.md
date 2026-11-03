@@ -8,6 +8,7 @@
 |---|---|---|
 | 1 | 2026-11-02 | Stage 0 implementation (S1, S2/C1, S3/G9, S8/S15, S12, S13, S14, G8, G10) |
 | 2 | 2026-11-02 | **Independent-review follow-up (§13):** fail-closed renderer host validation with DNS and IP pinning; validator reconciled with the C1 policy; transactional lifecycle with an image-deletion outbox and retry sweep; migration 068 readiness assessment; read-only legacy-share audit tool; new finding S18 |
+| 3 | 2026-11-02 | **Pre-merge verification (§14):** removed dead code left in image-gen by rev 2, with static checks that catch it; canonicalized every accepted omission-marker form; made the read-only audit portable; production audit **not run** (no read-only access); staging checklist; deployment-sequencing assessment. **Recommendation: READY FOR STAGING** (§14.6). |
 
 ## 1. Mission and objective
 
@@ -24,7 +25,7 @@ Mission record: `docs/engineering-missions/IN-PROGRESS/NEM-016-sa001-stage0-shar
 - **Date:** 2026-11-02 (rev 2)
 - **Branch:** `fix/nem-016-sa001-stage0-sharing-integrity`, from `origin/main` `6a5e5c0`
 - **Status:** Draft PR #25, awaiting Product Architecture review and PO decisions
-- **Merge readiness:** see §12
+- **Rev 3 recommendation:** **READY FOR STAGING.** Merge stays blocked (§14.6).
 
 ## 3. Scope and exclusions
 
@@ -225,6 +226,8 @@ See §13.4 for the full production-readiness assessment.
 
 ## 12. Merge-readiness recommendation and next action
 
+> **Superseded by §14.6 (rev 3): READY FOR STAGING.** The gating steps below still apply. Step 1 couldn't be executed (§14.3).
+
 **Code and tests:** ready for Product Architecture review.
 
 **Not recommended to merge yet.** Merge after three gating steps:
@@ -399,3 +402,214 @@ Validated locally against the dev DB (0 shares).
 ### 13.7 Outstanding workflow item: pending preview prompt
 
 **Preserved, not addressed in this follow-up.** This is the planned publish-preview prompt: before publishing a quote with omissions, show the reader the omitted text and ask them to confirm. It's part of the Stage 3 source-range editor (§5.10, item 3) and remains an open item for PO scheduling.
+
+---
+
+## 14. Pre-merge verification (rev 3)
+
+Authorization: code clean-up, testing, staging preparation and the read-only legacy-share audit. No merge, deployment, production migration, data change or irreversible clean-up was performed.
+
+### 14.1 Clean-up: dead code in image-gen (CONFIRMED and removed)
+
+**Finding (confirmed).** Rev 2 left the old `urllib` fetch block after the new `return` in `_load_bg_image()` (`templates/base.py:230-235` at `2a9717e`).
+- It was unreachable, so behaviour was unaffected.
+- It referenced the removed `_BG_OPENER`, a latent `NameError` if it were ever reached.
+- Cause: the rev 2 rewrite matched the wrong `return` line.
+
+**Correction (commit `833afe6`):**
+- Removed the 6 dead lines; no other code changed. The fail-closed validation (`_validate_bg_url`, `_resolve_pinned_ip`, pinned connections, `_fetch_preset`) is untouched.
+- Added static regression tests, which **fail on the previous version** (verified) and pass now:
+  - no statement after `return` or `raise` in any function
+  - no undefined names in the module
+  - no `urllib`/`urlopen` fetch path
+
+**Verification:** image-gen **264 / 264 pass, 94.6% coverage.** That includes:
+- all 18 Noetia presets rendering through the pinned fetch
+- the 17 rejected URLs
+- the 10 non-public resolutions
+- rebinding, redirect, size and empty-allowlist cases
+
+**Rev 3 test totals:**
+
+| Suite | Result |
+|---|---|
+| API | **77 suites, 1111 / 1111** (adds marker-canonicalization and audit-connection tests) |
+| image-gen | **264 / 264** |
+| Web | 304 / 304 (no web changes in rev 3) |
+| Mobile | 188 / 188 (no mobile changes in rev 3; last run at rev 2) |
+
+`tsc` and `eslint src/sharing` are clean, and every rev 3 commit typechecks.
+
+### 14.2 `[...]` vs `[…]`: input vs display (confirmed; one inconsistency fixed)
+
+| Aspect | Behaviour |
+|---|---|
+| **Input** | Readers may type `[...]` (or `[ … ]`, `[....]`) in the fragment or card text |
+| **Display and storage** | `sharing.service.ts` canonicalizes to `[…]` **before** verification (`:110`), the de-duplication hash (`:114`), rendering (`:119`) and the share snapshot (`:125`). The public page and OG data read the snapshot (`:168`). So cards, snapshots and share pages only ever show `[…]`. |
+| **Reader content** | The stored fragment is never rewritten (tested) |
+| **Fixed (commit `91012ad`)** | The validator treated `[....]` (4 or more dots) as a marker, but the canonicalizer only rewrote exactly three dots, so such a card would have rendered `[....]`. Both now use the same rule. Tests check that every accepted marker form canonicalizes and keeps the same verdict and spans, and that `[...]` and `[…]` produce the **same** share. |
+| Not markers | `(...)` and a bare `...` are left as typed, and are only valid where the author wrote them |
+| Traceability | `quoteProvenance` (source kind, source hash, spans) is computed on the canonical text and stored with each new share |
+| Visual customization | Unchanged: fonts, colours, backgrounds, alignment, size, bold and italic |
+| Known limit (Stage 0 boundary) | The web and mobile **editor preview** shows the text as typed (`[...]`); the rendered card shows `[…]`. Aligning the preview is part of the Stage 3 editor (§5.10). |
+
+### 14.3 Read-only legacy-share audit: NOT RUN (access limitation)
+
+**Limitation.** This environment has **no read-only production credential**.
+- The only production path is the operator's administrative root SSH access to the host. That's broader than the read-only access authorized, and production queries were excluded by an earlier standing instruction.
+- No new credential was sought and no access control was bypassed.
+- The audit tool isn't in the production image yet, because this branch isn't deployed.
+
+**Preparation done (commit `a46fe69`).**
+- The audit is now **portable**: the pure C1 rules live in `sharing/quote-integrity.ts` (no Nest/TypeORM), and the CLI builds its own entity-less connection.
+- It needs only **5 compiled files** plus the production image's existing `node_modules` (all of them listed under `dependencies`).
+- Rehearsed locally: the 5 files were copied outside the repo and run with `NODE_PATH` against the dev DB, read-only. It completed (0 shares locally).
+
+**Exact procedure (operator, after explicit PO authorization).** Every command is a single line, per the `CLAUDE.md` SSH rule.
+
+*On a workstation, at branch head:*
+1. `cd services/api && npx tsc -p tsconfig.json --outDir /tmp/nem016-build`
+2. `mkdir -p /tmp/nem016-audit/sharing /tmp/nem016-audit/books /tmp/nem016-audit/storage && for f in sharing/audit-legacy-shares sharing/legacy-share-audit sharing/quote-integrity books/book-eligibility storage/storage.service; do cp /tmp/nem016-build/$f.js /tmp/nem016-audit/$f.js; done && tar -C /tmp -czf /tmp/nem016-audit.tgz nem016-audit && sha256sum /tmp/nem016-audit.tgz`
+3. `scp -P 222 /tmp/nem016-audit.tgz root@84.247.140.175:/root/`
+
+*On the production host:*
+
+4. `sha256sum /root/nem016-audit.tgz` (must match step 2)
+5. `docker cp /root/nem016-audit.tgz noetia-api-1:/tmp/ && docker exec noetia-api-1 tar -C /tmp -xzf /tmp/nem016-audit.tgz`
+6. `docker exec -e DB_HOST=db -e NODE_PATH=/app/node_modules noetia-api-1 node /tmp/nem016-audit/sharing/audit-legacy-shares.js > /root/nem016-audit-$(date +%F).json`
+7. `docker exec noetia-api-1 rm -rf /tmp/nem016-audit /tmp/nem016-audit.tgz && rm /root/nem016-audit.tgz`
+
+*Back on the workstation:*
+
+8. Copy `/root/nem016-audit-<date>.json` off the host, then delete it there. **Don't commit it.**
+
+**Safety notes:**
+- Every query runs in `START TRANSACTION READ ONLY`, which Postgres enforces by rejecting writes, with a 60-second statement timeout, and ends in `ROLLBACK`.
+- The output is share ids and counts only.
+- The copied files live in the container's `/tmp` and disappear with the next container recreation. No application files or data change.
+
+**SQL-only alternative for checks A, C and D** (no code copy; production is pre-068, so every share counts as live). Each line runs in one `psql` session inside a read-only transaction:
+- Live shares: `docker exec -i noetia-db-1 psql -U noetia -d noetia -v ON_ERROR_STOP=1 -c "BEGIN TRANSACTION READ ONLY" -c "SELECT COUNT(*) AS live_shares FROM shares" -c "ROLLBACK"`
+- A, cross-user: `docker exec -i noetia-db-1 psql -U noetia -d noetia -v ON_ERROR_STOP=1 -c "BEGIN TRANSACTION READ ONLY" -c "SELECT s.id FROM shares s JOIN fragments f ON f.id = s.\"fragmentId\" WHERE s.\"createdById\" IS DISTINCT FROM f.\"userId\"" -c "ROLLBACK"`
+- A (info), source fragment gone: `docker exec -i noetia-db-1 psql -U noetia -d noetia -v ON_ERROR_STOP=1 -c "BEGIN TRANSACTION READ ONLY" -c "SELECT s.id FROM shares s WHERE s.\"fragmentId\" IS NULL OR NOT EXISTS (SELECT 1 FROM fragments f WHERE f.id = s.\"fragmentId\")" -c "ROLLBACK"`
+- C, orphan creator: `docker exec -i noetia-db-1 psql -U noetia -d noetia -v ON_ERROR_STOP=1 -c "BEGIN TRANSACTION READ ONLY" -c "SELECT s.id FROM shares s WHERE s.\"createdById\" IS NULL OR NOT EXISTS (SELECT 1 FROM users u WHERE u.id = s.\"createdById\")" -c "ROLLBACK"`
+- D, ineligible book: `docker exec -i noetia-db-1 psql -U noetia -d noetia -v ON_ERROR_STOP=1 -c "BEGIN TRANSACTION READ ONLY" -c "SELECT s.id FROM shares s WHERE NOT EXISTS (SELECT 1 FROM books b WHERE b.id = s.\"bookId\" AND b.\"isPublished\" = true AND (b.\"uploadedById\" IS NOT NULL OR EXISTS (SELECT 1 FROM sync_maps sm WHERE sm.\"bookId\" = b.id AND sm.\"syncCoverage\" >= 0.90)))" -c "ROLLBACK"`
+- These five commands were run **verbatim** against the local dev DB: each opened `BEGIN`, returned its rows, and ended in `ROLLBACK`.
+- **B, unfaithful quotes:** needs the C1 validator, so use the portable tool above. Quote text must not be exported for manual review.
+
+**Optional future improvement** (production change, separately authorized): a dedicated `SELECT`-only database role for audits, so read-only checks no longer need root access.
+
+### 14.4 Staging verification checklist
+
+**Staging facts that shape the plan** [V memory and NEM-006A branch]:
+1. **Deploy assets.** `docker-compose.staging.yml` and `cd-staging.yml` exist only on the unmerged `nem-006a-staging` branch.
+   - Staging runs from `/opt/noetia-staging` (compose project `noetia_staging`) and is deployed manually.
+   - **Never push to a `staging` branch** for this: that would arm auto-deploy, which the PO has held back.
+   - A staging candidate = this branch plus the staging compose file, checked out in `/opt/noetia-staging`.
+2. **Quality gate.** Staging `sync_maps` are empty placeholders, so every ingested staging book **fails the 90% quality gate** and sharing returns `book_not_shareable`. Verification needs an **eligible test book**, e.g. an author-uploaded test title (`uploadedById` set). That's a persistent data change.
+3. **Migration counts.** Staging's migration count must equal production's before deploying.
+4. **Basic auth.** Staging is behind basic auth, so presets requested with a `staging.noetia.app` URL render the navy fallback. Test presets with `https://noetia.app/backgrounds/...`, which is public.
+5. **E-mail.** Account deletion sends a farewell e-mail. Confirm the staging e-mail safety setting first (`EXTERNAL-ACTIONS.md` §7).
+
+**Legend:**
+- **[RO]** reads only
+- **[W-DB]** writes staging database rows
+- **[W-S3]** writes or deletes staging MinIO objects
+- **[W-SCHEMA]** changes the staging schema
+- **[EXT]** may send an e-mail or call an external service
+
+**Everything marked W or EXT needs separate staging-execution approval.**
+
+| # | Area | Step | Expected | Data impact |
+|---|---|---|---|---|
+| 0.1 | Pre-flight | `pg_dump` of the staging DB to the host (restore point) | dump file created | [RO] on DB |
+| 0.2 | Pre-flight | Compare `SELECT COUNT(*) FROM migrations` on staging and production | equal | [RO] |
+| 0.3 | Pre-flight | Confirm the compose project and directory are staging (`noetia_staging`, `/opt/noetia-staging`) | yes | [RO] |
+| 1.1 | Migration 068 | Deploy the candidate to staging; `migration:run:prod` | 068 applied; `shares` has 3 new columns; `card_image_deletions` exists; both indexes exist | [W-SCHEMA] |
+| 1.2 | Migration 068 | Time the window between api-healthy and migration-done | recorded (input to §14.5) | [RO] |
+| 1.3 | Rollback guard | **Do not run `down` on staging** unless separately approved. Its guard is proven on local PG16. | — | [W-SCHEMA] if run |
+| 2.1 | Eligible book | Create or upload one author test title | `GET /books` lists it | [W-DB] [W-S3] |
+| 2.2 | Auth and ownership | Users A and B (test accounts); A saves a fragment | fragment created | [W-DB] [EXT] for confirmation e-mails |
+| 2.3 | Auth and ownership | B calls `POST /fragments/<A's id>/share` | **404**; no share row; no image | [RO] (refused) |
+| 2.4 | Eligibility | A shares a fragment of an ingested (ineligible) book | **422** `book_not_shareable` | [RO] (refused) |
+| 3.1 | Quotation integrity | A shares a verbatim and a shortened excerpt | 200; card text matches; `quoteProvenance` stored | [W-DB] [W-S3] |
+| 3.2 | Quotation integrity | Edited word / added "?" / paraphrase | **422** `quote_not_in_source`; correct UI message | [RO] (refused) |
+| 3.3 | Omissions | `A [...] B` (in order, ≥ 3 words each) | 200; card and snapshot show `[…]` | [W-DB] [W-S3] |
+| 3.4 | Omissions | Bare `…` as an omission; omission dropping "not"/"no"; out of order | **422** with `omission_marker_required` / `omission_may_distort` / `not_in_source`; specific UI messages | [RO] (refused) |
+| 4.1 | Rendering and URLs | Web: preset (data URI) and upload backgrounds | card renders with the chosen background and the unchanged watermark | [W-DB] [W-S3] |
+| 4.2 | Rendering and URLs | API call with `bgImage=https://noetia.app/backgrounds/imagen-7.jpg` | renders the preset (image-gen DNS and pinned fetch) | [W-DB] [W-S3] |
+| 4.3 | Rendering and URLs | `bgImage` = `http://noetia.app/...`, an internal host, a metadata IP, or a non-preset path | **400** `unsupported_background_image`; no image-gen fetch (check logs) | [RO] (refused) |
+| 5.1 | Share reuse | Repeat Download, Copy and Publish on the same card | same `/s/<id>`; `shareCount` +1 only once | [W-DB] once |
+| 5.2 | Revocation | `DELETE /shares/<id>` as A; then as B on A's share | A: 204; page 404; image URL 404; outbox empty. B: 404. | [W-DB] [W-S3] |
+| 6.1 | Outbox retry | Pause staging MinIO; revoke a share; resume; wait for the next 10-minute sweep | outbox row while paused (attempts > 0, `lastError` = class); deleted after the sweep | [W-DB] [W-S3]; **briefly disrupts staging storage** |
+| 7.1 | Fragment deletion | A deletes a shared fragment | fragment gone; its shares revoked; images deleted | [W-DB] [W-S3] |
+| 7.2 | Account deletion | Delete test account B (which has shares) | user, fragments and shares gone; images deleted; farewell e-mail goes to the staging sink | [W-DB] [W-S3] [EXT] |
+| 8.1 | Mobile | Staging-pointed app build (Expo Go or a dev build): share a card | "Open image" opens the PNG; the Android share includes the `/s/` link; iOS passes `url` | [W-DB] [W-S3] |
+| 9.1 | Reader content preserved | Before and after deploy, count `fragments` and compare a sample fragment's text and note | unchanged; edited fragments not rewritten | [RO] |
+| 9.2 | Reader content preserved | Reader smoke test: open book, scroll, save fragment, add note | works | [W-DB] |
+| 10.1 | Legacy audit rehearsal | Run the portable audit (§14.3) on staging | report produced; DB unchanged | [RO] |
+| 10.2 | Clean-up | Test rows and objects remain unless the PO approves deleting them | — | [W-DB] [W-S3] if approved |
+
+### 14.5 Deployment sequencing and safety
+
+**Current sequence** [V `.github/workflows/cd.yml:41-50`]:
+1. build images
+2. `up -d --remove-orphans --wait` (the new containers serve)
+3. `migration:run:prod`
+
+**Can the new version run before 068 completes? No, not fully.** TypeORM selects every mapped column, and the new code maps `revokedAt`, `configHash` and `quoteProvenance` and writes `card_image_deletions`. Until 068 is applied:
+
+| Feature | Behaviour before 068 |
+|---|---|
+| Share create, public share page (`/s/` shows "not found"), revoke, social publish | Error (500 / not found) |
+| Fragment deletion (when the fragment has shares) | Fails, and the transaction rolls back (fail-closed) |
+| Account deletion (when the user has shares) | Fails, and the transaction rolls back (fail-closed) |
+| Outbox sweep | Logs a warning every 10 minutes |
+| Reading, library, auth, billing | Unaffected |
+
+The window lasts from container health to migration completion: seconds normally, but **indefinitely if the migration fails**.
+
+**The reverse direction is safe: the current production code is forward-compatible with 068** [V]. Its `Share` entity maps none of the new columns, there's no raw SQL or `SELECT *` on `shares`, and its inserts omit nullable columns.
+
+**Safer sequence (proposed; a CD change, so it needs a NEM mission, e.g. folded into NEM-010):**
+1. build images
+2. **migrate first**, using the *new* api image as a one-off container: `docker compose --env-file .env.production -f docker-compose.server.yml run --rm --no-deps -e DB_HOST=db api npm run migration:run:prod`
+3. `up -d --remove-orphans --wait`
+4. if step 2 fails, stop: the old version keeps serving, unaffected
+
+This requires every migration to stay **expand-only** (backward-compatible with the running version), which 068 is.
+
+**Options for this release:**
+
+| Option | Description | Assessment |
+|---|---|---|
+| A | Change CD to migrate-first (NEM mission), then merge | **Recommended.** No error window; failures leave production untouched. |
+| B | Merge with the current CD, in a quiet window | Acceptable only with PO risk acceptance. A window of seconds, fail-closed; current traffic is very low. If the migration fails: re-run it, or redeploy the previous commit, which is safe because nothing can be revoked yet. |
+| C | Apply 068 by hand before merging | Not recommended: a manual production migration outside CD, and the image isn't on the host |
+
+### 14.6 Outstanding risks, decisions and final recommendation
+
+**Risks:**
+- legacy shares stay public until the audit runs and the PO decides
+- the pre-068 window under the current CD (§14.5)
+- the code-only rollback rule (§13.4)
+- stricter C1 rules may refuse some genuine quotes
+- staging can't verify sharing without an eligible test book (§14.4)
+- the editor preview shows `[...]` as typed (§14.2)
+- S16, S17 and S18 are still open
+
+**PO decisions:**
+1. Authorize the production audit (portable tool or SQL-only) and who runs it.
+2. Approve staging execution of the §14.4 steps marked W or EXT, including the eligible test book.
+3. Deployment: Option A (CD change first) or Option B (accept the window).
+4. Earlier open items: §10 items 2–8.
+
+**FINAL RECOMMENDATION: READY FOR STAGING.** The code is clean, every suite passes, and the security and integrity corrections are complete within Stage 0.
+- **Merge stays blocked** until:
+  - (1) the authorized audit has run
+  - (2) staging execution passes §14.4
+  - (3) the PO chooses a deployment option (§14.5)
+- **No further code correction is required** for staging.
+
+**Outstanding workflow item:** the **pending preview prompt** is still preserved as a separate item (§13.7), not addressed here.
+
