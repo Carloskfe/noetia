@@ -1,0 +1,164 @@
+# PostHog self-hosted analytics stack — Contabo VPS
+#
+# Runs as a SEPARATE compose stack from docker-compose.server.yml.
+# Deploy from /opt/autoguildx/:
+#
+#   docker compose --env-file .env.production -f docker-compose.analytics.yml up -d
+#
+# First-time setup:
+#   1. Add POSTHOG_SECRET_KEY (random 32+ char string) to .env.production
+#   2. Add POSTHOG_POSTGRES_PASSWORD (random password) to .env.production
+#   3. Ensure DNS A record: analytics.autoguildx.com → 84.247.140.175
+#   4. Run: docker compose -f docker-compose.analytics.yml up -d
+#   5. PostHog will be live at https://analytics.autoguildx.com
+#
+# Resource budget: ~4 GB RAM, 2 vCPU (well within server headroom)
+#
+# After deploy — copy the Project API Key from PostHog UI:
+#   https://analytics.autoguildx.com/project/settings → Project API Key
+# Then add to .env.production:
+#   POSTHOG_KEY=phc_...
+#   POSTHOG_HOST=https://analytics.autoguildx.com
+# And to web Dockerfile build args / .env.production:
+#   NEXT_PUBLIC_POSTHOG_KEY=phc_...
+#   NEXT_PUBLIC_POSTHOG_HOST=https://analytics.autoguildx.com
+
+networks:
+  analytics_net:
+    driver: bridge
+  proxy:
+    external: true
+
+volumes:
+  posthog_postgres_data:
+  posthog_clickhouse_data:
+  posthog_redis_data:
+  posthog_zookeeper_data:
+  posthog_zookeeper_log:
+
+services:
+
+  # ─── PostHog web + worker ─────────────────────────────────────────────────
+  posthog:
+    image: posthog/posthog-foss:latest
+    depends_on:
+      posthog_db:
+        condition: service_healthy
+      posthog_clickhouse:
+        condition: service_started
+      posthog_redis:
+        condition: service_started
+    environment:
+      SECRET_KEY: ${POSTHOG_SECRET_KEY:?POSTHOG_SECRET_KEY required}
+      DATABASE_URL: postgres://posthog:${POSTHOG_POSTGRES_PASSWORD:?required}@posthog_db:5432/posthog
+      CLICKHOUSE_HOST: posthog_clickhouse
+      CLICKHOUSE_DATABASE: posthog
+      CLICKHOUSE_SECURE: "false"
+      CLICKHOUSE_REPLICATION: "false"
+      CLICKHOUSE_CLUSTER: ""
+      REDIS_URL: redis://posthog_redis:6379
+      DISABLE_SECURE_SSL_REDIRECT: "1"
+      IS_BEHIND_PROXY: "1"
+      SITE_URL: https://analytics.autoguildx.com
+      ALLOWED_IP_BLOCKS: ""
+      OBJECT_STORAGE_ENABLED: "false"
+      WEB_CONCURRENCY: "2"
+      SKIP_SERVICE_VERSION_REQUIREMENTS: "1"
+      TRUSTED_PROXIES: "default"
+    networks:
+      - analytics_net
+      - proxy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 2G
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.posthog.rule=Host(`analytics.autoguildx.com`)"
+      - "traefik.http.routers.posthog.entrypoints=websecure"
+      - "traefik.http.routers.posthog.tls.certresolver=letsencrypt"
+      - "traefik.http.services.posthog.loadbalancer.server.port=8000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── Postgres (PostHog metadata — separate from app DB) ───────────────────
+  posthog_db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: posthog
+      POSTGRES_USER: posthog
+      POSTGRES_PASSWORD: ${POSTHOG_POSTGRES_PASSWORD:?required}
+    volumes:
+      - posthog_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U posthog"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - analytics_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # ─── ClickHouse (event storage) ───────────────────────────────────────────
+  posthog_clickhouse:
+    image: clickhouse/clickhouse-server:23.12-alpine
+    volumes:
+      - posthog_clickhouse_data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: posthog
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    networks:
+      - analytics_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── Redis (PostHog queues — separate from any app Redis) ─────────────────
+  posthog_redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - posthog_redis_data:/data
+    networks:
+      - analytics_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 320M
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
