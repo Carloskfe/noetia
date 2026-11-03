@@ -15,7 +15,13 @@ services:
       - ./acme.json:/acme.json
     networks:
       - proxy
+      # Staging's dedicated Traefik network (NEM-017 / S19). Created with
+      # `docker network create proxy_staging`; attach a running Traefik with
+      # `docker network connect proxy_staging traefik` (no restart needed).
+      - proxy_staging
 
 networks:
   proxy:
+    external: true
+  proxy_staging:
     external: true
