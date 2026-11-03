@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import {
   Injectable,
   ServiceUnavailableException,
@@ -10,109 +11,229 @@ import { SyncMap } from '../books/sync-map.entity';
 import { StorageService } from '../storage/storage.service';
 
 /**
- * Omission markers a reader may use between retained passages: "[…]", "[...]",
- * "(…)", "(...)", "…" and "..." (the fragment combine feature joins with " … ").
+ * SA-001 C1 quotation-integrity policy — Stage 0 guardrail (NEM-016).
+ *
+ * - The author's wording is preserved: words, their order, punctuation and
+ *   capitalization must match the book. Only typographic equivalents are
+ *   folded (quote/dash styles, "..." vs "…", spacing, soft hyphens).
+ * - Continuous excerpts and shortening are allowed. At each passage edge the
+ *   reader may drop or add wrapping quotation marks / truncation "…", add a
+ *   closing ".", and change the case of the first letter.
+ * - Internal omissions must be marked with the approved marker `[…]` (typed
+ *   "[...]" is accepted and rendered as `[…]`). A bare "…" is NOT an omission
+ *   marker — it is only valid where the author wrote it.
+ * - Every retained passage must be traceable: verbatim, in source order, non
+ *   overlapping, at least MIN_WORDS_PER_OMISSION_SEGMENT words when omissions
+ *   are used, and the positions found are returned as provenance.
+ * - Meaning safeguards that can be checked mechanically: an omission may not
+ *   span more than MAX_OMISSION_GAP_CHARS of source text, and the omitted text
+ *   may not contain a negation or exception word (OMISSION_BLOCKED_WORDS).
+ *   Whether an omission distorts meaning in general cannot be decided here —
+ *   see the source-range editor design (NEM-016 report §5.10).
  */
-const OMISSION_RE = /\[\s*(?:…|\.{3})\s*\]|\(\s*(?:…|\.{3})\s*\)|…|\.{3,}/g;
-
-/** With internal omissions, every retained passage must be at least this long. */
+export const OMISSION_MARKER = '[…]';
 export const MIN_WORDS_PER_OMISSION_SEGMENT = 3;
 export const MAX_OMISSION_SEGMENTS = 6;
+export const MAX_OMISSION_GAP_CHARS = 1500;
+const MAX_CANDIDATES_PER_SEGMENT = 50;
+
+/** Negations and exceptions (ES/EN) that an omission must not remove. */
+export const OMISSION_BLOCKED_WORDS: ReadonlySet<string> = new Set([
+  // English
+  'not', 'no', 'never', 'nor', 'neither', 'without', 'except', 'unless', 'cannot',
+  // Spanish
+  'nunca', 'jamás', 'jamas', 'ni', 'tampoco', 'sin', 'excepto', 'salvo',
+  'nadie', 'nada', 'ninguno', 'ninguna', 'ningún', 'ningun',
+]);
 
 const CACHE_MAX_BOOKS = 8;
 const CACHE_TTL_MS = 10 * 60_000;
 
+const IS_WORD_CHAR = /[\p{L}\p{N}]/u;
+const EDGE_STRIP_START = /^[\s"'…]+/u;
+const EDGE_STRIP_END = /[\s"'…]+$|(?<=[\p{L}\p{N}])\.$/u;
+
 /**
- * Wording-level normalization: Unicode NFC, case-folded, soft hyphens removed,
- * and every run of non-letter/non-digit characters collapsed to one space.
- * Words and their order must match the source; punctuation, quote style,
- * spacing and capitalization may differ.
+ * Folds only typographic variants; keeps words, punctuation and case.
+ * Spaces next to punctuation are dropped so "end.Start" (a selection that lost a
+ * space) and "end. Start" compare equal.
  */
-export function normalizeWording(s: string): string {
+export function normalizeTypography(s: string): string {
   return s
     .normalize('NFC')
     .replace(/­/g, '')
-    .toLocaleLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/[“”„‟«»"]/g, '"')
+    .replace(/[‘’‚‛`´']/g, "'")
+    .replace(/[‐‑‒–—―−]/g, '-')
+    .replace(/\.{3,}/g, '…')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*([^\p{L}\p{N}\s])\s*/gu, '$1')
     .trim();
 }
 
-export type QuoteCheck =
-  | { ok: true; segments: number }
-  | { ok: false; reason: 'empty' | 'not_in_source' | 'segment_too_short' | 'too_many_segments' };
+/** Renders typed "[...]" / "[ … ]" markers as the approved `[…]`. */
+export function canonicalizeOmissionMarkers(quote: string): string {
+  return quote.replace(/\[\s*(?:…|\.{3})\s*\]/g, OMISSION_MARKER);
+}
+
+export interface QuoteSpan {
+  start: number;
+  end: number;
+}
+
+export type QuoteFailure =
+  | 'empty'
+  | 'not_in_source'
+  | 'omission_marker_required'
+  | 'segment_too_short'
+  | 'too_many_segments'
+  | 'omission_too_long'
+  | 'omission_may_distort';
+
+export type QuoteCheck = { ok: true; spans: QuoteSpan[] } | { ok: false; reason: QuoteFailure };
+
+function stripEdges(seg: string): string {
+  let prev: string;
+  do {
+    prev = seg;
+    seg = seg.replace(EDGE_STRIP_START, '').replace(EDGE_STRIP_END, '');
+  } while (seg !== prev);
+  return seg;
+}
+
+function toggleFirst(seg: string): string {
+  const c = seg.charAt(0);
+  const t = c === c.toLowerCase() ? c.toUpperCase() : c.toLowerCase();
+  return t + seg.slice(1);
+}
+
+/** Word-boundary-aligned occurrences of `seg` (or its first-letter-case variant) at or after `from`. */
+function occurrences(source: string, seg: string, from: number): number[] {
+  const out = new Set<number>();
+  for (const variant of new Set([seg, toggleFirst(seg)])) {
+    let at = source.indexOf(variant, from);
+    while (at >= 0 && out.size < MAX_CANDIDATES_PER_SEGMENT) {
+      const before = at > 0 ? source.charAt(at - 1) : '';
+      const after = source.charAt(at + variant.length);
+      const startsWord = IS_WORD_CHAR.test(variant.charAt(0));
+      const endsWord = IS_WORD_CHAR.test(variant.charAt(variant.length - 1));
+      if ((!startsWord || !IS_WORD_CHAR.test(before)) && (!endsWord || !IS_WORD_CHAR.test(after))) out.add(at);
+      at = source.indexOf(variant, at + 1);
+    }
+  }
+  return [...out].sort((a, b) => a - b);
+}
+
+function gapProblem(gap: string): QuoteFailure | null {
+  if (gap.length > MAX_OMISSION_GAP_CHARS) return 'omission_too_long';
+  const words = gap.toLocaleLowerCase().split(/[^\p{L}\p{N}']+/u);
+  if (words.some((w) => OMISSION_BLOCKED_WORDS.has(w) || /n't$/.test(w))) return 'omission_may_distort';
+  return null;
+}
+
+function matchSegments(source: string, segments: string[]): QuoteCheck {
+  let worst: QuoteFailure = 'not_in_source';
+  const spans: QuoteSpan[] = [];
+  const search = (i: number, from: number): boolean => {
+    if (i === segments.length) return true;
+    for (const at of occurrences(source, segments[i], from)) {
+      const span = { start: at, end: at + segments[i].length };
+      if (i > 0) {
+        const problem = gapProblem(source.slice(spans[i - 1].end, span.start));
+        if (problem) {
+          worst = problem;
+          continue;
+        }
+      }
+      spans[i] = span;
+      if (search(i + 1, span.end)) return true;
+    }
+    return false;
+  };
+  return search(0, 0) ? { ok: true, spans: spans.slice() } : { ok: false, reason: worst };
+}
 
 /**
- * Pure check: is `quote` a faithful excerpt of `normalizedSource`?
- *
- * - One passage: must appear verbatim (at the wording level) in the source.
- * - Several passages separated by omission markers: each must appear verbatim,
- *   in source order, without overlapping, and be at least
- *   MIN_WORDS_PER_OMISSION_SEGMENT words long (so single words can't be stitched
- *   together from across the book).
- *
- * This verifies wording and order only. It cannot judge whether an omission
- * changes the meaning — see the NEM-016 ellipsis design.
+ * Pure check of `quote` against the typography-normalized book source.
+ * Returns the matched source spans (provenance) or the reason it fails.
  */
 export function checkQuoteAgainstSource(quote: string, normalizedSource: string): QuoteCheck {
-  const segments = quote
-    .split(OMISSION_RE)
-    .map(normalizeWording)
-    .filter((s) => s.length > 0);
+  const result = checkMarkedQuote(quote, normalizedSource);
+  if (result.ok) return result;
+  const bare = /(?<!\[\s*)(?:…|\.{3})(?!\s*\])/;
+  if (!bare.test(quote)) return result;
+  // A bare "…" used as an omission (e.g. fragments combined before NEM-016):
+  // tell the reader to use the approved [ … ] marker rather than "not in source".
+  const asMarked = quote.replace(/\s*(?<!\[\s*)(?:…|\.{3})(?!\s*\])\s*/g, ` ${OMISSION_MARKER} `);
+  return checkMarkedQuote(asMarked, normalizedSource).ok ? { ok: false, reason: 'omission_marker_required' } : result;
+}
+
+function checkMarkedQuote(quote: string, normalizedSource: string): QuoteCheck {
+  const normalized = normalizeTypography(canonicalizeOmissionMarkers(quote));
+  const segments = normalized.split(OMISSION_MARKER).map(stripEdges).filter((s) => /[\p{L}\p{N}]/u.test(s));
   if (segments.length === 0) return { ok: false, reason: 'empty' };
   if (segments.length > MAX_OMISSION_SEGMENTS) return { ok: false, reason: 'too_many_segments' };
   if (
     segments.length > 1 &&
-    segments.some((s) => s.split(' ').length < MIN_WORDS_PER_OMISSION_SEGMENT)
+    segments.some((s) => s.split(/[^\p{L}\p{N}']+/u).filter(Boolean).length < MIN_WORDS_PER_OMISSION_SEGMENT)
   ) {
     return { ok: false, reason: 'segment_too_short' };
   }
-
-  // Pad with spaces so matches fall on word boundaries.
-  const haystack = ` ${normalizedSource} `;
-  let from = 0;
-  for (const seg of segments) {
-    const at = haystack.indexOf(` ${seg} `, from);
-    if (at < 0) return { ok: false, reason: 'not_in_source' };
-    // Next passage must start after this one ends (shared boundary space allowed).
-    from = at + seg.length + 1;
-  }
-  return { ok: true, segments: segments.length };
+  return matchSegments(normalizedSource, segments);
 }
 
-/**
- * Stage 0 quotation-integrity guardrail (SA-001 D05 / C1, NEM-016 S2).
- *
- * Text rendered as a book quotation must be the author's own wording. It is
- * checked against the book's source text: the sync-map phrases when present
- * (what the reader displays), otherwise the stored text file.
- */
+/** Stored with each new share so the quote stays traceable to its source. */
+export interface QuoteProvenance {
+  v: 1;
+  source: 'sync_map' | 'text_file';
+  /** sha256 of the normalized source the spans index into. */
+  sourceSha256: string;
+  spans: QuoteSpan[];
+  checkedAt: string;
+}
+
 @Injectable()
 export class QuoteIntegrityService {
-  private readonly cache = new Map<string, { text: string; at: number }>();
+  private readonly cache = new Map<
+    string,
+    { text: string; kind: QuoteProvenance['source']; sha: string; at: number }
+  >();
 
   constructor(
     @InjectRepository(SyncMap) private readonly syncMapRepo: Repository<SyncMap>,
     private readonly storage: StorageService,
   ) {}
 
-  /** Throws 422 `quote_not_in_source` (with a reason) when the quote isn't faithful. */
-  async assertFaithfulExcerpt(book: Book, quote: string): Promise<void> {
+  /**
+   * Throws 422 `quote_not_in_source` (with `reason`) unless `quote` is a
+   * faithful excerpt; otherwise returns its provenance.
+   */
+  async assertFaithfulExcerpt(book: Book, quote: string): Promise<QuoteProvenance> {
     const source = await this.loadSource(book);
-    const result = checkQuoteAgainstSource(quote, source);
+    const result = checkQuoteAgainstSource(quote, source.text);
     if (!result.ok) {
       throw new UnprocessableEntityException({ error: 'quote_not_in_source', reason: result.reason });
     }
+    return {
+      v: 1,
+      source: source.kind,
+      sourceSha256: source.sha,
+      spans: result.spans,
+      checkedAt: new Date().toISOString(),
+    };
   }
 
-  private async loadSource(book: Book): Promise<string> {
+  private async loadSource(book: Book) {
     const hit = this.cache.get(book.id);
-    if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.text;
+    if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit;
 
     let raw = '';
+    let kind: QuoteProvenance['source'] = 'sync_map';
     const syncMap = await this.syncMapRepo.findOneBy({ bookId: book.id });
     if (syncMap?.phrases?.length) {
       raw = syncMap.phrases.map((p) => p.text ?? '').join(' ');
     } else if (book.textFileKey) {
+      kind = 'text_file';
       try {
         raw = await this.storage.getText(book.textFileKey);
       } catch {
@@ -124,12 +245,13 @@ export class QuoteIntegrityService {
       throw new UnprocessableEntityException({ error: 'quote_not_in_source', reason: 'no_source' });
     }
 
-    const text = normalizeWording(raw);
+    const text = normalizeTypography(raw);
+    const entry = { text, kind, sha: createHash('sha256').update(text).digest('hex'), at: Date.now() };
     if (this.cache.size >= CACHE_MAX_BOOKS) {
       const oldest = this.cache.keys().next().value;
       if (oldest !== undefined) this.cache.delete(oldest);
     }
-    this.cache.set(book.id, { text, at: Date.now() });
-    return text;
+    this.cache.set(book.id, entry);
+    return entry;
   }
 }

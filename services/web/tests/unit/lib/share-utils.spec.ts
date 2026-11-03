@@ -73,6 +73,12 @@ describe('shareErrorKey (NEM-016)', () => {
     expect(shareErrorKey({ status: 422, data: { error: 'quote_not_in_source', reason: 'not_in_source' } })).toBe('errorQuoteNotInSource');
   });
 
+  it('maps omission refusals to specific guidance', () => {
+    expect(shareErrorKey({ status: 422, data: { error: 'quote_not_in_source', reason: 'omission_marker_required' } })).toBe('errorOmissionMarker');
+    expect(shareErrorKey({ status: 422, data: { error: 'quote_not_in_source', reason: 'omission_may_distort' } })).toBe('errorOmissionMeaning');
+    expect(shareErrorKey({ status: 422, data: { error: 'quote_not_in_source', reason: 'omission_too_long' } })).toBe('errorOmissionMeaning');
+  });
+
   it('maps an unshareable book, a rejected background and rate limiting', () => {
     expect(shareErrorKey({ status: 422, data: { error: 'book_not_shareable' } })).toBe('errorBookNotShareable');
     expect(shareErrorKey({ status: 400, data: { error: 'unsupported_background_image' } })).toBe('errorBackground');
@@ -87,7 +93,7 @@ describe('shareErrorKey (NEM-016)', () => {
   });
 
   it('every mapped key has EN and ES copy', () => {
-    for (const k of ['errorQuoteNotInSource', 'errorBookNotShareable', 'errorRateLimited', 'errorBackground'] as const) {
+    for (const k of ['errorQuoteNotInSource', 'errorOmissionMarker', 'errorOmissionMeaning', 'errorBookNotShareable', 'errorRateLimited', 'errorBackground'] as const) {
       expect(en.shareCard[k]).toBeTruthy();
       expect(es.shareCard[k]).toBeTruthy();
     }

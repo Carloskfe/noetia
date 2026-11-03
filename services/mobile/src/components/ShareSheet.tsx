@@ -22,14 +22,20 @@ export function buildShareContent(
 type SharingStrings = {
   error: string;
   errorQuoteNotInSource: string;
+  errorOmissionMarker: string;
+  errorOmissionMeaning: string;
   errorBookNotShareable: string;
   errorRateLimited: string;
 };
 
 /** Maps an API share error to reader-facing copy. */
 export function shareErrorMessage(err: unknown, strings: SharingStrings): string {
-  const e = err as { status?: number; data?: { error?: string } } | null;
-  if (e?.data?.error === 'quote_not_in_source') return strings.errorQuoteNotInSource;
+  const e = err as { status?: number; data?: { error?: string; reason?: string } } | null;
+  if (e?.data?.error === 'quote_not_in_source') {
+    if (e.data.reason === 'omission_marker_required') return strings.errorOmissionMarker;
+    if (e.data.reason === 'omission_may_distort' || e.data.reason === 'omission_too_long') return strings.errorOmissionMeaning;
+    return strings.errorQuoteNotInSource;
+  }
   if (e?.data?.error === 'book_not_shareable') return strings.errorBookNotShareable;
   if (e?.status === 429) return strings.errorRateLimited;
   return strings.error;

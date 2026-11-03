@@ -7,7 +7,7 @@ import { isBookPubliclyEligible } from '../books/book-eligibility';
 import { Fragment } from '../fragments/fragment.entity';
 import { StorageService } from '../storage/storage.service';
 import { ShareFragmentDto } from './dto/share-fragment.dto';
-import { QuoteIntegrityService } from './quote-integrity.service';
+import { QuoteIntegrityService, canonicalizeOmissionMarkers } from './quote-integrity.service';
 import { resolveBackgroundImage } from './share-background';
 import { cardKeyFromUrl } from './share-lifecycle.service';
 import { SHARE_CREATE_LIMIT, ShareRateLimiter } from './share-rate-limiter';
@@ -103,9 +103,11 @@ export class SharingService {
     dto: ShareFragmentDto,
     userId: string,
   ): Promise<ShareResult> {
-    const quote = dto.text ?? fragment.text;
+    // Typed "[...]" is rendered as the approved `[…]` marker. The stored
+    // fragment itself is never modified.
+    const quote = canonicalizeOmissionMarkers(dto.text ?? fragment.text);
     // C1 / D05: only the author's own wording may be rendered as a quotation.
-    await this.quoteIntegrity.assertFaithfulExcerpt(book, quote);
+    const quoteProvenance = await this.quoteIntegrity.assertFaithfulExcerpt(book, quote);
     // S12: only inline images or Noetia preset backgrounds reach the renderer.
     const bgImage = resolveBackgroundImage(dto.bgImage);
 
@@ -128,6 +130,7 @@ export class SharingService {
       platform: dto.platform,
       createdById: userId,
       configHash,
+      quoteProvenance,
       revokedAt: null,
     });
     try {

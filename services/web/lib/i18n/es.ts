@@ -777,6 +777,8 @@ export const es: Translations = {
     errorBookNotShareable: 'Este libro no está disponible para compartir en este momento.',
     errorRateLimited: 'Has creado muchas tarjetas en poco tiempo. Inténtalo de nuevo en unos minutos.',
     errorBackground: 'No se puede usar esa imagen de fondo. Elige otra.',
+    errorOmissionMarker: 'Marca el texto omitido con […] (entre corchetes), no solo con «…».',
+    errorOmissionMeaning: 'Esta omisión podría cambiar el sentido del autor, por ejemplo si deja fuera una palabra como «no». Acerca los fragmentos o comparte un pasaje continuo.',
   },
   giftCard: {
     send: {

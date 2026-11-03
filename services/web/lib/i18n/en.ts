@@ -780,6 +780,8 @@ export const en = {
     errorBookNotShareable: "This book isn't available for sharing right now.",
     errorRateLimited: "You've created a lot of cards in a short time. Try again in a few minutes.",
     errorBackground: "That background image can't be used. Choose another one.",
+    errorOmissionMarker: 'Mark left-out text with […] (square brackets), not just “…”.',
+    errorOmissionMeaning: "This omission could change the author's meaning — for example by leaving out a word like “not”. Keep the passages closer together or share a continuous passage.",
   },
   giftCard: {
     send: {

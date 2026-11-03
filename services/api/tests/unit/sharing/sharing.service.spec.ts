@@ -19,6 +19,7 @@ import { ShareFragmentDto } from '../../../src/sharing/dto/share-fragment.dto';
 import * as eligibility from '../../../src/books/book-eligibility';
 
 const IMG = 'https://storage.noetia.app/images/11111111-2222-4333-8444-555555555555.png';
+const PROV = { v: 1, source: 'sync_map', sourceSha256: 'a'.repeat(64), spans: [{ start: 0, end: 19 }], checkedAt: '2026-11-02T00:00:00.000Z' };
 const mockFragment = { id: 'frag-1', userId: 'user-1', bookId: 'book-1', text: 'Original quote text' } as Fragment;
 const mockBook = {
   id: 'book-1', title: 'My Book', author: 'An Author', coverUrl: 'https://c/x.jpg', isFree: true,
@@ -50,7 +51,7 @@ describe('SharingService', () => {
     mockShareRepo.findOneBy.mockResolvedValue(null);
     mockShareRepo.save.mockImplementation(async (x) => x);
     mockShareRepo.increment.mockResolvedValue(undefined);
-    mockQuote.assertFaithfulExcerpt.mockResolvedValue(undefined);
+    mockQuote.assertFaithfulExcerpt.mockResolvedValue(PROV);
     mockLimiter.consume.mockResolvedValue(undefined);
     mockStorage.delete.mockResolvedValue(undefined);
     eligible = jest.spyOn(eligibility, 'isBookPubliclyEligible').mockResolvedValue(true);
@@ -84,6 +85,16 @@ describe('SharingService', () => {
         title: 'My Book', imageUrl: IMG, platform: 'linkedin', createdById: 'user-1', revokedAt: null,
       });
       expect(saved.configHash).toMatch(/^[0-9a-f]{64}$/);
+      expect(saved.quoteProvenance).toEqual(PROV); // C1 traceability
+    });
+
+    it('renders and stores typed [...] as the approved [ … ] marker without touching the fragment', async () => {
+      const fragment = { ...mockFragment, text: 'rocín flaco y galgo [...] Una olla de algo' } as Fragment;
+      await service.createOrReuseShare(fragment, mockBook, dto(), 'user-1');
+      expect(mockQuote.assertFaithfulExcerpt).toHaveBeenCalledWith(mockBook, 'rocín flaco y galgo […] Una olla de algo');
+      expect(sentBody().text).toBe('rocín flaco y galgo […] Una olla de algo');
+      expect(mockShareRepo.save.mock.calls[0][0].quote).toBe('rocín flaco y galgo […] Una olla de algo');
+      expect(fragment.text).toBe('rocín flaco y galgo [...] Una olla de algo');
     });
 
     // S2 / C1 — unauthorized text overrides

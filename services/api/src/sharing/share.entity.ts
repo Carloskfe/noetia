@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryColumn } from 'typeorm';
+import type { QuoteProvenance } from './quote-integrity.service';
 
 /**
  * A public share landing page. Created when a user shares a fragment as a quote
@@ -58,6 +59,14 @@ export class Share {
    */
   @Column({ type: 'varchar', length: 64, nullable: true })
   configHash: string | null;
+
+  /**
+   * Where the quote was verified in the book source (SA-001 C1 traceability):
+   * source kind, hash of the normalized source and the matched spans. Null for
+   * shares created before migration 068.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  quoteProvenance: QuoteProvenance | null;
 
   @CreateDateColumn()
   createdAt: Date;

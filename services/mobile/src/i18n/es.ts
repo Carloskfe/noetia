@@ -130,6 +130,8 @@ export const es: MobileTranslations = {
     errorQuoteNotInSource: 'Este texto no coincide con las palabras del libro. Puedes acortar la cita, pero no cambiarla; añade tus propias ideas como nota.',
     errorBookNotShareable: 'Este libro no está disponible para compartir en este momento.',
     errorRateLimited: 'Has creado muchas tarjetas en poco tiempo. Inténtalo de nuevo en unos minutos.',
+    errorOmissionMarker: 'Marca el texto omitido con […] (entre corchetes), no solo con «…».',
+    errorOmissionMeaning: 'Esta omisión podría cambiar el sentido del autor, por ejemplo si deja fuera una palabra como «no». Acerca los fragmentos o comparte un pasaje continuo.',
     flip: 'Reflejar fondo',
     flipAria: 'Reflejar la imagen de fondo horizontalmente',
     fit: {

@@ -33,6 +33,12 @@ describe('shareErrorMessage', () => {
     expect(shareErrorMessage({ status: 422, data: { error: 'quote_not_in_source' } }, strings)).toBe(strings.errorQuoteNotInSource);
   });
 
+  it('gives specific guidance for omission refusals', () => {
+    expect(shareErrorMessage({ status: 422, data: { error: 'quote_not_in_source', reason: 'omission_marker_required' } }, strings)).toBe(strings.errorOmissionMarker);
+    expect(shareErrorMessage({ status: 422, data: { error: 'quote_not_in_source', reason: 'omission_may_distort' } }, strings)).toBe(strings.errorOmissionMeaning);
+    expect(shareErrorMessage({ status: 422, data: { error: 'quote_not_in_source', reason: 'omission_too_long' } }, strings)).toBe(strings.errorOmissionMeaning);
+  });
+
   it('explains an unshareable book', () => {
     expect(shareErrorMessage({ status: 422, data: { error: 'book_not_shareable' } }, strings)).toBe(strings.errorBookNotShareable);
   });
@@ -47,7 +53,7 @@ describe('shareErrorMessage', () => {
   });
 
   it('has Spanish copy for every share error', () => {
-    for (const k of ['errorQuoteNotInSource', 'errorBookNotShareable', 'errorRateLimited'] as const) {
+    for (const k of ['errorQuoteNotInSource', 'errorOmissionMarker', 'errorOmissionMeaning', 'errorBookNotShareable', 'errorRateLimited'] as const) {
       expect(es.sharing[k]).toBeTruthy();
       expect(es.sharing[k]).not.toBe(en.sharing[k]);
     }

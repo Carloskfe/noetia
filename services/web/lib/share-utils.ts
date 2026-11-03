@@ -135,6 +135,8 @@ export async function shareFragment(fragmentId: string, params: ShareParams): Pr
 /** shareCard i18n keys for share errors the API reports with a specific code. */
 export type ShareErrorKey =
   | 'errorQuoteNotInSource'
+  | 'errorOmissionMarker'
+  | 'errorOmissionMeaning'
   | 'errorBookNotShareable'
   | 'errorRateLimited'
   | 'errorBackground';
@@ -145,9 +147,12 @@ export type ShareErrorKey =
  * author's wording (SA-001 D05): shortening is fine, changing it is not.
  */
 export function shareErrorKey(err: unknown): ShareErrorKey | null {
-  const e = err as { status?: number; data?: { error?: string } } | null;
+  const e = err as { status?: number; data?: { error?: string; reason?: string } } | null;
   switch (e?.data?.error) {
-    case 'quote_not_in_source': return 'errorQuoteNotInSource';
+    case 'quote_not_in_source':
+      if (e?.data?.reason === 'omission_marker_required') return 'errorOmissionMarker';
+      if (e?.data?.reason === 'omission_may_distort' || e?.data?.reason === 'omission_too_long') return 'errorOmissionMeaning';
+      return 'errorQuoteNotInSource';
     case 'book_not_shareable': return 'errorBookNotShareable';
     case 'unsupported_background_image': return 'errorBackground';
   }
