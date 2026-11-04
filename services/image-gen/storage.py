@@ -2,7 +2,33 @@ import io
 import os
 import uuid
 
+import certifi
+import urllib3
 from minio import Minio
+
+
+# minio-py's default client, with two changes (NEM-016 R2): shorter timeouts than
+# its 5 minutes, and a stalled read isn't retried, because a store that accepted the
+# request and went quiet would just stall again. Retries on connection errors and
+# 5xx responses, and certificate handling, stay as they were. Stays under the API's
+# 30 s render limit, so image-gen fails first and no late card is stored.
+_CONNECT_TIMEOUT_S = 3
+_READ_TIMEOUT_S = 8
+
+
+def _bounded_http_client() -> urllib3.PoolManager:
+    return urllib3.PoolManager(
+        timeout=urllib3.Timeout(connect=_CONNECT_TIMEOUT_S, read=_READ_TIMEOUT_S),
+        maxsize=10,
+        cert_reqs="CERT_REQUIRED",
+        ca_certs=os.environ.get("SSL_CERT_FILE") or certifi.where(),
+        retries=urllib3.Retry(
+            total=5,
+            read=0,
+            backoff_factor=0.2,
+            status_forcelist=[500, 502, 503, 504],
+        ),
+    )
 
 
 class MinioClient:
@@ -24,6 +50,7 @@ class MinioClient:
             access_key=access_key,
             secret_key=secret_key,
             secure=use_ssl,
+            http_client=_bounded_http_client(),
         )
 
     def upload(self, data: bytes, bucket: str = "images") -> str:

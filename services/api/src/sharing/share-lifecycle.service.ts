@@ -4,11 +4,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
 import { StorageService, StorageTimeoutError } from '../storage/storage.service';
 import { CardImageDeletion } from './card-image-deletion.entity';
+import { cardKeyFromUrl } from './card-key';
 import { Share } from './share.entity';
 
+export { cardKeyFromUrl };
+
 const CARD_BUCKET = 'images';
-// image-gen stores every card as images/<uuid4>.png (image-gen/storage.py).
-const CARD_KEY_RE = /\/images\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.png)$/i;
 const RETRY_BATCH = 100;
 /** Pending deletions older than this many attempts are reported on every sweep. */
 export const OVERDUE_ATTEMPTS = 12;
@@ -17,13 +18,6 @@ export const OVERDUE_ATTEMPTS = 12;
  * stays queued for the sweep, so a large account can't hold a request open.
  */
 export const PURGE_REQUEST_BUDGET_MS = 15_000;
-
-/** Storage key of a quote-card image URL, or null if it isn't one of ours. */
-export function cardKeyFromUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  const m = CARD_KEY_RE.exec(url);
-  return m ? m[1] : null;
-}
 
 /**
  * Share revocation and deletion (SA-001 D07, NEM-016 S3/G9).
@@ -136,6 +130,20 @@ export class ShareLifecycleService {
         this.logger.warn(`card image ${key} deleted but outbox row not cleared; next sweep will retry`);
       });
     }
+  }
+
+  /**
+   * Withdraws a rendered card that never became a share (the save failed, or the
+   * book was deleted while it rendered). Queued first, so a storage failure leaves
+   * it to the sweep rather than leaving it public. Never throws.
+   */
+  async discardImage(imageUrl: string): Promise<void> {
+    const keys = await this.enqueue(this.dataSource.manager, [imageUrl]).catch(() => {
+      this.logger.warn('could not queue a discarded card image; deleting it directly');
+      const key = cardKeyFromUrl(imageUrl);
+      return key ? [key] : [];
+    });
+    await this.purgeImages(keys);
   }
 
   /** Retries queued deletions (storage outage, crash between commit and purge). */

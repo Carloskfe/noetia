@@ -71,6 +71,10 @@ export class BooksService {
     // Deleting a book withdraws its public shares (NEM-016 F2): revocation, the
     // image-deletion outbox rows and the delete commit together.
     const imageKeys = await this.repo.manager.transaction(async (m) => {
+      // Conflicts with the lock SharingService holds while saving a share (R1): a
+      // save either finishes first, and is revoked below, or finds the book gone.
+      const locked: unknown[] = await m.query('SELECT id FROM books WHERE id = $1 FOR UPDATE', [id]);
+      if (locked.length === 0) throw new NotFoundException('Book not found');
       const keys = await this.shareLifecycle.revokeForBook(id, m);
       await m.remove(book);
       return keys;

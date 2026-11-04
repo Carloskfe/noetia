@@ -30,7 +30,7 @@ import { IsNull, Repository } from 'typeorm';
 import { Share } from '../sharing/share.entity';
 import { cardKeyFromUrl } from '../sharing/share-lifecycle.service';
 import { SOCIAL_PUBLISH_LIMIT, ShareRateLimiter } from '../sharing/share-rate-limiter';
-import { StorageService } from '../storage/storage.service';
+import { CARD_IMAGE_READ_TIMEOUT_MS, StorageService } from '../storage/storage.service';
 
 /**
  * Origin that serves public quote-card images (image-gen/storage.py builds
@@ -188,7 +188,7 @@ export class SocialController {
 
     let imageBuffer: Buffer;
     try {
-      imageBuffer = await this.storage.getBuffer('images', key);
+      imageBuffer = await this.storage.getBuffer('images', key, { timeoutMs: CARD_IMAGE_READ_TIMEOUT_MS });
     } catch {
       throw new BadGatewayException('image_download_failed');
     }

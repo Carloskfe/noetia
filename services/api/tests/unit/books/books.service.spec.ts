@@ -34,7 +34,7 @@ const mockRepo = {
   manager: { transaction: jest.fn() },
 };
 
-const mockEntityManager = { remove: jest.fn() };
+const mockEntityManager = { remove: jest.fn(), query: jest.fn() };
 const mockLifecycle = { revokeForBook: jest.fn(), purgeImages: jest.fn() };
 
 const mockUserRepo = {
@@ -265,6 +265,7 @@ describe('BooksService', () => {
       mockRepo.findOneBy.mockResolvedValue(book);
       mockRepo.manager.transaction.mockImplementation((fn: (m: unknown) => unknown) => fn(mockEntityManager));
       mockEntityManager.remove.mockResolvedValue(undefined);
+      mockEntityManager.query.mockResolvedValue([{ id: 'b-1' }]);
       mockLifecycle.revokeForBook.mockResolvedValue([]);
       mockLifecycle.purgeImages.mockResolvedValue(undefined);
     });
@@ -293,6 +294,23 @@ describe('BooksService', () => {
       mockLifecycle.purgeImages.mockImplementation(async () => { order.push('purge'); });
       await service.remove('b-1');
       expect(order).toEqual(['revoke', 'remove', 'commit', 'purge']);
+    });
+
+    it('locks the book row before revoking, so a share being saved is either seen or refused (R1)', async () => {
+      const order: string[] = [];
+      mockEntityManager.query.mockImplementation(async () => { order.push('lock'); return [{ id: 'b-1' }]; });
+      mockLifecycle.revokeForBook.mockImplementation(async () => { order.push('revoke'); return []; });
+      await service.remove('b-1');
+      expect(order).toEqual(['lock', 'revoke']);
+      expect(mockEntityManager.query).toHaveBeenCalledWith(expect.stringContaining('FOR UPDATE'), ['b-1']);
+    });
+
+    it('returns 404 and revokes nothing if a concurrent delete got there first (R1)', async () => {
+      mockEntityManager.query.mockResolvedValue([]);
+      await expect(service.remove('b-1')).rejects.toThrow(NotFoundException);
+      expect(mockLifecycle.revokeForBook).not.toHaveBeenCalled();
+      expect(mockEntityManager.remove).not.toHaveBeenCalled();
+      expect(mockLifecycle.purgeImages).not.toHaveBeenCalled();
     });
 
     it('handles a book without shares', async () => {
