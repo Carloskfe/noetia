@@ -15,9 +15,10 @@ import { FragmentsModule } from '../fragments/fragments.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { SearchModule } from '../search/search.module';
 import { CodesModule } from '../codes/codes.module';
+import { ShareLifecycleModule } from '../sharing/share-lifecycle.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Book, SyncMap, ReadingProgress, Subscription, User, UserBook]), FragmentsModule, SubscriptionsModule, SearchModule, CodesModule],
+  imports: [TypeOrmModule.forFeature([Book, SyncMap, ReadingProgress, Subscription, User, UserBook]), FragmentsModule, SubscriptionsModule, SearchModule, CodesModule, ShareLifecycleModule],
   controllers: [BooksController],
   providers: [BooksService, SyncMapService, SrtParserService, ReadingProgressService],
   exports: [BooksService],

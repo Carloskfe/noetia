@@ -1,21 +1,25 @@
 // Automated acceptance checks. Expected values come from the NEM-016 matrix and
 // were confirmed against the implementation (sharing.*, quote-integrity.*).
-import { GuardError, assertTestEmail, derivePassword } from './guard.mjs';
-import { NEGATIVE, POSITIVE, SOURCE_SENTENCE, TINY_PNG_DATA_URI, UNSAFE_BACKGROUNDS } from './cases.mjs';
+import { readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { GuardError, STAGING, assertTestEmail, derivePassword } from './guard.mjs';
+import { DISPOSABLE_TITLE, FIXTURE_AUTHOR, FIXTURE_FILE, NEGATIVE, POSITIVE, SOURCE_SENTENCE, TINY_PNG_DATA_URI, UNSAFE_BACKGROUNDS } from './cases.mjs';
 import { findTest, MATRIX } from './matrix.mjs';
 import { setCheck } from './state.mjs';
 
 const TOKEN_MAX_AGE_MS = 10 * 60_000; // access tokens live 15 minutes
 const WINDOW_S = 600; // SHARE_CREATE_LIMIT window
 const SHARE_URL_RE = /\/s\/([A-Za-z0-9]{1,16})$/;
-const NEEDS_FIXTURE = new Set(['A1','A2','A3','A4','A5','A6','A7','A8b','A9','A10','A11','A12','A14b','A15','X1','X2','X3','X4','X5']);
+const NEEDS_FIXTURE = new Set(['A1','A2','A3','A4','A5','A6','A7','A8b','A9','A10','A11','A12','A14b','A15','X1','X2','X3','X4','X5','X8','X9']);
+const BOUND_MS_DEFAULT = 8_000; // 5 s storage deadline plus request overhead
 
 export const accountEmail = (runId, role) => `nem016-${runId}-${role}@staging.invalid`;
 
 export class Ctx {
   constructor({ client, state, seed, env = process.env, approved = new Set(), phase = null, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), log = () => {} }) {
     Object.assign(this, { client, state, seed, env, approved, phase, sleep, log, tokens: new Map() });
-    client.fixtureBookId = state.book?.id ?? null;
+    client.deletableBookIds = [state.book, ...(state.disposableBooks ?? [])].filter((b) => b && !b.reused).map((b) => b.id);
   }
 
   pass(id, detail = '') { setCheck(this.state, id, 'PASS', detail); }
@@ -27,6 +31,7 @@ export class Ctx {
   async login(role, { force = false } = {}) {
     const cached = this.tokens.get(role);
     if (cached && !force && Date.now() - cached.at < TOKEN_MAX_AGE_MS) return cached.token;
+    if (role === 'adm' && this.client.target.name === 'staging') throw new GuardError('The harness never logs in as the staging administrator');
     const email = accountEmail(this.state.runId, role);
     assertTestEmail(email);
     const res = await this.client.request('POST', '/auth/login', { json: { email, password: derivePassword(this.seed, this.state.runId, role) } });
@@ -345,8 +350,116 @@ const T = {
     t.verdict('X5.api', problems, 'idempotent revoke; new URL after revocation');
   },
 
+  async X8(t) {
+    const local = t.client.target.name !== 'staging';
+    if (t.env.NEM016_DEPLOYED_SHA === STAGING.preFixSha) return setCheck(t.state, 'X8.prepare', 'BLOCKED', 'The deployed commit predates the F1 correction');
+    if (!local) setCheck(t.state, 'X8.book', 'BLOCKED', 'The harness never deletes books on staging');
+    const bound = Number(t.env.NEM016_BOUND_MS ?? BOUND_MS_DEFAULT);
+    const timeoutMs = Number(t.env.NEM016_STALL_TIMEOUT_MS ?? 60_000);
+    if (!['prepare', 'stalled', 'after'].includes(t.phase)) {
+      return setCheck(t.state, 'X8.prepare', 'BLOCKED', 'Operator-driven: run with --phase prepare, then stalled, then after');
+    }
+    const timed = (d, what) => (d.status === 204 && d.ms <= bound ? [] : [`${what}: ${d.status || d.netError} after ${d.ms} ms (limit ${bound})`]);
+
+    if (t.phase === 'prepare') {
+      const problems = []; const book = t.state.book.id;
+      const fX = await t.fragment('fX8', 'x', book, SOURCE_SENTENCE);
+      const fDel = await t.fragment('fX8del', 'x', book, SOURCE_SENTENCE);
+      const fY = await t.fragment('fX8y', 'y', book, SOURCE_SENTENCE);
+      const cards = [['x', fX, 'x8-rev'], ['x', fDel, 'x8-f1'], ['x', fDel, 'x8-f2'], ['y', fY, 'x8-a1'], ['y', fY, 'x8-a2']];
+      if (local) {
+        const adminBook = await uploadDisposable(t);
+        t.state.x8Book = adminBook;
+        const fB = await t.fragment('fX8b', 'x', adminBook, SOURCE_SENTENCE);
+        cards.push(['x', fB, 'x8-b1'], ['x', fB, 'x8-b2']);
+      }
+      for (const [role, frag, name] of cards) {
+        const res = await t.share(role, frag, { text: POSITIVE.Q1.text, citation: name }, { name });
+        if (!t.ok(res)) problems.push(`${name}: returned ${res.status}`);
+      }
+      return t.verdict('X8.prepare', problems, `${cards.length} shares live`);
+    }
+
+    if (t.phase === 'stalled') {
+      const sx = t.state.shares;
+      if (!sx['x8-rev']) return setCheck(t.state, 'X8.revoke', 'BLOCKED', 'Run --phase prepare first');
+      const pageGone = async (names, problems) => {
+        for (const n of names) { const p = await t.publicShare(sx[n].id); if (p.status !== 404) problems.push(`${n}: page ${p.status}`); }
+      };
+      const tokenX = await t.login('x'); const tokenY = await t.login('y');
+      const rev = await t.client.request('DELETE', `/shares/${sx['x8-rev'].id}`, { token: tokenX, timeoutMs });
+      const revP = timed(rev, 'revoke'); await pageGone(['x8-rev'], revP);
+      t.verdict('X8.revoke', revP, `204 after ${rev.ms} ms`);
+
+      const again = await t.client.request('DELETE', `/shares/${sx['x8-rev'].id}`, { token: tokenX, timeoutMs });
+      t.verdict('X8.repeat', timed(again, 'repeat revoke'), `204 after ${again.ms} ms`);
+
+      const frag = await t.client.request('DELETE', `/fragments/${t.state.fragments.fX8del.id}`, { token: tokenX, timeoutMs });
+      const fragP = timed(frag, 'fragment delete'); await pageGone(['x8-f1', 'x8-f2'], fragP);
+      t.verdict('X8.fragment', fragP, `204 after ${frag.ms} ms`);
+
+      const acc = await t.client.request('DELETE', '/users/me', { token: tokenY, timeoutMs });
+      if (acc.status === 204) t.state.users.y.deleted = true;
+      const accP = timed(acc, 'account delete'); await pageGone(['x8-a1', 'x8-a2'], accP);
+      t.verdict('X8.account', accP, `204 after ${acc.ms} ms`);
+
+      if (local) {
+        const del = await t.client.request('DELETE', `/books/${t.state.x8Book}`, { token: await t.login('adm'), timeoutMs });
+        const bookP = timed(del, 'book delete'); await pageGone(['x8-b1', 'x8-b2'], bookP);
+        t.verdict('X8.book', bookP, `204 after ${del.ms} ms`);
+      }
+      return;
+    }
+
+    const problems = [];
+    for (const [name, s] of Object.entries(t.state.shares)) {
+      if (!name.startsWith('x8-')) continue;
+      const img = await t.client.image(s.imageUrl);
+      if (img.status !== 404) problems.push(`${name}: image ${img.status}`);
+    }
+    t.verdict('X8.recovered', problems, 'All affected images 404');
+  },
+
+  async X9(t) {
+    if (t.client.target.name === 'staging') {
+      setCheck(t.state, 'X9.api', 'BLOCKED', 'The harness never deletes books on staging; needs an approved disposable book');
+      return;
+    }
+    const problems = []; const admin = await t.login('adm');
+    const fKeep = await fragX(t);
+    const keep = await t.share('x', fKeep, { text: POSITIVE.Q1.text, citation: 'x9-keep' }, { name: 'x9-keep' });
+    if (!t.ok(keep)) return t.fail('X9.api', `share on the other book returned ${keep.status}`);
+
+    const withShares = await uploadDisposable(t);
+    const f = await t.fragment('fX9', 'x', withShares, SOURCE_SENTENCE);
+    for (const name of ['x9-1', 'x9-2', 'x9-3']) {
+      const res = await t.share('x', f, { text: POSITIVE.Q1.text, citation: name }, { name });
+      if (!t.ok(res)) problems.push(`${name}: returned ${res.status}`);
+    }
+    // One already revoked share must not be queued or fail the delete.
+    const pre = await t.client.request('DELETE', `/shares/${t.state.shares['x9-3'].id}`, { token: await t.login('x') });
+    if (pre.status !== 204) problems.push(`pre-revoke returned ${pre.status}`);
+
+    const del = await t.client.request('DELETE', `/books/${withShares}`, { token: admin });
+    if (del.status !== 204) problems.push(`delete returned ${del.status}`);
+    for (const n of ['x9-1', 'x9-2', 'x9-3']) await t.expectGone(n, problems);
+    const repeat = await t.client.request('DELETE', `/books/${withShares}`, { token: admin });
+    if (repeat.status !== 404) problems.push(`repeat delete returned ${repeat.status}`);
+
+    const noShares = await uploadDisposable(t);
+    const empty = await t.client.request('DELETE', `/books/${noShares}`, { token: admin });
+    if (empty.status !== 204) problems.push(`no-share book delete returned ${empty.status}`);
+
+    const live = await t.publicShare(keep.shareId);
+    if (live.status !== 200) problems.push(`other book's share page returned ${live.status}`);
+    const liveImg = await t.client.image(keep.body.imageUrl);
+    if (liveImg.status !== 200) problems.push(`other book's image returned ${liveImg.status}`);
+    t.verdict('X9.api', problems, 'Shares withdrawn with the book; repeat delete 404; other book untouched');
+  },
+
   // Keep last: it deletes the fixture every other test depends on.
   async A14b(t) {
+    if (t.client.target.name === 'staging') return setCheck(t.state, 'A14b.api', 'BLOCKED', 'The staging fixture must not be deleted');
     let admin;
     try {
       admin = await t.login('adm');
@@ -361,9 +474,28 @@ const T = {
     else t.state.book.deleted = true;
     const page = await t.publicShare(res.shareId);
     if (page.status !== 404) problems.push(`share page returned ${page.status}`);
-    t.verdict('A14b.api', problems, 'share page 404 after fixture deletion');
+    const img = await t.client.image(res.body.imageUrl);
+    if (img.status !== 404) problems.push(`card image returned ${img.status}`);
+    t.verdict('A14b.api', problems, 'share page and image 404 after fixture deletion');
   },
 };
+
+/** Local only: a second copy of the approved text, so deleting it spares the fixture. */
+async function uploadDisposable(t) {
+  const admin = await t.login('adm');
+  const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+  const form = new FormData();
+  form.set('title', DISPOSABLE_TITLE);
+  form.set('author', FIXTURE_AUTHOR);
+  form.set('language', 'es');
+  form.set('category', 'classic');
+  form.set('textFile', new Blob([readFileSync(join(repoRoot, FIXTURE_FILE))], { type: 'text/plain' }), 'disposable.txt');
+  const res = await t.client.request('POST', '/books', { token: admin, form, fixtureUpload: true });
+  if (res.status !== 201) throw new Error(`disposable book upload returned ${res.status}`);
+  (t.state.disposableBooks ??= []).push({ id: res.body.id });
+  t.client.deletableBookIds.push(res.body.id);
+  return res.body.id;
+}
 
 async function negatives(t, checkId, ids) {
   const fA = await fragA(t); const problems = [];

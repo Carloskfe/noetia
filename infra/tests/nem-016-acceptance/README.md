@@ -1,6 +1,6 @@
 # NEM-016 staging acceptance harness
 
-Repeatable acceptance tests for NEM-016 sharing integrity: A1–A20 plus supplemental cases.
+Repeatable acceptance tests for NEM-016 sharing integrity: A1–A20 plus supplemental cases, including the F1 and F2 corrections (X8, X9).
 
 **Nothing here has been run against staging or production.** Running it on staging needs explicit Product Owner authorization. It has only been run locally, against the disposable stack in `local/`.
 
@@ -20,7 +20,8 @@ These are enforced in code and covered by unit tests:
 
 - **Targets are an allowlist.** `staging` has fixed URLs that can't be overridden. `local` accepts loopback addresses only. Production can't be expressed as a target.
 - **Staging needs an authorization phrase naming the deployed commit.** This is a deliberate speed bump, not proof of approval. The approval itself comes from the Product Owner.
-- **Routes are an allowlist.** The only book writes it can make are the fixture upload and deleting the fixture it recorded, so existing books can't be modified.
+- **Routes are an allowlist.** On staging it can't create or delete any book at all, whatever the options say. Locally it can only delete books it uploaded.
+- **Existing staging records are read-only.** The fixture and administrator are pinned in `lib/guard.mjs`. It won't log in as that administrator, and it won't generate SQL that grants or revokes staging privileges.
 - **Redirects are never followed.** Images are only fetched from the target's storage origin.
 - **The harness has no database, Redis, SSH or Docker access.** It generates SQL, and the operator runs it.
 - **Disruptive tests stay BLOCKED** until named with `--approve`.
@@ -49,7 +50,9 @@ No credentials are stored in source control, and none are needed from the operat
 | `NEM016_STATE_DIR` | optional | Default `~/.local/state/noetia-nem016` |
 | `NEM016_INELIGIBLE_BOOK_ID` | A14 | From the query below; without it A14 is BLOCKED |
 | `NEM016_ELIGIBLE_BOOK_ID` | A19, optional | Otherwise the first free seeded book with phrases |
-| `NEM016_FIXTURE_BOOK_ID` | optional | Reuse an already uploaded fixture |
+| `NEM016_FIXTURE_BOOK_ID` | local only, optional | Reuse an already uploaded local fixture. Staging's is pinned |
+| `NEM016_BOUND_MS` | X8, optional | Limit for each deletion during a stall; default 8000 (5 s deadline plus overhead) |
+| `NEM016_STALL_TIMEOUT_MS` | X8, optional | When the client gives up waiting; default 60000 |
 | `NEM016_PRESET_BG_URL` | local only | A6 preset. Staging uses the public `noetia.app` preset from the plan |
 | `NEM016_A8B_TOKEN_SEEDED` | A8b | `1` once the fake token is seeded |
 | `NEM016_A11_TIMEOUT_MS` | A11, optional | Default 180000 |
@@ -83,13 +86,16 @@ node acceptance.mjs preflight
 SELECT b.id, b.title FROM books b LEFT JOIN sync_maps s ON s."bookId"=b.id WHERE b."uploadedById" IS NULL AND b."isPublished" AND COALESCE(s."syncCoverage",0) < 0.90 LIMIT 5;
 ```
 
-**3. Accounts and fixture.** Staging has no administrator, and an admin upload is the only way to publish the fixture. So the smallest change is a one-row grant on a synthetic account, removed straight after the upload. **This is a staging database write and needs Product Owner approval.** The SQL aborts unless it changes exactly one `nem016-…@staging.invalid` row.
+**3. Accounts and fixture.** These records already exist on staging, so the harness only verifies them. It stops without changing anything if the fixture's id, title, uploader or published state differ:
+
+| Record | Value |
+|---|---|
+| Fixture | `68303e17-3a80-4f17-b3c1-8be00a66cc71`, *Cuaderno de pruebas de citas (NEM-016)* |
+| Administrator | `4219d326-b9fc-4aa9-8d35-6ce8b9e6e787`, `nem016-admin-test@noetia.invalid` |
 
 ```bash
-node acceptance.mjs setup-accounts
-node acceptance.mjs admin-sql --grant  > grant.sql        # operator runs it on the host
-node acceptance.mjs setup-fixture
-node acceptance.mjs admin-sql --revoke > revoke.sql       # operator runs it straight away
+node acceptance.mjs setup-accounts    # creates only the @staging.invalid test accounts, never an admin
+node acceptance.mjs setup-fixture     # read-only on staging
 ```
 
 **4. Non-disruptive tests.**
@@ -120,7 +126,7 @@ node acceptance.mjs cleanup
 node acceptance.mjs cleanup --execute --approve cleanup
 ```
 
-Revoke shares before deleting the book: **deleting a book doesn't revoke its shares, and their images stay public** (see "Measured behaviour"). The clean-up does this in the right order. To delete the fixture it needs the admin grant again. Without the grant it keeps both the fixture and the admin account, because deleting the uploader would null `uploadedById` and silently make the fixture ineligible.
+On staging it revokes the run's shares and deletes the run's `@staging.invalid` accounts. **It keeps the fixture and the administrator.** Locally it also deletes the fixture if it has the admin grant.
 
 ## Tests that need extra care
 
@@ -130,7 +136,9 @@ Revoke shares before deleting the book: **deleting a book doesn't revoke its sha
 | **A12** | Irreversible for the synthetic account | Named approval; gate G4 (empty `SMTP_HOST`) re-checked first |
 | **A15** | 20 renders on the host shared with production | Named approval; a quiet window |
 | **A19** | Raises a real book's `shareCount` by 1, permanently | Named approval. Eligibility and provenance columns aren't touched, which X6 confirms |
-| **A14b** | Deletes the fixture, so it must run last. Needs the admin grant | Named approval; optional |
+| **A14b** | Deletes the fixture | Local only; BLOCKED on staging |
+| **X8** | **Disruptive.** Pauses staging storage. Fails on any commit without the F1 correction, so it's BLOCKED on `aaf708e` | A deployment with the fix; approval naming X8; a quiet window |
+| **X9** | Needs a book that can be deleted, and the harness never deletes staging books | BLOCKED on staging until the Product Owner approves a disposable book |
 | **A8b** | Writes a fake token to staging Redis, seeded with `local/seed-fake-social-token.cjs` | Named approval; optional |
 | **A6** | Staging image-gen reads one public static file from `noetia.app`, as the plan specifies | Covered by run authorization; nothing is written there |
 
@@ -153,28 +161,40 @@ node acceptance.mjs run --only A11 --approve A11 --phase after
 
 The original sequence can't be replayed, because staging has already been upgraded. A13.schema is checked from database evidence. A13.sequence is recorded by the operator from evidence captured during the deploy, or stays BLOCKED, and the verdict then stays INCOMPLETE until the Product Owner decides on it. X7 records the local evidence, but it can't produce ACCEPTED.
 
+## Staging compatibility
+
+| Item | Behaviour |
+|---|---|
+| Deployed commit | `aaf708e` predates F1 and F2. On it, X8 stays BLOCKED, X9 is BLOCKED, and A1–A20 still run |
+| `A11` on `aaf708e` | Use `stop`, as above. `pause` only became safe with the F1 correction |
+| Fixture | Verified, never created. A fragment and shares go on it through the normal API, and those are what clean-up removes |
+| Administrator | Never used by the harness. `admin-sql` refuses any target but `local`. X6.admin and X6.protected confirm it's unchanged |
+| Verdict | Stays INCOMPLETE while X8 or X9 are BLOCKED, so it can't be ACCEPTED on `aaf708e` |
+
 ## Measured behaviour (local stack)
 
-| Interruption | Revoke request | Outbox while interrupted | After storage returns |
-|---|---|---|---|
-| `docker stop` | 204 after about 15 s | `attempts=1`, `lastError=Error` | The sweep removes the row and the image returns 404. This is the retry path A11 is meant to test |
-| `docker pause` | **No response within 180 s** (the limit set here) | `attempts=0`, `lastError` empty | The in-flight delete finishes on resume, with no sweep involved |
+| Interruption | Before the fix | With the fix |
+|---|---|---|
+| `docker pause` (connection open, no answer) | No response within the test limit (180 s in the longest run); `attempts=0` | 204 in about 5 s; `attempts=1`, `StorageTimeoutError`; the sweep finishes after storage returns |
+| `docker stop` (unavailable) | 204 in about 15 s; `attempts=1` | 204 in about 5 s; `attempts=1`, `StorageTimeoutError`; the sweep finishes after storage returns |
 
-In both cases the revocation commits first, so the share returns 404 straight away. The pause result comes from the S3 client having no request timeout (`services/api/src/storage/storage.service.ts`), so the same wait is expected for fragment and account deletion when storage stalls. That's reported as a finding, not changed here.
+In every case the revocation commits first, so the share returns 404 straight away.
 
-Also measured: after a book is deleted, its share page returns 404, but the **card image still returns 200** until the share is revoked.
+After a book is deleted: before the fix, its card images returned 200. With the fix, they return 404, or the sweep removes them if storage is down.
 
-These are local measurements, without Traefik or TLS. Timings on staging may differ.
+These are local measurements, without Traefik or TLS. Timings on staging may differ. Full results: `docs/reports/2026-11-03-NEM-016-F1-F2-corrective.md`.
 
 ## Running the local validation
 
-Local only. Builds nothing itself, so create the images first from the baseline and candidate commits:
+Local only. Create the images first:
 
 ```bash
-docker build --target production -t n16acc-api:old <baseline checkout>/services/api
-docker build --target production -t n16acc-api:new <candidate checkout>/services/api
-docker build -t n16acc-image-gen:new <candidate checkout>/services/image-gen
-local/run-local.sh
+docker build --target production -t n16acc-api:old    <checkout of 9192c50>/services/api
+docker build --target production -t n16acc-api:prefix <checkout of aaf708e>/services/api
+docker build --target production -t n16acc-api:new    <checkout of the fix>/services/api
+docker build -t n16acc-image-gen:new <checkout of the fix>/services/image-gen
+local/run-f1-f2.sh   # F1 and F2: pre-fix, then fix under pause and stop; about 25 minutes
+local/run-local.sh   # the full matrix on the fix, clean-up, and a negative control; about 15 minutes
 ```
 
-Everything is named `n16acc`, bound to loopback and removed on exit. Image-gen has no route out, so renders can't reach production. It runs three passes: the full matrix on the candidate, the clean-up paths, and a negative control against the baseline API, which must fail. It takes 10–20 minutes because A11 waits for the real 10-minute sweep.
+Run them one at a time, as they share a project name and ports. Everything is named `n16acc`, bound to loopback and removed on exit. Image-gen has no route out, so renders can't reach production.

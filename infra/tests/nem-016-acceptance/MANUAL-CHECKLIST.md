@@ -2,7 +2,7 @@
 
 These checks can't be automated, or need access the harness deliberately doesn't have. Record each result in the file from `acceptance.mjs manual-template`, then run `merge-manual`. Every PASS, FAIL or BLOCKED needs an evidence note saying what was seen, on what, and when. Don't put credentials or personal data in a note.
 
-Use the synthetic accounts and fixture from the harness run. **Don't start until the Product Owner has authorized staging execution.**
+Use the synthetic accounts from the harness run and the existing staging fixture. **Don't start until the Product Owner has authorized staging execution.**
 
 ## Web (browser, behind the staging basic auth)
 
@@ -14,7 +14,7 @@ Use the synthetic accounts and fixture from the harness run. **Don't start until
 | A5.client (web part) | In the modal, try N4 (bare `…`) and N5 (omission dropping a negation) | The omission-specific messages appear, not a generic error |
 | A6.card | Open the `A6-data` and `A6-preset` cards | The chosen background is used, not the navy fallback; the watermark is unchanged |
 | A9.client | On one card: Download, Copy link, Publish dialog | The same `/s/<id>` every time |
-| A14b.web | Only if A14b ran: open `/s/<id>` for its share | The page shows "not found" |
+| A14b.web | Local only. BLOCKED on staging, where the fixture must not be deleted | — |
 
 ## Mobile (A16, A5 mobile part)
 
@@ -68,9 +68,12 @@ While it's BLOCKED the verdict stays INCOMPLETE. **Accepting that gap is a Produ
 
 The Product Owner decides whether to clean up and when (integrated report §10, decision 4). After it runs, check these by hand:
 
-- [ ] `evidence-sql --label post-cleanup` shows `testAccounts` 0 and, if the fixture was removed, `fixtureBooks` 0
-- [ ] `admins` is 0
+- [ ] `evidence-sql --label post-cleanup` shows `testAccounts` 0
+- [ ] `fixtureBooks` is still 1 and `adminIds` still lists only `4219d326-b9fc-4aa9-8d35-6ce8b9e6e787`
 - [ ] `reports/staging-content/` is unchanged
-- [ ] The fixture text object was removed from the `books` bucket, or was kept on purpose and recorded
 
-Book deletion doesn't remove the text object, and the harness has no storage credentials. Removing it is a separate operator action using `textFileKey` from the run state.
+The existing fixture and administrator must stay in place. The harness has no way to remove them.
+
+## F1 and F2 on staging
+
+These need a deployment containing the corrections, which isn't authorized yet. **X8 pauses staging storage and needs approval naming it.** X9 needs a disposable book approved by the Product Owner.

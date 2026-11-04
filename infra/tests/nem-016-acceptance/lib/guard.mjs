@@ -11,6 +11,12 @@ export const STAGING = Object.freeze({
   name: 'staging',
   api: 'https://staging.noetia.app/api',
   storage: 'https://storage.staging.noetia.app',
+  // Records that already exist on staging. The harness only ever reads them.
+  fixtureBookId: '68303e17-3a80-4f17-b3c1-8be00a66cc71',
+  adminId: '4219d326-b9fc-4aa9-8d35-6ce8b9e6e787',
+  adminEmail: 'nem016-admin-test@noetia.invalid',
+  // Deployed before the F1 and F2 corrections, so X8 and X9 can't pass there.
+  preFixSha: 'aaf708e93a8f4fff33570f0628813782c5d18ac5',
 });
 
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]']);
@@ -73,17 +79,22 @@ const ROUTES = [
 ];
 
 /**
- * `fixtureBookId` is the only book that may ever be written to, which keeps
- * existing books (and their eligibility and provenance) out of the harness's reach.
+ * Books this run uploaded are the only ones it may delete, which keeps existing
+ * books (and their eligibility and provenance) out of the harness's reach. With
+ * `protectBooks` (the staging target) it can't write to any book at all.
  */
-export function assertRoute(method, path, { fixtureUpload = false, fixtureBookId = null } = {}) {
+export function assertRoute(method, path, { fixtureUpload = false, deletableBookIds = [], protectBooks = false } = {}) {
+  const bookWrite = (method === 'POST' && path === '/books') || (method === 'DELETE' && /^\/books\//.test(path));
+  if (bookWrite && protectBooks) {
+    throw new GuardError('The harness never creates or deletes books on staging');
+  }
   if (method === 'POST' && path === '/books') {
     if (fixtureUpload) return;
     throw new GuardError('POST /books is only allowed for the fixture upload step');
   }
   if (method === 'DELETE' && /^\/books\//.test(path)) {
-    if (fixtureBookId && path === `/books/${fixtureBookId}`) return;
-    throw new GuardError('DELETE /books is only allowed for the fixture book recorded by this run');
+    if (deletableBookIds.some((id) => path === `/books/${id}`)) return;
+    throw new GuardError('DELETE /books is only allowed for a book uploaded by this run');
   }
   if (!ROUTES.some(([m, re]) => m === method && re.test(path))) {
     throw new GuardError(`Route not on the harness allowlist: ${method} ${path.split('?')[0]}`);
@@ -101,10 +112,15 @@ export function assertImageUrl(target, url) {
   }
 }
 
-export const EMAIL_RE = /^nem016-[a-z0-9]{6,16}-(a|b|r|d|x|adm)@staging\.invalid$/;
+export const EMAIL_RE = /^nem016-[a-z0-9]{6,16}-(a|b|r|d|x|y|adm)@staging\.invalid$/;
 export const assertTestEmail = (email) => {
   if (!EMAIL_RE.test(email)) throw new GuardError('Refusing a non-synthetic account address');
 };
+
+/** The staging admin grant already exists, and only the operator may ever change it. */
+export function assertAdminSqlAllowed(env = process.env) {
+  if (env.NEM016_TARGET !== 'local') throw new GuardError('admin-sql is for the local stack only; never grant or revoke staging privileges from this tool');
+}
 
 export function assertInert(value, re, label) {
   if (typeof value !== 'string' || !re.test(value)) throw new GuardError(`${label} failed validation`);

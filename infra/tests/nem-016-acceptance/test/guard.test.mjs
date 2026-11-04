@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { ApiClient } from '../lib/client.mjs';
-import { assertImageUrl, assertOutsideRepo, assertRoute, assertTestEmail, authorizationPhrase, derivePassword, GuardError, readSecretSeed, redact, resolveTarget, STAGING, writeSecretSeed } from '../lib/guard.mjs';
+import { assertAdminSqlAllowed, assertImageUrl, assertOutsideRepo, assertRoute, assertTestEmail, authorizationPhrase, derivePassword, GuardError, readSecretSeed, redact, resolveTarget, STAGING, writeSecretSeed } from '../lib/guard.mjs';
 
 const SHA = 'a'.repeat(40);
 const UUID = '11111111-1111-4111-8111-111111111111';
@@ -45,9 +45,32 @@ test('writes to existing books are impossible', () => {
   refused(() => assertRoute('POST', `/books/${UUID}/sync-map/srt`));
   refused(() => assertRoute('POST', '/books'));
   refused(() => assertRoute('DELETE', `/books/${UUID}`));
-  refused(() => assertRoute('DELETE', `/books/${UUID}`, { fixtureBookId: OTHER }));
-  assert.doesNotThrow(() => assertRoute('DELETE', `/books/${UUID}`, { fixtureBookId: UUID }));
+  refused(() => assertRoute('DELETE', `/books/${UUID}`, { deletableBookIds: [OTHER] }));
+  assert.doesNotThrow(() => assertRoute('DELETE', `/books/${UUID}`, { deletableBookIds: [UUID] }));
   assert.doesNotThrow(() => assertRoute('POST', '/books', { fixtureUpload: true }));
+});
+
+test('on staging no book can be created or deleted, whatever the options say', async () => {
+  refused(() => assertRoute('POST', '/books', { fixtureUpload: true, protectBooks: true }));
+  refused(() => assertRoute('DELETE', `/books/${STAGING.fixtureBookId}`, { deletableBookIds: [STAGING.fixtureBookId], protectBooks: true }));
+  let calls = 0;
+  const client = new ApiClient(STAGING, { fetchImpl: async () => { calls++; return new Response('{}'); }, minIntervalMs: 0 });
+  client.deletableBookIds = [STAGING.fixtureBookId];
+  await assert.rejects(() => client.request('DELETE', `/books/${STAGING.fixtureBookId}`), GuardError);
+  await assert.rejects(() => client.request('POST', '/books', { fixtureUpload: true }), GuardError);
+  assert.equal(calls, 0);
+});
+
+test('admin SQL is never generated for staging', () => {
+  assert.doesNotThrow(() => assertAdminSqlAllowed({ NEM016_TARGET: 'local' }));
+  for (const t of ['staging', 'production', undefined]) refused(() => assertAdminSqlAllowed({ NEM016_TARGET: t }));
+});
+
+test('the existing staging records are pinned exactly', () => {
+  assert.equal(STAGING.fixtureBookId, '68303e17-3a80-4f17-b3c1-8be00a66cc71');
+  assert.equal(STAGING.adminId, '4219d326-b9fc-4aa9-8d35-6ce8b9e6e787');
+  assert.equal(STAGING.adminEmail, 'nem016-admin-test@noetia.invalid');
+  refused(() => assertTestEmail(STAGING.adminEmail));
 });
 
 test('only listed routes are reachable', () => {

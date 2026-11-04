@@ -8,13 +8,14 @@ import { fileURLToPath } from 'node:url';
 import { ApiClient } from './lib/client.mjs';
 import { FIXTURE_AUTHOR, FIXTURE_FILE, FIXTURE_TITLE } from './lib/cases.mjs';
 import { adminSql, evaluateEvidence, evidenceSql, parseEvidence } from './lib/evidence.mjs';
-import { assertTestEmail, derivePassword, GuardError, readSecretSeed, resolveTarget, writeSecretSeed } from './lib/guard.mjs';
+import { assertAdminSqlAllowed, assertTestEmail, derivePassword, GuardError, readSecretSeed, resolveTarget, writeSecretSeed } from './lib/guard.mjs';
 import { allChecks, MATRIX } from './lib/matrix.mjs';
 import { renderCoverage, renderReport } from './lib/report.mjs';
 import { accountEmail, Ctx, runTests } from './lib/runner.mjs';
+import { verifyStagingFixture } from './lib/setup.mjs';
 import { loadRun, mergeManual, saveRun } from './lib/state.mjs';
 
-const ROLES = ['a', 'b', 'r', 'd', 'x', 'adm'];
+const ROLES = ['a', 'b', 'r', 'd', 'x', 'y', 'adm'];
 export const FIXTURE_SHA256 = 'f52b4357a79ee38b358c4a9eb2dc51edb537a409bb601b6a01bce6968312049f';
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '../../..');
@@ -50,8 +51,9 @@ function context(args, run) {
 }
 
 async function setupAccounts(args, run) {
-  const { client, seed } = context(args, run);
-  for (const role of ROLES) {
+  const { target, client, seed } = context(args, run);
+  // Staging already has its administrator; the harness never creates another.
+  for (const role of ROLES.filter((r) => r !== 'adm' || target.name !== 'staging')) {
     const email = accountEmail(run.state.runId, role);
     assertTestEmail(email);
     const password = derivePassword(seed, run.state.runId, role);
@@ -62,11 +64,17 @@ async function setupAccounts(args, run) {
     saveRun(run);
     console.log(`account ${role}: ${email}`);
   }
-  console.log('\nThe fixture needs a temporary admin grant. Generate the SQL with: acceptance.mjs admin-sql --grant');
+  if (target.name !== 'staging') console.log('\nThe local fixture needs an admin grant. Generate the SQL with: acceptance.mjs admin-sql --grant');
 }
 
 async function setupFixture(args, run) {
-  const { client, ctx } = context(args, run);
+  const { target, client, ctx } = context(args, run);
+  if (target.name === 'staging') {
+    run.state.book = await verifyStagingFixture(client);
+    saveRun(run);
+    console.log(`Using the existing staging fixture ${run.state.book.id}. Nothing was created or changed.`);
+    return;
+  }
   const reuse = process.env.NEM016_FIXTURE_BOOK_ID;
   if (reuse) {
     // GET /books/:id needs a subscription for a non-free book, so read the public list.
@@ -109,7 +117,7 @@ async function cleanup(args, run) {
   const liveShares = Object.entries(state.shares);
   const plan = [
     `Revoke ${liveShares.length} recorded share(s)`,
-    state.book && !state.book.deleted && !state.book.reused ? `Delete fixture book ${state.book.id} (needs the temporary admin grant; otherwise the book and admin account stay)` : 'No fixture book to delete',
+    state.book?.reused ? `Keep the existing fixture ${state.book.id}` : state.book && !state.book.deleted ? `Delete fixture book ${state.book.id} (needs the temporary admin grant; otherwise the book and admin account stay)` : 'No fixture book to delete',
     `Delete synthetic accounts: ${Object.entries(state.users).filter(([, u]) => !u.deleted).map(([r]) => r).join(', ') || 'none'}`,
   ];
   console.log(plan.map((p, i) => `${i + 1}. ${p}`).join('\n'));
@@ -195,6 +203,7 @@ async function main() {
     case 'setup-fixture': await setupFixture(args, run); return;
     case 'run': {
       const { ctx } = context(args, run);
+      if (args.phase && !['prepare', 'paused', 'after', 'stalled'].includes(args.phase)) throw new GuardError(`Unknown phase ${args.phase}`);
       await runTests(ctx, args.only ?? null);
       evaluateEvidence(run.state);
       saveRun(run);
@@ -209,6 +218,7 @@ async function main() {
       return console.log(`Ingested snapshot: ${snap.nem016}`);
     }
     case 'admin-sql': {
+      assertAdminSqlAllowed();
       if (!!args.grant === !!args.revoke) throw new GuardError('Use exactly one of --grant or --revoke');
       const email = accountEmail(run.state.runId, 'adm');
       assertTestEmail(email);
