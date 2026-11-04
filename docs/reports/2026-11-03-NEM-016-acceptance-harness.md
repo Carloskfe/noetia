@@ -19,7 +19,7 @@ Prepare a repeatable, safe harness for NEM-016 sharing-integrity acceptance (A1�
 ## 4. Executive summary
 
 - The harness covers **29 tests and 64 checks**: 25 automated over HTTP, 19 from read-only SQL evidence, 7 for the operator on the host, 13 manual.
-- Against the real candidate code on a disposable local stack, **all 44 automated checks passed**. Against the old baseline API, **13 of the tests it ran failed**, including every security test the old code should fail, so the harness does detect these defects.
+- Against the real candidate code on a disposable local stack, **all 44 automated checks passed**. Against the old baseline API, **13 of the 16 tests it ran failed**, so the harness does detect these defects. It didn't run A6, A8, A11 or A19 in that pass; those rely on the unit-test defects or on Run 1.
 - Local validation found **three issues in the application** (§5.1), two of them in NEM-016's own paths: a stalled storage service hangs revocations, and deleting a book leaves its card images public.
 - It also found **corrections to the acceptance plan** (§5.2). The most important: A11 as written (`pause`) can't produce its expected result, so it now uses `stop`.
 - The verdict can't reach ACCEPTED without Product Owner input, because the A13 sequence can no longer be replayed.
@@ -65,7 +65,7 @@ Publishing the fixture needs an administrator: author uploads wait for admin rev
 
 ### 5.5 Coverage
 
-Full matrix: `infra/tests/nem-016-acceptance/COVERAGE.md`. Fully automated (HTTP and SQL evidence, no person or host step): A8, A8b, A10, A15, A19, X1–X6. Needs a person or host step as well: A1–A7, A9, A11–A14b, A17. Fully manual or operator: A16, A18, A20, X7.
+Full matrix: `infra/tests/nem-016-acceptance/COVERAGE.md`. Fully automated (HTTP and SQL evidence): A8, A8b, A10, A11, A14, A15, A19, X1–X6, though A11 and the SQL evidence still need an operator to act on the host. Needs a person or host check as well: A1–A7, A9, A12, A13, A14b, A17. Fully manual or operator: A16, A18, A20, X7.
 
 ## 6. External references
 
