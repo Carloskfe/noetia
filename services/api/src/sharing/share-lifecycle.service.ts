@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
-import { StorageService } from '../storage/storage.service';
+import { StorageService, StorageTimeoutError } from '../storage/storage.service';
 import { CardImageDeletion } from './card-image-deletion.entity';
 import { Share } from './share.entity';
 
@@ -12,6 +12,11 @@ const CARD_KEY_RE = /\/images\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-
 const RETRY_BATCH = 100;
 /** Pending deletions older than this many attempts are reported on every sweep. */
 export const OVERDUE_ATTEMPTS = 12;
+/**
+ * How long a waiting request may spend deleting images. Whatever isn't reached
+ * stays queued for the sweep, so a large account can't hold a request open.
+ */
+export const PURGE_REQUEST_BUDGET_MS = 15_000;
 
 /** Storage key of a quote-card image URL, or null if it isn't one of ours. */
 export function cardKeyFromUrl(url: string | null | undefined): string | null {
@@ -69,6 +74,18 @@ export class ShareLifecycleService {
   }
 
   /**
+   * Revokes every live share of a book, inside the caller's transaction. Shares
+   * have no foreign key to books, so deleting a book doesn't touch them by itself
+   * (NEM-016 F2). Returns the image keys to pass to `purgeImages` after commit.
+   */
+  async revokeForBook(bookId: string, m: EntityManager): Promise<string[]> {
+    const live = await m.find(Share, { where: { bookId, revokedAt: IsNull() } });
+    if (live.length === 0) return [];
+    await m.update(Share, live.map((s) => s.id), { revokedAt: new Date() });
+    return this.enqueue(m, live.map((s) => s.imageUrl));
+  }
+
+  /**
    * Account deletion, inside the caller's transaction: hard-deletes every share
    * the user created plus any share of the user's fragments created by someone
    * else (possible before the S1 fix). Must run BEFORE the user row is deleted,
@@ -90,9 +107,17 @@ export class ShareLifecycleService {
   /**
    * Deletes the given card images now. Success clears the outbox row; failure
    * records the attempt and leaves it for the retry sweep. Never throws.
+   *
+   * Stops at the first timeout (a stalled store would stall every key) or when
+   * `budgetMs` runs out. Keys not reached keep their outbox rows for the sweep.
    */
-  async purgeImages(keys: string[]): Promise<void> {
+  async purgeImages(keys: string[], budgetMs = PURGE_REQUEST_BUDGET_MS): Promise<void> {
+    const stopAt = Date.now() + budgetMs;
     for (const key of keys) {
+      if (Date.now() >= stopAt) {
+        this.logger.warn('card image deletion budget used; the sweep will finish the rest');
+        return;
+      }
       try {
         await this.storage.delete(CARD_BUCKET, key); // idempotent: a missing key is success
       } catch (err) {
@@ -104,6 +129,7 @@ export class ShareLifecycleService {
           } as never)
           .catch(() => undefined);
         this.logger.warn(`card image deletion deferred for key ${key}`);
+        if (err instanceof StorageTimeoutError) return;
         continue;
       }
       await this.deletionRepo.delete({ key }).catch(() => {
@@ -118,7 +144,8 @@ export class ShareLifecycleService {
     try {
       const pending = await this.deletionRepo.find({ order: { createdAt: 'ASC' }, take: RETRY_BATCH });
       if (pending.length === 0) return;
-      await this.purgeImages(pending.map((p) => p.key));
+      // No request is waiting here, so only the timeout stop applies.
+      await this.purgeImages(pending.map((p) => p.key), Number.POSITIVE_INFINITY);
       const overdue = pending.filter((p) => p.attempts + 1 >= OVERDUE_ATTEMPTS).length;
       if (overdue > 0) {
         this.logger.error(`${overdue} withdrawn card image(s) still public after ${OVERDUE_ATTEMPTS}+ attempts`);

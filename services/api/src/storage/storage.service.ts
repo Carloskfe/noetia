@@ -3,6 +3,21 @@ import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } fro
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Readable } from 'stream';
 
+/**
+ * Upper bound for one object deletion, including SDK retries. Deletions run while
+ * a reader's request waits, and the S3 client has no timeout of its own, so a
+ * stalled store would otherwise hold that request open indefinitely (NEM-016 F1).
+ * Uploads and reads keep their current behaviour: they can legitimately be slow.
+ */
+export const STORAGE_DELETE_TIMEOUT_MS = 5_000;
+
+export class StorageTimeoutError extends Error {
+  constructor(message = 'storage operation timed out') {
+    super(message);
+    this.name = 'StorageTimeoutError';
+  }
+}
+
 @Injectable()
 export class StorageService {
   /** Internal client — reaches MinIO over the Docker network for uploads/reads. */
@@ -65,8 +80,29 @@ export class StorageService {
     return Buffer.concat(chunks);
   }
 
+  /**
+   * Deletes an object, or rejects with StorageTimeoutError after
+   * STORAGE_DELETE_TIMEOUT_MS. The timeout also aborts the in-flight request, so
+   * nothing is left running. Deleting twice is safe if the abort arrives late.
+   */
   async delete(bucket: string, key: string): Promise<void> {
-    await this.client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+    const abort = new AbortController();
+    let timer: NodeJS.Timeout | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new StorageTimeoutError());
+        abort.abort();
+      }, STORAGE_DELETE_TIMEOUT_MS);
+    });
+    const send = this.client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }), {
+      abortSignal: abort.signal,
+    });
+    try {
+      // race() also handles the loser, so a late abort rejection stays handled.
+      await Promise.race([send, deadline]);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   /** Returns a permanent public URL — requires the bucket to allow public reads (set in prod). */

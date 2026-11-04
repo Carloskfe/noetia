@@ -1,7 +1,7 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { StorageService } from '../../../src/storage/storage.service';
+import { StorageService, StorageTimeoutError, STORAGE_DELETE_TIMEOUT_MS } from '../../../src/storage/storage.service';
 
 jest.mock('@aws-sdk/client-s3');
 jest.mock('@aws-sdk/s3-request-presigner');
@@ -14,6 +14,53 @@ describe('StorageService', () => {
     jest.clearAllMocks();
     (S3Client as jest.Mock).mockImplementation(() => ({ send: mockSend }));
     service = new StorageService();
+  });
+
+  describe('delete timeout (NEM-016 F1)', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    it('resolves normally and leaves no timer behind', async () => {
+      mockSend.mockResolvedValue({});
+      await service.delete('images', 'k.png');
+      expect(DeleteObjectCommand).toHaveBeenCalledWith({ Bucket: 'images', Key: 'k.png' });
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it('rejects with StorageTimeoutError when storage stalls, and aborts the request', async () => {
+      let signal: AbortSignal | undefined;
+      mockSend.mockImplementation((_c, opts) => { signal = opts.abortSignal; return new Promise(() => undefined); });
+      const result = service.delete('images', 'k.png');
+      const assertion = expect(result).rejects.toBeInstanceOf(StorageTimeoutError);
+      expect(signal?.aborted).toBe(false);
+      await jest.advanceTimersByTimeAsync(STORAGE_DELETE_TIMEOUT_MS - 1);
+      expect(signal?.aborted).toBe(false);
+      await jest.advanceTimersByTimeAsync(1);
+      await assertion;
+      expect(signal?.aborted).toBe(true);
+    });
+
+    it('propagates a storage failure as it is, and leaves no timer behind', async () => {
+      mockSend.mockRejectedValue(new Error('connection refused'));
+      await expect(service.delete('images', 'k.png')).rejects.toThrow('connection refused');
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it('swallows the late rejection the abort causes', async () => {
+      const seen: unknown[] = [];
+      const onUnhandled = (e: unknown) => seen.push(e);
+      process.on('unhandledRejection', onUnhandled);
+      mockSend.mockImplementation((_c, opts) => new Promise((_, reject) => {
+        opts.abortSignal.addEventListener('abort', () => reject(new Error('aborted')));
+      }));
+      const assertion = expect(service.delete('images', 'k.png')).rejects.toBeInstanceOf(StorageTimeoutError);
+      await jest.advanceTimersByTimeAsync(STORAGE_DELETE_TIMEOUT_MS);
+      await assertion;
+      jest.useRealTimers();
+      await new Promise((r) => setImmediate(r));
+      process.off('unhandledRejection', onUnhandled);
+      expect(seen).toEqual([]);
+    });
   });
 
   describe('constructor', () => {
