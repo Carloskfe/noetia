@@ -1,20 +1,25 @@
 import { createHash, randomBytes } from 'crypto';
-import { BadGatewayException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadGatewayException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, QueryFailedError, Repository } from 'typeorm';
 import { Book } from '../books/book.entity';
 import { isBookPubliclyEligible } from '../books/book-eligibility';
 import { Fragment } from '../fragments/fragment.entity';
-import { StorageService } from '../storage/storage.service';
 import { ShareFragmentDto } from './dto/share-fragment.dto';
 import { QuoteIntegrityService, canonicalizeOmissionMarkers } from './quote-integrity.service';
 import { resolveBackgroundImage } from './share-background';
-import { cardKeyFromUrl } from './share-lifecycle.service';
+import { ShareLifecycleService } from './share-lifecycle.service';
 import { SHARE_CREATE_LIMIT, ShareRateLimiter } from './share-rate-limiter';
 import { Share } from './share.entity';
 
 const SLUG_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 const PG_UNIQUE_VIOLATION = '23505';
+/**
+ * How long a share request waits for a card (R2). A stalled store fails first in
+ * image-gen (a 10 s background fetch at most, the render, then an 8 s read limit),
+ * so a slow render is rarely cut off here.
+ */
+export const RENDER_TIMEOUT_MS = 30_000;
 
 /** Short, URL-safe, unguessable slug for the /s/<id> invite link. */
 function makeSlug(len = 10): string {
@@ -80,7 +85,6 @@ export function shareConfigHash(
 
 @Injectable()
 export class SharingService {
-  private readonly logger = new Logger(SharingService.name);
   private readonly imageGenUrl = process.env.IMAGE_GEN_URL ?? 'http://image-gen:5000';
   private readonly webUrl = process.env.WEB_URL ?? 'http://localhost:3000';
 
@@ -89,7 +93,7 @@ export class SharingService {
     @InjectRepository(Book) private readonly bookRepo: Repository<Book>,
     private readonly quoteIntegrity: QuoteIntegrityService,
     private readonly rateLimiter: ShareRateLimiter,
-    private readonly storage: StorageService,
+    private readonly lifecycle: ShareLifecycleService,
   ) {}
 
   /**
@@ -134,20 +138,35 @@ export class SharingService {
       revokedAt: null,
     });
     try {
-      await this.shareRepo.save(share);
+      await this.saveWhileBookExists(share, book.id);
     } catch (err) {
       // A concurrent identical request won the race (partial unique index):
       // return its share and discard the image we just rendered.
-      if (isUniqueViolation(err)) {
-        const winner = await this.findLive(userId, configHash);
-        if (winner) {
-          await this.discardImage(imageUrl);
-          return this.toResult(winner, true);
-        }
-      }
+      const winner = isUniqueViolation(err) ? await this.findLive(userId, configHash) : null;
+      // Whatever stopped the save, the rendered card must not stay public.
+      await this.lifecycle.discardImage(imageUrl);
+      if (winner) return this.toResult(winner, true);
       throw err;
     }
     return this.toResult(share, false);
+  }
+
+  /**
+   * Book eligibility is checked before the render, which takes seconds, so it's
+   * checked again here. The lock conflicts with BooksService.remove (R1): either
+   * this commits first and that delete revokes the share, or the delete commits
+   * first and this finds no book. FOR KEY SHARE doesn't block reads, other share
+   * saves or shareCount updates, and it's never held during a render.
+   */
+  private async saveWhileBookExists(share: Share, bookId: string): Promise<void> {
+    await this.shareRepo.manager.transaction(async (m) => {
+      const locked: unknown[] = await m.query('SELECT id FROM books WHERE id = $1 FOR KEY SHARE', [bookId]);
+      if (locked.length === 0) throw new NotFoundException();
+      if (!(await isBookPubliclyEligible(m.getRepository(Book), bookId))) {
+        throw new UnprocessableEntityException({ error: 'book_not_shareable' });
+      }
+      await m.save(share);
+    });
   }
 
   /**
@@ -198,6 +217,7 @@ export class SharingService {
   ): Promise<string> {
     const response = await fetch(`${this.imageGenUrl}/generate`, {
       method: 'POST',
+      signal: AbortSignal.timeout(RENDER_TIMEOUT_MS),
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         text: quote,
@@ -219,6 +239,9 @@ export class SharingService {
         ...(dto.textAlign   && { textAlign:   dto.textAlign }),
         ...(dto.textScale   && { textScale:   dto.textScale }),
       }),
+    }).catch((err: unknown) => {
+      if ((err as Error)?.name === 'TimeoutError') throw new BadGatewayException('image generation failed');
+      throw err;
     });
 
     if (!response.ok) {
@@ -226,13 +249,5 @@ export class SharingService {
     }
     const data = (await response.json()) as { url: string };
     return data.url;
-  }
-
-  private async discardImage(imageUrl: string): Promise<void> {
-    const key = cardKeyFromUrl(imageUrl);
-    if (!key) return;
-    await this.storage.delete('images', key).catch(() => {
-      this.logger.warn(`orphan card image cleanup failed for key ${key}`);
-    });
   }
 }

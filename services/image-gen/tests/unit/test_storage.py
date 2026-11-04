@@ -1,8 +1,8 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
-from storage import MinioClient
+from storage import MinioClient, _bounded_http_client
 
 
 @pytest.fixture
@@ -80,4 +80,53 @@ def test_minio_client_uses_env_vars(mock_minio):
         access_key="mykey",
         secret_key="mysecret",
         secure=False,
+        http_client=ANY,
     )
+
+
+def test_http_client_has_a_read_deadline_and_does_not_retry_a_stalled_read():
+    client = _bounded_http_client()
+    pool_kw = client.connection_pool_kw
+    assert pool_kw["timeout"].connect_timeout == 3
+    assert pool_kw["timeout"].read_timeout == 8
+    assert pool_kw["retries"].read == 0
+
+
+def test_http_client_keeps_minio_default_retries():
+    retries = _bounded_http_client().connection_pool_kw["retries"]
+    assert retries.total == 5
+    assert retries.backoff_factor == 0.2
+    assert {500, 502, 503, 504} == set(retries.status_forcelist)
+
+
+def test_http_client_keeps_certificate_verification():
+    kw = _bounded_http_client().connection_pool_kw
+    assert kw["cert_reqs"] == "CERT_REQUIRED"
+    assert kw["ca_certs"]
+
+
+def test_http_client_honours_ssl_cert_file():
+    with patch.dict("os.environ", {"SSL_CERT_FILE": "/custom/ca.pem"}):
+        assert _bounded_http_client().connection_pool_kw["ca_certs"] == "/custom/ca.pem"
+
+
+def test_http_client_matches_minio_default_except_timeouts_and_stalled_reads():
+    """Fails if minio-py's own defaults change, so a difference can't go unnoticed."""
+    from minio import Minio
+    with patch.dict("os.environ", {"SSL_CERT_FILE": ""}):
+        default = Minio("x:9000", access_key="a", secret_key="b", secure=False)._http.connection_pool_kw
+        ours = _bounded_http_client().connection_pool_kw
+    assert default["maxsize"] == ours["maxsize"]
+    assert default["cert_reqs"] == ours["cert_reqs"]
+    assert default["ca_certs"] == ours["ca_certs"]
+    assert default["retries"].total == ours["retries"].total
+    assert default["retries"].backoff_factor == ours["retries"].backoff_factor
+    assert set(default["retries"].status_forcelist) == set(ours["retries"].status_forcelist)
+    assert default["timeout"].read_timeout == 300
+    assert ours["timeout"].read_timeout == 8
+
+
+def test_every_minio_client_is_built_with_the_bounded_http_client(mock_minio):
+    mock_cls, _ = mock_minio
+    MinioClient()
+    assert mock_cls.call_args.kwargs["http_client"].connection_pool_kw["timeout"].read_timeout == 8

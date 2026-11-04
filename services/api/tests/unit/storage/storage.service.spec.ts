@@ -63,6 +63,48 @@ describe('StorageService', () => {
     });
   });
 
+  describe('bounded reads (NEM-016 R2)', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    it('returns the body and leaves no timer behind', async () => {
+      mockSend.mockResolvedValue({ Body: Readable.from([Buffer.from('hello')]) });
+      await expect(service.getBuffer('images', 'k.png', { timeoutMs: 1000 })).resolves.toEqual(Buffer.from('hello'));
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it('times out and aborts if storage never answers', async () => {
+      let signal: AbortSignal | undefined;
+      mockSend.mockImplementation((_c, opts) => { signal = opts.abortSignal; return new Promise(() => undefined); });
+      const assertion = expect(service.getBuffer('images', 'k.png', { timeoutMs: 1000 })).rejects.toBeInstanceOf(StorageTimeoutError);
+      await jest.advanceTimersByTimeAsync(1000);
+      await assertion;
+      expect(signal?.aborted).toBe(true);
+    });
+
+    it('times out and destroys the stream if the body stalls after the headers', async () => {
+      const body = new Readable({ read() { /* never produces data */ } });
+      mockSend.mockResolvedValue({ Body: body });
+      const assertion = expect(service.getText('k.txt', 'books', { timeoutMs: 1000 })).rejects.toBeInstanceOf(StorageTimeoutError);
+      await jest.advanceTimersByTimeAsync(1000);
+      await assertion;
+      expect(body.destroyed).toBe(true);
+    });
+
+    it('leaves reads without a timeout as they were, for batch tools', async () => {
+      mockSend.mockResolvedValue({ Body: Readable.from([Buffer.from('x')]) });
+      await service.getBuffer('images', 'k.png');
+      expect(mockSend.mock.calls[0][1]).toBeUndefined();
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it('propagates a storage error as it is', async () => {
+      mockSend.mockRejectedValue(new Error('NoSuchKey'));
+      await expect(service.getBuffer('images', 'k.png', { timeoutMs: 1000 })).rejects.toThrow('NoSuchKey');
+      expect(jest.getTimerCount()).toBe(0);
+    });
+  });
+
   describe('constructor', () => {
     it('creates an S3Client with forcePathStyle for MinIO compatibility', () => {
       expect(S3Client).toHaveBeenCalledWith(

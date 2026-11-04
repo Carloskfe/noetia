@@ -8,7 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Book } from '../books/book.entity';
 import { SyncMap } from '../books/sync-map.entity';
-import { StorageService } from '../storage/storage.service';
+import { QUOTE_SOURCE_READ_TIMEOUT_MS, StorageService } from '../storage/storage.service';
 import { QuoteProvenance, checkQuoteAgainstSource, normalizeTypography } from './quote-integrity';
 
 // Re-exported so existing imports of the rules from this file keep working.
@@ -60,7 +60,7 @@ export class QuoteIntegrityService {
     } else if (book.textFileKey) {
       kind = 'text_file';
       try {
-        raw = await this.storage.getText(book.textFileKey);
+        raw = await this.storage.getText(book.textFileKey, 'books', { timeoutMs: QUOTE_SOURCE_READ_TIMEOUT_MS });
       } catch {
         throw new ServiceUnavailableException({ error: 'quote_source_unavailable' });
       }

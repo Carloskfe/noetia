@@ -17,7 +17,7 @@ import { InstagramPublisher } from '../../../src/social/publishers/instagram.pub
 import { PinterestPublisher } from '../../../src/social/publishers/pinterest.publisher';
 import { cardImageOrigin } from '../../../src/social/social.controller';
 import { Share } from '../../../src/sharing/share.entity';
-import { StorageService } from '../../../src/storage/storage.service';
+import { CARD_IMAGE_READ_TIMEOUT_MS, StorageService } from '../../../src/storage/storage.service';
 import { ShareRateLimiter } from '../../../src/sharing/share-rate-limiter';
 
 const mockTokenService = () => ({
@@ -204,7 +204,7 @@ describe('SocialController', () => {
       connected();
       const spy = jest.spyOn(LinkedInPublisher, 'publish').mockResolvedValue('https://www.linkedin.com/feed/update/1');
       await controller.publish('linkedin', FAKE_IMG_URL, 'c', mockUser as any);
-      expect(storage.getBuffer).toHaveBeenCalledWith('images', CARD_KEY);
+      expect(storage.getBuffer).toHaveBeenCalledWith('images', CARD_KEY, { timeoutMs: CARD_IMAGE_READ_TIMEOUT_MS });
       expect(spy).toHaveBeenCalledWith('tok', PNG_BYTES, 'c');
       expect(global.fetch).not.toHaveBeenCalled();
     });

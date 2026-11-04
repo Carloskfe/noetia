@@ -280,6 +280,37 @@ describe('ShareLifecycleService', () => {
     });
   });
 
+  describe('discardImage (R1: a card that never became a share)', () => {
+    beforeEach(() => { (dataSource as unknown as { manager: unknown }).manager = m; });
+
+    it('queues the image, deletes it and clears the queue', async () => {
+      await service.discardImage(IMG);
+      expect(outboxInserts()[0][1]).toEqual([[KEY]]);
+      expect(storage.delete).toHaveBeenCalledWith('images', KEY);
+      expect(deletionRepo.delete).toHaveBeenCalledWith({ key: KEY });
+    });
+
+    it('leaves it queued for the sweep if storage is down, and never throws', async () => {
+      storage.delete.mockRejectedValue(new StorageTimeoutError());
+      await expect(service.discardImage(IMG)).resolves.toBeUndefined();
+      expect(outboxInserts()).toHaveLength(1);
+      expect(deletionRepo.delete).not.toHaveBeenCalled();
+      expect(deletionRepo.update.mock.calls[0][1].lastError).toBe('StorageTimeoutError');
+    });
+
+    it('still deletes the image if queueing fails, and never throws', async () => {
+      m.query.mockRejectedValue(new Error('db down'));
+      await expect(service.discardImage(IMG)).resolves.toBeUndefined();
+      expect(storage.delete).toHaveBeenCalledWith('images', KEY);
+    });
+
+    it('ignores anything that is not a card URL', async () => {
+      await service.discardImage('https://example.com/other.png');
+      expect(outboxInserts()).toEqual([]);
+      expect(storage.delete).not.toHaveBeenCalled();
+    });
+  });
+
   describe('retryPendingDeletions (scheduled sweep)', () => {
     it('retries queued deletions oldest first and clears the ones that succeed', async () => {
       deletionRepo.find.mockResolvedValue([{ key: KEY, attempts: 1 }, { key: KEY2, attempts: 0 }]);

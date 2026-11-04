@@ -14,7 +14,7 @@
 
 | PASS | FAIL | BLOCKED | NOT RUN |
 |---|---|---|---|
-| 0 | 0 | 0 | 31 |
+| 0 | 0 | 0 | 34 |
 
 ## Classification
 
@@ -63,6 +63,9 @@ The verdict is **ACCEPTED** only if every required test passed. It's **REJECTED*
 | X6 | Existing books untouched | PO constraint | NOT RUN |
 | X8 | Stalled storage is bounded (F1) | F1, S3, G9 | NOT RUN |
 | X9 | Book deletion withdraws shares (F2) | F2, S3, S14, D07 | NOT RUN |
+| X10 | Share creation against book deletion (R1) (local only) | R1, S3, S14, D07 | NOT RUN |
+| X11 | Bounded storage on share paths (R2) (local only) | R2 | NOT RUN |
+| X12 | Orphan image audit is read-only (R3) (local only) | R3 | NOT RUN |
 | X7 | Old app on the 068 schema (local only) | 068 | NOT RUN |
 
 ## Checks
@@ -144,6 +147,22 @@ The verdict is **ACCEPTED** only if every required test passed. It's **REJECTED*
 | X8.drained | db | After the sweep: none of those outbox rows remain | NOT RUN |  |
 | X9.api | api | Deleting a book with shares returns 204; its share pages and images return 404; a repeat delete returns 404; a book with no shares deletes cleanly; another book's share stays live | NOT RUN |  |
 | X9.db | db | Those shares are revoked, none of their outbox rows remain, and the other book's share is untouched | NOT RUN |  |
+| X10.render | local | Book deleted during the render: the share is refused, no row remains, and its card image is withdrawn | NOT RUN |  |
+| X10.share-first | local | Share save holds the book lock first: the delete waits, then revokes that share; its image is withdrawn | NOT RUN |  |
+| X10.delete-first | local | Delete holds the book lock first: the save waits, then finds no book and is refused; its image is withdrawn | NOT RUN |  |
+| X10.double-delete | local | Two simultaneous deletes: one 204, one 404, and no share survives | NOT RUN |  |
+| X10.storage | local | Storage stalled during the race: the refusal is bounded, the image is queued, and the sweep withdraws it | NOT RUN |  |
+| X10.concurrent | local | 5 concurrent shares during a delete: all refused, no row remains, all images withdrawn | NOT RUN |  |
+| X10.stress | local | Unsynchronized rounds of share and delete: no active share survives any completed delete | NOT RUN |  |
+| X10.rollback-share | local | A database failure saving a share: no row, image withdrawn, outbox clear | NOT RUN |  |
+| X10.rollback-delete | local | A database failure deleting a book: book and shares unchanged, images intact, outbox clear | NOT RUN |  |
+| X11.quote | local | Share on an uncached book: 503 quote_source_unavailable within the limit, nothing saved, under pause and stop | NOT RUN |  |
+| X11.render | local | Share on a cached book: 502 within the limit, nothing saved, under pause and stop | NOT RUN |  |
+| X11.publish | local | Social publish: 502 image_download_failed within the limit, under pause and stop | NOT RUN |  |
+| X11.recovery | local | After storage returns: sharing an uncached book works again | NOT RUN |  |
+| X11.sockets | local | Against a server that goes quiet (no answer, or mid-body): the read times out and the socket closes | NOT RUN |  |
+| X12.classes | local | Seeded images of every class are classified as expected | NOT RUN |  |
+| X12.unchanged | local | Objects and database rows are identical before and after the audit | NOT RUN |  |
 | X7.local | operator | Locally, the baseline API creates a real share on the migrated schema | NOT RUN |  |
 
 ## Data changes and clean-up

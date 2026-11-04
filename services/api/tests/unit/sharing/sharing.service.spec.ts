@@ -11,7 +11,7 @@ import { QueryFailedError } from 'typeorm';
 import { SharingService, shareConfigHash } from '../../../src/sharing/sharing.service';
 import { QuoteIntegrityService } from '../../../src/sharing/quote-integrity.service';
 import { ShareRateLimiter } from '../../../src/sharing/share-rate-limiter';
-import { StorageService } from '../../../src/storage/storage.service';
+import { ShareLifecycleService } from '../../../src/sharing/share-lifecycle.service';
 import { Share } from '../../../src/sharing/share.entity';
 import { Book } from '../../../src/books/book.entity';
 import { Fragment } from '../../../src/fragments/fragment.entity';
@@ -32,11 +32,13 @@ const mockShareRepo = {
   save: jest.fn(),
   findOneBy: jest.fn(),
   increment: jest.fn(),
+  manager: { transaction: jest.fn() },
 };
 const mockBookRepo = { findOneBy: jest.fn() };
 const mockQuote = { assertFaithfulExcerpt: jest.fn() };
 const mockLimiter = { consume: jest.fn() };
-const mockStorage = { delete: jest.fn() };
+const mockLifecycle = { discardImage: jest.fn() };
+const mockTx = { query: jest.fn(), getRepository: jest.fn(() => mockBookRepo), save: jest.fn() };
 
 const okFetch = (url = IMG) =>
   (global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ url }) }) as unknown as typeof fetch);
@@ -53,7 +55,10 @@ describe('SharingService', () => {
     mockShareRepo.increment.mockResolvedValue(undefined);
     mockQuote.assertFaithfulExcerpt.mockResolvedValue(PROV);
     mockLimiter.consume.mockResolvedValue(undefined);
-    mockStorage.delete.mockResolvedValue(undefined);
+    mockLifecycle.discardImage.mockResolvedValue(undefined);
+    mockTx.query.mockResolvedValue([{ id: 'book-1' }]);
+    mockTx.save.mockImplementation((x) => mockShareRepo.save(x));
+    mockShareRepo.manager.transaction.mockImplementation(async (fn: (m: unknown) => unknown) => fn(mockTx));
     eligible = jest.spyOn(eligibility, 'isBookPubliclyEligible').mockResolvedValue(true);
     okFetch();
 
@@ -64,7 +69,7 @@ describe('SharingService', () => {
         { provide: getRepositoryToken(Book), useValue: mockBookRepo },
         { provide: QuoteIntegrityService, useValue: mockQuote },
         { provide: ShareRateLimiter, useValue: mockLimiter },
-        { provide: StorageService, useValue: mockStorage },
+        { provide: ShareLifecycleService, useValue: mockLifecycle },
       ],
     }).compile();
     service = module.get(SharingService);
@@ -190,12 +195,76 @@ describe('SharingService', () => {
 
       expect(result.reused).toBe(true);
       expect(result.pageUrl).toMatch(/WINNER0001$/);
-      expect(mockStorage.delete).toHaveBeenCalledWith('images', '11111111-2222-4333-8444-555555555555.png');
+      expect(mockLifecycle.discardImage).toHaveBeenCalledWith(IMG);
     });
 
-    it('rethrows other database errors', async () => {
+    it('rethrows other database errors and withdraws the rendered card', async () => {
       mockShareRepo.save.mockRejectedValue(new Error('connection lost'));
       await expect(service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1')).rejects.toThrow('connection lost');
+      expect(mockLifecycle.discardImage).toHaveBeenCalledWith(IMG);
+    });
+
+    // R1 — coordination with book deletion
+    describe('saving against a book that may be deleted (R1)', () => {
+      it('takes the book lock, re-checks eligibility, then saves, all in one transaction after the render', async () => {
+        const order: string[] = [];
+        (global.fetch as jest.Mock).mockImplementation(async () => { order.push('render'); return { ok: true, json: async () => ({ url: IMG }) }; });
+        mockTx.query.mockImplementation(async () => { order.push('lock'); return [{ id: 'book-1' }]; });
+        eligible.mockImplementation(async () => { order.push('eligible'); return true; });
+        mockTx.save.mockImplementation(async (x) => { order.push('save'); return x; });
+        await service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1');
+        expect(order).toEqual(['render', 'lock', 'eligible', 'save']);
+        expect(mockTx.query).toHaveBeenCalledWith(expect.stringContaining('FOR KEY SHARE'), ['book-1']);
+      });
+
+      it('returns 404, saves nothing and withdraws the card if the book is gone', async () => {
+        mockTx.query.mockResolvedValue([]);
+        await expect(service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1')).rejects.toBeInstanceOf(NotFoundException);
+        expect(mockTx.save).not.toHaveBeenCalled();
+        expect(mockLifecycle.discardImage).toHaveBeenCalledWith(IMG);
+      });
+
+      it('returns 422, saves nothing and withdraws the card if the book stopped being eligible', async () => {
+        eligible.mockResolvedValue(false);
+        await expect(service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1')).rejects.toMatchObject({ status: 422 });
+        expect(mockTx.save).not.toHaveBeenCalled();
+        expect(mockLifecycle.discardImage).toHaveBeenCalledWith(IMG);
+      });
+
+      it('does not hold the lock during a render', async () => {
+        (global.fetch as jest.Mock).mockImplementation(async () => {
+          expect(mockShareRepo.manager.transaction).not.toHaveBeenCalled();
+          return { ok: true, json: async () => ({ url: IMG }) };
+        });
+        await service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1');
+        expect(mockShareRepo.manager.transaction).toHaveBeenCalledTimes(1);
+      });
+
+      it('renders nothing and discards nothing when an identical live share exists', async () => {
+        mockShareRepo.findOneBy.mockResolvedValueOnce({ id: 'EXISTING01', imageUrl: IMG });
+        await service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1');
+        expect(global.fetch).not.toHaveBeenCalled();
+        expect(mockLifecycle.discardImage).not.toHaveBeenCalled();
+      });
+    });
+
+    // R2 — a stalled renderer
+    describe('bounded render (R2)', () => {
+      it('sends a timeout signal with the render request', async () => {
+        await service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1');
+        expect((global.fetch as jest.Mock).mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+      });
+
+      it('reports a render timeout as 502 and saves nothing', async () => {
+        (global.fetch as jest.Mock).mockRejectedValue(Object.assign(new Error('timed out'), { name: 'TimeoutError' }));
+        await expect(service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1')).rejects.toBeInstanceOf(BadGatewayException);
+        expect(mockTx.save).not.toHaveBeenCalled();
+      });
+
+      it('leaves other render failures as they were', async () => {
+        (global.fetch as jest.Mock).mockRejectedValue(new TypeError('fetch failed'));
+        await expect(service.createOrReuseShare(mockFragment, mockBook, dto(), 'user-1')).rejects.toThrow('fetch failed');
+      });
     });
 
     // S8 — rate limit

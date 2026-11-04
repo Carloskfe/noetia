@@ -13,7 +13,7 @@ const dir = dirname(fileURLToPath(import.meta.url));
 test('the matrix holds A1–A20, A8b, A14b and supplemental cases', () => {
   const ids = new Set(MATRIX.map((t) => t.id));
   for (let i = 1; i <= 20; i++) assert.ok(ids.has(`A${i}`), `A${i}`);
-  for (const id of ['A8b', 'A14b', 'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'X9']) assert.ok(ids.has(id), id);
+  for (const id of ['A8b', 'A14b', 'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'X9', 'X10', 'X11', 'X12']) assert.ok(ids.has(id), id);
   assert.equal(new Set(allChecks().map((c) => c.id)).size, allChecks().length, 'check ids are unique');
 });
 
@@ -52,6 +52,16 @@ test('A13 keeps the verdict INCOMPLETE until its sequence is resolved', () => {
   r['A13.sequence'] = { status: 'BLOCKED' };
   assert.equal(testStatus(findTest('A13'), r), 'BLOCKED');
   assert.equal(overallVerdict(r), 'INCOMPLETE');
+});
+
+test('local-only tests are not required, and passing them can\'t produce ACCEPTED', () => {
+  assert.equal(overallVerdict(allPass(['X7', 'X10', 'X11', 'X12'])), 'ACCEPTED');
+  const r = Object.fromEntries(allChecks().filter((c) => c.kind === 'local').map((c) => [c.id, { status: 'PASS' }]));
+  assert.equal(overallVerdict(r), 'INCOMPLETE');
+});
+
+test('local checks can\'t be entered by hand', () => {
+  assert.throws(() => mergeManual({ results: {} }, { 'X10.render': { status: 'PASS', evidence: 'x' } }), /local check/);
 });
 
 test('local evidence X7 cannot stand in for A13', () => {
