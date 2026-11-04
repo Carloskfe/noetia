@@ -25,7 +25,7 @@ x-api-env: &api_env
   MINIO_ACCESS_KEY: localonlykey
   MINIO_SECRET_KEY: localonlysecret
   MINIO_PUBLIC_URL: http://127.0.0.1:19016
-  IMAGE_GEN_URL: http://image-gen:5000
+  IMAGE_GEN_URL: ${N16_IMAGE_GEN_URL:-http://image-gen:5000}
   SHARE_BG_ALLOWED_HOSTS: bgstatic
   MEILI_HOST: http://127.0.0.1:1
   MEILI_MASTER_KEY: localonly
@@ -67,8 +67,17 @@ services:
     command: >
       sh -c "mkdir -p /srv/backgrounds && python -c \"from PIL import Image; Image.new('RGB',(1200,800),(150,30,90)).save('/srv/backgrounds/imagen-7.jpg')\" &&
       cd /srv && python -m http.server 80"
+  # Forwards renders to image-gen and can hold the response, so race tests choose
+  # the exact moment a card finishes rendering. Only started by run-r1-r2.sh.
+  render-gate:
+    image: n16acc-api:new
+    profiles: [race]
+    command: node /gate/render-gate.cjs
+    volumes: ["${N16_REPO}/infra/tests/nem-016-acceptance/local/render-gate.cjs:/gate/render-gate.cjs:ro"]
+    ports: ["127.0.0.1:15016:5001"]
+    networks: [int, pub]
   image-gen:
-    image: n16acc-image-gen:new
+    image: n16acc-image-gen:${N16_IMAGE_GEN_TAG:-new}
     environment:
       MINIO_ENDPOINT: storage
       MINIO_PORT: "9000"

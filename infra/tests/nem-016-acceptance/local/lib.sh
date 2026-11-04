@@ -19,7 +19,7 @@ genCount() { DC logs --no-log-prefix image-gen 2>/dev/null | grep -c 'POST /gene
 grant() { H admin-sql --grant | PSQL -q -f -; }
 revoke() { H admin-sql --revoke | PSQL -q -f -; }
 wait_healthy() { for _ in $(seq 1 60); do [ "$(curl -s -o /dev/null -w '%{http_code}' "$NEM016_LOCAL_API/health")" = 200 ] && return 0; sleep 2; done; echo "api never became healthy"; return 1; }
-teardown() { [ "${N16_KEEP:-0}" = 1 ] || { docker unpause n16acc-storage-1 >/dev/null 2>&1; DC --profile tools down -v --remove-orphans >/dev/null 2>&1; }; }
+teardown() { [ "${N16_KEEP:-0}" = 1 ] || { docker unpause n16acc-storage-1 >/dev/null 2>&1; DC --profile tools --profile race down -v --remove-orphans >/dev/null 2>&1; }; }
 trap teardown EXIT
 
 

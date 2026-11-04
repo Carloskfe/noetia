@@ -150,6 +150,13 @@ Nothing was executed on staging or production.
 
 No migration. Not merged, not deployed, and not on staging, which still runs `aaf708e`.
 
+**Rev 7 (2026-11-03):** residual-risk mission. `docs/reports/2026-11-03-NEM-016-residual-risks.md` covers:
+- R1: row locks coordinate share creation with book deletion, so no active share survives a completed deletion
+- R2: bounded storage reads and renders on the share paths; a design for general uploads, not implemented, awaiting approval
+- R3: a read-only audit and proposed clean-up for images from before F2 (`docs/operations/nem-016-orphan-card-images.md`); nothing deleted
+
+No migration. Not merged, not deployed, and not on staging, which still runs `aaf708e`.
+
 ## 19. Product Architecture review
 Pending. Verdict: —
 

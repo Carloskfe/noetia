@@ -481,7 +481,7 @@ const T = {
 };
 
 /** Local only: a second copy of the approved text, so deleting it spares the fixture. */
-async function uploadDisposable(t) {
+export async function uploadDisposable(t) {
   const admin = await t.login('adm');
   const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
   const form = new FormData();

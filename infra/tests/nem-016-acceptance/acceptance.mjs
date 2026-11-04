@@ -13,7 +13,7 @@ import { allChecks, MATRIX } from './lib/matrix.mjs';
 import { renderCoverage, renderReport } from './lib/report.mjs';
 import { accountEmail, Ctx, runTests } from './lib/runner.mjs';
 import { verifyStagingFixture } from './lib/setup.mjs';
-import { loadRun, mergeManual, saveRun } from './lib/state.mjs';
+import { loadRun, mergeManual, saveRun, setCheck } from './lib/state.mjs';
 
 const ROLES = ['a', 'b', 'r', 'd', 'x', 'y', 'adm'];
 export const FIXTURE_SHA256 = 'f52b4357a79ee38b358c4a9eb2dc51edb537a409bb601b6a01bce6968312049f';
@@ -228,6 +228,15 @@ async function main() {
       // Operator or manual result only; automated checks can't be set by hand.
       const [id, status, ...why] = args._;
       mergeManual(run.state, { [id]: { status, evidence: why.join(' ') } });
+      saveRun(run);
+      return;
+    }
+    case 'set-local': {
+      // For the local validation scripts only; refused for any other target.
+      const [id, status, ...why] = args._;
+      if (process.env.NEM016_TARGET !== 'local') throw new GuardError('set-local is for the local stack only');
+      if (allChecks().find((c) => c.id === id)?.kind !== 'local') throw new GuardError(`${id} is not a local check`);
+      setCheck(run.state, id, status, why.join(' '));
       saveRun(run);
       return;
     }

@@ -1,6 +1,6 @@
 # NEM-016 staging acceptance harness
 
-Repeatable acceptance tests for NEM-016 sharing integrity: A1–A20 plus supplemental cases, including the F1 and F2 corrections (X8, X9).
+Repeatable acceptance tests for NEM-016 sharing integrity: A1–A20 plus supplemental cases, including the F1 and F2 corrections (X8, X9) and the residual-risk regressions (X10, X11, X12).
 
 **Nothing here has been run against staging or production.** Running it on staging needs explicit Product Owner authorization. It has only been run locally, against the disposable stack in `local/`.
 
@@ -170,6 +170,7 @@ The original sequence can't be replayed, because staging has already been upgrad
 | Fixture | Verified, never created. A fragment and shares go on it through the normal API, and those are what clean-up removes |
 | Administrator | Never used by the harness. `admin-sql` refuses any target but `local`. X6.admin and X6.protected confirm it's unchanged |
 | Verdict | Stays INCOMPLETE while X8 or X9 are BLOCKED, so it can't be ACCEPTED on `aaf708e` |
+| X10, X11, X12 | Local only: they need held locks, a render gate or a stalled store under test control. They never run on staging and never count toward acceptance |
 
 ## Measured behaviour (local stack)
 
@@ -191,8 +192,11 @@ Local only. Create the images first:
 ```bash
 docker build --target production -t n16acc-api:old    <checkout of 9192c50>/services/api
 docker build --target production -t n16acc-api:prefix <checkout of aaf708e>/services/api
+docker build --target production -t n16acc-api:pr31   <checkout of a90b646>/services/api
+docker build -t n16acc-image-gen:pr31 <checkout of a90b646>/services/image-gen
 docker build --target production -t n16acc-api:new    <checkout of the fix>/services/api
 docker build -t n16acc-image-gen:new <checkout of the fix>/services/image-gen
+local/run-r1-r2.sh   # R1, R2, R3: PR #31 code, then the fix; about 25 minutes
 local/run-f1-f2.sh   # F1 and F2: pre-fix, then fix under pause and stop; about 25 minutes
 local/run-local.sh   # the full matrix on the fix, clean-up, and a negative control; about 15 minutes
 ```
