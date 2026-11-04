@@ -76,7 +76,7 @@ Any card that doesn't become a share now goes through `ShareLifecycleService.dis
 
 Deadlines are per call, not on the shared client, because a client-wide limit would apply to 500 MB uploads and batch reads. Existing errors are reused, and timed-out requests are aborted. A body that stalls after its headers is destroyed as well, which the socket probe confirms.
 
-**Why those values:** a 200 MB read took 0.4 s locally against the 15 s limit. The API's 30 s render limit is above image-gen's own worst case, so image-gen fails first and doesn't store a card after the API has given up.
+**Why those values:** a 200 MB read took 0.4 s locally against the 15 s limit. The API's 30 s render limit is above image-gen's time on a stalled store, so image-gen fails first. An unreachable store that times out every connection could take about 21 s, and with a slow background fetch that could pass 30 s, so the API could rarely give up first (calculated, not measured).
 
 ### 5.4 Proposed design for general uploads: not implemented, needs approval
 
@@ -121,7 +121,7 @@ None needed. Tools tested: Node 20.20.2, `pgvector/pgvector:pg16`, `minio/minio:
 | **Medium** | Old orphaned images stay public until someone acts | Decision 3 |
 | **Medium** | R1's race can't be tested on staging, because forcing it needs locks and a render gate. Its evidence is local | Decision 5 |
 | **Low** | A process crash between the render and the save leaves an unreferenced card. There's no outbox row yet at that point | Would need a write before each render. The audit reports it as ambiguous |
-| **Low** | If the API gives up at 30 s while image-gen still finishes, that card stays unreferenced. Image-gen's own limits make this unlikely | Same |
+| **Low** | If the API gives up at 30 s while image-gen still finishes, that card stays unreferenced. It needs a slow background fetch and repeated connection timeouts together | Same |
 | **Low** | A share save stuck on a database problem would hold the book lock, so a book delete would wait for it. Saves are short, and book deletion is admin-only | No `lock_timeout` added |
 | **Low** | A refused share still used one of the reader's 20 cards per 10 minutes | Only during a race; left as is |
 | **Low** | Direct SQL deleting a book bypasses the lock | Project rules already route changes through the application |

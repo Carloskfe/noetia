@@ -15,9 +15,9 @@ import { Share } from './share.entity';
 const SLUG_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 const PG_UNIQUE_VIOLATION = '23505';
 /**
- * How long a share request waits for a card (R2). Longer than image-gen's own
- * worst case (a 10 s background fetch, the render, then its bounded upload), so
- * a slow render is rarely cut off and image-gen finishes or fails first.
+ * How long a share request waits for a card (R2). A stalled store fails first in
+ * image-gen (a 10 s background fetch at most, the render, then an 8 s read limit),
+ * so a slow render is rarely cut off here.
  */
 export const RENDER_TIMEOUT_MS = 30_000;
 
