@@ -1,21 +1,22 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ApiClient } from '../lib/client.mjs';
-import { GuardError, derivePassword } from '../lib/guard.mjs';
+import { GuardError, derivePassword, STAGING } from '../lib/guard.mjs';
+import { verifyStagingFixture } from '../lib/setup.mjs';
 import { MATRIX } from '../lib/matrix.mjs';
 import { accountEmail, buildExcerpt, Ctx, runTests } from '../lib/runner.mjs';
 import { fakeApi } from './fake-api.mjs';
 
 const SEED = 'f'.repeat(64);
 const TARGET = Object.freeze({ name: 'local', api: 'http://127.0.0.1:14016', storage: 'http://127.0.0.1:19016' });
-const ALL_APPROVED = new Set(['A8b', 'A12', 'A14b', 'A15', 'A19']);
-const AUTOMATED = MATRIX.filter((t) => t.checks.some((c) => c.kind === 'api') && t.id !== 'A11');
+const ALL_APPROVED = new Set(['A8b', 'A12', 'A14b', 'A15', 'A19', 'X8', 'X9']);
+const AUTOMATED = MATRIX.filter((t) => t.checks.some((c) => c.kind === 'api') && t.id !== 'A11' && t.id !== 'X8');
 
 async function setup(defects = new Set(), { approved = ALL_APPROVED, env = {} } = {}) {
   const api = fakeApi({ defects, storage: TARGET.storage });
   const client = new ApiClient(TARGET, { fetchImpl: api.fetchImpl, sleep: async () => {}, minIntervalMs: 0 });
   const state = { runId: 'abc123', users: {}, fragments: {}, shares: {}, book: null, results: {}, snapshots: {}, a11: {} };
-  for (const role of ['a', 'b', 'r', 'd', 'x', 'adm']) {
+  for (const role of ['a', 'b', 'r', 'd', 'x', 'y', 'adm']) {
     const email = accountEmail('abc123', role);
     const res = await client.request('POST', '/auth/register', { json: { name: role, email, password: derivePassword(SEED, 'abc123', role) } });
     state.users[role] = { id: res.body.user.id, email };
@@ -62,6 +63,8 @@ const DEFECTS = [
   ['noDto', 'X1', 'X1.api'],
   ['leakFields', 'X3', 'X3.api'],
   ['publishWithoutAccount', 'A8', 'A8.api'],
+  ['bookDeleteKeepsShares', 'X9', 'X9.api'],
+  ['bookDeleteKeepsShares', 'A14b', 'A14b.api'],
 ];
 
 for (const [defect, testId, check] of DEFECTS) {
@@ -165,6 +168,95 @@ test('no token or password reaches the recorded state', async () => {
   const dump = JSON.stringify(state);
   assert.ok(!dump.includes('eyJfake'), 'token');
   assert.ok(!dump.includes('Aa1-'), 'password');
+});
+
+// ---- Stalled storage (F1), through the fake API with controlled response times.
+async function x8Run(slowMs = 0, env = {}) {
+  const ctx = await setup(new Set(), { env });
+  const real = ctx.client.request.bind(ctx.client);
+  ctx.client.request = async (m, p, o) => { const r = await real(m, p, o); if (m === 'DELETE') r.ms = slowMs; return r; };
+  ctx.t.phase = 'prepare';
+  await runTests(ctx.t, new Set(['X8']));
+  ctx.t.phase = 'stalled';
+  await runTests(ctx.t, new Set(['X8']));
+  return ctx;
+}
+
+test('X8 passes when every deletion returns within the limit', async () => {
+  const { state } = await x8Run(100);
+  for (const id of ['X8.prepare', 'X8.revoke', 'X8.repeat', 'X8.fragment', 'X8.account', 'X8.book']) assert.equal(statusOf(state, id), 'PASS', `${id}: ${state.results[id]?.detail}`);
+});
+
+test('X8 fails when a deletion takes longer than the limit', async () => {
+  const { state } = await x8Run(9_000);
+  for (const id of ['X8.revoke', 'X8.fragment', 'X8.account', 'X8.book']) assert.equal(statusOf(state, id), 'FAIL', id);
+});
+
+test('X8 is BLOCKED on the commit that predates the correction, and makes no writes', async () => {
+  const { state, t, api } = await setup(new Set(), { env: { NEM016_DEPLOYED_SHA: STAGING.preFixSha } });
+  const before = api.db.calls.length;
+  t.phase = 'prepare';
+  await runTests(t, new Set(['X8']));
+  assert.equal(statusOf(state, 'X8.prepare'), 'BLOCKED');
+  assert.deepEqual(api.db.calls.slice(before).filter((c) => !c.startsWith('GET')), []);
+});
+
+test('X8 does nothing until the operator names a phase', async () => {
+  const { state, t } = await setup();
+  await runTests(t, new Set(['X8']));
+  assert.equal(statusOf(state, 'X8.prepare'), 'BLOCKED');
+});
+
+// ---- The staging target, with a stub that records calls and reaches nothing.
+function stagingCtx() {
+  const calls = [];
+  const book = { id: STAGING.fixtureBookId, title: 'Cuaderno de pruebas de citas (NEM-016)', uploadedById: STAGING.adminId, isPublished: true };
+  const fetchImpl = async (url, init = {}) => {
+    calls.push(`${init.method} ${url}`);
+    return new Response(url.includes('/books?') ? JSON.stringify([book]) : '{}', { status: 200 });
+  };
+  const client = new ApiClient(STAGING, { fetchImpl, sleep: async () => {}, minIntervalMs: 0 });
+  const state = { runId: 'abc123', users: {}, fragments: {}, shares: {}, book: { id: STAGING.fixtureBookId, reused: true }, results: {}, snapshots: {}, a11: {} };
+  const t = new Ctx({ client, state, seed: SEED, approved: ALL_APPROVED, sleep: async () => {}, env: {} });
+  t.startedAt = new Date(0).toISOString();
+  return { calls, client, state, t, book };
+}
+
+test('staging: the pinned fixture is recognized without any write', async () => {
+  const { client, calls } = stagingCtx();
+  const book = await verifyStagingFixture(client);
+  assert.equal(book.id, STAGING.fixtureBookId);
+  assert.equal(book.reused, true);
+  assert.ok(calls.every((c) => c.startsWith('GET ')), calls.join());
+});
+
+test('staging: an unexpected fixture stops the run and changes nothing', async () => {
+  const cases = [[], [{ title: 'Cuaderno de pruebas de citas (NEM-016)', id: 'other', uploadedById: STAGING.adminId, isPublished: true }], [{ title: 'Cuaderno de pruebas de citas (NEM-016)', id: STAGING.fixtureBookId, uploadedById: 'other', isPublished: true }], [{ title: 'Cuaderno de pruebas de citas (NEM-016)', id: STAGING.fixtureBookId, uploadedById: STAGING.adminId, isPublished: false }]];
+  for (const list of cases) {
+    const calls = [];
+    const client = new ApiClient(STAGING, { fetchImpl: async (u, i) => { calls.push(i.method); return new Response(JSON.stringify(list)); }, minIntervalMs: 0 });
+    await assert.rejects(() => verifyStagingFixture(client));
+    assert.deepEqual(calls, ['GET']);
+  }
+});
+
+test('staging: a run makes this tool neither deletable nor uploadable for the fixture', () => {
+  const { client } = stagingCtx();
+  assert.deepEqual(client.deletableBookIds, []);
+});
+
+test('staging: A14b and X9 stay BLOCKED and send nothing', async () => {
+  const { state, t, calls } = stagingCtx();
+  await runTests(t, new Set(['A14b', 'X9']));
+  assert.equal(statusOf(state, 'A14b.api'), 'BLOCKED');
+  assert.equal(statusOf(state, 'X9.api'), 'BLOCKED');
+  assert.ok(calls.every((c) => c.includes('/health')), calls.join());
+});
+
+test('staging: the harness refuses to log in as the administrator', async () => {
+  const { t, calls } = stagingCtx();
+  await assert.rejects(() => t.login('adm'), GuardError);
+  assert.deepEqual(calls, []);
 });
 
 test('the excerpt builder skips short, exception and symbol-heavy phrases', () => {

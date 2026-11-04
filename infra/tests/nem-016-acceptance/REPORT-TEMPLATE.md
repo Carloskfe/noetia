@@ -14,7 +14,7 @@
 
 | PASS | FAIL | BLOCKED | NOT RUN |
 |---|---|---|---|
-| 0 | 0 | 0 | 29 |
+| 0 | 0 | 0 | 31 |
 
 ## Classification
 
@@ -61,6 +61,8 @@ The verdict is **ACCEPTED** only if every required test passed. It's **REJECTED*
 | X4 | Concurrent duplicates | G8 | NOT RUN |
 | X5 | Revocation lifecycle | S3, D07 | NOT RUN |
 | X6 | Existing books untouched | PO constraint | NOT RUN |
+| X8 | Stalled storage is bounded (F1) | F1, S3, G9 | NOT RUN |
+| X9 | Book deletion withdraws shares (F2) | F2, S3, S14, D07 | NOT RUN |
 | X7 | Old app on the 068 schema (local only) | 068 | NOT RUN |
 
 ## Checks
@@ -107,7 +109,7 @@ The verdict is **ACCEPTED** only if every required test passed. It's **REJECTED*
 | A13.sequence | operator | The old app worked on the 068 schema during the deploy (only from evidence captured at the time) | NOT RUN |  |
 | A13.schema | db | 068 is the latest migration; 3 columns, the outbox table and both indexes exist | NOT RUN |  |
 | A14.api | api | Sharing a fragment of an ingested book below the gate returns 422 book_not_shareable | NOT RUN |  |
-| A14b.api | api | After the admin deletes the fixture, an existing share's API page returns 404 | NOT RUN |  |
+| A14b.api | api | After the admin deletes the fixture, an existing share's API page and card image return 404 | NOT RUN |  |
 | A14b.web | manual | The /s/<id> web page shows "not found" | NOT RUN |  |
 | A15.api | api | The first 20 distinct cards return 200; the 21st returns 429 rate_limited; repeating an existing card still returns 200 | NOT RUN |  |
 | A15.db | db | Exactly 20 live shares for account R | NOT RUN |  |
@@ -129,7 +131,19 @@ The verdict is **ACCEPTED** only if every required test passed. It's **REJECTED*
 | X4.db | db | Exactly one live row for that configuration; the fixture's shareCount matches the shares created | NOT RUN |  |
 | X5.api | api | A repeated revoke returns 204; the same card can then be shared again under a new URL | NOT RUN |  |
 | X6.books | db | Non-fixture books' published flag, uploader and sync coverage are identical before and after | NOT RUN |  |
-| X6.admin | db | No administrator account remains after the fixture step | NOT RUN |  |
+| X6.admin | db | The set of administrator accounts is the same before and after | NOT RUN |  |
+| X6.protected | db | The pre-existing fixture and administrator records are unchanged | NOT RUN |  |
+| X8.prepare | api | Shares exist before storage stalls | NOT RUN |  |
+| X8.revoke | api | With storage stalled, revocation returns 204 within the limit and the share returns 404 | NOT RUN |  |
+| X8.repeat | api | Revoking again during the stall returns 204 within the limit | NOT RUN |  |
+| X8.fragment | api | With storage stalled, fragment deletion returns 204 within the limit and its shares return 404 | NOT RUN |  |
+| X8.account | api | With storage stalled, account deletion returns 204 within the limit and its shares return 404 | NOT RUN |  |
+| X8.book | api | With storage stalled, book deletion returns 204 within the limit and its shares return 404 | NOT RUN |  |
+| X8.outbox | db | During the stall: a queued row with attempts ≥ 1 and a recorded error class | NOT RUN |  |
+| X8.recovered | api | After storage returns and the sweep runs: every affected image returns 404 | NOT RUN |  |
+| X8.drained | db | After the sweep: none of those outbox rows remain | NOT RUN |  |
+| X9.api | api | Deleting a book with shares returns 204; its share pages and images return 404; a repeat delete returns 404; a book with no shares deletes cleanly; another book's share stays live | NOT RUN |  |
+| X9.db | db | Those shares are revoked, none of their outbox rows remain, and the other book's share is untouched | NOT RUN |  |
 | X7.local | operator | Locally, the baseline API creates a real share on the migrated schema | NOT RUN |  |
 
 ## Data changes and clean-up

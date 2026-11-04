@@ -13,12 +13,12 @@ const dir = dirname(fileURLToPath(import.meta.url));
 test('the matrix holds A1–A20, A8b, A14b and supplemental cases', () => {
   const ids = new Set(MATRIX.map((t) => t.id));
   for (let i = 1; i <= 20; i++) assert.ok(ids.has(`A${i}`), `A${i}`);
-  for (const id of ['A8b', 'A14b', 'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7']) assert.ok(ids.has(id), id);
+  for (const id of ['A8b', 'A14b', 'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'X9']) assert.ok(ids.has(id), id);
   assert.equal(new Set(allChecks().map((c) => c.id)).size, allChecks().length, 'check ids are unique');
 });
 
 test('disruptive tests need explicit approval', () => {
-  for (const id of ['A8b', 'A11', 'A12', 'A14b', 'A15', 'A19']) assert.equal(findTest(id).approval, true, id);
+  for (const id of ['A8b', 'A11', 'A12', 'A14b', 'A15', 'A19', 'X8', 'X9']) assert.equal(findTest(id).approval, true, id);
 });
 
 test('A11 says it is disruptive, and A13 cannot be automated', () => {
@@ -128,8 +128,9 @@ test('admin SQL touches exactly one synthetic row or aborts', () => {
   assert.match(adminSql('nem016-abc123-adm@staging.invalid', false), /"isAdmin" = false/);
 });
 
+const ADMIN = '4219d326-b9fc-4aa9-8d35-6ce8b9e6e787';
 const snapshot = (over = {}) => ({
-  nem016: 'final', latestMigration: 'AddShareLifecycle1748300000068', schemaColumns: 3, outboxTable: true, shareIndexes: 2, admins: 0,
+  nem016: 'final', latestMigration: 'AddShareLifecycle1748300000068', schemaColumns: 3, outboxTable: true, shareIndexes: 2, adminIds: [ADMIN], protectedRecords: 'p',
   fragmentsDigest: { count: 5, md5: 'x' }, booksDigest: { count: 84, md5: 'y' }, shares: [], outbox: [],
   deletedAccount: { users: 0, fragments: 0, shares: 0 }, ...over,
 });
@@ -139,15 +140,23 @@ test('evidence: schema, unchanged books and no admins pass', () => {
   s.snapshots.baseline = snapshot({ nem016: 'baseline' });
   s.snapshots.final = snapshot();
   evaluateEvidence(s);
-  for (const id of ['A13.schema', 'A17.run', 'X6.books', 'X6.admin']) assert.equal(s.results[id].status, 'PASS', id);
+  for (const id of ['A13.schema', 'A17.run', 'X6.books', 'X6.admin', 'X6.protected']) assert.equal(s.results[id].status, 'PASS', id);
 });
 
-test('evidence: a changed book, fragment or leftover admin fails', () => {
+test('evidence: a changed book, fragment, extra admin or protected record fails', () => {
   const s = baseState();
   s.snapshots.baseline = snapshot({ nem016: 'baseline' });
-  s.snapshots.final = snapshot({ booksDigest: { count: 84, md5: 'changed' }, fragmentsDigest: { count: 6, md5: 'x' }, admins: 1 });
+  s.snapshots.final = snapshot({ booksDigest: { count: 84, md5: 'changed' }, fragmentsDigest: { count: 6, md5: 'x' }, adminIds: [ADMIN, 'someone-else'], protectedRecords: 'q' });
   evaluateEvidence(s);
-  for (const id of ['A17.run', 'X6.books', 'X6.admin']) assert.equal(s.results[id].status, 'FAIL', id);
+  for (const id of ['A17.run', 'X6.books', 'X6.admin', 'X6.protected']) assert.equal(s.results[id].status, 'FAIL', id);
+});
+
+test('evidence: losing the existing admin fails too', () => {
+  const s = baseState();
+  s.snapshots.baseline = snapshot({ nem016: 'baseline' });
+  s.snapshots.final = snapshot({ adminIds: [] });
+  evaluateEvidence(s);
+  assert.equal(s.results['X6.admin'].status, 'FAIL');
 });
 
 test('evidence: an unrecorded share row fails the negative tests', () => {
@@ -188,6 +197,53 @@ test('evidence: two live rows for one configuration fail A9', () => {
   s.snapshots.final = snapshot({ fixtureShareCount: 0, shares: [{ id: 'a', configHash: 'h', revoked: false }, { id: 'b', configHash: 'h', revoked: false }] });
   evaluateEvidence(s);
   assert.equal(s.results['A9.db'].status, 'FAIL');
+});
+
+test('evidence: live-row checks read the snapshot from before A14b revoked everything', () => {
+  const s = baseState();
+  s.book = { id: 'F' };
+  s.fragments = { fA: { id: 'f1', bookId: 'F' } };
+  s.users.x = { id: 'x-user' };
+  s.results['A15.api'] = { status: 'PASS' };
+  s.results['X9.api'] = { status: 'PASS' };
+  s.shares = { a9: { id: 'a9x', fragmentId: 'f1' }, 'x9-1': { id: 'n1' }, 'x9-2': { id: 'n2' }, 'x9-3': { id: 'n3' }, 'x9-keep': { id: 'keep', fragmentId: 'f1' } };
+  const gone = { revoked: true };
+  const before = [{ id: 'a9x', configHash: 'h', revoked: false }, { id: 'keep', configHash: 'k', revoked: false }];
+  s.snapshots['pre-a14b'] = snapshot({ nem016: 'pre-a14b', fixtureShareCount: 2, shares: before });
+  s.snapshots.final = snapshot({ fixtureShareCount: null, shares: [{ id: 'a9x', configHash: 'h', ...gone }, { id: 'keep', configHash: 'k', ...gone }, { id: 'n1', ...gone }, { id: 'n2', ...gone }, { id: 'n3', ...gone }] });
+  evaluateEvidence(s);
+  assert.equal(s.results['A9.db'].status, 'PASS', s.results['A9.db'].detail);
+  assert.equal(s.results['X9.db'].status, 'PASS', s.results['X9.db'].detail);
+});
+
+test('evidence: a share revoked before A14b still fails X9', () => {
+  const s = baseState();
+  s.results['X9.api'] = { status: 'PASS' };
+  s.shares = { 'x9-1': { id: 'n1' }, 'x9-2': { id: 'n2' }, 'x9-3': { id: 'n3' }, 'x9-keep': { id: 'keep' } };
+  const rows = [{ id: 'n1', revoked: true }, { id: 'n2', revoked: true }, { id: 'n3', revoked: true }, { id: 'keep', revoked: true }];
+  s.snapshots['pre-a14b'] = snapshot({ shares: rows });
+  s.snapshots.final = snapshot({ shares: rows });
+  evaluateEvidence(s);
+  assert.equal(s.results['X9.db'].status, 'FAIL');
+});
+
+test('evidence: X8 needs a recorded attempt during the stall and an empty outbox after', () => {
+  const key = '55555555-5555-4555-8555-555555555555.png';
+  const build = (outbox, finalOutbox) => {
+    const s = baseState();
+    s.shares = { 'x8-rev': { id: 'rev', imageUrl: `https://s/images/${key}` } };
+    s.results['X8.recovered'] = { status: 'PASS' };
+    s.snapshots['x8-stalled'] = { outbox };
+    s.snapshots.final = snapshot({ outbox: finalOutbox, shares: [] });
+    evaluateEvidence(s);
+    return s.results;
+  };
+  const row = { key, attempts: 1, lastError: 'StorageTimeoutError' };
+  assert.equal(build([row], [])['X8.outbox'].status, 'PASS');
+  assert.equal(build([row], [])['X8.drained'].status, 'PASS');
+  assert.equal(build([], [])['X8.outbox'].status, 'FAIL');
+  assert.equal(build([{ key, attempts: 0, lastError: null }], [])['X8.outbox'].status, 'FAIL');
+  assert.equal(build([row], [row])['X8.drained'].status, 'FAIL');
 });
 
 test('evidence parser finds the JSON line among psql output', () => {

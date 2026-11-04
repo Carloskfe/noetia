@@ -6,7 +6,7 @@ const sleepDefault = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export class ApiClient {
   constructor(target, { fetchImpl = globalThis.fetch, sleep = sleepDefault, minIntervalMs = 700, throttleWaitMs = 65_000, timeoutMs = 45_000 } = {}) {
-    Object.assign(this, { target, fetchImpl, sleep, minIntervalMs, throttleWaitMs, timeoutMs, last: 0, fixtureBookId: null });
+    Object.assign(this, { target, fetchImpl, sleep, minIntervalMs, throttleWaitMs, timeoutMs, last: 0, deletableBookIds: [] });
   }
 
   async pace() {
@@ -28,7 +28,7 @@ export class ApiClient {
 
   /** Returns { status, body, ms, date, netError }; status 0 means no HTTP response. */
   async request(method, path, { token, json, form, fixtureUpload = false, timeoutMs } = {}) {
-    assertRoute(method, path, { fixtureUpload, fixtureBookId: this.fixtureBookId });
+    assertRoute(method, path, { fixtureUpload, deletableBookIds: this.deletableBookIds, protectBooks: this.target.name === 'staging' });
     const headers = { 'x-client-type': 'mobile', accept: 'application/json' };
     if (token) headers.authorization = `Bearer ${token}`;
     let body;

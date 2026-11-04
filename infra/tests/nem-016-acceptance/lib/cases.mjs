@@ -1,6 +1,7 @@
 // Quotation cases verified against the CC0 fixture (NEM-016 report §15.2).
 export const FIXTURE_FILE = 'docs/staging/fixtures/nem-016-quote-fixture.txt';
 export const FIXTURE_TITLE = 'Cuaderno de pruebas de citas (NEM-016)';
+export const DISPOSABLE_TITLE = 'Cuaderno desechable (NEM-016 F2)';
 export const FIXTURE_AUTHOR = 'Equipo Noetia (texto sintético, CC0)';
 
 /** The sentence fragment fA holds; Q4–Q6 and N4–N9 are cut from the fixture around it. */

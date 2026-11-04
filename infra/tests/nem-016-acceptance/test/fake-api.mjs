@@ -44,12 +44,17 @@ export function fakeApi({ defects = new Set(), storage = 'http://127.0.0.1:19016
     if (path === '/books' && method === 'GET') return json(200, u.searchParams.get('search') ? [] : [...db.books.values()]);
     if (path === '/books' && method === 'POST') {
       const id = randomUUID();
-      db.books.set(id, { id, title: init.body.get('title'), uploadedById: me.id, isPublished: true, shareCount: 0, textFileKey: 'x.txt' });
+      db.books.set(id, { id, title: init.body.get('title'), uploadedById: me?.id ?? 'x', isPublished: true, shareCount: 0, textFileKey: 'x.txt' });
       return json(201, db.books.get(id));
     }
     if ((m = /^\/books\/([^/]+)\/sync-map$/.exec(path))) return json(200, { phrases: [{ text: 'una frase de prueba con varias palabras reales' }] });
     if ((m = /^\/books\/([^/]+)$/.exec(path))) {
-      if (method === 'DELETE') { db.books.delete(m[1]); return json(204); }
+      if (method === 'DELETE') {
+        if (!db.books.has(m[1])) return json(404, {});
+        db.books.delete(m[1]);
+        if (!defects.has('bookDeleteKeepsShares')) for (const s of db.shares.values()) if (s.book === m[1]) { s.revoked = true; db.images.delete(s.path); }
+        return json(204);
+      }
       return json(403, {}); // SubscriptionGuard: the harness can't read a non-free book
     }
     if (path === '/fragments' && method === 'POST') {

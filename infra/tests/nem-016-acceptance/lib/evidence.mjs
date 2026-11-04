@@ -1,6 +1,6 @@
 // Read-only database evidence. The harness never connects to a database: it
 // writes SQL, the operator runs it, and the one-line JSON result is ingested.
-import { assertCardKey, assertSlug, assertUuid } from './guard.mjs';
+import { assertCardKey, assertSlug, assertUuid, STAGING } from './guard.mjs';
 import { FIXTURE_TITLE } from './cases.mjs';
 import { setCheck } from './state.mjs';
 
@@ -25,7 +25,8 @@ SELECT json_build_object(
   'schemaColumns', (SELECT count(*) FROM information_schema.columns WHERE table_name='shares' AND column_name IN ('revokedAt','configHash','quoteProvenance')),
   'outboxTable', to_regclass('card_image_deletions') IS NOT NULL,
   'shareIndexes', (SELECT count(*) FROM pg_indexes WHERE tablename='shares' AND indexname IN ('IDX_shares_createdById','UQ_shares_creator_config_live')),
-  'admins', (SELECT count(*) FROM users WHERE "isAdmin"),
+  'adminIds', (SELECT coalesce(json_agg(id ORDER BY id), '[]'::json) FROM users WHERE "isAdmin"),
+  'protectedRecords', (SELECT md5(coalesce((SELECT string_agg(u.id::text || coalesce(u.email, '') || u."isAdmin"::text, '|') FROM users u WHERE u.id = '${STAGING.adminId}'), '') || coalesce((SELECT string_agg(b.id::text || b.title || b."isPublished"::text || coalesce(b."uploadedById"::text, ''), '|') FROM books b WHERE b.id = '${STAGING.fixtureBookId}'), ''))),
   'fragmentsDigest', (SELECT json_build_object('count', count(*), 'md5', md5(coalesce(string_agg(f.id::text || f.text || coalesce(f.note, ''), '|' ORDER BY f.id), '')))
       FROM fragments f JOIN users u ON u.id = f."userId" WHERE u.email IS NULL OR u.email NOT LIKE '${TEST_EMAIL}'),
   'booksDigest', (SELECT json_build_object('count', count(*), 'md5', md5(coalesce(string_agg(b.id::text || b."isPublished"::text || coalesce(b."uploadedById"::text, '') || coalesce(sm."syncCoverage"::text, ''), '|' ORDER BY b.id), '')))
@@ -77,7 +78,11 @@ export function evaluateEvidence(state) {
   const known = new Set(Object.values(state.shares).map((s) => s.id));
   const unexpected = final.shares.filter((s) => !known.has(s.id));
   const uid = (role) => state.users[role]?.id;
-  const live = (hash) => final.shares.filter((s) => s.configHash === hash && !s.revoked).length;
+  // A14b deletes the fixture, which now revokes all its shares (F2). Checks about
+  // the live state before that use the snapshot taken just before A14b.
+  const preDelete = state.snapshots['pre-a14b'] ?? final;
+  const preRows = new Map(preDelete.shares.map((s) => [s.id, s]));
+  const live = (hash) => preDelete.shares.filter((s) => s.configHash === hash && !s.revoked).length;
   const outboxOf = (name) => final.outbox.find((d) => d.key === cardKey(state.shares[name]?.imageUrl));
   const noUnexpected = (id) => { if (ran(`${id}.api`)) set(`${id}.db`, unexpected.length ? [`${unexpected.length} unrecorded share row(s)`] : [], 'No unexpected share rows'); };
 
@@ -110,7 +115,7 @@ export function evaluateEvidence(state) {
   const onFixture = new Set(Object.values(state.fragments).filter((f) => f.bookId === state.book?.id).map((f) => f.id));
   const created = new Set(Object.entries(state.shares).filter(([n, s]) => n !== 'a14b' && onFixture.has(s.fragmentId)).map(([, s]) => s.id)).size;
   for (const [check, name] of [['A9.db', 'a9'], ['X4.db', 'x4']]) {
-    const row = rows.get(state.shares[name]?.id);
+    const row = preRows.get(state.shares[name]?.id);
     if (!row) continue;
     const p = [];
     if (live(row.configHash) !== 1) p.push(`${live(row.configHash)} live rows`);
@@ -147,7 +152,7 @@ export function evaluateEvidence(state) {
   set('A13.schema', schema, `latest=${final.latestMigration}`);
 
   if (ran('A15.api')) {
-    const n = final.shares.filter((s) => s.createdById === uid('r') && !s.revoked).length;
+    const n = preDelete.shares.filter((s) => s.createdById === uid('r') && !s.revoked).length;
     set('A15.db', n === 20 ? [] : [`${n} live shares`], 'Exactly 20');
   }
   if (baseline) {
@@ -155,7 +160,34 @@ export function evaluateEvidence(state) {
     set('A17.run', same('fragmentsDigest') ? [] : ['non-test fragments changed'], `${final.fragmentsDigest.count} fragments unchanged`);
     set('X6.books', same('booksDigest') ? [] : ['non-fixture books changed'], `${final.booksDigest.count} books unchanged`);
   }
-  set('X6.admin', Number(final.admins) === 0 ? [] : [`${final.admins} admin account(s)`], 'No admin accounts');
+  if (baseline) {
+    const same = JSON.stringify(baseline.adminIds) === JSON.stringify(final.adminIds);
+    set('X6.admin', same ? [] : [`admin accounts were ${baseline.adminIds.length}, now ${final.adminIds.length}`], `${final.adminIds.length} admin account(s), unchanged`);
+    set('X6.protected', baseline.protectedRecords === final.protectedRecords ? [] : ['a pre-existing fixture or admin record changed'], 'Unchanged');
+  }
+
+  const x8 = Object.entries(state.shares).filter(([n]) => n.startsWith('x8-'));
+  const stalled = state.snapshots['x8-stalled'];
+  if (stalled && state.shares['x8-rev']) {
+    const row = stalled.outbox.find((d) => d.key === cardKey(state.shares['x8-rev'].imageUrl));
+    const p = [];
+    if (!row) p.push('no outbox row during the stall');
+    else { if (!(row.attempts >= 1)) p.push(`attempts=${row.attempts}`); if (!row.lastError) p.push('lastError empty'); }
+    set('X8.outbox', p, `attempts=${row?.attempts}, lastError=${row?.lastError}; ${stalled.outbox.length} row(s) queued`);
+  }
+  if (r['X8.recovered']?.status === 'PASS') {
+    const left = x8.filter(([n]) => outboxOf(n)).map(([n]) => n);
+    set('X8.drained', left.length ? [`rows remain: ${left.join(', ')}`] : [], 'All rows gone');
+  }
+  if (r['X9.api'] && r['X9.api'].status !== 'BLOCKED' && state.shares['x9-1']) {
+    const p = [];
+    for (const n of ['x9-1', 'x9-2', 'x9-3']) {
+      if (!rows.get(state.shares[n].id)?.revoked) p.push(`${n} not revoked`);
+      if (outboxOf(n)) p.push(`${n} outbox row remains`);
+    }
+    if (preRows.get(state.shares['x9-keep']?.id)?.revoked) p.push("the other book's share was revoked");
+    set('X9.db', p, 'Revoked; outbox clear; other book untouched');
+  }
 }
 
 /** One-row grant or revoke for the synthetic admin. Printed only; the operator runs it. */
