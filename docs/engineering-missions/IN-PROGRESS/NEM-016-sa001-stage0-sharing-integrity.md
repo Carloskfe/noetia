@@ -143,6 +143,20 @@ Nothing was executed on staging or production.
 - Remediation proposed: a dedicated `proxy_staging` network.
 - Staging NO-GO. No infrastructure was changed.
 
+**Rev 6 (2026-11-03):** corrective mission for F1 and F2, found by the acceptance harness (PR #30). `docs/reports/2026-11-03-NEM-016-F1-F2-corrective.md` covers:
+- F1: a bounded storage deletion, so a stalled store can't hang revocation, fragment, account or book deletion
+- F2: book deletion revokes shares and queues their images
+- harness compatibility with the existing staging fixture and administrator
+
+No migration. Not merged, not deployed, and not on staging, which still runs `aaf708e`.
+
+**Rev 7 (2026-11-03):** residual-risk mission. `docs/reports/2026-11-03-NEM-016-residual-risks.md` covers:
+- R1: row locks coordinate share creation with book deletion, so no active share survives a completed deletion
+- R2: bounded storage reads and renders on the share paths; a design for general uploads, not implemented, awaiting approval
+- R3: a read-only audit and proposed clean-up for images from before F2 (`docs/operations/nem-016-orphan-card-images.md`); nothing deleted
+
+No migration. Not merged, not deployed, and not on staging, which still runs `aaf708e`.
+
 ## 19. Product Architecture review
 Pending. Verdict: —
 

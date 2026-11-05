@@ -4,12 +4,13 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import {
   OVERDUE_ATTEMPTS,
+  PURGE_REQUEST_BUDGET_MS,
   ShareLifecycleService,
   cardKeyFromUrl,
 } from '../../../src/sharing/share-lifecycle.service';
 import { CardImageDeletion } from '../../../src/sharing/card-image-deletion.entity';
 import { Share } from '../../../src/sharing/share.entity';
-import { StorageService } from '../../../src/storage/storage.service';
+import { StorageService, StorageTimeoutError } from '../../../src/storage/storage.service';
 
 const KEY = '11111111-2222-4333-8444-555555555555.png';
 const KEY2 = '99999999-2222-4333-8444-555555555555.png';
@@ -137,6 +138,37 @@ describe('ShareLifecycleService', () => {
     });
   });
 
+  describe('revokeForBook (inside the caller transaction, NEM-016 F2)', () => {
+    it('revokes every live share of the book and queues their images', async () => {
+      m.find.mockResolvedValue([{ id: 'a', imageUrl: IMG }, { id: 'b', imageUrl: IMG2 }]);
+      await expect(service.revokeForBook('book-1', m as never)).resolves.toEqual([KEY, KEY2]);
+      expect(m.update).toHaveBeenCalledWith(Share, ['a', 'b'], { revokedAt: expect.any(Date) });
+      expect(outboxInserts()[0][1]).toEqual([[KEY, KEY2]]);
+      expect(storage.delete).not.toHaveBeenCalled(); // caller purges after commit
+    });
+
+    it('selects only live shares of that book', async () => {
+      m.find.mockResolvedValue([]);
+      await service.revokeForBook('book-1', m as never);
+      const [entity, opts] = m.find.mock.calls[0];
+      expect(entity).toBe(Share);
+      expect(opts.where.bookId).toBe('book-1');
+      expect(opts.where.revokedAt).toBeDefined();
+    });
+
+    it('does nothing when the book has no live shares', async () => {
+      m.find.mockResolvedValue([]);
+      await expect(service.revokeForBook('book-1', m as never)).resolves.toEqual([]);
+      expect(m.update).not.toHaveBeenCalled();
+      expect(outboxInserts()).toEqual([]);
+    });
+
+    it('propagates database errors so the caller rolls back', async () => {
+      m.find.mockRejectedValue(new Error('db down'));
+      await expect(service.revokeForBook('book-1', m as never)).rejects.toThrow('db down');
+    });
+  });
+
   describe('deleteAllForUser (inside the caller transaction)', () => {
     it("deletes the user's shares and shares of their fragments, and queues their images", async () => {
       m.query.mockImplementation(async (sql: string) =>
@@ -177,6 +209,105 @@ describe('ShareLifecycleService', () => {
       storage.delete.mockRejectedValue(new Error('s3'));
       deletionRepo.update.mockRejectedValue(new Error('db'));
       await expect(service.purgeImages([KEY])).resolves.toBeUndefined();
+    });
+  });
+
+  describe('bounded purge when storage stalls (NEM-016 F1)', () => {
+    const live = { id: 's1', createdById: 'u1', imageUrl: IMG, revokedAt: null };
+
+    it('records a timeout by class name and keeps the row for the sweep', async () => {
+      m.findOneBy.mockResolvedValue(live);
+      storage.delete.mockRejectedValue(new StorageTimeoutError());
+      await expect(service.revoke('s1', 'u1')).resolves.toBeUndefined();
+      expect(m.update).toHaveBeenCalled(); // the revocation itself committed
+      expect(deletionRepo.delete).not.toHaveBeenCalled();
+      expect(deletionRepo.update.mock.calls[0][1].lastError).toBe('StorageTimeoutError');
+    });
+
+    it('stops at the first timeout: a stalled store would stall every key', async () => {
+      storage.delete.mockRejectedValue(new StorageTimeoutError());
+      await service.purgeImages([KEY, KEY2]);
+      expect(storage.delete).toHaveBeenCalledTimes(1);
+      expect(deletionRepo.update).toHaveBeenCalledTimes(1);
+      expect(deletionRepo.delete).not.toHaveBeenCalled(); // KEY2's row stays queued
+    });
+
+    it('keeps going after an ordinary failure on one key', async () => {
+      storage.delete.mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce(undefined);
+      await service.purgeImages([KEY, KEY2]);
+      expect(storage.delete).toHaveBeenCalledTimes(2);
+      expect(deletionRepo.delete).toHaveBeenCalledWith({ key: KEY2 });
+    });
+
+    it('stops when the request budget runs out and leaves the rest queued', async () => {
+      const now = jest.spyOn(Date, 'now');
+      let t = 1_000;
+      now.mockImplementation(() => t);
+      storage.delete.mockImplementation(async () => { t += PURGE_REQUEST_BUDGET_MS; });
+      await service.purgeImages([KEY, KEY2]);
+      now.mockRestore();
+      expect(storage.delete).toHaveBeenCalledTimes(1);
+      expect(deletionRepo.delete).toHaveBeenCalledTimes(1);
+      expect(deletionRepo.delete).not.toHaveBeenCalledWith({ key: KEY2 });
+    });
+
+    it('a repeated revocation during the outage does not touch storage again', async () => {
+      m.findOneBy.mockResolvedValueOnce(live).mockResolvedValueOnce({ ...live, revokedAt: new Date() });
+      storage.delete.mockRejectedValue(new StorageTimeoutError());
+      await service.revoke('s1', 'u1');
+      await service.revoke('s1', 'u1');
+      expect(storage.delete).toHaveBeenCalledTimes(1);
+      expect(outboxInserts()).toHaveLength(1);
+    });
+
+    it('recovers: the sweep deletes the image once storage is back', async () => {
+      m.findOneBy.mockResolvedValue(live);
+      storage.delete.mockRejectedValueOnce(new StorageTimeoutError());
+      await service.revoke('s1', 'u1');
+      expect(deletionRepo.delete).not.toHaveBeenCalled();
+      deletionRepo.find.mockResolvedValue([{ key: KEY, attempts: 1 }]);
+      storage.delete.mockResolvedValue(undefined);
+      await service.retryPendingDeletions();
+      expect(storage.delete).toHaveBeenLastCalledWith('images', KEY);
+      expect(deletionRepo.delete).toHaveBeenCalledWith({ key: KEY });
+    });
+
+    it('the sweep has no time budget, but still stops at a timeout', async () => {
+      deletionRepo.find.mockResolvedValue([{ key: KEY, attempts: 0 }, { key: KEY2, attempts: 0 }]);
+      storage.delete.mockRejectedValue(new StorageTimeoutError());
+      await expect(service.retryPendingDeletions()).resolves.toBeUndefined();
+      expect(storage.delete).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('discardImage (R1: a card that never became a share)', () => {
+    beforeEach(() => { (dataSource as unknown as { manager: unknown }).manager = m; });
+
+    it('queues the image, deletes it and clears the queue', async () => {
+      await service.discardImage(IMG);
+      expect(outboxInserts()[0][1]).toEqual([[KEY]]);
+      expect(storage.delete).toHaveBeenCalledWith('images', KEY);
+      expect(deletionRepo.delete).toHaveBeenCalledWith({ key: KEY });
+    });
+
+    it('leaves it queued for the sweep if storage is down, and never throws', async () => {
+      storage.delete.mockRejectedValue(new StorageTimeoutError());
+      await expect(service.discardImage(IMG)).resolves.toBeUndefined();
+      expect(outboxInserts()).toHaveLength(1);
+      expect(deletionRepo.delete).not.toHaveBeenCalled();
+      expect(deletionRepo.update.mock.calls[0][1].lastError).toBe('StorageTimeoutError');
+    });
+
+    it('still deletes the image if queueing fails, and never throws', async () => {
+      m.query.mockRejectedValue(new Error('db down'));
+      await expect(service.discardImage(IMG)).resolves.toBeUndefined();
+      expect(storage.delete).toHaveBeenCalledWith('images', KEY);
+    });
+
+    it('ignores anything that is not a card URL', async () => {
+      await service.discardImage('https://example.com/other.png');
+      expect(outboxInserts()).toEqual([]);
+      expect(storage.delete).not.toHaveBeenCalled();
     });
   });
 

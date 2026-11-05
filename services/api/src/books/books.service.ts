@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ShareLifecycleService } from '../sharing/share-lifecycle.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Book, BookCategory } from './book.entity';
@@ -11,6 +12,7 @@ export class BooksService {
   constructor(
     @InjectRepository(Book) private readonly repo: Repository<Book>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
+    private readonly shareLifecycle: ShareLifecycleService,
   ) {}
 
   findAll(
@@ -66,7 +68,18 @@ export class BooksService {
 
   async remove(id: string): Promise<void> {
     const book = await this.findById(id);
-    await this.repo.remove(book);
+    // Deleting a book withdraws its public shares (NEM-016 F2): revocation, the
+    // image-deletion outbox rows and the delete commit together.
+    const imageKeys = await this.repo.manager.transaction(async (m) => {
+      // Conflicts with the lock SharingService holds while saving a share (R1): a
+      // save either finishes first, and is revoked below, or finds the book gone.
+      const locked: unknown[] = await m.query('SELECT id FROM books WHERE id = $1 FOR UPDATE', [id]);
+      if (locked.length === 0) throw new NotFoundException('Book not found');
+      const keys = await this.shareLifecycle.revokeForBook(id, m);
+      await m.remove(book);
+      return keys;
+    });
+    await this.shareLifecycle.purgeImages(imageKeys);
   }
 
   async checkUploadQuota(userId: string): Promise<void> {

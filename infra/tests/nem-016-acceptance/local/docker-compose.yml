@@ -1,0 +1,101 @@
+# Disposable local stack for validating the NEM-016 harness. LOCAL ONLY.
+# Project name n16acc, loopback ports, no shared networks, no named volumes.
+# image-gen, db, cache and bgstatic sit on an internal network with no route out,
+# so the A6 preset and every render stay on this machine.
+name: n16acc
+
+networks:
+  int:
+    internal: true
+  pub: {}
+
+x-api-env: &api_env
+  NODE_ENV: production
+  APP_ENV: staging
+  DB_HOST: db
+  DB_NAME: noetia_staging
+  DB_USER: noetia
+  DB_PASS: localonly
+  REDIS_URL: redis://cache:6379
+  JWT_SECRET: localonly
+  WEB_URL: http://127.0.0.1:13016
+  API_URL: http://127.0.0.1:14016
+  MINIO_ENDPOINT: storage
+  MINIO_PORT: "9000"
+  MINIO_ACCESS_KEY: localonlykey
+  MINIO_SECRET_KEY: localonlysecret
+  MINIO_PUBLIC_URL: http://127.0.0.1:19016
+  IMAGE_GEN_URL: ${N16_IMAGE_GEN_URL:-http://image-gen:5000}
+  SHARE_BG_ALLOWED_HOSTS: bgstatic
+  MEILI_HOST: http://127.0.0.1:1
+  MEILI_MASTER_KEY: localonly
+  SMTP_HOST: ""
+  STRIPE_SECRET_KEY: sk_test_localonly
+  STRIPE_WEBHOOK_SECRET: whsec_localonly
+  SOCIAL_TOKEN_SECRET: 0123456789abcdef0123456789abcdef
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment: { POSTGRES_DB: noetia_staging, POSTGRES_USER: noetia, POSTGRES_PASSWORD: localonly }
+    volumes: ["${N16_REPO}/infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro"]
+    networks: [int]
+    tmpfs: [/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U noetia -d noetia_staging"], interval: 2s, timeout: 3s, retries: 40 }
+  cache:
+    image: redis:7-alpine
+    networks: [int]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 2s, timeout: 3s, retries: 20 }
+  storage:
+    image: minio/minio:latest
+    command: server /data
+    environment: { MINIO_ROOT_USER: localonlykey, MINIO_ROOT_PASSWORD: localonlysecret }
+    ports: ["127.0.0.1:19016:9000"]
+    networks: [int, pub]
+    volumes: [/data]  # anonymous, so A11 can stop it without losing objects; removed by down -v
+    healthcheck: { test: ["CMD", "mc", "ready", "local"], interval: 2s, timeout: 3s, retries: 30 }
+  buckets:
+    image: minio/minio:latest  # bundles mc
+    depends_on: { storage: { condition: service_healthy } }
+    networks: [int]
+    entrypoint: >
+      /bin/sh -c "mc alias set l http://storage:9000 localonlykey localonlysecret &&
+      mc mb --ignore-existing l/books l/audio l/images && mc anonymous set download l/images"
+  bgstatic:
+    image: n16acc-image-gen:new
+    networks: [int]
+    command: >
+      sh -c "mkdir -p /srv/backgrounds && python -c \"from PIL import Image; Image.new('RGB',(1200,800),(150,30,90)).save('/srv/backgrounds/imagen-7.jpg')\" &&
+      cd /srv && python -m http.server 80"
+  # Forwards renders to image-gen and can hold the response, so race tests choose
+  # the exact moment a card finishes rendering. Only started by run-r1-r2.sh.
+  render-gate:
+    image: n16acc-api:new
+    profiles: [race]
+    command: node /gate/render-gate.cjs
+    volumes: ["${N16_REPO}/infra/tests/nem-016-acceptance/local/render-gate.cjs:/gate/render-gate.cjs:ro"]
+    ports: ["127.0.0.1:15016:5001"]
+    networks: [int, pub]
+  image-gen:
+    image: n16acc-image-gen:${N16_IMAGE_GEN_TAG:-new}
+    environment:
+      MINIO_ENDPOINT: storage
+      MINIO_PORT: "9000"
+      MINIO_ACCESS_KEY: localonlykey
+      MINIO_SECRET_KEY: localonlysecret
+      MINIO_PUBLIC_URL: http://127.0.0.1:19016
+      SHARE_BG_ALLOWED_HOSTS: bgstatic
+    depends_on: { buckets: { condition: service_completed_successfully } }
+    networks: [int]
+  migrate:
+    image: n16acc-api:new
+    profiles: [tools]
+    environment: *api_env
+    networks: [int]
+    command: npm run migration:run:prod
+  api:
+    image: n16acc-api:${N16_API_TAG:-new}
+    environment: *api_env
+    ports: ["127.0.0.1:14016:4000"]
+    networks: [int, pub]
+    healthcheck: { test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health"], interval: 3s, timeout: 3s, retries: 40 }

@@ -12,7 +12,7 @@ import {
   normalizeTypography,
 } from '../../../src/sharing/quote-integrity.service';
 import { SyncMap } from '../../../src/books/sync-map.entity';
-import { StorageService } from '../../../src/storage/storage.service';
+import { QUOTE_SOURCE_READ_TIMEOUT_MS, StorageService } from '../../../src/storage/storage.service';
 import { Book } from '../../../src/books/book.entity';
 
 const RAW =
@@ -204,7 +204,7 @@ describe('QuoteIntegrityService', () => {
     syncMapRepo.findOneBy.mockResolvedValue(null);
     storage.getText.mockResolvedValue('It was the best of times, it was the worst of times.');
     await expect(service.assertFaithfulExcerpt(book, 'the worst of times')).resolves.toMatchObject({ source: 'text_file' });
-    expect(storage.getText).toHaveBeenCalledWith('texts/b1.txt');
+    expect(storage.getText).toHaveBeenCalledWith('texts/b1.txt', 'books', { timeoutMs: QUOTE_SOURCE_READ_TIMEOUT_MS });
   });
 
   it('throws 422 quote_not_in_source with the reason for unfaithful text', async () => {

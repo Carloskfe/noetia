@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ShareLifecycleService } from '../../../src/sharing/share-lifecycle.service';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { BooksService } from '../../../src/books/books.service';
@@ -30,7 +31,11 @@ const mockRepo = {
   save: jest.fn(),
   remove: jest.fn(),
   count: jest.fn(),
+  manager: { transaction: jest.fn() },
 };
+
+const mockEntityManager = { remove: jest.fn(), query: jest.fn() };
+const mockLifecycle = { revokeForBook: jest.fn(), purgeImages: jest.fn() };
 
 const mockUserRepo = {
   findOneBy: jest.fn(),
@@ -45,6 +50,7 @@ describe('BooksService', () => {
         BooksService,
         { provide: getRepositoryToken(Book), useValue: mockRepo },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
+        { provide: ShareLifecycleService, useValue: mockLifecycle },
       ],
     }).compile();
 
@@ -252,19 +258,78 @@ describe('BooksService', () => {
   });
 
   describe('remove', () => {
-    it('removes the book from the repository', async () => {
-      const book = { id: 'b-1', title: 'To Delete' };
+    const book = { id: 'b-1', title: 'To Delete' };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
       mockRepo.findOneBy.mockResolvedValue(book);
-      mockRepo.remove.mockResolvedValue(undefined);
-
-      await service.remove('b-1');
-
-      expect(mockRepo.remove).toHaveBeenCalledWith(book);
+      mockRepo.manager.transaction.mockImplementation((fn: (m: unknown) => unknown) => fn(mockEntityManager));
+      mockEntityManager.remove.mockResolvedValue(undefined);
+      mockEntityManager.query.mockResolvedValue([{ id: 'b-1' }]);
+      mockLifecycle.revokeForBook.mockResolvedValue([]);
+      mockLifecycle.purgeImages.mockResolvedValue(undefined);
     });
 
-    it('throws NotFoundException when book does not exist', async () => {
+    it('removes the book inside the transaction', async () => {
+      await service.remove('b-1');
+      expect(mockEntityManager.remove).toHaveBeenCalledWith(book);
+    });
+
+    it('revokes the shares of a book with several, in the same transaction, then purges their images', async () => {
+      mockLifecycle.revokeForBook.mockResolvedValue(['a.png', 'b.png', 'c.png']);
+      await service.remove('b-1');
+      expect(mockLifecycle.revokeForBook).toHaveBeenCalledWith('b-1', mockEntityManager);
+      expect(mockLifecycle.purgeImages).toHaveBeenCalledWith(['a.png', 'b.png', 'c.png']);
+    });
+
+    it('revokes before removing, and purges only after commit', async () => {
+      const order: string[] = [];
+      mockLifecycle.revokeForBook.mockImplementation(async () => { order.push('revoke'); return ['a.png']; });
+      mockEntityManager.remove.mockImplementation(async () => { order.push('remove'); });
+      mockRepo.manager.transaction.mockImplementation(async (fn: (m: unknown) => unknown) => {
+        const out = await fn(mockEntityManager);
+        order.push('commit');
+        return out;
+      });
+      mockLifecycle.purgeImages.mockImplementation(async () => { order.push('purge'); });
+      await service.remove('b-1');
+      expect(order).toEqual(['revoke', 'remove', 'commit', 'purge']);
+    });
+
+    it('locks the book row before revoking, so a share being saved is either seen or refused (R1)', async () => {
+      const order: string[] = [];
+      mockEntityManager.query.mockImplementation(async () => { order.push('lock'); return [{ id: 'b-1' }]; });
+      mockLifecycle.revokeForBook.mockImplementation(async () => { order.push('revoke'); return []; });
+      await service.remove('b-1');
+      expect(order).toEqual(['lock', 'revoke']);
+      expect(mockEntityManager.query).toHaveBeenCalledWith(expect.stringContaining('FOR UPDATE'), ['b-1']);
+    });
+
+    it('returns 404 and revokes nothing if a concurrent delete got there first (R1)', async () => {
+      mockEntityManager.query.mockResolvedValue([]);
+      await expect(service.remove('b-1')).rejects.toThrow(NotFoundException);
+      expect(mockLifecycle.revokeForBook).not.toHaveBeenCalled();
+      expect(mockEntityManager.remove).not.toHaveBeenCalled();
+      expect(mockLifecycle.purgeImages).not.toHaveBeenCalled();
+    });
+
+    it('handles a book without shares', async () => {
+      await service.remove('b-1');
+      expect(mockEntityManager.remove).toHaveBeenCalledWith(book);
+      expect(mockLifecycle.purgeImages).toHaveBeenCalledWith([]);
+    });
+
+    it('purges nothing if the delete fails, because the transaction rolled back', async () => {
+      mockEntityManager.remove.mockRejectedValue(new Error('db down'));
+      await expect(service.remove('b-1')).rejects.toThrow('db down');
+      expect(mockLifecycle.purgeImages).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException for a missing book and changes nothing, so a repeat delete is safe', async () => {
       mockRepo.findOneBy.mockResolvedValue(null);
       await expect(service.remove('missing')).rejects.toThrow(NotFoundException);
+      expect(mockRepo.manager.transaction).not.toHaveBeenCalled();
+      expect(mockLifecycle.revokeForBook).not.toHaveBeenCalled();
     });
   });
 

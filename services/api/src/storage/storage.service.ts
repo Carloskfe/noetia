@@ -3,6 +3,30 @@ import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } fro
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Readable } from 'stream';
 
+/**
+ * Upper bound for one object deletion, including SDK retries. Deletions run while
+ * a reader's request waits, and the S3 client has no timeout of its own, so a
+ * stalled store would otherwise hold that request open indefinitely (NEM-016 F1).
+ * Uploads and reads keep their current behaviour: they can legitimately be slow.
+ */
+export const STORAGE_DELETE_TIMEOUT_MS = 5_000;
+/** Reading a card image to publish it (R2). Cards are small PNGs. */
+export const CARD_IMAGE_READ_TIMEOUT_MS = 10_000;
+/** Reading a book's text to verify a quotation (R2). Whole books, on the internal network. */
+export const QUOTE_SOURCE_READ_TIMEOUT_MS = 15_000;
+
+/** Pass `timeoutMs` to bound a read. Without it a read behaves as before (batch tools). */
+export interface StorageReadOptions {
+  timeoutMs?: number;
+}
+
+export class StorageTimeoutError extends Error {
+  constructor(message = 'storage operation timed out') {
+    super(message);
+    this.name = 'StorageTimeoutError';
+  }
+}
+
 @Injectable()
 export class StorageService {
   /** Internal client — reaches MinIO over the Docker network for uploads/reads. */
@@ -52,21 +76,54 @@ export class StorageService {
     return getSignedUrl(this.presignClient, command, { expiresIn: ttlSeconds });
   }
 
-  async getText(key: string, bucket = 'books'): Promise<string> {
-    return (await this.getBuffer(bucket, key)).toString('utf-8');
+  async getText(key: string, bucket = 'books', options: StorageReadOptions = {}): Promise<string> {
+    return (await this.getBuffer(bucket, key, options)).toString('utf-8');
   }
 
   /** Reads an object through the internal client (never over a public URL). */
-  async getBuffer(bucket: string, key: string): Promise<Buffer> {
-    const res = await this.client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+  async getBuffer(bucket: string, key: string, options: StorageReadOptions = {}): Promise<Buffer> {
+    if (options.timeoutMs === undefined) return this.readObject(bucket, key);
+    return this.withDeadline(options.timeoutMs, (signal) => this.readObject(bucket, key, signal));
+  }
+
+  private async readObject(bucket: string, key: string, signal?: AbortSignal): Promise<Buffer> {
+    const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+    const res = await this.client.send(command, signal ? { abortSignal: signal } : undefined);
     const stream = res.Body as Readable;
+    // A body can stall after the headers arrive, so the deadline must also end it.
+    signal?.addEventListener('abort', () => stream.destroy(), { once: true });
     const chunks: Buffer[] = [];
     for await (const chunk of stream) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     return Buffer.concat(chunks);
   }
 
+  /**
+   * Deletes an object, or rejects with StorageTimeoutError after
+   * STORAGE_DELETE_TIMEOUT_MS. The timeout also aborts the in-flight request, so
+   * nothing is left running. Deleting twice is safe if the abort arrives late.
+   */
   async delete(bucket: string, key: string): Promise<void> {
-    await this.client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+    await this.withDeadline(STORAGE_DELETE_TIMEOUT_MS, (signal) =>
+      this.client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }), { abortSignal: signal }),
+    );
+  }
+
+  /** Runs `operation`, or rejects with StorageTimeoutError and aborts it after `timeoutMs`. */
+  private async withDeadline<T>(timeoutMs: number, operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    const abort = new AbortController();
+    let timer: NodeJS.Timeout | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new StorageTimeoutError());
+        abort.abort();
+      }, timeoutMs);
+    });
+    try {
+      // race() also handles the loser, so a late abort rejection stays handled.
+      return await Promise.race([operation(abort.signal), deadline]);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   /** Returns a permanent public URL — requires the bucket to allow public reads (set in prod). */
