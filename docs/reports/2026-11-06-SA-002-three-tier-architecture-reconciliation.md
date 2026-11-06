@@ -120,7 +120,7 @@ No existing file was modified.
 **Protocol deviation:** `docs/reports/README.md` exists only on open PRs #23 and #24, not on `main`. To avoid stacking on legal-review work or creating a conflict, the index is not edited here (NEM-018 precedent). Proposed row for when the index lands:
 
 ```
-| 2026-11-06 | SA-002 | [Three-tier product architecture reconciliation](2026-11-06-SA-002-three-tier-architecture-reconciliation.md) | Draft PR (see report) | Complete; awaiting Product Architecture review |
+| 2026-11-06 | SA-002 | [Three-tier product architecture reconciliation](2026-11-06-SA-002-three-tier-architecture-reconciliation.md) | Report PR: [#34](https://github.com/Carloskfe/noetia/pull/34) (Draft) | Complete; awaiting Product Architecture review |
 ```
 
 ## 12. Next recommended action
