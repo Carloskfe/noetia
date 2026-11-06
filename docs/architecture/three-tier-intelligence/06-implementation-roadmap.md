@@ -1,6 +1,6 @@
 # 06 — Architecture and Implementation Roadmap
 
-**Status:** PROPOSED. **No phase is authorized.** Each needs its own approved mission and an explicit Product Owner execution instruction. Reader work keeps priority whenever it competes with these phases (Product Hierarchy).
+**Status:** PROPOSED; updated after T0. **No phase is authorized.** Each needs its own approved mission and an explicit Product Owner execution instruction. Reader work keeps priority whenever it competes with these phases (Product Hierarchy).
 
 ---
 
@@ -35,6 +35,7 @@ Existing missions; their scope is unchanged.
 | Rights metadata (NEM-007 Phase B) | Blocked | Licensed titles in T5+ | ADR-002 |
 | Provider data-handling review; credentials | Open | T4 | PO-005 |
 | TT-22 Terms and Privacy updates | Open | T5 | Real users, real data |
+| PO-024 remediation (M-1…M-5 in PR #17) | Not started | Independent; should precede token copy or ToS changes | Code, ToS, and copy still say 90 days |
 
 ## 3. Phases
 
@@ -58,7 +59,8 @@ T0 Decisions ─▶ T1 Control plane (dark) ─▶ T2 Evaluation ─▶ T3 Seman
 |---|---|
 | **Scope** | PO rules on P0 decisions; records and ADRs updated (documentation only) |
 | **Depends on** | This package |
-| **Acceptance** | TT-01, 02, 04, 05, 12, 21 ruled; ADR-005 and ADR-006 proposed |
+| **Status** | Preliminary rulings received; PO-025…029 and ADR-005/006 **drafted, awaiting acceptance** |
+| **Acceptance** | PO accepts the records and amendments; Product Architecture accepts the ADRs |
 | **Tests** | None |
 | **Cost safeguard** | None needed: no spend |
 
@@ -67,8 +69,8 @@ T0 Decisions ─▶ T1 Control plane (dark) ─▶ T2 Evaluation ─▶ T3 Seman
 | | |
 |---|---|
 | **Scope** | Resolver, versioned tier policies, grants, flags, session and book-limit enforcement, budget ledger with reservations, Gateway interface with a **fake provider only**, default-deny eligibility |
-| **Excludes** | Real providers, pgvector, Stripe, reader, UI, deployment |
-| **Depends on** | T0 (subset) |
+| **Excludes** | Real providers, retrieval, pgvector, Stripe, tokens, reader, UI, Briefs, staging, production |
+| **Depends on** | T0 acceptance only. No billing, provider, or staging dependency; uses simulated ports |
 | **Acceptance** | All limit layers tested against races and forged input; token isolation proven by architecture tests; reader unaffected with module off |
 | **Tests** | Unit (≥ 80%), real-PostgreSQL integration for locks, architecture boundary tests |
 | **Cost safeguard** | **Zero AI spend is structural**: no adapter exists |
@@ -78,7 +80,7 @@ T0 Decisions ─▶ T1 Control plane (dark) ─▶ T2 Evaluation ─▶ T3 Seman
 | | |
 |---|---|
 | **Scope** | Corpus of verified public-domain books; ES, EN, cross-language question sets; metrics for citation accuracy, grounding, origin labelling, extraction refusal; **same-books depth benchmark** |
-| **Depends on** | TT-07 criteria; edition verification (TT-12) |
+| **Depends on** | TT-07 criteria; rights verification and TT-26 ([07](07-rights-verification-requirements.md)) |
 | **Acceptance** | Approved thresholds; no quality claim is "unfalsifiable" (AI Governance Framework gap closed) |
 | **Tests** | Harness tests with stubbed outputs |
 | **Cost safeguard** | Runs have an explicit spend limit approved in advance |
@@ -108,7 +110,7 @@ T0 Decisions ─▶ T1 Control plane (dark) ─▶ T2 Evaluation ─▶ T3 Seman
 | | |
 |---|---|
 | **Scope** | Journey steps 1–4 for 1–3 books, web first; citations; modes; provisional technical caps; grants only, **no billing** |
-| **Depends on** | T4; Release A; B-10; TT-05, 08, 10, 11, 13, 22 |
+| **Depends on** | T4; Release A; B-10; TT-08, 10, 11, 13, 22, 23, 24 |
 | **Acceptance** | Eval thresholds met; citations resolve; COGS measured per user; **AI outage has no reader impact**, verified |
 | **Tests** | All [03 §3](03-research-architecture.md#3-server-side-enforcement-of-book-limits) negatives; reconstruction scenarios; injection; household isolation; degradation stages |
 | **Cost safeguard** | Small grant list; provisional budgets; tier cap; alerts from first user |

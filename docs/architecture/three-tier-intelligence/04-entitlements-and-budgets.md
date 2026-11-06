@@ -1,6 +1,6 @@
 # 04 — Entitlements and Resource Budgets: Noetia+ versus NoetiaX
 
-**Status:** PROPOSED. **No budget value, model price, or subscription price is set here.** Every value is a named parameter until measured and approved. No billing system is modified.
+**Status:** PROPOSED; updated after T0 (PO-026, ADR-005, both drafts). **No budget value, model price, or subscription price is set here.** Every value is a named parameter until measured and approved. No billing system is modified.
 
 ---
 
@@ -53,20 +53,22 @@ A limit change is a new policy version approved by the PO, not a code edit.
 
 ### Resolution order
 
-Corrects NEM-003 18's ordering (H-2): a rollout bucket and a flag can only **restrict**; they never grant.
+Corrects NEM-003 18's ordering (H-2): a rollout bucket and a flag can only **restrict**. **T0 change: a grant supplies a tier but never bypasses the prerequisite** (PO-026).
 
 ```
 1. Master flag off                     → deny
 2. Capability flag off                 → deny
 3. Admin deny override                 → deny
-4. Admin or beta grant                 → allow, tier from the grant
-5. Otherwise:
-   a. premium entitlement active?      else deny (tier_required)
-   b. prerequisite satisfied (TT-02)?  else deny (prerequisite_missing)
-   c. capability in tier policy?       else deny (capability_denied)
-   d. in rollout bucket?               else deny (flag_off)
+4. Tier source: premium entitlement or grant; none → deny (tier_required)
+5. Qualifying book plan (port answer):
+     qualifying → continue
+     not_qualifying or unknown → deny (prerequisite_missing)
+6. Capability in tier policy?          else deny (capability_denied)
+7. In rollout bucket?                  else deny (flag_off)
    → allow
 ```
+
+`QualifyingPlanPort` hides how plans and states qualify (TT-15). Until an adapter exists, it answers `unknown`. Whether a no-charge pilot may use grants without a book plan is TT-23.
 
 Cached in Redis with a short TTL; a change in entitlement invalidates the cache. If the cache is down, resolve from PostgreSQL. **If entitlement cannot be determined, deny AI, and never affect reading.**
 
@@ -94,12 +96,14 @@ Cached in Redis with a short TTL; a change in entitlement invalidates the cache.
 | Revenue separately identifiable | No per-line payment record | ✗ | M-D |
 | Refunds and disputes | Not handled (NOF-003) | ✗ | M-D |
 | Account deletion cancels billing | Does not (NOF-004 audit) | ✗ | M-D (G9) |
+| Cancelling premium leaves the book plan | Cancel acts on the user's one Stripe subscription (`subscriptions.service.ts:482-490`) | ✗ | Product-line-aware cancel: remove the premium item or subscription only |
+| Trial policy per product | 14-day trial hard-coded on all plan checkouts (`subscriptions.service.ts:216`) | ✗ | Per-plan trial, after TT-16 |
 
 **The resolver is structure-neutral.** Whichever structure TT-16 selects, it reads a normalized "product-line entitlement" rather than Stripe shapes.
 
 | Structure | For | Against |
 |---|---|---|
-| **One Subscription, separate line items** (recommended under the approved dependency) | One invoice and one failure state, which suits "ends when the book plan ends"; a tier change is a price swap | Line-level attribution of fees, refunds, discounts, and taxes needed (PR #18 §9.2); interval handling to verify against current Stripe documentation |
+| **One Subscription, separate line items** (recommended under the approved dependency) | One invoice and one failure state, which suits "ends when the book plan ends"; a tier change is a price swap | Line-level attribution of fees, refunds, discounts, and taxes needed (PR #18 §9.2); **cancel must remove the premium item, never set `cancel_at_period_end` on the Subscription**; interval handling to verify against current Stripe documentation |
 | **Two Subscriptions** | Independent lifecycles; simple revenue separation | Two charges and fees; the cascade must be built; recommended earlier only because of independence, which the 10-30 direction removed |
 
 ### Permanent ownership: **compatible by design, with one precondition**
@@ -114,7 +118,7 @@ Token purchase needs only login and confirmed email (`subscriptions.controller.t
 |---|---|---|
 | Buy a token package | Tokens added at the unchanged price | **Unchanged** |
 | Redeem a token | Book owned permanently; may become eligible for analysis | **Unchanged** |
-| A token expires | Lost per policy (TT-01) | **Unchanged** |
+| A token expires | Lost per PO-024 | **Unchanged** |
 | Budget exhausted | Still buy, redeem, read, and listen | Limited |
 | Premium cancelled | Tokens and books untouched | Ends |
 | Upgrade or downgrade | Untouched | New policy applies |
@@ -265,4 +269,4 @@ Worst-case cost(tier)      ≈ monthly_units × cost per unit      [must be ≤ 
 
 ## 5. Open items for this document
 
-TT-02, TT-06, TT-08, TT-09, TT-10, TT-11, TT-15, TT-16. See [05](05-open-decisions.md).
+TT-06, TT-08, TT-09, TT-10, TT-11, TT-15, TT-16, TT-23. See [05](05-open-decisions.md).
