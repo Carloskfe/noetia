@@ -18,7 +18,7 @@
 
 ## 2. Conflicts raised for Product Owner review
 
-None of these is resolved here. Each has a decision entry in [05](05-open-decisions.md).
+None of these is resolved here. Each has a decision entry in [05](05-open-decisions.md). **T0 update:** C-1, C-2, C-3, and C-6 received preliminary rulings; C-10 stays as it was. See the status table below this one.
 
 | # | Conflict | Sources | Severity | Decision |
 |---|---|---|---|---|
@@ -33,6 +33,17 @@ None of these is resolved here. Each has a decision entry in [05](05-open-decisi
 | **C-9** | **Retention.** NEM-003 D5 is still open, and Briefs add durable, exportable artifacts. Rights revocation after export is undefined. | NEM-003 D5, 08, 15 | Medium | TT-14 |
 | **C-10** | **Relationship to NEM-006.** NEM-006 (Noetia+ implementation) is PAUSED with no commits and no repository-resident scope. Its prerequisites overlap the roadmap here. | `nem-007-creator-rights`: NEM-006 record | Medium: governance | TT-21 |
 | **C-11** | **Legal surfaces are silent on AI.** The Terms and Privacy Policy on `main` do not mention AI or AI processing, and sending book text and user notes to external providers needs disclosure review. | `services/web/lib/legal/*` (no match for AI terms) | Medium: legal | TT-22 |
+
+### T0 status of these conflicts
+
+| Conflict | T0 ruling | Remaining |
+|---|---|---|
+| C-1 Token expiry | PO-024 preserved | Code, ToS, and copy remain at 90 days, so remediation is needed; PO-024's own open items |
+| C-2 Prerequisite | Both tiers require a qualifying book subscription (PO-026) | Qualifying plans, linked members, states, and lifecycle |
+| C-3 Limits versus My Knowledge | Analysis bound to selected books; separate highlight search (PO-028) | Generation over highlights alone (TT-24); semantic search (TT-25) |
+| C-6 Rights | Verified public domain first, then opt-in; default deny (PO-029) | Evidence standard, verifier, jurisdiction (TT-26) |
+| C-10 NEM-006 | No change ordered: **stays PAUSED** | Disposition is not needed for NEM-019 |
+| C-4, C-5, C-7, C-8, C-9, C-11 | Not addressed by T0 | Open; none blocks NEM-019 |
 
 ## 3. Current code versus the design
 
@@ -56,8 +67,12 @@ These are facts about `main`. They are not criticisms of NEM-003, which flagged 
 | F-14 | Mobile gates the app on subscription status | `mobile/src/api/subscriptions.ts:24-26` | Tier design must not rely on this; PO-021 requires its removal |
 | F-15 | `DELETE /users/me` does not cancel Stripe (NOF-004 audit; not re-verified here) | PR #23 | Premium billing could continue after account deletion |
 | F-16 | Author hosting has an unrelated tier called `basic`, shown as "Básico" and printed raw in an error | `author/page.tsx:20`; `books.service.ts:91` | Not a premium label, but likely to be confused with one. Reported, not changed (TT-03) |
+| F-17 | `POST /fragments` accepts any `text` for any `bookId` with no length limit or source check; `PATCH` can rewrite it; source positions are never stored | `create-fragment.dto.ts`; `fragments.service.ts:23-31,51-56`; SA-001 §5.4 | **`fragments.text` is an assertion, not evidence** (PO-028) |
+| F-18 | Cancellation sets `cancel_at_period_end` on the user's single Stripe subscription | `subscriptions.service.ts:482-490` | With shared billing, cancelling a premium tier could cancel the book plan, contradicting PO-026 |
+| F-19 | Every subscription checkout hard-codes a 14-day trial | `subscriptions.service.ts:207-216` | A premium plan would inherit it; trial policy is undecided |
+| F-20 | The NEM-014 integration-test job is on Release A, not `main` | `.github/workflows/ci.yml` on each ref | NEM-019 uses a disposable local database |
 
-**Hazard summary (F-2, F-4, F-5, F-6).** On current code, adding one premium plan row would at once list it publicly, mint book tokens, unlock all paid books, and overwrite the user's book-plan row. **No premium plan may be added before the product-line work (impact assessment M-C, M-D) and NEM-013.**
+**Hazard summary (F-2, F-4, F-5, F-6, F-18, F-19).** On current code, adding one premium plan row would at once list it publicly with a free trial, mint book tokens, unlock all paid books, and overwrite the user's book-plan row, and cancelling it could cancel the book plan. **No premium plan may be added before the product-line work (impact assessment M-C, M-D) and NEM-013.**
 
 ## 4. Necessary extensions to approved architecture
 
@@ -66,7 +81,7 @@ These extend ADRs without changing their decisions. Each needs review; formal ac
 | # | Extension | Why | Touches |
 |---|---|---|---|
 | X-1 | **Scope has two independent axes**: source *mode* (ADR-003) and session *book set* (new). No fourth mode | Resolves C-3 without redefining modes | ADR-003 |
-| X-2 | **Origin label is required**, not "where useful": `library`, `broader`, or `synthesis` on every answer segment | Cross-book synthesis is neither purely a book's claim nor external knowledge | ADR-003 |
+| X-2 | **Origin label is required**, not "where useful": `library`, `broader`, `synthesis`, or `user_content` on every answer segment | Cross-book synthesis is neither purely a book's claim nor external knowledge, and a user's words must never be attributed to an author (PO-028) | ADR-003 |
 | X-3 | **Citation anchor = `textHash` + character range.** Phrase range becomes a derived, re-resolvable value | Sync maps have been re-seeded (60 production books in 2026), so stored phrase ranges in durable Briefs can go stale | ADR-003, ADR-004 |
 | X-4 | **Rights metadata on books**: rights class, edition/translation verification, title-level AI operations | ADR-002 requires it and the schema has none (C-6) | ADR-002 |
 | X-5 | **Reconstruction ledger spans sessions and exports**, per (user, book) | Sessions and Briefs otherwise offer an easy way around per-turn limits | ADR-002 |
@@ -96,7 +111,7 @@ Reported only; history is not rewritten.
 |---|---|---|---|
 | H-1 | `EXECUTIVE_SUMMARY.md` §4, `16-observability.md`, `20` D1 | COGS bands 15/30/45 contradict PO-001's 15/25/35 | **PO-001 governs** (also PR #18 X-2, Q-E10). All tier design here uses 15/25/35 |
 | H-2 | `18-feature-flags-rollout.md` resolution order | "Plan capability → allow" comes *before* the rollout bucket, so rollout cannot restrict paying users, and "bucket → allow" could admit a user with no entitlement | Rollout must be a gate in addition to entitlement ([04 §2](04-entitlements-and-budgets.md#2-tier-capability-model)) |
-| H-3 | `05-content-permissions.md` `PUBLIC_DOMAIN` trigger: `book.isFree` + status | `isFree` is a pricing flag, not a rights determination. ADR-002 requires edition-level verification | Treat `isFree` as insufficient (X-4) |
+| H-3 | `05-content-permissions.md` `PUBLIC_DOMAIN` trigger: `book.isFree` + status | `isFree` governs catalogue readiness and the sync gate, not rights (Creator & Rights Framework; corrected from the first version of this table). ADR-002 requires edition-level verification | Never rights evidence (PO-029) |
 | H-4 | `05` OWNED scope: "any `purchaseType`" | Unsafe while bypass rows exist (F-7) | Depends on NEM-011 and B-10 |
 | H-5 | `09`: storing `snippet` in `ai_messages.citations` | Durable verbatim text outside rights control | Store only anchors, resolve text at display, and store quotes separately under policy |
 | H-6 | `19`, `22` | Do not mention the unmerged PO-005 or the NEM-006 prerequisites | Covered by [06](06-implementation-roadmap.md) |

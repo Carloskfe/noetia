@@ -1,6 +1,6 @@
 # 03 — Interactive Research and Research Brief Architecture
 
-**Status:** PROPOSED. Nothing here is built or authorized. Endpoint, table, and field names are illustrative; a mission decides the final schema.
+**Status:** PROPOSED; updated after T0 (PO-027, PO-028, ADR-006, all drafts). Nothing here is built or authorized. Endpoint, table, and field names are illustrative; a mission decides the final schema.
 
 ---
 
@@ -73,6 +73,21 @@ The limit is **never** trusted from a client, stored only in the UI, or left to 
 
 **Required negative tests:** an eleventh book (DB and service); a fourth book on Noetia+; parallel adds at the limit; duplicate IDs; adding after the lock; a forged limit in the body; a planner naming an unselected book; a note from an unselected book; a downgrade with an active 10-book session.
 
+**Concurrency tests:** N parallel adds at the limit; an add racing the first turn; parallel first turns (one lock, one set); parallel forks; a downgrade during an active turn.
+
+### Lock, fork, downgrade, and history
+
+Full rules are in [ADR-006](../adr/ADR-006-research-sessions-book-limits-and-source-scope.md).
+
+| Topic | Rule |
+|---|---|
+| Lock point | First **accepted** analysis turn. A preflight rejection does not lock; a provider failure afterwards does |
+| Transaction | Row lock in a short transaction; **no provider call under the lock** |
+| Fork | New session with a parent reference. Generated context carries only if the parent's books are a subset of the fork's, since history can carry analysis of excluded books |
+| Downgrade | At or under the new limit: stays active without higher-tier capabilities. Over it: `read_only`, with an offer to fork |
+| History | Never deleted by a downgrade. Retention after cancellation is TT-14 |
+| Book deletion | Does not block book deletion; a metadata snapshot keeps history readable |
+
 ## 4. What "deeper analysis" means technically
 
 **Requirement (PO):** NoetiaX must be qualitatively deeper, not just a higher limit. **Test proposed:** give both tiers **the same 3 books and the same question** on a benchmark set. If NoetiaX shows no measurable gain against criteria the PO approves, depth has not been delivered, whatever the book limit. Without this test, "deeper" is unfalsifiable.
@@ -119,7 +134,18 @@ The limit is **never** trusted from a client, stored only in the UI, or left to 
 | **My Knowledge** | All selected books, plus the user's own highlights and notes **on those books** | Same as This Book |
 | **Expand** | Same sources as My Knowledge | Allowed, always labelled `broader`; never attributed to a book |
 
-**Library-wide use (recommended for TT-05):** discovery across the whole library stays available as **retrieval without generation** (semantic search to *find* books to select). It sends no book text to a model, so it is cheap and does not count as analysis. Any generated analysis is bound to the session's books. Ask My Highlights is the one real exception to decide: it could run on the user's own highlight text only, outside the book limit, with no retrieval from book text.
+**Library-wide use (T0, PO-028):** generated analysis is bound to the session's books. **Separate search over the user's own highlights is permitted outside the limit.** It is lexical, runs in PostgreSQL on the user's own rows, and involves no model, provider, chunks, or book text.
+
+The earlier recommendation to allow Ask My Highlights generation over highlight text outside the limit is **not adopted** by this ruling (TT-24). Semantic book discovery across the library is a separate later question (TT-19).
+
+### Trust boundary
+
+| Class | Source | Treatment |
+|---|---|---|
+| User-authored note | `fragments.note` | User-private; only for a selected, eligible book in context; labelled `user_content`; never attributed to the author |
+| Saved quotation | `fragments.text` | **An assertion, not evidence** (F-17). Governed by the book's AI permissions as if publisher text. Labelled `user_content` unless verified against source text |
+| Publisher-controlled text | Book text, chunks | Selected book only, after entitlement and rights checks |
+| Generated content | Messages, Briefs | Labelled by origin; scoped to its session |
 
 ### Permission pipeline (ADR-002 preserved, session step added)
 
@@ -139,8 +165,8 @@ Authenticated user
 | Eligibility case | Behaviour |
 |---|---|
 | Owned, operation permitted | Eligible |
-| Public domain with **verified edition** | Eligible, ownership not required (ADR-002); selection rule is TT-04 |
-| Public domain status unverified | **Not eligible** until verified. `isFree` is not evidence |
+| Public domain with **verified work, edition, translation, and rights** | Eligible, ownership not required (ADR-002, PO-029) |
+| Public domain status unverified | **Not eligible** until verified. `isFree` is not evidence ([07](07-rights-verification-requirements.md)) |
 | Non-owned licensed | Metadata and permitted representations only; **not selectable for full-text analysis** |
 | Restricted | Never retrieved |
 | Owned, but `crossBookComparison` not permitted | Usable for that book's own answers; **excluded from comparisons, and the exclusion is shown** in the answer and the Brief |
@@ -171,6 +197,7 @@ Generation returns **structured segments**, not free text:
 | `library` | Stated in a selected book | Requires a valid citation |
 | `synthesis` | Noetia's connection between cited passages | Must cite each source; shown as interpretation, not as any author's claim |
 | `broader` | General model knowledge | Expand only; never carries a book citation |
+| `user_content` | The user's notes and unverified highlights | Never attributed to an author or book |
 
 In This Book and My Knowledge, an uncited substantive claim is removed or the answer states the limitation. **Trade-off:** validating before display adds latency, so streaming proceeds segment by segment after validation rather than token by token.
 
