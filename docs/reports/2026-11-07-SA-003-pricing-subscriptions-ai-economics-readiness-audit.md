@@ -14,6 +14,12 @@
 | **[ASSUMPTION]** / **[UNVERIFIED]** | Not established by evidence in this audit |
 | **[OPEN]** | Needs a Product Owner decision |
 
+> **Current recommendation status (Rev 6).**
+> - Noetia is **pre-launch** (Product Owner, 2026-11-07).
+> - The **current** roadmap and architecture recommendation is **[Revision 5](#revision-5--pre-launch-architecture-reassessment-2026-11-07)**, accepted by the Product Owner as the working pre-launch recommendation. It is subject to Product Owner clarifications, and it is **not approved policy**.
+> - §7.E, §11, and §17 below are preserved as written in Rev 1–3 and marked **SUPERSEDED**. Their findings (§7.A–§7.D, §9) remain valid evidence unless a later revision says otherwise.
+> - Annexes: **[A — NEM-020 mission draft](2026-11-07-SA-003-annex-A-NEM-020-mission-draft.md)** · **[B — ADR-007 draft](2026-11-07-SA-003-annex-B-ADR-007-draft.md)**.
+
 ---
 
 ## 1. Mission and objective
@@ -30,7 +36,7 @@
 | | |
 |---|---|
 | **Dates** | Audit and publication 2026-11-07 |
-| **Lifecycle status** | **Review**: complete, awaiting Product Owner review |
+| **Lifecycle status** | **Review**: Rev 6, awaiting Product Owner review. Rev 5 accepted as the working pre-launch recommendation (2026-11-07) |
 | **Delivery state** | **Not merged.** Nothing deployed |
 | **This report authorizes** | **Nothing.** Its recommendations are not approved engineering instructions |
 
@@ -41,6 +47,9 @@
 | 1 | 2026-11-07 | Audits A, B, C and a partial D, delivered in the agent response only (repository writes were prohibited) |
 | 2 | 2026-11-07 | Audit D completed, Audit E added, risks rated, mission information added; published under the documentation-only authorization |
 | 3 | 2026-11-07 | Product Owner review corrections, documentation only. (1) C.4 restated as **preliminary upper-bound spending envelopes before omitted variable costs**, with the omitted costs listed; explicitly not allowances or guaranteed margins. (2) New B.4: Stripe cancellation and database deletion **cannot be atomic through a database transaction**; requirements for an idempotent, retryable, recoverable, reconciled workflow (not implemented); prerequisite 6 and E1 reworded. (3) Evidence status made explicit: per-price status in C.2, an N1 evidence chain, and the §16 verification register. No new research; no paid API call; no production access |
+| 4 | 2026-11-07 | Pre-launch context correction (Product Owner: no paying subscribers, no active paid subscriptions). First revised roadmap P0–P10 and a simplification list. Delivered in the response as *pending publication*; published here in Rev 6. **Partly superseded by Rev 5** (its "E0 dropped" is withdrawn) |
+| 5 | 2026-11-07 | Pre-launch architecture reassessment: eliminations, target architecture, household entitlements, implementation order, launch blockers, dependencies, first mission NEM-020. Delivered in the response as *pending publication*; published here in Rev 6. **Accepted by the Product Owner as the working pre-launch recommendation**, subject to clarifications |
+| 6 | 2026-11-07 | Publication of Rev 4 and Rev 5. Annex A (NEM-020 draft) and Annex B (ADR-007 draft). Dependency and conflict register for PRs #34 / #35, including NEM-019 household eligibility. Verification register updated (V3 and V7 now verified). No new code reading beyond that listed in Rev 6 §R6.3 |
 
 ## 3. Repository baseline
 
@@ -155,7 +164,7 @@ The first six rows confirm the T0 closure report's "Billing hazards" table (PR #
 |---|---|---|---|
 | 1 | The installed SDK is `stripe` 22.2.0 and declares `ApiVersion = '2026-05-27.dahlia'` | **[CODE]** | `services/api/node_modules/stripe/cjs/apiVersion.js:5`; `package-lock.json` |
 | 2 | No `apiVersion` is passed when the clients are constructed | **[CODE]** | Constructor calls above |
-| 3 | With no `apiVersion`, the SDK sends its pinned version on API requests | **[UNVERIFIED]**. This is general knowledge of how the Stripe Node SDK behaves; it was not confirmed in this audit | — |
+| 3 | With no `apiVersion`, the SDK sends its pinned version on API requests | **Rev 6: verified as the documented default** (stripe-node README: "If not set, stripe-node will use the latest version at the time of release", accessed 2026-11-07). The per-request header is not stated on that page | stripe-node README |
 | 4 | Since `2025-03-31.basil`, `current_period_start`/`_end` are no longer on the Subscription resource but on subscription items | **[EXTERNAL]**, verified 2026-11-07 | basil changelog (§8) |
 | 5 | Since basil, `invoice.subscription` is replaced by `invoice.parent.subscription_details.subscription`. The page calls it "deprecated" in its body and "Removed" in its change table | **[EXTERNAL]**, verified 2026-11-07 | basil changelog (§8) |
 | 6 | Webhook payloads are shaped by **the webhook endpoint's own API version** | **[EXTERNAL]**, verified 2026-11-07 | Webhook versioning page (§8) |
@@ -220,7 +229,7 @@ The first six rows confirm the T0 closure report's "Billing hazards" table (PR #
 
 1. **Durable deletion request.** Deletion is recorded as a request with a state, for example `requested → billing_canceled → data_deleted`, with `failed` / `needs_review` states. The user's session ends and access stops immediately, but the minimum billing identifiers (`stripeCustomerId`, subscription IDs) are kept until Stripe cancellation is confirmed.
 2. **Cancel before erase.** Stripe cancellation, plus any refund decision, must succeed or be confirmed before the identifiers are destroyed.
-3. **Idempotency.** Every step can be repeated safely: cancelling an already-canceled subscription counts as success, and Stripe requests carry idempotency keys derived from the deletion request. *That Stripe supports request idempotency keys comes from general Stripe knowledge; it was not re-read in this audit **[UNVERIFIED]**.*
+3. **Idempotency.** Every step can be repeated safely: cancelling an already-canceled subscription counts as success, and Stripe requests carry idempotency keys derived from the deletion request. *Rev 6: Stripe request idempotency keys are verified (https://docs.stripe.com/api/idempotent_requests, accessed 2026-11-07): POST requests accept them; a retry with the same key returns the saved response; different parameters with the same key error.*
 4. **Retries.** Asynchronous, with backoff and a retry ceiling (for example on the existing BullMQ worker). Exhausted retries move the request to `needs_review` and alert an operator. They never silently drop it.
 5. **Failure recovery.** A crash at any point resumes from the recorded state. No step depends on in-memory state.
 6. **Confirmation.** The `customer.subscription.deleted` webhook, or a Stripe read-back, confirms the cancel before the request advances.
@@ -382,6 +391,8 @@ The T0 report (PR #35) also lists conflicts in PR #12's impact assessment (C-08)
 
 ### 7.E Implementation sequence (recommendation only)
 
+> **SUPERSEDED by Revision 5 (§R5.4).** Kept for traceability. E1–E9 assumed a post-launch repair path. Under the pre-launch context, E3, E4, and E9 merge into a single billing design and rebuild. E0 returns as the NEM-020 inventory.
+
 Each step needs its own approved mission and an explicit Product Owner execution instruction. Reader work keeps priority (CLAUDE.md, Product Hierarchy). The phase codes T1–T9 are those of three-tier `06`. This sequence adds the base-billing work that `06` does not cover.
 
 | Step | Work | Depends on | Why in this position | Authorization needed |
@@ -462,6 +473,8 @@ See §16.
 
 ## 11. Recommendations
 
+> **SUPERSEDED by Revision 5 (§R5.10).** Kept for traceability.
+
 **Required before any premium launch:** §7.B.3 prerequisites 1–9; E0–E4 and E7 of §7.E; publishing the baseline and resolving the PO-022 / PO-023 / PO-026 / ADR-005 conflicts.
 
 **Required regardless of premium (current customers):** N1, N3, N5, N6 (E0–E1), and PO-024 remediation.
@@ -519,11 +532,11 @@ Not modified: the reader and Escucha Activa, book ownership and the token ledger
 |---|---|---|---|---|---|
 | V1 | Stripe is live in production | **[UNVERIFIED]**; `CLAUDE.md` says keys are not yet in `.env.production` | N1 link 8 | Read production configuration (presence only, never values) | E0 |
 | V2 | API version of the production webhook endpoint | **[UNVERIFIED]** | N1 link 7 | Stripe dashboard or API read | E0 |
-| V3 | The SDK sends its pinned `dahlia` version when none is configured | **[UNVERIFIED]** (general SDK knowledge) | N1 link 3 | Read the SDK source or Stripe's SDK versioning docs | None (static read) |
+| V3 | The SDK sends its pinned `dahlia` version when none is configured | **Rev 6: VERIFIED (documented default)**. stripe-node README: "If not set, stripe-node will use the latest version at the time of release" (accessed 2026-11-07). The per-request header is not stated | N1 link 3 | Read the SDK source or Stripe's SDK versioning docs | None (static read) |
 | V4 | Live Stripe price IDs and amounts on the `plans` rows | **[UNVERIFIED]** | A.2 | Read-only production query, plus Stripe price reads | E0 |
 | V5 | Deleted accounts still being charged, and how many | **[UNVERIFIED]** | N6, R2 | Stripe active subscriptions vs existing users (counts only) | E0 |
-| V6 | Stripe's $0 trial invoice fires `invoice.paid` | **[UNVERIFIED]** (general Stripe knowledge) | N4 | Stripe documentation read | None (public docs) |
-| V7 | Stripe request idempotency keys | **[UNVERIFIED]** (general Stripe knowledge) | B.4 item 3 | Stripe documentation read | None (public docs) |
+| V6 | Stripe's $0 trial invoice fires `invoice.paid` | **[UNVERIFIED]**. Rev 6: the trials page read on 2026-11-07 does not say | N4 | Stripe documentation read | None (public docs) |
+| V7 | Stripe request idempotency keys | **Rev 6: VERIFIED.** https://docs.stripe.com/api/idempotent_requests (accessed 2026-11-07) | B.4 item 3 | Stripe documentation read | None (public docs) |
 | V8 | Stripe Billing fee ~0.7% | **[UNVERIFIED]** (truncated page summary) | B.3, C.4 | Re-read stripe.com/pricing | None (public page) |
 | V9 | `gpt-5.6-terra` price | **U**, not retrieved | C.2 | Read the OpenAI pricing page | None (public page) |
 | V10 | `gemini-3.1-pro-preview` and `gemini-embedding-001` prices | **S**, summary only | C.2 | Re-read the Gemini pricing page | None (public page) |
@@ -533,4 +546,312 @@ Not modified: the reader and Escucha Activa, book ownership and the token ledger
 
 ## 17. Next recommended action
 
+> **SUPERSEDED by [Revision 6 §R6.8](#r68-next-recommended-action).**
+
 Product Owner review of this report and of the reporting-protocol consolidation in the same Draft PR. Then, if approved, authorize **E0** (read-only Stripe and production checks), which would turn R2, R4, and R6 from unverified into measured. *Recommendation only; nothing is executed without explicit authorization.*
+
+---
+
+## Revision 4 — Pre-launch context correction (2026-11-07)
+
+> **Status:**
+> - Delivered in the agent response on 2026-11-07, marked *pending publication*, and published here in Rev 6 without change of substance.
+> - **Partly superseded by Revision 5.** Rev 4's statement that E0 can be dropped is **withdrawn**: production must not be assumed empty (§R5.0). Its other simplifications are carried into Rev 5 §R5.1.
+
+**Product Owner context [PO, 2026-11-07]:**
+- No paying subscribers and no active paid subscriptions.
+- Billing may be redesigned before launch.
+- No compatibility is owed to nonexistent paid contracts.
+
+This is the Product Owner's confirmation, not verified by this audit. It is consistent with CLAUDE.md §Infrastructure & Vendors ("Keys not yet in `.env.production`").
+
+### R4.1 Revised roadmap (superseded by R5.4)
+
+| Step | Work |
+|---|---|
+| P0 | PO decisions D1–D7 plus Q1 |
+| P1 | Billing architecture ADR (documentation only) |
+| P2 | Release A (#14) + NEM-013 |
+| P3 | Single billing rebuild (new additive tables, pinned API version, product-kind-aware webhooks, base-only token grants, one base subscription per account, deletion workflow, PO-024 expiry, test mode, staging after S19) |
+| P4 | Clients read the catalog; ToS and copy updates |
+| P5 | NEM-019 dark control plane, in parallel |
+| P6 | Evaluation, semantic foundation, rights pilot |
+| P7 | Gateway + measurement (paid-API authorization) |
+| P8 | PO sets allowances; betas |
+| P9 | Premium go-live as catalog configuration |
+| P10 | Live-mode Stripe + launch (authorization) |
+
+### R4.2 Simplifications (carried into R5.1, with corrections)
+
+| Rev 3 item | Rev 4 treatment | Rev 5 status |
+|---|---|---|
+| E0 production checks | "Dropped" | **Withdrawn**: E0 returns as the NEM-020 inventory |
+| N1 field patching | Dropped; pin one version | Carried |
+| R6 legacy price-ID tracing | Dropped; fresh test-mode products | Carried |
+| Reworking the one-row-per-user constraint | Simplified: new tables | Carried |
+| Grandfathering and price history for subscribers | Dropped | Carried |
+| Orphan reconciliation from past deletions | Dropped | **Corrected**: reduced to the inventory result |
+| PO-024 re-dating of issued tokens | Simplified | Carried (Q3) |
+| Option A vs B | B kept | Carried |
+| Drip, duplicate guard, refunds, trials | Folded into the rebuild | Carried |
+
+**Risk re-rating (Rev 4).** R2, R3, R4, and R5 become launch blockers rather than live-harm risks. R6 is closed. R1 is closed by design. All of this is carried into Rev 5.
+
+**Safeguards (Rev 4, carried):**
+- No database reset; forward-only migrations; snapshot before drops.
+- Preserve users, `user_books`, `token_ledger`, fragments, progress, sync maps, causes preferences.
+- Stripe test mode until launch.
+- Staging billing tests after S19.
+- No merge or deploy without authorization.
+
+**Questions (Rev 4):**
+- **Q1:** what to do with bypass-acquired ownership rows (B-10).
+- **Q2:** read-only counts (now NEM-020).
+- **Q3:** expiry of existing promotional and courtesy tokens.
+
+---
+
+## Revision 5 — Pre-launch architecture reassessment (2026-11-07)
+
+> **Status:**
+> - Delivered in the agent response on 2026-11-07, marked *pending publication*, and published here in Rev 6.
+> - **Accepted by the Product Owner as the working pre-launch architecture recommendation**, subject to clarifications.
+> - Acceptance does **not** approve ADR-007, any mission, or any product policy.
+
+**Baseline examined:** `origin/main` `6a5e5c0`; `origin/release/acquisition-a` (PR #14) diffed against it; `origin/docs/t0-decision-closure` `b05a213`; `origin/docs/reporting-protocol`; PR #36 head `e7d6736`.
+
+### R5.0 Assumption correction
+
+Production must **not** be assumed empty of test data or Stripe objects:
+- Release A was validated with a Stripe **test** key (PR #14 §2).
+- Production key mode "CANNOT be determined from source code" (`docs/production-safety/02-stripe-mode-verification.md`).
+- Real accounts and ownership rows exist.
+
+E0 therefore returns as an **inventory**, to preserve, migrate, archive, or retire. It is not remediation.
+
+### R5.1 Eliminated or simplified requirements
+
+| Rev 3 requirement | Pre-launch treatment |
+|---|---|
+| N1 legacy field fixes | **Eliminated.** Pin one API version in code and on the webhook endpoint |
+| R6 legacy price-ID traceability (`041`) | **Eliminated.** Fresh products and prices by lookup key; legacy IDs recorded once in NEM-020 |
+| Rework of `uq_subscriptions_user` | **Eliminated.** New tables alongside; legacy retired later |
+| Price history and grandfathering | **Eliminated as remediation.** Versioned from day one |
+| Orphan reconciliation from past deletions | **Reduced to the NEM-020 result.** The ongoing reconciliation job stays |
+| PO-024 re-dating of issued tokens | **Simplified.** Correct new issuance; existing tokens per Q3 |
+| Customer communication | **Eliminated** |
+| Drip, duplicate guard, trial tokens, refund and dispute handling | **Simplified:** designed once in the rebuild |
+| Release A's legacy title-purchase honouring (NEM-015) | **Possibly simplifiable** if NEM-020 shows no pending purchases. PO decision; Release A unchanged |
+| Inventory, data preservation, snapshots, forward-only migrations, test-mode first, staging isolation | **Not eliminated** |
+
+### R5.2 Target architecture (detailed in Annex B, ADR-007 draft)
+
+- **Catalog:** `catalog_products` (stable `code`, `kind`, attributes) and append-only `catalog_prices` (minor units, currency, interval, version, effective dates, Stripe price id, lookup key, mode, status). Premium requires a qualifying base. Lookup keys plus product metadata map to Stripe. One purchasable-items endpoint. AI limits stay in ADR-005 policies.
+- **Billing (Option B):** `billing_customers`; `billing_subscriptions` (one row per Stripe subscription; period dates from items; partial unique indexes: one active base per payer, one active premium per user); `household_memberships` (replaces `linkedUserIds`); `billing_token_grants` (unique per subscription period); `account_deletion_requests`.
+- **Resolvers:**
+  - Base: payer of an active base, or active member of an active household; 72 h `past_due` grace; trialing/canceling per D4; unknown denies.
+  - Premium: own active premium plus qualifying base. These are the production adapters for ADR-005.
+  - Book access stays ownership-only (PO-021, NEM-013).
+- **Lifecycle:** dependency job (premium ends with base, prorated refund); no auto-reactivation; Plus→X `always_invoice`; X→Plus by schedule; allowance period = premium subscription period.
+- **Webhooks:** existing processed-events ledger; fetch-and-sync at the pinned version; refunds and disputes; tokens only on paid base invoices.
+- **Checkout:** server-side eligibility; database-level duplicate prevention; portal restrictions (Stripe configuration, needs authorization).
+- **Code coupled to the legacy model** [CODE, `origin/main`]:
+  - `SubscriptionGuard` on `books.controller.ts:98, 222, 275`;
+  - club-creation gate `clubs.service.ts:34` (checks `status: 'active'` only);
+  - account deletion `users.service.ts:65`;
+  - invite flow `subscriptions.service.ts:355-480`;
+  - mobile paywall `mobile/src/api/subscriptions.ts:24` (Release A removes it);
+  - web pricing;
+  - `GET /subscriptions/me`.
+
+### R5.3 Personal premium for household members
+
+- A member buys premium on their own Stripe customer and subscription, with a personal allowance.
+- Eligibility comes from an active `household_memberships` row on a qualifying base. Payers on Individual, Duo, or Family plans qualify.
+- One premium tier per person, enforced by the database.
+- **Conflict:** NEM-019 and ADR-005 currently deny linked members. See §R6.2.
+
+### R5.4 Implementation order
+
+```
+M0  NEM-020 inventory (read-only) ─┐
+D   PO decisions + ADR-007 billing ┤
+                                   ├─▶ M3 NEM-021 Pricing catalog
+M1  Release A (#14) → NEM-013 ─────┤         │
+                                   │         ▼
+M2  NEM-019 dark control plane ────┤   M4 NEM-022 Billing core (test mode; all three tiers)
+    (resolver, metering, rights    │         │
+     default-deny) — parallel      │         ▼
+                                   └─▶ M5 NEM-023 Adapters + client cutover + legacy retirement
+M6  Rights records + pilot corpus (TT-26) ─▶ M7 Semantic retrieval (ADR-004; NEM-006B)
+                                             ─▶ M8 Real gateway + metering + measurement (paid-API auth)
+M9  PO approves allowances → betas → premium products active (test) ─▶ M10 Live-mode Stripe + launch
+```
+
+| Order | Component | Why |
+|---|---|---|
+| 1 | Inventory (NEM-020) | Facts before preserve/retire decisions |
+| 2 | Entitlement resolver and AI metering, dark (NEM-019) | No billing or AI-spend dependency |
+| 3 | Pricing catalog (NEM-021) | One authority before billing and clients. Existing prices unchanged; premium inactive |
+| 4 | Stripe subscriptions (NEM-022) | On the catalog, after NEM-013. Premium lifecycle included, activated by flag |
+| 5 | Production adapters (NEM-023) | Billing → resolver; clubs gate; clients; legacy retirement |
+| 6 | Rights-aware retrieval | Rights records first (default deny), then pgvector and retrieval |
+| 7 | Real metering | After rights and retrieval; paid-API authorization |
+
+NEM-021, NEM-022, and NEM-023 are proposed identifiers only.
+
+### R5.5 Launch blockers vs optional
+
+| Category | Items |
+|---|---|
+| **Blocks any commercial launch** | Catalog as single authority · billing core with once-only webhooks and a pinned version · duplicate prevention · deletion workflow · refund and dispute handling · token issuance and expiry (PO-024) · ownership-only access (Release A + NEM-013) · Stripe key / webhook / prices in the same mode (doc 02) · ToS, pricing, and Family cap consistent · staging billing tests after S19 · 80% coverage on changed services |
+| **Also blocks premium launch** | Household and premium resolvers · premium lifecycle (dependency, 72 h grace, upgrade and downgrade, prorated refunds) · metering with reservations, hard limits, 70/85/95/100% notifications, usage indicator · advance confirmation for expensive operations · kill switch · verified rights records · real gateway · **measured, approved allowances** · AI terms and privacy (TT-22) · NoetiaX depth defined (TT-07) |
+| **Optional** | Annual premium · caching optimization · reconciliation dashboard · extra Brief formats · semantic highlight search · in-app mobile purchase (TT-20) · coupons · author hosting tiers in the catalog · financial exports |
+
+**Q4:** launch base first, or all three tiers together? The architecture supports either.
+
+### R5.6 Dependencies on existing work
+
+Expanded in §R6.2. Summary:
+- **#14:** edits the same billing files (`subscriptions.service.ts` +120/−60, `webhooks.service.ts` +48, `subscription.guard.ts`). NEM-022 must come after #14 is settled.
+- **NEM-013:** ownership-only access first.
+- **#12:** M-C and M-D are absorbed into ADR-007 / NEM-021 / NEM-022; PO-022/023 amendments still needed.
+- **#17:** PO-024 expiry.
+- **#18:** allocation basis.
+- **#21 / #22:** legal text, prices, Family cap.
+- **#26 / #27:** S19 isolation before staging billing tests.
+- **NEM-006B, NEM-007 Phase B:** retrieval and rights.
+- **#16 / #23:** governance only.
+- **NEM-016 PRs:** independent; reader priority.
+
+### R5.7 First executable mission
+
+**NEM-020, pre-launch billing and commercial data inventory (read-only).** The full specification is in **[Annex A](2026-11-07-SA-003-annex-A-NEM-020-mission-draft.md)**.
+
+In parallel: ADR-007 (**[Annex B](2026-11-07-SA-003-annex-B-ADR-007-draft.md)**) and the NEM-019 household amendment.
+
+First code missions:
+- **NEM-021, pricing catalog.** Needs ADR-007 approval, the NEM-020 report, and D4/D5.
+- **NEM-022, billing core.** Needs NEM-021, #14 settled, NEM-013, and S19.
+
+### R5.8 Risks
+
+| Rating | Risk |
+|---|---|
+| High | Unknown Stripe mode and objects in production (mitigated by NEM-020) |
+| High | NEM-022 conflicts with Release A's edits if sequenced wrongly |
+| High | NEM-019's household rule contradicts the baseline |
+| Medium | Legacy retirement without an inventory and snapshot loses development data |
+| Medium | Staging billing tests before S19 could reach production services |
+| Low | Two pricing sources during the transition |
+
+### R5.9 Decisions needed (Rev 5)
+
+D1–D9 (§16), plus Q1, Q3, Q4, TT-01, NEM-020 approval, and ADR-007 drafting. ADR-007 drafting is now authorized: done in Annex B, **not approved**.
+
+### R5.10 Recommendations
+
+**Required:** NEM-020 → ADR-007 and the NEM-019 amendment → NEM-021 → NEM-022 → NEM-023, with Release A and NEM-013 ahead of NEM-022.
+
+**Optional:** the R5.5 optional row.
+
+---
+
+## Revision 6 — Publication, annexes, and dependency/conflict register (2026-11-07)
+
+### R6.1 Authorization and work completed
+
+- **Authorized by:** the Product Owner direction *SA-003 Revisions and NEM-020 Preparation* (2026-11-07), items 1–5.
+- **Work done:**
+  - published Rev 4 and Rev 5 (above);
+  - prepared the NEM-020 draft (Annex A);
+  - drafted ADR-007 (Annex B);
+  - documented the dependencies and conflicts below;
+  - updated the report index.
+- **Not authorized and not done:** executing NEM-020; production or Stripe access; code or schema changes; migrations; deployment; merging; approving ADR-007 or policy; modifying #34 or #35.
+
+**Placement decision, escalated for confirmation.** The NEM-020 draft and the ADR-007 draft are staged as **SA-003 annexes in `docs/reports/`**, not in their canonical locations. The reasons:
+- `docs/engineering-missions/DRAFT/` and `docs/architecture/adr/`, plus its README index, would widen PR #36 beyond a report and governance PR.
+- PR #35 edits the same ADR README index.
+
+Moving them to their canonical locations, in #36 or a new PR, awaits Product Owner authorization.
+
+### R6.2 Dependency and conflict register: PRs #34 and #35
+
+Evidence: `origin/docs/t0-decision-closure` `b05a213` (PR #35, stacked on #34 at `223fabd`). Read only; **neither PR was modified**.
+
+| # | Record (PR) | Location | Current text | Conflict with the accepted baseline / Rev 5 | Needed change (recommendation; PO or Product Architecture decides) |
+|---|---|---|---|---|---|
+| C1 | **NEM-019** draft (#35) | `docs/engineering-missions/DRAFT/NEM-019-…md` §7, line 65 | "No plan, state, or linked member is assumed to qualify (TT-15)." | Baseline: premium is personal for eligible Duo/Family members | Replace with: members qualify through an active household membership on a qualifying base; states per D4; 72 h past-due grace |
+| C2 | NEM-019 (#35) | same, §9 (line 90) | "All data keyed by individual `userId`; `linkedUserIds` grants nothing." | Keying by `userId` stays correct. "`linkedUserIds` grants nothing" becomes obsolete: ADR-007 retires `linkedUserIds` in favour of `household_memberships`, which **does** confer base eligibility | Keep the `userId` keying. Replace the second clause with "eligibility comes only from the `QualifyingPlanPort`; household membership is resolved by billing (ADR-007), never by AI code" |
+| C3 | NEM-019 (#35) | same, acceptance item 9 (line 109) | "A linked-member fixture is denied." | Contradicts the baseline | Invert: an eligible-member fixture with its own premium entitlement is **allowed**; an ineligible member is denied |
+| C4 | NEM-019 (#35) | same, open decisions (line 156) | TT-15 open; "port has no adapter; `unknown` denies" | TT-15 is partly resolved by the baseline (households, 72 h grace). The "no adapter" design remains correct for NEM-019 | Record TT-15 as partly decided. The adapter stays out of NEM-019 (NEM-023 per Rev 5) |
+| C5 | NEM-019 (#35) | same, dependencies (line 24) | Requires "PO-024 Confirmation 1" | TT-01 (token expiry) may still be open (SA-003 §16) | PO to confirm TT-01's status before NEM-019 approval |
+| C6 | **ADR-005** (#35) | `docs/architecture/adr/ADR-005-…md`, Boundaries "Household" (line 27) | "`linkedUserIds` grants nothing unless TT-15 says otherwise" | The baseline is the "otherwise" | Amend to the ADR-007 household rule; keep the resolver keyed by `userId` |
+| C7 | ADR-005 (#35) | same, open decisions (line 48) | TT-15, TT-16 open | TT-16 partly decided (Option B preferred; grace; refunds pending legal) | Reference ADR-007 for billing structure |
+| C8 | **PO-026** (#35) | `…/PO-026-premium-subscription-prerequisite.md`, lines 32-36 | Linked members "Not assumed"; states not assumed; lifecycle, grace, refunds, structure open | The baseline decides household, grace, no auto-reactivation, preferred structure | PO to revise PO-026 text, or supersede by publishing the baseline (D1) |
+| C9 | PO-025 (#35) | invariant 7 | "Premium subscription prices are **not** set by this record" | $5 / $8 are approved planning prices | Update before acceptance |
+| C10 | **Three-tier `06` roadmap** (#34/#35) | `docs/architecture/three-tier-intelligence/06-implementation-roadmap.md`, lines 19, 31-32, 53, 138-143 | Billing integration is **T8**, after M-C/M-D (PR #12), late in the sequence | Rev 5 moves the base billing rebuild **earlier** (NEM-021/022), leaving only premium activation late. M-C/M-D are absorbed into ADR-007 | Amend the roadmap to reference ADR-007 and Rev 5's order |
+| C11 | Three-tier `04` (#34/#35) | `04-entitlements-and-budgets.md`, line 81 | "`linkedUserIds` grants no tier or data visibility" | Tier: conflicts. **Data visibility: remains correct**, since members never see each other's sessions | Split the rule: membership can confer *eligibility*, never *data visibility* |
+| C12 | Three-tier `05` (#34/#35) | TT-10, TT-11, TT-15, TT-16 rows | Open | TT-10 and TT-11 decided by the baseline; TT-15 and TT-16 partly | Record the decisions |
+
+**Dependencies (not conflicts):**
+- NEM-019 needs no billing and can proceed once C1–C5 are resolved.
+- ADR-007 depends on ADR-005's port design (consistent).
+- ADR-006 is unaffected.
+- The ADR README index (#35) and the ADR-007 placement need sequencing (§R6.1).
+
+### R6.3 Evidence added in Rev 6
+
+- Read on `b05a213`: NEM-019 draft lines 24, 36, 65, 90, 109, 156; ADR-005 lines 17, 27, 48; PO-026 lines 32-36; three-tier `06` lines 19, 31-32, 53, 138-143, 172; `04` lines 81, 111; ADR README index.
+- Read on `origin/main`: entity columns of `token_ledger`, `user_books`, `gift_cards`, `subscription_invites`, `courtesy_token_quotas` (for the Annex A queries); `MISSION-TEMPLATE.md` headings.
+- Stripe pages read by a read-only web-fetch subagent on 2026-11-07:
+  - webhooks: duplicates and no ordering guarantee — **verified**;
+  - idempotent requests — **verified**;
+  - Checkout `expires_at` (30 min – 24 h, default 24 h) — **verified**;
+  - invoice `billing_reason` values — **verified**;
+  - subscription schedules for downgrades — **verified** (phase-based wording);
+  - stripe-node default API version — **verified** as documented default;
+  - $0 trial invoice and `invoice.paid` — **not verified**.
+  - URLs are in Annex B §References.
+
+### R6.4 Risks (new in Rev 6)
+
+| Rating | Risk |
+|---|---|
+| High | If NEM-019 is approved without C1–C3, household members are denied premium, contradicting the baseline |
+| Medium | ADR-007 and ADR-005 are drafted on different branches. Divergence risk until both are reviewed together |
+| Low | Annex placement is temporary. The documents must be moved, not copied, when canonical placement is authorized |
+
+### R6.5 Changes made
+
+| File | Change |
+|---|---|
+| `docs/reports/2026-11-07-SA-003-pricing-subscriptions-ai-economics-readiness-audit.md` | Status banner; revision history rows 4–6; SUPERSEDED markers on §7.E, §11, §17; V3/V6/V7 register updates; Rev 4, Rev 5, Rev 6 sections |
+| `docs/reports/2026-11-07-SA-003-annex-A-NEM-020-mission-draft.md` | **New.** NEM-020 draft |
+| `docs/reports/2026-11-07-SA-003-annex-B-ADR-007-draft.md` | **New.** ADR-007 draft |
+| `docs/reports/README.md` | SA-003 index row updated (revision, annexes, status) |
+
+No application code, schema, migration, Stripe, production, staging, infrastructure, or deployment change. PRs #34 and #35 untouched. `.claude/settings.local.json` not included.
+
+### R6.6 Tests and validation
+
+No tests run. The Annex A SQL was **not executed** anywhere; its validation (V-1…V-4) is part of NEM-020. Column names were checked against the entity files on `origin/main`.
+
+### R6.7 Remaining decisions
+
+| # | Decision | Owner |
+|---|---|---|
+| 1 | Canonical placement of the NEM-020 and ADR-007 drafts (in #36, or a new PR) | PO |
+| 2 | NEM-020 approval, its access options (§16 of Annex A), and the execution instruction | PO |
+| 3 | ADR-007 review and acceptance | PO + Product Architecture |
+| 4 | Amendments C1–C12 to #34 / #35 records | PO (records) · Product Architecture (ADRs, roadmap) |
+| 5 | D1–D9, D11 (household downgrade), D12 (tokens on refund/dispute), Q1, Q3, Q4, TT-01 | PO |
+
+### R6.8 Next recommended action
+
+1. Product Owner review of Rev 6 and Annexes A and B.
+2. Then authorize canonical placement (decision 1).
+3. Then approve and instruct execution of **NEM-020**.
+
+*Recommendation only.*
