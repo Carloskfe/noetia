@@ -1,6 +1,8 @@
 # NEM-020 — Pre-Launch Billing and Commercial Data Inventory: completion report (partial)
 
-> **Status: PARTIAL — production, staging, and Stripe items BLOCKED on operator execution.**
+> **Status: PARTIAL — Phase 2 (operator-assisted) authorized 2026-11-07; awaiting operator output.** Q12–Q14 approved. Execution sequence: **Appendix C** (Rev 2).
+>
+> **Readiness: ADR-007 acceptance — BLOCKED · NEM-021 — BLOCKED**, until the production inventory and the Stripe mode verdict are recorded (§17).
 > - Validation on a disposable local database is **complete and passed** (V-1, V-2, V-4).
 > - No production, staging, or Stripe data has been read yet. Claude has no authorized read-only access to any of them (§7.2).
 > - Operator instructions are ready in **Appendix A** (database and key mode) and **Appendix B** (Stripe Dashboard).
@@ -29,7 +31,7 @@ Safety conditions in force: no production writes, migrations, or configuration c
 | | |
 |---|---|
 | **Dates** | Executed and reported 2026-11-07 |
-| **Lifecycle status** | **Blocked (partial)** — local validation complete; production, staging, and Stripe items await the operator |
+| **Lifecycle status** | **In progress (partial)** — Phase 2 authorized; production, staging, and Stripe items await operator output (Appendix C) |
 | **Delivery state** | **Not merged.** Nothing deployed |
 | **This report authorizes** | **Nothing.** The treatment matrix is a recommendation |
 
@@ -38,6 +40,7 @@ Safety conditions in force: no production writes, migrations, or configuration c
 | Rev | Date | Change |
 |---|---|---|
 | 1 | 2026-11-07 | Local validation (V-1, V-2, V-4); access assessment; operator runbook; Stripe checklist; conditional treatment matrix. Production, staging, and Stripe results pending |
+| 2 | 2026-11-07 | Phase 2 authorization (*NEM-020 Phase 2: Operator-Assisted Inventory*): Q12–Q14 approved; payloads and checksums re-verified from the pushed branch; session guard `default_transaction_read_only=on` added and validated; environment and identity gates; Appendix C execution sequence. Still no production, staging, or Stripe data |
 
 ## 3. Repository baseline
 
@@ -111,7 +114,7 @@ No connection to production, staging, or Stripe was attempted.
 | Item | Production | Staging | Status |
 |---|---|---|---|
 | Q1–Q11 | — | — | **[BLOCKED]** awaiting operator (Appendix A) |
-| Q12–Q14 | — | — | **[BLOCKED]** awaiting PO approval, then operator |
+| Q12–Q14 | — | — | **Approved (Rev 2)**; awaiting operator |
 | S1 key mode, webhook secret | — | — | **[BLOCKED]** awaiting operator |
 | S2–S8, test mode | — | n/a | **[BLOCKED]** awaiting operator (Appendix B) |
 | S2–S8, live mode | — | n/a | **[BLOCKED]** awaiting operator (Appendix B) |
@@ -232,7 +235,7 @@ Not modified: reader / Escucha Activa; book ownership (`user_books`); token ledg
 | # | Item | Owner |
 |---|---|---|
 | 1 | Operator execution of Appendix A (production, staging) and Appendix B (Stripe, both modes) | PO / operator |
-| 2 | Approve or reject supplementary queries Q12–Q14 | PO |
+| 2 | ~~Approve or reject supplementary queries Q12–Q14~~ **Approved 2026-11-07 (Phase 2)** | PO |
 | 3 | Whether staging is included (Annex A §16) — prepared as included | PO |
 | 4 | Small-count threshold (5 proposed) | PO |
 | 5 | Where the report index row should live (D4) | PO |
@@ -250,6 +253,8 @@ Not modified: reader / Escucha Activa; book ownership (`user_books`); token ledg
 ---
 
 ## Appendix A — Operator runbook: database inventory and key mode
+
+> **Rev 2:** A.1 and A.2 remain valid. **A.3 and A.4 are superseded by Appendix C**, which adds environment gates and the session read-only guard.
 
 **Rules.** Read-only. Each command is **one line**; never paste multi-line text into the SSH terminal (CLAUDE.md, 2026-05-12 outage). No file is written on the server. Do not paste any secret anywhere. If a command prints anything that looks like a key, stop.
 
@@ -346,3 +351,49 @@ The full terminal output of A.2–A.4 (aggregates only: plan names, statuses, co
 | S8 | Account default API version | Developers (Workbench / API version) | | |
 
 Operator attestation to return with the checklist: *"No Stripe write action was taken, and no secret was displayed or shared."*
+
+## Appendix C — Phase 2 operator execution sequence (Rev 2)
+
+Authorized by the Product Owner, *NEM-020 Phase 2: Operator-Assisted Inventory* (2026-11-07). **Supersedes the commands in A.3 and A.4**, which lack the session guard. A.1 payloads, checksums, and the A.2 key-mode check are unchanged and re-verified (§C.0).
+
+### C.0 Review performed before release (Rev 2) [VERIFIED]
+
+- The three payloads published in this report were decoded from the **pushed** branch and match their SHA-256 values (A.1).
+- Static scan of both decoded SQL scripts: no `INSERT`, `UPDATE`, `DELETE`, DDL, `GRANT`, `COPY`, `VACUUM`, `LOCK`, `DO`, `CALL`, `SET ROLE`, `nextval`, or admin function. Only `SET statement_timeout` / `SET lock_timeout`.
+- Key-mode awk program: no `system()`, `getline`, pipe, or redirect (the single `>` is the comparison `n>1`).
+- **Second safeguard added: `PGOPTIONS='-c default_transaction_read_only=on'`.** On a disposable database (migrations `000`–`067`) and through the exact `docker compose … exec -T -e …` command shape: identity check returns `ro_default = on`; an `INSERT` and a `CREATE TABLE` **outside** an explicit transaction both fail with `cannot execute … in a read-only transaction`; Part A and Part B run with exit 0 and no errors under the guard.
+- **Read-only role:** none is known to exist, and creating one is prohibited. The guard plus `BEGIN TRANSACTION READ ONLY` prevents accidental writes. It is **not** a security boundary: the `noetia` role is a superuser in the local image and could re-enable writes. Only the approved, checksummed scripts are run.
+
+### C.1 Operator confirmations (answer before Step 1)
+
+| # | Confirmation |
+|---|---|
+| OC-1 | I am the authorized operator, with my own existing access. No credential was created or shared for this |
+| OC-2 | No deploy, migration, or CD run is in progress (`gh run list --limit 3` shows none running) |
+| OC-3 | I will paste each command as **one line**, and return only the outputs listed |
+| OC-4 | I will stop at any gate failure and report it |
+
+### C.2 Sequence and gates
+
+`<PARTA>`, `<PARTB>`, `<KEYCHECK>`: the A.1 payloads, pasted in place on the same line. `G` below means exactly `-e PGOPTIONS='-c default_transaction_read_only=on'`.
+
+| Step | Where | Command (one line) | Gate (stop if not met) |
+|---|---|---|---|
+| 1 Env check, prod | server | `hostname; cd /opt/noetia && pwd && git rev-parse --short HEAD && docker compose --env-file .env.production -f docker-compose.server.yml ps db --format '{{.Name}} {{.Status}}'` | `/opt/noetia`; db container `Up`/healthy |
+| 2 DB identity, prod | server | `cd /opt/noetia && docker compose --env-file .env.production -f docker-compose.server.yml exec -T -e PGOPTIONS='-c default_transaction_read_only=on' db psql -U noetia -d noetia -tA -c "SELECT current_database(), current_user, current_setting('default_transaction_read_only'), (SELECT count(*) FROM migrations), (SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 1);"` | `noetia\|noetia\|on\|68\|ReconcilePlanDisplayPrices1748300000067` |
+| 3 Checksums | server | `echo <PARTA> \| base64 -d \| gunzip \| sha256sum; echo <PARTB> \| base64 -d \| gunzip \| sha256sum; echo <KEYCHECK> \| base64 -d \| sha256sum` | Exactly the three A.1 values |
+| 4 Key mode, prod | server | A.2 production commands (file and running container) | Output is only mode words |
+| 5 Inventory A, prod | server | `cd /opt/noetia && echo <PARTA> \| base64 -d \| gunzip \| docker compose --env-file .env.production -f docker-compose.server.yml exec -T -e PGOPTIONS='-c default_transaction_read_only=on' db psql -U noetia -d noetia -v ON_ERROR_STOP=1 -P pager=off -f -` | `transaction_read_only = on`; no `ERROR`; ends `ROLLBACK` |
+| 6 Inventory B, prod | server | Same as Step 5 with `<PARTB>` | Same |
+| 7 Env check, staging | server | `cd /opt/noetia-staging && pwd && docker ps --format '{{.Names}} {{.Status}}' \| grep -E '^noetia_staging-db'` | One `noetia_staging-db…` container `Up`. None → record "no staging DB", skip 8–10 |
+| 8 DB identity, staging | server | `docker exec -i -e PGOPTIONS='-c default_transaction_read_only=on' "$(docker ps --format '{{.Names}}' \| grep -m1 -E '^noetia_staging-db')" sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA -c "SHOW default_transaction_read_only;" -c "SELECT current_database(), current_user, (SELECT count(*) FROM migrations), (SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 1);"'` | First line `on`. Record database, user, count, and head (a head other than `…067` is recorded and reported, then stop) |
+| 9 Key mode, staging | server | `cd /opt/noetia-staging && awk "$(echo <KEYCHECK> \| base64 -d)" .env.staging` | Mode words only |
+| 10 Inventory A+B, staging | server | `docker exec -i -e PGOPTIONS='-c default_transaction_read_only=on' "$(docker ps --format '{{.Names}}' \| grep -m1 -E '^noetia_staging-db')" sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -P pager=off -f -' < <(echo <PARTA> \| base64 -d \| gunzip)` then the same with `<PARTB>` | Same as Step 5 |
+| 11 Stripe test mode | Dashboard | Appendix B, test column | View only |
+| 12 Stripe live mode | Dashboard | Appendix B, live column | **Stop** on any live `active`/`trialing`/`past_due` subscription or succeeded live charge |
+
+(In the table, `\|` is a literal `|`.)
+
+### C.3 Return
+
+Outputs of Steps 1–10 (aggregates, mode words, container names, migration names only), the filled Appendix B checklist, and the attestation: *"No write, restart, configuration change, or Stripe write was performed, and no secret was displayed or shared."*
