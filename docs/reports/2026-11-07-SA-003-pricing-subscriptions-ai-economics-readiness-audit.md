@@ -398,7 +398,7 @@ See §16.
 | Configuration, environment, secrets | None. `.claude/settings.local.json` not staged |
 | External services (Stripe, AI providers, DNS) | None. No paid API call |
 | Deployment | None |
-| Commit | Recorded in the PR |
+| Commit | `6c06467` (initial) and the follow-up index-link commit, on PR [#36](https://github.com/Carloskfe/noetia/pull/36) |
 
 ## 13. Tests and validation
 

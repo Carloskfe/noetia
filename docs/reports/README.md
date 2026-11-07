@@ -161,7 +161,7 @@ Newest first. **Location:** reports not yet on `main` are linked on their branch
 
 | Date | Mission | Report | PR(s) | Status |
 |---|---|---|---|---|
-| 2026-11-07 | SA-003 | [Pricing, subscriptions and AI economics readiness audit](2026-11-07-SA-003-pricing-subscriptions-ai-economics-readiness-audit.md) | Report PR: this Draft PR | Complete; awaiting PO review. Not merged |
+| 2026-11-07 | SA-003 | [Pricing, subscriptions and AI economics readiness audit](2026-11-07-SA-003-pricing-subscriptions-ai-economics-readiness-audit.md) | Report PR: [#36](https://github.com/Carloskfe/noetia/pull/36) (Draft) | Complete; awaiting PO review. Not merged |
 | 2026-11-06 | SA-002-T0 | [T0 decision closure and NEM-019 readiness](https://github.com/Carloskfe/noetia/blob/docs/t0-decision-closure/docs/reports/2026-11-06-SA-002-T0-decision-closure.md), on its branch | [#35](https://github.com/Carloskfe/noetia/pull/35) (Draft) | Awaiting PO acceptance of PO-025…029 |
 | 2026-11-06 | SA-002 | [Three-tier architecture reconciliation](https://github.com/Carloskfe/noetia/blob/docs/three-tier-architecture-reconciliation/docs/reports/2026-11-06-SA-002-three-tier-architecture-reconciliation.md), on its branch | [#34](https://github.com/Carloskfe/noetia/pull/34) (Draft) | Proposed; awaiting review |
 | 2026-11-04 | NEM-016 | [Integrated staging candidate rc2](https://github.com/Carloskfe/noetia/blob/docs/nem-016-rc2-report/docs/reports/2026-11-04-NEM-016-integrated-staging-candidate-rc2.md), on its branch | [#33](https://github.com/Carloskfe/noetia/pull/33) (Draft) | Not merged or deployed |
