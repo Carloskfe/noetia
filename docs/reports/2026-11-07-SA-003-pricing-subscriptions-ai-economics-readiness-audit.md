@@ -40,6 +40,7 @@
 |---|---|---|
 | 1 | 2026-11-07 | Audits A, B, C and a partial D, delivered in the agent response only (repository writes were prohibited) |
 | 2 | 2026-11-07 | Audit D completed, Audit E added, risks rated, mission information added; published under the documentation-only authorization |
+| 3 | 2026-11-07 | Product Owner review corrections, documentation only. (1) C.4 restated as **preliminary upper-bound spending envelopes before omitted variable costs**, with the omitted costs listed; explicitly not allowances or guaranteed margins. (2) New B.4: Stripe cancellation and database deletion **cannot be atomic through a database transaction**; requirements for an idempotent, retryable, recoverable, reconciled workflow (not implemented); prerequisite 6 and E1 reworded. (3) Evidence status made explicit: per-price status in C.2, an N1 evidence chain, and the §16 verification register. No new research; no paid API call; no production access |
 
 ## 3. Repository baseline
 
@@ -69,7 +70,7 @@
    - token expiry is 90 days for everything, while PO-024 sets six months for 3/5/10 packs.
 3. **There is no pricing authority [CODE].** Prices are defined in about eight places; the database amount is display-only; Stripe charges by price ID; and the Stripe price IDs of the legacy Individual and Duo rows can't be traced from the repository.
 4. **No AI capability exists in code [CODE].** There is no gateway, metering, budget ledger, reservation, rights record, or vector store. Everything is documented or proposed.
-5. **Economics depend on routing [CALC, not measured].** At 55–65% contribution margin, the monthly AI budget is about **$0.81–$1.81** per Noetia+ subscriber and **$1.47–$3.07** per NoetiaX subscriber, depending on whether Causas/Marketing allocations apply. A single Opus-class Research Brief costs about $0.80 as one call.
+5. **Economics depend on routing [CALC, not measured].** At 55–65% contribution margin, the **preliminary upper-bound AI spending envelope** is about **$0.81–$1.81** per Noetia+ subscriber-month and **$1.47–$3.07** per NoetiaX subscriber-month, depending on whether Causas/Marketing allocations apply. These are ceilings **before** taxes, infrastructure, embeddings, storage, support, refunds, international and Billing fees, and app-store commission, all of which reduce them. They are **not** AI allowances, and they guarantee no contribution margin (§7.C.4). A single Opus-class Research Brief costs about $0.80 as one call.
 6. **Option B (separate base and premium Stripe subscriptions) is the recommended architecture**, because personal premium for Duo/Family members can't be billed correctly on the owner's subscription. It costs about **$0.30 per premium subscriber-month** in extra fixed card fees.
 7. **The governing records conflict with the baseline.** PO-022 and PO-023, both `DECIDED` but unmerged, allow a standalone Noetia+. Draft PO-026 and ADR-005 deny household eligibility. None of PO-005…029 or ADR-005/006 is on `main`.
 
@@ -79,6 +80,7 @@
 |---|---|
 | Rev 1 | Audits A (pricing), B (billing), C (AI readiness and economics), D (partial). External verification of Stripe and model pricing via a web-fetch subagent. Delivered in the response |
 | Rev 2 | Read the three-tier package (`README`, `01`, `04`, `05`, `06`, `07`), PO-021…024, PO-028, ToS Causas and household text on `main`, NEM-003 `07`. Completed Audit D, wrote Audit E, rated risks, and published this report |
+| Rev 3 | Applied three PO review corrections (see revision history). Re-read the Stripe client constructors (`subscriptions.service.ts:57`, `webhooks.controller.ts:28`, `gifts.service.ts:42`) and `CLAUDE.md` §Infrastructure & Vendors; no other new evidence |
 
 ## 7. Verified findings and evidence
 
@@ -145,12 +147,31 @@ The first six rows confirm the T0 closure report's "Billing hazards" table (PR #
 
 | # | Finding | Evidence | Verified? |
 |---|---|---|---|
-| N1 | **Stripe API version mismatch.** The SDK pins `2026-05-27.dahlia`. Since `2025-03-31.basil`, `current_period_end` is on subscription items and `invoice.subscription` is replaced by `invoice.parent.subscription_details.subscription` | `subscriptions.service.ts:503-507` reads `stripeSub.current_period_end` on an SDK call → Invalid Date. `webhooks.service.ts:121-128, 186` read the old fields | SDK path **[CODE] + [EXTERNAL]**. Webhook impact **[UNVERIFIED]**: payloads follow the webhook endpoint's own API version, which can't be seen from the repository. If basil or later, `invoice.paid` returns at `:128` (no tokens, no status) |
+| N1 | **Stripe API version mismatch.** The code reads pre-`basil` field shapes, while the installed SDK pins a later API version | Code: `subscriptions.service.ts:503-507` reads `stripeSub.current_period_end`; `webhooks.service.ts:121-128, 186` read `invoice.subscription` and `sub.current_period_end`. Clients are built as `new Stripe(key)` with no `apiVersion` (`subscriptions.service.ts:57`, `webhooks.controller.ts:28`, `gifts.service.ts:42`) | See the evidence chain below |
+
+**N1 evidence chain**, each link with its own status:
+
+| # | Claim | Status | Evidence |
+|---|---|---|---|
+| 1 | The installed SDK is `stripe` 22.2.0 and declares `ApiVersion = '2026-05-27.dahlia'` | **[CODE]** | `services/api/node_modules/stripe/cjs/apiVersion.js:5`; `package-lock.json` |
+| 2 | No `apiVersion` is passed when the clients are constructed | **[CODE]** | Constructor calls above |
+| 3 | With no `apiVersion`, the SDK sends its pinned version on API requests | **[UNVERIFIED]**. This is general knowledge of how the Stripe Node SDK behaves; it was not confirmed in this audit | — |
+| 4 | Since `2025-03-31.basil`, `current_period_start`/`_end` are no longer on the Subscription resource but on subscription items | **[EXTERNAL]**, verified 2026-11-07 | basil changelog (§8) |
+| 5 | Since basil, `invoice.subscription` is replaced by `invoice.parent.subscription_details.subscription`. The page calls it "deprecated" in its body and "Removed" in its change table | **[EXTERNAL]**, verified 2026-11-07 | basil changelog (§8) |
+| 6 | Webhook payloads are shaped by **the webhook endpoint's own API version** | **[EXTERNAL]**, verified 2026-11-07 | Webhook versioning page (§8) |
+| 7 | The API version of Noetia's production webhook endpoint | **[UNVERIFIED]**. Visible only in the Stripe dashboard or API, which this audit could not access | Needs E0 |
+| 8 | Stripe is live in production at all | **[UNVERIFIED]**. `CLAUDE.md` §Infrastructure & Vendors states "Keys not yet in `.env.production`" (documentation, possibly stale) | Needs E0 |
+
+**Conclusions:**
+- **If 3 holds:** `syncSubscription` writes an Invalid Date. This is an inference from links 1–4, not an observed failure.
+- **If 7 is basil or later:** `invoice.paid` returns at `webhooks.service.ts:128` (no status update, no tokens), and `subscription.updated` reads an undefined period end.
+- **If 7 is earlier:** the webhooks keep working, and only the SDK path is affected.
+- **If 8 is false:** none of this affects customers today.
 | N2 | `customer.subscription.updated` with `status: 'canceled'` is recorded as `'none'` | `webhooks.service.ts:170-174` | [CODE] |
 | N3 | No `charge.refunded` or `charge.dispute.*` handling: tokens and access survive refunds and disputes | `webhooks.service.ts:55-77` | [CODE] |
 | N4 | The $0 trial invoice fires `invoice.paid` and issues tokens typed `'paid'`. No prior-trial check, so trials repeat | `webhooks.service.ts:141`; `subscriptions.service.ts:216` | [CODE]. Stripe's $0 trial invoice behaviour is from documentation knowledge, **[UNVERIFIED]** this session |
 | N5 | A second checkout while subscribed creates a second Stripe subscription; the upsert overwrites the row; the first keeps billing, untracked | `subscriptions.service.ts:207-221` (no existing-subscription check) | [CODE] |
-| N6 | **Account deletion leaves Stripe billing running.** The `subscriptions` row is deleted without a Stripe cancel; the deletes aren't transactional; the user stays in the owner's `linkedUserIds` | `services/api/src/users/users.service.ts:54-66` | [CODE]. Whether any deleted account is still being charged is **[UNVERIFIED]** |
+| N6 | **Account deletion leaves Stripe billing running.** The `subscriptions` row is deleted without a Stripe cancel; the database deletes aren't wrapped in a transaction; the user stays in the owner's `linkedUserIds`. A database transaction alone cannot fix the Stripe part (see B.4) | `services/api/src/users/users.service.ts:54-66` | Code path **[CODE]**. Whether any deleted account is still being charged is **[UNVERIFIED]** and depends on N1 link 8 |
 | N7 | No grace period. An owner is blocked immediately on `past_due`; linked members fall to `subscription_required` | `subscription.guard.ts:43-56` | [CODE] |
 | N8 | All tokens typed `'paid'` expire in 90 days, including 3/5/10 packs that PO-024 sets at six calendar months | `subscriptions.service.ts:27, 70-75, 282` vs PO-024 rule 9 [UNMERGED] | [CODE]. Already tracked as PO-024 remediation M-1…M-5 (PR #17) |
 
@@ -180,10 +201,34 @@ The first six rows confirm the T0 closure report's "Billing hazards" table (PR #
 3. Tokens only for base-plan invoices, and never for trials (decision needed).
 4. A dependency job: when the base ends, cancel the premium and refund unused time.
 5. Refund and dispute handlers (N3).
-6. Account deletion that cancels every Stripe subscription, in a transaction (N6).
+6. Account deletion that reliably cancels every Stripe subscription, through the idempotent, recoverable, reconciled workflow in B.4. A database transaction covers only the database part (N6).
 7. NEM-013 ownership enforcement, so no subscription state unlocks books.
 8. The ADR-005 entitlement resolver.
 9. Legal review of the prorated-refund rule.
+
+#### B.4 Account deletion and Stripe cancellation cannot be atomic (requirements only; not implemented)
+
+**Why a transaction is not enough.** Stripe is an external system. A PostgreSQL transaction can make the local deletes all-or-nothing, but it cannot include, roll back, or guarantee a Stripe API call. Every ordering has a failure window:
+
+| Order | Failure | Result |
+|---|---|---|
+| Delete the database rows, then cancel in Stripe | Stripe call fails, times out, or the process crashes | **The customer keeps being charged**, and Noetia no longer holds the identifiers needed to find the subscription (today's behaviour, minus even the attempt) |
+| Cancel in Stripe inside an open database transaction | The commit fails after Stripe succeeded | Stripe is canceled but the account still exists; the transaction also holds locks during a network call |
+| Cancel in Stripe, then delete the database rows | The deletion fails after the cancel | The account remains with billing ended. **The safest failure**: it is recoverable by retry |
+
+**Requirements for a future mission** (design direction only; mechanism and wording to be approved):
+
+1. **Durable deletion request.** Deletion is recorded as a request with a state, for example `requested → billing_canceled → data_deleted`, with `failed` / `needs_review` states. The user's session ends and access stops immediately, but the minimum billing identifiers (`stripeCustomerId`, subscription IDs) are kept until Stripe cancellation is confirmed.
+2. **Cancel before erase.** Stripe cancellation, plus any refund decision, must succeed or be confirmed before the identifiers are destroyed.
+3. **Idempotency.** Every step can be repeated safely: cancelling an already-canceled subscription counts as success, and Stripe requests carry idempotency keys derived from the deletion request. *That Stripe supports request idempotency keys comes from general Stripe knowledge; it was not re-read in this audit **[UNVERIFIED]**.*
+4. **Retries.** Asynchronous, with backoff and a retry ceiling (for example on the existing BullMQ worker). Exhausted retries move the request to `needs_review` and alert an operator. They never silently drop it.
+5. **Failure recovery.** A crash at any point resumes from the recorded state. No step depends on in-memory state.
+6. **Confirmation.** The `customer.subscription.deleted` webhook, or a Stripe read-back, confirms the cancel before the request advances.
+7. **Reconciliation.** A periodic read-only job compares Stripe subscriptions still active against Noetia's accounts, for example by the `noetiaUserId` customer metadata set at `subscriptions.service.ts:199-202`. It reports orphans, including any left by past deletions (R2), for operator action.
+8. **Coverage.** All of the user's subscriptions: base, premium (Option B), and any duplicates from N5. Linked memberships are cleaned up as well.
+9. **Open policy questions:** refunds for unused paid time at deletion (D6); how long minimal billing identifiers may be retained under privacy and financial-retention rules (PO-017, [UNMERGED], not read in this audit).
+
+None of this is implemented or authorized. It belongs to step **E1** (§7.E).
 
 ### 7.C AI economics and metering readiness
 
@@ -204,22 +249,32 @@ The first six rows confirm the T0 closure report's "Billing hazards" table (PR #
 
 #### C.2 Model prices read on 2026-11-07 [EXTERNAL]
 
-USD per 1M tokens, input / output, standard tier. Retrieved by a web-fetch subagent from the official pages in §8. Items marked † came from a summary of the page rather than its verbatim text, and need re-reading before use.
+USD per 1M tokens, input / output, standard tier.
 
-| Provider | Model | Input / output | Notes |
-|---|---|---|---|
-| Google | `gemini-3.5-flash-lite` (PO-005 default) | $0.30 / $2.50 | Cached $0.03 plus hourly storage |
-| Google | `gemini-3.1-flash-lite` | $0.25 / $1.50 | |
-| Google | `gemini-3.8-flash` | $0.75 / $3.75 | **Rises to $1.50 / $7.50 on 2027-01-01** |
-| Google | `gemini-4-argon` (Pro) | $2.00 / $10.00 | **Rises to $4.00 / $20.00 on 2026-12-01** |
-| Google | `gemini-embedding-001` | $0.15 input † | |
-| OpenAI | `gpt-5.6-luna` (PO-005 fallback) | $0.20 / $1.20 | |
-| OpenAI | `gpt-6-luna` | $0.10 / $0.50 | Batch −50% |
-| OpenAI | `gpt-6-astra` (flagship) | $10.00 / $50.00 | |
-| OpenAI | `gpt-5.6-terra` (PO-005 advanced candidate) | **[UNVERIFIED]**, not retrieved | |
-| Anthropic | Haiku 5.5 | $0.10 / $0.50 (prompts ≤100K); $0.50 / $2.50 above | Cache read $0.01 |
-| Anthropic | Sonnet 5.5 | $2.00 / $10.00 | Cache read $0.10 |
-| Anthropic | Opus 5.5 | $4.00 / $20.00 | Cache read $0.20 |
+**How these were obtained.**
+- A read-only web-fetch subagent of this session read the official pages in §8 on **2026-11-07**. The report author did not independently re-read them.
+- **No paid API call was made**, so no price was confirmed against an invoice or a billed request.
+- Provider prices change without notice (two scheduled increases are listed below). Re-verify every figure on the day it is used.
+
+**Status key:** **V** = read from the page's verbatim text · **S** = taken from an automated summary of part of the page; re-read before use · **U** = not retrieved.
+
+| Provider | Model | Input / output | Notes | Status |
+|---|---|---|---|---|
+| Google | `gemini-3.5-flash-lite` (PO-005 default) | $0.30 / $2.50 | Cached $0.03 plus hourly storage. The page summary wrongly said this model was absent; the verbatim table lists it | V |
+| Google | `gemini-3.1-flash-lite` | $0.25 / $1.50 | | V |
+| Google | `gemini-3.8-flash` | $0.75 / $3.75 | **Rises to $1.50 / $7.50 on 2027-01-01** | V |
+| Google | `gemini-4-argon` (Pro) | $2.00 / $10.00 | **Rises to $4.00 / $20.00 on 2026-12-01** | V |
+| Google | `gemini-3.1-pro-preview` | $2.00 / $12.00 (≤200K) | Not used in C.3 | S |
+| Google | `gemini-embedding-001` | $0.15 input | | S |
+| OpenAI | `gpt-5.6-luna` (PO-005 fallback) | $0.20 / $1.20 | | V |
+| OpenAI | `gpt-6-luna` | $0.10 / $0.50 | Batch −50%; higher above 272K context | V |
+| OpenAI | `gpt-6-astra` (flagship) | $10.00 / $50.00 | | V |
+| OpenAI | `gpt-5.6-terra` (PO-005 advanced candidate) | — | Not retrieved | **U** |
+| Anthropic | Haiku 5.5 | $0.10 / $0.50 (prompts ≤100K); $0.50 / $2.50 above | Cache read $0.01 | V |
+| Anthropic | Sonnet 5.5 | $2.00 / $10.00 | Cache read $0.10 | V |
+| Anthropic | Opus 5.5 | $4.00 / $20.00 | Cache read $0.20 | V |
+
+The C.3 costs inherit these statuses. Any figure built on an **S** or **U** price is unverified.
 
 #### C.3 Single-call cost per workload [CALC]
 
@@ -232,13 +287,38 @@ USD per 1M tokens, input / output, standard tier. Retrieved by a web-fetch subag
 | Ten-book research (100k / 6k) | $0.013 (luna) – $0.065 (Haiku >100K) | $0.027 | $0.045 | $0.098 | $0.260 | $0.520 |
 | Complex Research Brief (150k / 10k) | $0.020 (luna) – $0.100 (Haiku >100K) | $0.042 | $0.070 | $0.150 | $0.400 | $0.800 |
 
-#### C.4 AI budget per subscriber-month at the margin target [CALC]
+#### C.4 Preliminary AI spending envelopes: upper bounds before omitted variable costs [CALC]
 
-Contribution margin = (price − card fee − allocation − AI cost) ÷ price.
-- Card fee: domestic 2.9% + 30¢ on a separate charge (Option B).
-- Not included: taxes, Stripe Billing fee, international surcharge, infrastructure, embeddings, storage, support, refunds, app-store commission.
+> **Read this first.** The figures below are **preliminary upper bounds**: the most that could be spent on AI per subscriber-month if the omitted costs listed below were zero.
+> - They are **not AI allowances**. Allowances remain unapproved pending measurement [BASELINE].
+> - They are **not guaranteed contribution margins**. Every omitted cost lowers the envelope one-for-one, so the real envelope is smaller by an amount not yet measured.
+> - Neither the realised margin nor a safe allowance can be stated until those costs are measured (§7.C.5) and the Product Owner approves the allocation basis (TT-09).
 
-| Tier | Allocation assumption | AI budget at 55% | AI budget at 65% |
+Formula: envelope = price − card fee − allocation − (target margin × price). The same formula gives contribution margin = (price − card fee − allocation − AI cost) ÷ price.
+
+| Input | Value used | Evidence status |
+|---|---|---|
+| Prices | $5 / $8 | [BASELINE], approved planning values |
+| Card fee | Domestic 2.9% + 30¢ on a separate charge (Option B) | [EXTERNAL] verbatim, stripe.com/pricing, 2026-11-07 |
+| Causas 2.22% | Applied in the second and third rows | [CODE] ToS text on `main`. Whether it applies to premium is [OPEN] (TT-09) |
+| Marketing 7.78% | Applied in the third row | [UNMERGED] PO-012, read through the PR #18 summary only. Application to premium [OPEN] |
+
+**Omitted variable costs** (each one lowers the envelope; none is measured):
+
+| Omitted cost | Illustrative effect | Status |
+|---|---|---|
+| Stripe Billing fee (~0.7% of Billing volume) | −$0.035 on $5; −$0.056 on $8 | **[UNVERIFIED]**; the figure came from a truncated page summary |
+| International card surcharge (+1.5%) | −$0.075 on $5; −$0.12 on $8, per international charge | [EXTERNAL] verbatim; card mix unknown |
+| Currency conversion (+1%) | −$0.05 / −$0.08 where it applies | [EXTERNAL] verbatim; currency mix unknown |
+| Taxes in tax-inclusive markets | Potentially larger than all the others combined (PR #18 illustrates 16–19%) | [ASSUMPTION]; markets undecided |
+| Embeddings, retrieval, reranking, vector storage | Unknown | Not measured |
+| Infrastructure, Brief storage, retention after cancel | Unknown | Not measured |
+| Retries, failed workflows, abuse | Unknown | Not measured |
+| Refunds, prorated refunds, disputes | Unknown | Not measured; refund policy [OPEN] (D6) |
+| Support | Unknown | Not measured |
+| App-store commission, if sold in mobile apps | Could exceed the entire envelope | [OPEN] (TT-20) |
+
+| Tier | Allocation assumption | Upper-bound envelope at 55% | Upper-bound envelope at 65% |
 |---|---|---|---|
 | Noetia+ $5 | None | $1.81 | $1.31 |
 | Noetia+ $5 | Causas 2.22% only (ToS promises 2.22% "of every payment", `terms-of-service.ts:141`) | $1.69 | $1.19 |
@@ -247,10 +327,10 @@ Contribution margin = (price − card fee − allocation − AI cost) ÷ price.
 | NoetiaX $8 | Causas 2.22% only | $2.89 | $2.09 |
 | NoetiaX $8 | Causas + Marketing 10% | $2.27 | **$1.47** |
 
-What this implies [CALC]:
-- At the tightest budgets, a NoetiaX subscriber can afford about **1.8 Opus-class Briefs** or about 3.7 Sonnet-class Briefs a month.
-- A Noetia+ subscriber can afford about 34 Sonnet-class questions or about 670 Haiku-class questions a month.
-- PO-001's "≤ ~$1.50 average" guideline gives a Noetia+ margin of 51% with the 10% allocation, 59% with Causas only, and 61% with none. **It satisfies the 55% floor only if Marketing is not allocated.**
+What this implies [CALC]. Every figure below is an **upper bound** that omitted costs reduce:
+- At the tightest envelopes, a NoetiaX subscriber could afford **at most** about **1.8 Opus-class Briefs** or about 3.7 Sonnet-class Briefs a month, as single calls.
+- A Noetia+ subscriber could afford **at most** about 34 Sonnet-class questions or about 670 Haiku-class questions a month.
+- PO-001's "≤ ~$1.50 average" guideline gives a Noetia+ margin, **before omitted costs**, of 51% with the 10% allocation, 59% with Causas only, and 61% with none. **It cannot reach the 55% floor if Marketing is allocated.** With omitted costs included, the margins are lower than these figures by an unmeasured amount.
 - A deeper NoetiaX fits the margin only with small allowances, heavy prompt caching (cache reads cost 90–95% less), or orchestration where the frontier model only synthesises.
 - PO-005's default model now costs 3–5× more than Haiku 5.5 or gpt-6-luna. Two Gemini prices double within eight weeks. Both support ADR-005's budgets in internal units, with costs held in versioned rate cards.
 
@@ -307,7 +387,7 @@ Each step needs its own approved mission and an explicit Product Owner execution
 | Step | Work | Depends on | Why in this position | Authorization needed |
 |---|---|---|---|---|
 | **E0** | Read-only operations checks: Stripe webhook endpoint API version (N1); live Stripe prices vs `plans` rows (A.2); count of deleted accounts with active Stripe subscriptions (N6) | — | Converts the three largest unknowns into facts; no writes | Read-only production and Stripe access |
-| **E1** | **Base billing integrity:** deletion cancels Stripe in a transaction; duplicate-checkout guard; `canceled` mapping; refund and dispute handling; trial token rule; current API field shapes; PO-024 expiry remediation (PR #17 M-1…M-5) | E0 | Affects **current** customers whether or not premium ships | New NEM; code + tests; deploy authorization |
+| **E1** | **Base billing integrity:** idempotent, retryable, reconciled deletion-cancellation workflow (§7.B.4); duplicate-checkout guard; `canceled` mapping; refund and dispute handling; trial token rule; current API field shapes; PO-024 expiry remediation (PR #17 M-1…M-5) | E0 | Affects **current** customers whether or not premium ships | New NEM; code + tests; deploy authorization |
 | **E2** | Release A (PR #14: NEM-011/012/014/015) and **NEM-013** ownership enforcement | E1 can run in parallel | Premium must never unlock books (PO-021) | Existing missions |
 | **E3** | **Pricing catalog** (M-C product lines) and the read-only Stripe reconciliation; web, mobile, and gifts read from it; no price changes | E0 | A single authority must exist before new prices | New NEM; migration |
 | **E4** | **Billing foundation** (M-D): identity per Stripe subscription; product-kind-aware, item-aware webhooks; tokens only for base-plan invoices | E1, E3 | Removes the B.1 hazards | New NEM; migration that drops a constraint → server snapshot |
@@ -338,9 +418,9 @@ All accessed **2026-11-07** by a read-only web-fetch subagent of this session.
 | ID | Rating | Risk | Ref |
 |---|---|---|---|
 | R1 | **Critical** | Any premium Stripe subscription on current code overwrites or erases the base plan, mints book tokens, and can cancel reading access | B.1 |
-| R2 | **Critical** | Deleted accounts may still be charged by Stripe (live extent unverified) | N6 |
+| R2 | **Critical** | Deleted accounts may still be charged by Stripe. The code path is verified; the live extent is unverified and depends on Stripe being live (V1, V5) | N6, B.4 |
 | R3 | **High** | Duplicate checkout creates an untracked, still-billing Stripe subscription | N5 |
-| R4 | **High** | Stripe API version mismatch: `syncSubscription` writes an Invalid Date; webhook processing could silently stop if the endpoint is on basil or later (unverified) | N1 |
+| R4 | **High** | Stripe API version mismatch: `syncSubscription` is inferred to write an Invalid Date (V3), and webhook processing could silently stop if the endpoint is on basil or later (V2). Both depend on Stripe being live (V1) | N1 |
 | R5 | **High** | Refunds and disputes leave tokens and access in place | N3 |
 | R6 | **High** | Legacy plan Stripe price IDs can't be traced, and the documented procedure doesn't fix them | A.2 |
 | R7 | **High** | No AI cost controls exist; NoetiaX depth on frontier models can exceed the margin; provider prices are rising | C.1–C.4 |
@@ -398,13 +478,14 @@ See §16.
 | Configuration, environment, secrets | None. `.claude/settings.local.json` not staged |
 | External services (Stripe, AI providers, DNS) | None. No paid API call |
 | Deployment | None |
-| Commit | `6c06467` (initial) and the follow-up index-link commit, on PR [#36](https://github.com/Carloskfe/noetia/pull/36) |
+| Commit | `6c06467` (initial), `2d8beaa` (index link), and the Rev 3 correction commit, all on PR [#36](https://github.com/Carloskfe/noetia/pull/36) |
 
 ## 13. Tests and validation
 
 - **No tests, builds, migrations, or scripts were run.** No paid API experiment was performed.
 - Validation was static: code reading with `file:line` references, `git show` / `git ls-tree` on the refs in §3, `gh pr list` (read-only), and official web pages (§8).
-- All AI cost figures are arithmetic on published prices and the baseline's hypothetical workloads. They are not measurements.
+- All AI cost figures are arithmetic on published prices and the baseline's hypothetical workloads. They are not measurements. The C.4 envelopes are upper bounds before omitted costs.
+- Rev 3 added no new external research and accessed no production system or paid API. The status of each unverified claim is in the §16 verification register.
 
 ## 14. Deviations and discoveries
 
@@ -432,7 +513,23 @@ Not modified: the reader and Escucha Activa, book ownership and the token ledger
 | D9 | Retention after cancellation or downgrade; Brief format; mobile store billing; AI Terms/Privacy; pilot participants; rights evidence standard | TT-14, TT-17, TT-20, TT-22, TT-23, TT-26 |
 | D10 | Authorization for E0 read-only production/Stripe checks and for any later step of §7.E | — |
 
-**Unverified items:** live Stripe price IDs and amounts; webhook endpoint API version; deleted accounts still being charged; Stripe Billing fee; `gpt-5.6-terra` price; Gemini Pro and embedding figures marked †; Stripe's $0 trial invoice behaviour.
+**Verification register.** Every claim this report depends on but could not verify. Nothing here was checked against production or a paid API.
+
+| # | Claim or assumption | Status | Basis in this report | How it would be verified | Authorization needed |
+|---|---|---|---|---|---|
+| V1 | Stripe is live in production | **[UNVERIFIED]**; `CLAUDE.md` says keys are not yet in `.env.production` | N1 link 8 | Read production configuration (presence only, never values) | E0 |
+| V2 | API version of the production webhook endpoint | **[UNVERIFIED]** | N1 link 7 | Stripe dashboard or API read | E0 |
+| V3 | The SDK sends its pinned `dahlia` version when none is configured | **[UNVERIFIED]** (general SDK knowledge) | N1 link 3 | Read the SDK source or Stripe's SDK versioning docs | None (static read) |
+| V4 | Live Stripe price IDs and amounts on the `plans` rows | **[UNVERIFIED]** | A.2 | Read-only production query, plus Stripe price reads | E0 |
+| V5 | Deleted accounts still being charged, and how many | **[UNVERIFIED]** | N6, R2 | Stripe active subscriptions vs existing users (counts only) | E0 |
+| V6 | Stripe's $0 trial invoice fires `invoice.paid` | **[UNVERIFIED]** (general Stripe knowledge) | N4 | Stripe documentation read | None (public docs) |
+| V7 | Stripe request idempotency keys | **[UNVERIFIED]** (general Stripe knowledge) | B.4 item 3 | Stripe documentation read | None (public docs) |
+| V8 | Stripe Billing fee ~0.7% | **[UNVERIFIED]** (truncated page summary) | B.3, C.4 | Re-read stripe.com/pricing | None (public page) |
+| V9 | `gpt-5.6-terra` price | **U**, not retrieved | C.2 | Read the OpenAI pricing page | None (public page) |
+| V10 | `gemini-3.1-pro-preview` and `gemini-embedding-001` prices | **S**, summary only | C.2 | Re-read the Gemini pricing page | None (public page) |
+| V11 | All **V** provider prices | Verified **only as of 2026-11-07**, by a subagent, without a billed request | C.2, C.3 | Re-read on the day of use; confirm with metered calls in E7 | E7 needs paid-API authorization |
+| V12 | Workload token sizes (8k/0.8k … 150k/10k) | [BASELINE] hypotheses, not measurements | C.3 | E7 measurement | Paid-API authorization |
+| V13 | Envelope figures in C.4 | [CALC] upper bounds; omitted costs unmeasured | C.4 | E7 measurement plus TT-09 | Paid-API authorization; PO decision |
 
 ## 17. Next recommended action
 
