@@ -14,10 +14,11 @@
 | **[ASSUMPTION]** / **[UNVERIFIED]** | Not established by evidence in this audit |
 | **[OPEN]** | Needs a Product Owner decision |
 
-> **Current recommendation status (Rev 6).**
+> **Current recommendation status (Rev 7).**
 > - Noetia is **pre-launch** (Product Owner, 2026-11-07).
 > - The **current** roadmap and architecture recommendation is **[Revision 5](#revision-5--pre-launch-architecture-reassessment-2026-11-07)**, accepted by the Product Owner as the working pre-launch recommendation. It is subject to Product Owner clarifications, and it is **not approved policy**.
 > - §7.E, §11, and §17 below are preserved as written in Rev 1–3 and marked **SUPERSEDED**. Their findings (§7.A–§7.D, §9) remain valid evidence unless a later revision says otherwise.
+> - **Q4 DECIDED (Product Owner, 2026-11-07):** Noetia, Noetia+, and NoetiaX launch commercially **together**; readiness of all three tiers is a mandatory public-launch gate. See **[Revision 7](#revision-7--q4-decided-coordinated-commercial-launch-2026-11-07)**.
 > - Annexes: **[A — NEM-020 mission draft](2026-11-07-SA-003-annex-A-NEM-020-mission-draft.md)** · **[B — ADR-007 draft](2026-11-07-SA-003-annex-B-ADR-007-draft.md)**.
 
 ---
@@ -36,7 +37,7 @@
 | | |
 |---|---|
 | **Dates** | Audit and publication 2026-11-07 |
-| **Lifecycle status** | **Review**: Rev 6, awaiting Product Owner review. Rev 5 accepted as the working pre-launch recommendation (2026-11-07) |
+| **Lifecycle status** | **Review**: Rev 7, awaiting Product Owner review. Q4 decided (coordinated launch, 2026-11-07). Rev 5 accepted as the working pre-launch recommendation (2026-11-07) |
 | **Delivery state** | **Not merged.** Nothing deployed |
 | **This report authorizes** | **Nothing.** Its recommendations are not approved engineering instructions |
 
@@ -50,6 +51,7 @@
 | 4 | 2026-11-07 | Pre-launch context correction (Product Owner: no paying subscribers, no active paid subscriptions). First revised roadmap P0–P10 and a simplification list. Delivered in the response as *pending publication*; published here in Rev 6. **Partly superseded by Rev 5** (its "E0 dropped" is withdrawn) |
 | 5 | 2026-11-07 | Pre-launch architecture reassessment: eliminations, target architecture, household entitlements, implementation order, launch blockers, dependencies, first mission NEM-020. Delivered in the response as *pending publication*; published here in Rev 6. **Accepted by the Product Owner as the working pre-launch recommendation**, subject to clarifications |
 | 6 | 2026-11-07 | Publication of Rev 4 and Rev 5. Annex A (NEM-020 draft) and Annex B (ADR-007 draft). Dependency and conflict register for PRs #34 / #35, including NEM-019 household eligibility. Verification register updated (V3 and V7 now verified). No new code reading beyond that listed in Rev 6 §R6.3 |
+| 7 | 2026-11-07 | Product Owner decision **Q4 recorded as DECIDED**: one coordinated commercial launch for Noetia, Noetia+, and NoetiaX; independent private betas; unified mandatory launch gate; roadmap updated; conflicts C13–C14 with #34 / #35 identified (not modified). Annex B touched up. Planning only |
 
 ## 3. Repository baseline
 
@@ -688,6 +690,8 @@ M6  Rights records + pilot corpus (TT-26) ─▶ M7 Semantic retrieval (ADR-004;
 M9  PO approves allowances → betas → premium products active (test) ─▶ M10 Live-mode Stripe + launch
 ```
 
+> **Final line SUPERSEDED by Rev 7 §R7.2** (private betas → unified launch-gate review → one coordinated launch). M0–M8 unchanged.
+
 | Order | Component | Why |
 |---|---|---|
 | 1 | Inventory (NEM-020) | Facts before preserve/retire decisions |
@@ -709,6 +713,8 @@ NEM-021, NEM-022, and NEM-023 are proposed identifiers only.
 | **Optional** | Annual premium · caching optimization · reconciliation dashboard · extra Brief formats · semantic highlight search · in-app mobile purchase (TT-20) · coupons · author hosting tiers in the catalog · financial exports |
 
 **Q4:** launch base first, or all three tiers together? The architecture supports either.
+
+> **DECIDED by the Product Owner, 2026-11-07 (Rev 7 §R7.1): all three tiers launch commercially together.** The two blocker rows above are merged into one mandatory gate in §R7.3.
 
 ### R5.6 Dependencies on existing work
 
@@ -747,7 +753,7 @@ First code missions:
 
 ### R5.9 Decisions needed (Rev 5)
 
-D1–D9 (§16), plus Q1, Q3, Q4, TT-01, NEM-020 approval, and ADR-007 drafting. ADR-007 drafting is now authorized: done in Annex B, **not approved**.
+D1–D9 (§16), plus Q1, Q3, ~~Q4~~ *(decided 2026-11-07, Rev 7)*, TT-01, NEM-020 approval, and ADR-007 drafting. ADR-007 drafting is now authorized: done in Annex B, **not approved**.
 
 ### R5.10 Recommendations
 
@@ -846,12 +852,131 @@ No tests run. The Annex A SQL was **not executed** anywhere; its validation (V-1
 | 2 | NEM-020 approval, its access options (§16 of Annex A), and the execution instruction | PO |
 | 3 | ADR-007 review and acceptance | PO + Product Architecture |
 | 4 | Amendments C1–C12 to #34 / #35 records | PO (records) · Product Architecture (ADRs, roadmap) |
-| 5 | D1–D9, D11 (household downgrade), D12 (tokens on refund/dispute), Q1, Q3, Q4, TT-01 | PO |
+| 5 | D1–D9, D11 (household downgrade), D12 (tokens on refund/dispute), Q1, Q3, ~~Q4~~ *(decided 2026-11-07, Rev 7)*, TT-01 | PO |
 
 ### R6.8 Next recommended action
 
 1. Product Owner review of Rev 6 and Annexes A and B.
 2. Then authorize canonical placement (decision 1).
 3. Then approve and instruct execution of **NEM-020**.
+
+*Recommendation only.*
+
+---
+
+## Revision 7 — Q4 decided: coordinated commercial launch (2026-11-07)
+
+### R7.1 Decision record
+
+| | |
+|---|---|
+| **Decision** | **Q4 — DECIDED** |
+| **Date** | 2026-11-07 |
+| **Authority** | Product Owner (*Close Product Decision Q4*, 2026-11-07; preceded by *Product Owner Decision Q4: Coordinated Commercial Launch*, same date) |
+| **Ruling** | Noetia, Noetia+, and NoetiaX **must launch commercially together**, in one coordinated public commercial launch |
+
+Rules that follow from the decision:
+1. **One public commercial launch** for all three tiers.
+2. **Internal testing and private betas may run independently** for each tier before launch, where appropriate (test mode, invitation-only or grant-based access, no public sale).
+3. **The base product may not launch commercially ahead of Noetia+ and NoetiaX** without a new Product Owner decision.
+4. **Readiness of all three tiers is a mandatory public-launch gate** (§R7.3).
+5. Planning prices stay at **$5/month (Noetia+)** and **$8/month (NoetiaX)**, as monthly add-ons. They remain planning prices; C9 (PO-025 invariant 7) is still open.
+6. The NEM-020 → ADR-007 → NEM-021 / NEM-022 / NEM-023 dependencies are preserved, with NEM-019 and AI development in parallel where safe.
+
+This is a **planning** decision. It authorizes no code, Stripe, database, infrastructure, or deployment work, and does not approve ADR-007, NEM-020, or any mission.
+
+Supersedes: the Q4 question in §R5.5 and the Q4 entries in §R5.9, §R6.7, and Annex B. Earlier text is preserved and marked.
+
+### R7.2 Roadmap update
+
+Replaces the last line of the §R5.4 diagram. Everything before M9 is unchanged.
+
+```
+M0  NEM-020 inventory (read-only) ─┐
+D   PO decisions + ADR-007 billing ┤
+                                   ├─▶ M3 NEM-021 Pricing catalog
+M1  Release A (#14) → NEM-013 ─────┤         │
+                                   │         ▼
+M2  NEM-019 dark control plane ────┤   M4 NEM-022 Billing core (test mode; all three tiers,
+    (parallel)                     │         │                 premium lifecycle complete)
+                                   │         ▼
+                                   └─▶ M5 NEM-023 Adapters + client cutover + legacy retirement
+M6  Rights records + pilot corpus (TT-26) ─▶ M7 Semantic retrieval (ADR-004; NEM-006B)
+    (parallel, no billing dependency)        ─▶ M8 Real gateway + metering + measurement (paid-API auth)
+
+M9   Private betas, per tier, independent (test mode / invitation or grant; NO public sale)
+M10  Unified launch-gate review (§R7.3) ── Product Owner approval
+M11  Live-mode Stripe + ONE coordinated commercial launch: Noetia + Noetia+ + NoetiaX
+```
+
+Planning consequences:
+- **The critical path is now the AI track** (M6 → M7 → M8 → measured allowances), not billing. Base billing (M3–M5) can be finished and validated in test mode, then held dark until the whole gate passes.
+- **NEM-022 must deliver the premium lifecycle complete and tested at launch**, not as a later flag-activated step. ADR-007's catalog activation still applies: all three tiers are activated together at M11.
+- Rights records (M6) have no billing dependency and should start as early as TT-12 / TT-26 allow, since they gate the critical path.
+- Production deploys of base fixes (Release A, NEM-013, NEM-021–023 run dark) are **not** a commercial launch as long as nothing is offered for sale. This reading needs Product Owner confirmation (L3).
+
+### R7.3 Mandatory public-launch gate (all three tiers)
+
+Merges the two §R5.5 blocker rows into one gate. **Every item must pass for all three tiers before any tier launches commercially.** The §R5.5 optional row stays optional.
+
+| Gate item | Evidence required | Open inputs |
+|---|---|---|
+| **Validated billing** | Catalog as single price authority; once-only webhooks on a pinned API version; duplicate-checkout prevention; deletion workflow; refund and dispute handling; token grants once per billing period; Stripe key, webhook, and prices in the same mode; staging billing tests after S19 | D4, D6, D12, TT-01 |
+| **Personal premium entitlements** | Household and premium resolvers; premium lifecycle (dependency, 72 h grace, upgrade and downgrade, prorated refunds); one premium tier per person | D11; amendments C1–C8 |
+| **AI usage limits** | Metering with reservations and hard limits; 70/85/95/100% notifications; usage indicator; advance confirmation for expensive operations; kill switch | Allowances (unapproved) |
+| **Rights-aware retrieval** | Verified rights records, default deny; retrieval only over eligible content | TT-12, TT-26 |
+| **AI quality** | Per-tier evaluation passed (T2 benchmark: citation accuracy, grounding, origin labelling, extraction refusal); NoetiaX depth defined (TT-07) | **L1** acceptance thresholds and owner |
+| **Measured unit economics** | Per-tier contribution margin measured from metered beta usage, including the costs omitted from the C.4 envelopes, against the 55–65% target | Allowance and margin approval |
+| **Legal readiness** | ToS, pricing, and Family cap consistent (#21 / #22); AI terms and privacy (TT-22); refund terms (D6); legal sign-off | Legal review |
+| **Production safety** | Server snapshot; S19 isolation; kill switch and rollback tested; 80% coverage on changed services; post-deploy verification | — |
+
+### R7.4 Conflicting language in PRs #34 and #35
+
+Evidence: `origin/docs/three-tier-architecture-reconciliation` `223fabd` (#34) and `origin/docs/t0-decision-closure` `b05a213` (#35). Read only; **neither PR was modified**.
+
+| # | Record (PR) | Location | Current text | Conflict with Q4 | Needed change (recommendation) |
+|---|---|---|---|---|---|
+| C13 | **Three-tier `06` roadmap** (#34 / #35) | `06-implementation-roadmap.md`: diagram (#34 line 52; #35 line 53) and **T9** (#34 lines 146-151; #35 lines 148-153) | "T8 Billing ─▶ T9 Progressive release"; T9 scope "Percentage rollout"; T8 cost safeguard "Rollout bucket … before each expansion" | Read as post-launch staged availability of premium, this lets the base product sell before premium is generally available, contradicting rules 1 and 3 | Confine percentage rollout and expansion steps to **pre-launch private betas**, or obtain a Product Owner ruling that a staged rollout *within* the coordinated launch is allowed |
+| C14 | Three-tier `06` (#34 / #35) | §2 prerequisites (#34 lines 31-32; #35 lines 31-32) and T8 | Roadmap treats base billing and catalog access as an existing prerequisite and premium billing as an add-on phase | Assumes a base product already on sale; under Q4 base and premium go live together at one gate | Extends **C10**: reference ADR-007, Rev 5's order, and the §R7.3 gate |
+
+Consistent (not conflicts): `06` T5 (Noetia+ closed beta) and T7 (NoetiaX closed beta), "grants only, no billing", match rule 2. NEM-019 §14 (no deployment) and the `02` "launch control" gap (premium plans not auto-listed) are consistent. No launch-sequencing language was found in PO-025 – PO-029, ADR-005, or ADR-006.
+
+### R7.5 Risks (new in Rev 7)
+
+| Rating | Risk | Mitigation |
+|---|---|---|
+| Medium | No base revenue until the AI track passes the gate | Accepted by the Product Owner decision |
+| Medium | Base billing built early goes stale while held dark | Re-validate at the M10 gate review |
+| Medium | Accidental base launch: live-mode keys reach production, or the live pricing page is treated as open for sale | Keep live keys out until M11; NEM-020 checks Stripe mode; **L2** |
+| Medium | C13 left unamended lets a future mission stage premium after base | Amend `06` before T8 / NEM-022 approval |
+| Low | AI quality cannot be gated without thresholds | **L1** |
+
+### R7.6 Changes made
+
+| File | Change |
+|---|---|
+| `docs/reports/2026-11-07-SA-003-pricing-subscriptions-ai-economics-readiness-audit.md` | Status banner and lifecycle row; revision row 7; Q4 marked decided in §R5.5, §R5.9, §R6.7 (original text preserved); §R5.4 final line marked superseded; this section |
+| `docs/reports/2026-11-07-SA-003-annex-B-ADR-007-draft.md` | Positive consequence reworded for coordinated launch; Q4 marked decided. Still a draft, **not approved** |
+| `docs/reports/README.md` | SA-003 index row: Rev 7, Q4 decided |
+
+Annex A (NEM-020) unchanged: its "Q4" is a query identifier, not this decision. Reporting protocol (`docs/reports/README.md` §1–§9) unchanged. No application code, Stripe, database, infrastructure, production, or deployment change. PRs #34 and #35 untouched.
+
+### R7.7 Tests and validation
+
+No tests run (documentation only). Conflict search: `git diff origin/main...<branch>` and `git show` of `06-implementation-roadmap.md`, `PO-025`, and NEM-019 on both PR heads.
+
+### R7.8 Remaining decisions
+
+| # | Decision | Owner |
+|---|---|---|
+| 1–4 | §R6.7 rows 1–4 (placement, NEM-020, ADR-007, C1–C12), plus C13–C14 | PO · Product Architecture |
+| 5 | D1–D9, D11, D12, Q1, Q3, TT-01 (Q4 now decided) | PO |
+| L1 | AI quality acceptance thresholds and owner | PO + Product Architecture |
+| L2 | Whether public pricing and sign-up must hide purchase until M11 | PO |
+| L3 | Confirm that dark production deploys of base fixes are not a commercial launch | PO |
+
+### R7.9 Next recommended action
+
+Unchanged from §R6.8: Product Owner review, then canonical placement of the drafts, then approval and execution instruction for **NEM-020**.
 
 *Recommendation only.*

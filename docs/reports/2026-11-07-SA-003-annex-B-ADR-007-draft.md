@@ -152,7 +152,7 @@ Retirement uses forward migrations only. Deployed migrations are never edited (C
 - Book ownership is structurally separated from billing.
 - Duplicate subscriptions and double grants are prevented by database constraints, not by convention.
 - Order-independent webhooks.
-- Premium launches as catalog activation, not a second rebuild.
+- All three tiers launch commercially together by catalog activation (Q4, decided 2026-11-07); premium is not a second rebuild. Private betas use test-mode or invitation/grant access only.
 
 **Negative:**
 - More tables and jobs: dependency, reconciliation, deletion, drip.
@@ -185,7 +185,7 @@ Retirement uses forward migrations only. Deployed migrations are never edited (C
 - **D11:** which members lose access on household downgrade.
 - **D12:** token treatment on refund or dispute.
 - **TT-01:** status of token expiry.
-- **Q4:** launch base first, or all tiers together.
+- ~~**Q4:** launch base first, or all tiers together.~~ **DECIDED 2026-11-07 (Product Owner):** one coordinated commercial launch of all three tiers; see SA-003 Rev 7.
 
 ## References (accessed 2026-11-07)
 
