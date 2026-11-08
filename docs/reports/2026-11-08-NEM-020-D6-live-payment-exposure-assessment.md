@@ -173,7 +173,7 @@ Re-run the checker (expect `live`). Delete `.env.production.pre-d6` once the fin
 
 | Item | Change |
 |---|---|
-| Files | `docs/reports/2026-11-08-NEM-020-D6-live-payment-exposure-assessment.md` (**new**, this report). The index entry is in the GOV-001 PR, because `docs/reports/README.md` is not on `main` |
+| Files | `docs/reports/2026-11-08-NEM-020-D6-live-payment-exposure-assessment.md` (**new**, this report). The index entry is in the GOV-001 PR ([#39](https://github.com/Carloskfe/noetia/pull/39)), because `docs/reports/README.md` is not on `main` |
 | Code, database, migrations | **None** |
 | Configuration, secrets | **None** |
 | Stripe and external services | **None.** No Stripe call |
