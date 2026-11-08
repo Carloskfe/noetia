@@ -100,6 +100,26 @@ Drafted as PO-025…029 and amendment drafts. **Updated 2026-11-08:** TT-02, TT-
 
 ---
 
+### Architecture follow-ups from the ADR-005/006 review (2026-11-08)
+
+Source: [architecture review](../../reports/2026-11-08-SA-002-T0-ADR-005-006-architecture-review.md) §7.2 (PR #41). The PO accepted blockers B-1…B-5, now incorporated in ADR-005/006 revision 3 and NEM-019 revision 4. The items below are **Product Architecture requirements for later phases, not Product Owner decisions**. Where one depends on an open decision, that decision stays open.
+
+| ID | Follow-up | Gate (phase) | Depends on open decision |
+|---|---|---|---|
+| **F-1** | Ask My Highlights copyright controls: bound on highlight context per request; output reconstruction checks (ADR-002) on every highlight answer; per-book permission handling; no highlight generation for books whose rights forbid AI processing until TT-27 is decided. `fragments.text` has no length limit | Ask My Highlights phase | **TT-27**, TT-13 |
+| **F-2** | Cross-session reconstruction: cumulative per-(user, book) accounting of quoted and reproduced spans, without content, checked before output | T5 | TT-13 |
+| **F-3** | Brief immutability versus rights revocation: immutable record with render-time redaction and a disclosed tombstone | T6 | TT-14 |
+| **F-4** | Qualifying-plan adapter: Individual, Duo, Family (PO-026) plus decided TT-15 rules; reconcile with SA-003 household baseline and ADR-007 draft (C1–C8) | Adapter mission / T8 | TT-15, TT-16 |
+| **F-5** | Ownership adapter: a `user_books` row is not proof of ownership (`library.service.ts:18`, default `'free'`) | T5 | NEM-013 |
+| **F-6** | "Dark" covers routes, not schema: CD runs every migration on each push to `main`, so merging NEM-019's code creates its tables in production; needs its own deployment authorization, snapshot, and GOV-001 §5.4 checks | Any merge of NEM-019 output | — |
+| **F-7** | Shared Redis capacity (256 MB, `noeviction`, shared with authentication): key namespace, expiry, memory budget, monitoring; a separate Redis would need infrastructure authorization | T4/T5 | — |
+| **F-8** | Policy-version change during a session: record policy version at lock; a lowered limit is treated like a downgrade | First production policy change | — |
+| **F-9** | AI conversation and highlight-answer content never enters events, persona pipeline, author analytics, or admin views without a separate policy | T5 | — |
+| **F-10** | CI on `main` has no PostgreSQL; NEM-019 concurrency and deletion proofs run on a disposable local database, so its completion report includes raw test output | NEM-019 review | — |
+| **F-11** | SA-003 conflicts C1–C14 against ADR-005, PO-026, NEM-019, `04`, `05`, `06` (PR #36) | Before the three-tier stack merges | TT-15, Q4 roadmap |
+
+**Also open from B-2 (PO / Product Architecture):** whether anonymized cost records are retained after account deletion. NEM-019 is safe either way.
+
 ## Decisions needed for the draft mission
 
 **No open product decision blocks NEM-019** (updated 2026-11-08). PO-026, PO-027, PO-028, and PO-030 are decided. Before approval it still needs: Product Architecture acceptance of ADR-005 and ADR-006; PO approval of the mission text; and a PO ruling on whether draft PO-025 must be accepted first (NEM-019 §3). TT-01 and TT-12 are explicitly **not** prerequisites for the dark control plane. Every open item above is held safe by a default-deny port, an out-of-scope exclusion, or a test fixture ([NEM-019 §16](../../engineering-missions/DRAFT/NEM-019-tier-aware-intelligence-control-plane.md)).

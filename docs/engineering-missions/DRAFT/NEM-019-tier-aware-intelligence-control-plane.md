@@ -1,7 +1,7 @@
 # NOETIA ENGINEERING MISSION — NEM-019
 ## Tier-Aware Intelligence Control Plane (Dark, Simulated Providers Only)
 
-**Status:** DRAFT (revision 3, 2026-11-08: reconciled with the Product Owner approvals of TT-02, TT-04, TT-05, TT-21; **not approved**; identifier verified unused, not yet assigned)
+**Status:** DRAFT (revision 4, 2026-11-08: review corrections B-1…B-5 incorporated; revision 3 reconciled the PO approvals of TT-02, TT-04, TT-05, TT-21; **not approved**; identifier verified unused, not yet assigned)
 **Mission type:** IMPLEMENTATION
 **Implementation authorization:** LIMITED (once approved; **none while DRAFT**)
 **Schema changes:** ADDITIVE ONLY, applied to disposable test databases only
@@ -13,6 +13,8 @@
 
 ---
 
+> **Revision 4 (2026-11-08).** Architecture review corrections B-1…B-5 (review PR #41, accepted by the PO) are incorporated in §3, §9, §10, §11, §12, and §16, together with the PO's added requirements on settlement recovery and the account-deletion test. PO-026, PO-027, PO-028, and PO-030 are unchanged.
+>
 > **Revision 3 (2026-11-08).** TT-02, TT-04, TT-05, and TT-21 are **decided** (PO-026, PO-027, PO-028, PO-030). §1, §3, §4, §6, §7, §11, §12, §16, and §17 are updated; nothing else changes. Under PO-030 rule 7 this mission is **not** approved or executed by that decision.
 
 ## 1. Context
@@ -25,7 +27,7 @@ Deliver a dark, fully tested control plane in `services/api/src/knowledge/` that
 **Satisfied (2026-11-08):** PO-026, PO-027, PO-028, PO-030 decided.
 
 **Required before approval:**
-- Product Architecture acceptance of ADR-005 and ADR-006 (revision 2).
+- Product Architecture acceptance of ADR-005 and ADR-006 (**revision 3**, with review corrections B-1…B-5).
 - Product Owner approval of this mission text and confirmation of the `NEM-019` identifier.
 - **Product Owner ruling:** whether draft PO-025 (three-tier structure) must be accepted first. This mission uses only the tier names and the 3/10 limits, which PO-027 decides.
 
@@ -81,6 +83,7 @@ Must remain untouched and undegraded: Escucha Activa and sync; reader; ownership
 
 ## 9. Technical requirements
 - **Limits:** normalized `ai_session_books`; unique on (session, book) and (session, position); `CHECK (position BETWEEN 1 AND 10)`; tier limit from the resolver only.
+- **Turn order (B-5; ADR-006):** entitlement → book set and eligibility → ledger reservation with the turn's idempotency key → short lock transaction (`SELECT … FOR UPDATE`; first-turn lock) → provider call outside any transaction → durable settlement. Failure at the first three steps: no lock, no charge. Failure in the lock transaction: reservation released idempotently. Failure during or after the provider call: the lock stands and settlement follows the recovery rules below.
 - **Transactions:** selection and lock run in a short transaction with `SELECT … FOR UPDATE` on the session row. No simulated or real provider call inside it. Each turn reads the set and its hash after the lock.
 - **Lock point:** the first accepted analysis turn. A preflight rejection does not lock. A provider failure after acceptance does.
 - **Fork:** new session with a parent reference. Generated context carries only if the parent's books are a subset of the fork's and rights permit.
@@ -88,15 +91,24 @@ Must remain untouched and undegraded: Escucha Activa and sync; reader; ownership
 - **Book deletion:** `ai_session_books` must not block or fail existing book deletion. Keep a metadata snapshot with `ON DELETE SET NULL`.
 - **Resolver:** per ADR-005; deny-first; flags and rollout can only restrict; caches only for performance, never as authority.
 - **Rights record** carries every element in [07 §3](../../architecture/three-tier-intelligence/07-rights-verification-requirements.md#3-what-must-be-verified), including `textHash`. Only `verified` allows processing.
-- **Context Builder invariant:** all chunks, highlights, and notes must belong to a selected, eligible book, or the turn aborts and a metric fires. Fixtures only.
+- **Context Builder invariant (B-3):** on research-session paths, all chunks, highlights, and notes must belong to a selected, eligible book, or the turn aborts and a metric fires. **Every path to a model** that this mission creates (including the simulated-provider turn stub) declares its context invariant and has a test proving it. Fixtures only.
+- **Eligibility (B-4):** verified rights **and** an access basis: a verified public-domain edition (no library entry needed) or, for a licensed book, entitlement through `OwnershipPort` (no production adapter; `unknown` denies).
 - **Origins:** segment types include `library`, `synthesis`, `broader`, `user_content`.
-- **Budgets:** atomic Redis reservation, PostgreSQL ledger authoritative and rebuildable; idempotency key; failed call charges nothing; abort settles actual. Integer micro-USD and integer units.
+- **Budget authority (B-1):** the PostgreSQL ledger is the only authority; Redis, if used, is a rebuildable admission cache with namespaced, expiring keys and is never the sole record of a reservation. Reservation store or ledger unavailable, erroring, or rejecting a write → **deny before any provider call**. Integer micro-USD and integer units.
+- **Durable settlement and recovery (B-5; ADR-005):**
+  - the reservation is written to the ledger before the provider call; settlement is a separate entry keyed by the same idempotency key under a uniqueness constraint, so retries and replays **never charge twice**;
+  - **settlement is never assumed**: after a provider success, failure, timeout, or abort, record reported usage; if usage is unknown or the ledger is unavailable, keep the reservation **held and unresolved** at its reserved amount; never release it to zero automatically;
+  - a reconciliation job retries settlement idempotently from durable records; corrections are compensating entries, never edits;
+  - expired reservations are flagged and reconciled, not silently released;
+  - **admission fails closed** in a scope (user and capability, or overall) while unresolved reservations exceed configured bounds; bounds are configuration, **no values** are set (test fixtures only).
+- **Account deletion (B-2):** every table keyed by a user references `users(id)`: content and user-derived rows (`ai_conversations`, `ai_session_books` through the session, `ai_grants`) `ON DELETE CASCADE`; usage and budget rows (`ai_usage_events`, `ai_budget_ledger`) `ON DELETE CASCADE` or `ON DELETE SET NULL` with no content; `feature_flags` per-user targeting, if any, `ON DELETE CASCADE`. Never `RESTRICT` or `NO ACTION`. `users.service.ts` is **not** changed.
 - Neutral naming: `intelligence`, not `plus`. Unknown state fails closed for AI, with no effect on other modules.
 - The dedicated database pool is **deferred** to the first retrieval mission. A statement timeout applies to `knowledge/*` transactions here.
 
 ## 10. Security / privacy / copyright
 - All routes need `JwtAuthGuard` and a declared capability; a test fails if a route has neither.
 - All data keyed by individual `userId`; `linkedUserIds` grants nothing.
+- Account deletion is never blocked and leaves no orphaned private content (B-2).
 - Client-supplied limit, tier, budget, plan, or rights fields are ignored.
 - No book text, prompts, notes, or PII in logs or fixtures. Fixtures use invented titles.
 - Safe `HttpException` messages. Not legal advice; no quotation threshold is decided here.
@@ -121,9 +133,11 @@ Must remain untouched and undegraded: Escucha Activa and sync; reader; ownership
 **Rights and selection (PO-027; ADR-006; draft PO-029)**
 11. `isFree = true` with no record is denied. Partial, stale-`textHash`, and revoked records are denied. An owned book with no rights record is denied.
 11a. A **verified public-domain fixture** that is not in the user's library can be selected, and it **counts** toward the limit (a fourth such book on Noetia+ is rejected). An unverified public-domain fixture cannot be selected.
+11b. A verified **licensed** fixture the user is not entitled to (simulated `OwnershipPort` answers `not_entitled` or `unknown`) is denied; the same fixture with entitlement is allowed (B-4).
 12. Migrations and seeds insert no rights record for a real book.
 
 **Source scope (PO-028)**
+12a. Every path to a model created by this mission has a declared context invariant and a test proving it; a path without one fails an architecture test (B-3).
 13. A highlight, note, or chunk from an unselected book cannot reach the context stub. A violation aborts the turn.
 14. A simulated planner naming an unselected book is rejected.
 
@@ -131,6 +145,12 @@ Must remain untouched and undegraded: Escucha Activa and sync; reader; ownership
 15. A reservation cannot exceed the budget under concurrency; settlement and failure paths behave as specified.
 15a. Budget policies resolve by tier **and capability**; a reservation for one capability cannot draw on another's fixture budget.
 15b. A household-member fixture cannot read another member's session or conversation.
+15c. **Budget authority and turn order (B-1, B-5):** with the reservation store or the ledger unavailable, a turn is denied, no provider call occurs, and no lock or charge is recorded; a failure in the lock transaction releases the reservation; a budget rejection never locks the set.
+15d. **Settlement recovery (B-5):** a simulated provider failure, timeout, or abort with unknown usage leaves the reservation held and unresolved; a ledger outage at settlement leaves it held; reconciliation later settles it exactly once; replaying the same idempotency key, retrying settlement, or running reconciliation twice never produces a duplicate charge; expired reservations are flagged, not released to zero; while unresolved reservations exceed the fixture bound, new admissions in that scope are denied.
+
+**Account deletion (B-2)**
+15e. **Integration test** on a disposable database: create a user with rows in **every** user-related AI table this mission adds (`ai_grants`, `ai_conversations`, `ai_session_books`, `ai_usage_events`, `ai_budget_ledger`, and `feature_flags` if it targets users), then run the existing account-deletion path unchanged. Deletion **succeeds**; no row with that user's content remains; usage and budget rows are either deleted or anonymized with no content; no foreign-key error.
+15f. A schema test enumerates every foreign key from a `knowledge` table to `users` and fails unless each is `ON DELETE CASCADE` or `ON DELETE SET NULL`, so a table added later cannot block deletion silently.
 16. Architecture tests prove: reader, library, token, and subscription modules do not import `knowledge/*`; `knowledge/*` does not import token, subscription, plan, or Stripe code.
 17. Token scenarios change no budget, because no shared code path exists.
 
@@ -147,7 +167,9 @@ Must remain untouched and undegraded: Escucha Activa and sync; reader; ownership
 - add after lock; downgrade during an active turn; upgrade with a locked set
 - other user's session; household member access
 - flag off; rollout cannot grant; expired grant; grant without a qualifying plan
-- reservation race; double submit; simulated provider failure; aborted stream; Redis unavailable
+- reservation race; double submit; simulated provider failure; aborted stream; **Redis unavailable → denied**; **ledger unavailable at admission → denied**; ledger unavailable at settlement → held; unknown usage → held; reconciliation replay → no duplicate; unresolved bound exceeded → admission denied
+- lock-transaction failure releases the reservation; budget rejection does not lock
+- account deletion with rows in every user-related AI table (AC-15e); foreign-key rule schema test (AC-15f)
 - all rights cases in AC-11; highlight, note, and planner cases in AC-13 and AC-14
 - module disabled while reader, library, and token suites run
 
@@ -172,6 +194,8 @@ Technical note on the control plane; migration entries; a `docs/reports/` report
 | TT-23 Pilot participants | Grants never bypass; no pilot exists here |
 | TT-25, 27 Semantic highlight search; saved-quotation permissions (TT-24 resolved by PO-028) | Ask My Highlights not built; session generation stays session-bound |
 | TT-01 Token expiry; TT-12 launch corpus | Tokens out of scope; no real rights record |
+| Retention of anonymized cost records after account deletion (B-2 option; PO/PA) | Either `CASCADE` or `SET NULL` without content satisfies AC-15e |
+| Unresolved-reservation bounds and reservation expiry values | Configurable; test fixtures only |
 | TT-26 Evidence standard, verifier | No real rights record is created |
 | PO-024 open items | Tokens out of scope |
 

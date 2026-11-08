@@ -1,10 +1,37 @@
 # SA-002-T0 — Product Architecture Review of ADR-005 and ADR-006
 
+> **Revision 2 (2026-11-08): the PO accepted B-1…B-5 and they are incorporated (ADR-005/006 rev 3, NEM-019 rev 4); see the Revision 2 section below.**
+>
 > **Verdicts: ADR-005 — ACCEPT WITH REQUIRED CORRECTIONS · ADR-006 — ACCEPT WITH REQUIRED CORRECTIONS.** Both directions are sound and compatible with ADR-001…004 and with the current code. **Five blockers** (B-1…B-5) must be corrected in the ADR text, and mirrored in NEM-019, before NEM-019 can be approved. All five are documentation corrections; none needs a Product Owner product decision.
 >
 > **NEM-019: NOT READY FOR APPROVAL** until B-1…B-5 are incorporated, the ADRs are formally accepted, and the earlier prerequisites are met (§6).
 >
 > **Status of the ADRs is unchanged: both remain Proposed.** This report changes no ADR, PO record, mission, or code. TT-27 is **not** decided here.
+
+## Revision 2 — corrections incorporated (2026-11-08)
+
+> **The PO accepted B-1…B-5** as required corrections (2026-11-08) and authorized a documentation-only revision, adding two requirements: durable settlement recovery (B-5) and an account-deletion integration test over every user-related AI table (B-2). They are incorporated in **ADR-005 revision 3, ADR-006 revision 3, and NEM-019 revision 4** (Draft PR stacked on PR #41). F-1…F-11 are recorded as phase gates in three-tier `05` and `06`. **ADRs remain Proposed; NEM-019 remains DRAFT.** PO-026, PO-027, PO-028, and PO-030 are unchanged. TT-01, TT-12, TT-27, premium pricing, and quantitative AI budgets remain unresolved.
+
+| Blocker | ADR-005 rev 3 | ADR-006 rev 3 | NEM-019 rev 4 |
+|---|---|---|---|
+| **B-1** Budget authority; fail closed | Decision: *Budget authority*; Boundaries: *Failure* | — | §9 *Budget authority*; AC-15c; §12 Redis/ledger unavailable → denied |
+| **B-2** Account deletion never blocked; no orphaned private content | Decision: *Account deletion*; Boundaries row | *Account deletion* paragraph | §9 foreign-key rules per table; §10; **AC-15e integration test over every user-related AI table**; AC-15f schema test; §16 retention option |
+| **B-3** Context Builder invariant scoped to sessions; declared invariant per model path | — | *Source-scope isolation* | §9; AC-12a |
+| **B-4** Eligibility = rights verification AND access basis | — | *Session book set* | §9; AC-11b |
+| **B-5** Turn order; **durable, idempotent settlement and recovery; no duplicate charges; fail-closed admission while unresolved reservations threaten integrity; settlement never assumed** | Decision: *Durable settlement and recovery* | *Turn order* with failure table | §9 *Turn order*, *Durable settlement and recovery*; AC-15c, AC-15d; §12 |
+
+**Revised NEM-019 readiness: READY FOR PRODUCT OWNER APPROVAL DECISION once the ADRs are formally accepted.** No review blocker remains open in the text. Remaining before approval: (1) human Product Architecture confirmation and formal acceptance of ADR-005/006 revision 3 (separate approval); (2) PO approval of NEM-019 revision 4 and its identifier; (3) PO ruling on whether draft PO-025 must be accepted first. Optional: the B-2 retention choice for anonymized cost records (either option satisfies AC-15e).
+
+### Revision history
+
+| Rev | Date | Change |
+|---|---|---|
+| 1 | 2026-11-08 | Review: both ADRs accept with required corrections; five blockers; eleven follow-ups; six advisories (PR #41, `6bf4f53`) |
+| 2 | 2026-11-08 | PO accepted B-1…B-5; corrections incorporated (this section); F-1…F-11 recorded in `05` and `06` |
+
+---
+
+# Revision 1 — review (2026-11-08)
 
 Evidence labels: **[CODE]** verified on `origin/main` `6a5e5c0` · **[CONFIG]** repository configuration on `main` · **[DOC]** stated in a reviewed document · **[PO]** decided Product Owner record · **[PROPOSED]** this review's recommendation.
 

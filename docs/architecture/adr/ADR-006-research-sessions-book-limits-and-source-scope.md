@@ -1,7 +1,7 @@
 # ADR-006 — Research Sessions, Selected-Book Limits, Forking, Source-Scope Isolation, and Research Briefs
 
-- **Status:** Proposed (draft; not accepted) — **revision 2, 2026-11-08**, reconciled with decided PO-027 and PO-028 and extended to the Research Brief architecture (PO-030 rule 4); ready for Product Architecture review
-- **Date:** 2026-11-06 (SA-002-T0); revised 2026-11-08 (SA-002-T0 Rev 2)
+- **Status:** Proposed (draft; not accepted) — **revision 3, 2026-11-08**: review corrections B-2, B-3, B-4, B-5 incorporated (review PR #41, accepted by the PO); ready for formal acceptance review
+- **Date:** 2026-11-06 (SA-002-T0); revised 2026-11-08 (SA-002-T0 Rev 2; review corrections)
 - **Decided by:** pending: Product Architecture acceptance. Product Owner inputs: **PO-027, PO-028 (decided 2026-11-08)**, PO-029 (draft; TT-12 open), PO-030 (decided; requires this ADR)
 - **Relates:** extends ADR-002, ADR-003, ADR-004 without altering their decisions; NEM-003 remains historical design.
 
@@ -16,12 +16,26 @@ Noetia+ allows 3 selected books per research session, and NoetiaX 10; **every se
 ### Session book set
 - Stored in a normalized table, unique per session and position, with a database ceiling of position 1–10 at the highest approved limit. The tier limit comes from the resolver (ADR-005), never from a client; limits are **enforced server-side** (PO-027 rule 7).
 - **Every selected book counts** toward the limit, including public-domain books (rule 3).
-- **Eligibility is independent of ownership** (rule 8). A **verified, AI-eligible public-domain edition** may be selected without a `user_books` row (rule 4); ownership never makes a book eligible. Which editions are verified is the rights resolver's job (PO-029 draft; TT-12, TT-26 open), so today no book is eligible.
+- **Eligibility = rights verification AND access basis (B-4).** Rights are verified **independently of ownership** (PO-027 rule 8): ownership never makes a book AI-eligible. The access basis is either a **verified, AI-eligible public-domain edition**, which may be selected without a `user_books` row (rule 4), or the user's **entitlement to a licensed book** under ADR-002. A verified licensed book the user is not entitled to is **not** selectable for full-text analysis. Which editions are verified is the rights resolver's job (PO-029 draft; TT-12, TT-26 open), so today no book is eligible.
 - **Locks at the first accepted analysis turn.** A turn rejected in preflight does not lock. A provider failure after acceptance does.
 - A locked set never changes. Changes create a new or forked session.
 
 ### Transaction safety
 Selection changes and the lock each run in a short transaction holding a row lock on the session (`SELECT … FOR UPDATE`). Every turn reads the set and its hash after that lock. **No provider call happens while holding the lock.**
+
+**Turn order (B-5).**
+1. Resolve entitlement and tier policy (ADR-005).
+2. Validate the book set and each book's eligibility.
+3. Reserve budget in the ledger with the turn's idempotency key (ADR-005).
+4. In one short transaction with `SELECT … FOR UPDATE` on the session: re-read the set and its hash and, on the first turn, record the lock; commit.
+5. Call the provider **outside** any transaction.
+6. Settle through the durable, idempotent settlement of ADR-005.
+
+| Failure at | Effect |
+|---|---|
+| Steps 1–3 | Rejected in preflight: **no lock, no charge** |
+| Step 4 | The reservation is released through the ledger (idempotent); no lock |
+| Steps 5–6 | The lock stands. Settlement follows ADR-005: recorded from reported usage; if unknown or the ledger is unavailable, the reservation stays **held and unresolved** until reconciliation. **Settlement is never assumed** |
 
 ### Forking and history
 - A fork is a new session with a parent reference. The parent stays immutable.
@@ -39,8 +53,10 @@ Selection changes and the lock each run in a short transaction holding a row loc
 
 Downgrade never deletes history. Tier and rights are re-evaluated at every turn.
 
+**Account deletion (B-2)** is the exception that removes history: it is never blocked, and every session, session book, conversation, highlight conversation, and Brief of that user is deleted by `ON DELETE CASCADE` from `users(id)` (ADR-005). Existing deletion code is not changed.
+
 ### Source-scope isolation
-Every path to a model passes through a **Context Builder invariant**: all chunks, highlights, and notes must belong to a selected, currently eligible book. A violation aborts the turn and raises an alert. Retrieval requires an explicit, non-empty allowed set. Planner and tool arguments are validated against it.
+Every **research-session** path to a model passes through a **Context Builder invariant**: all chunks, highlights, and notes must belong to a selected, currently eligible book. **Every other path to a model has its own declared context invariant** (Ask My Highlights uses the Highlight Context Builder invariant below); no path to a model may exist without a declared invariant and a test that proves it (B-3). A violation aborts the turn and raises an alert. Retrieval requires an explicit, non-empty allowed set. Planner and tool arguments are validated against it.
 
 ### Trust boundary (PO-028)
 
@@ -102,6 +118,7 @@ A Research Brief is a **structured, versioned, immutable, user-private record of
 |---|---|---|
 | 1 | 2026-11-06 | Drafted under SA-002-T0 from preliminary rulings |
 | 2 | 2026-11-08 | Reconciled with decided PO-027 (public-domain books count; selection without library; eligibility independent of ownership; server-side) and PO-028 (Ask My Highlights search and answers across the library with its own controls; highlight Context Builder invariant). Research Brief section added (PO-030 rule 4). Still **Proposed** |
+| 3 | 2026-11-08 | Review corrections (PR #41): **B-3** Context Builder invariant scoped to research sessions, with declared invariants for every other model path; **B-4** eligibility = rights verification AND access basis; **B-5** turn order and failure effects; **B-2** account deletion. Still **Proposed**. PO-027 and PO-028 unchanged |
 
 ## Legal note
 Product and architecture policy, not legal advice.
