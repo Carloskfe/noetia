@@ -48,6 +48,46 @@ Durable record of the Product Owner decisions that resolve the three principal b
 
 ---
 
+## Three-tier decisions (Noetia · Noetia+ · NoetiaX) — approved 2026-11-08
+
+Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reconciliation — Three-Tier Architecture Governance and NEM-019 Preparation*). Full text, open items, and preserved preliminary text are in each record. These are product policy; they **authorize no implementation**.
+
+> Record location: the full records are in `docs/operating-framework/decisions/product-owner/`, which is **not yet on `main`** (it arrives with the operating-framework and three-tier branches). This file is the register on `main`, so these entries are recorded here.
+
+### PO-026 — Premium subscription prerequisite (TT-02)
+→ **[PO-026](../operating-framework/decisions/product-owner/PO-026-premium-subscription-prerequisite.md)** · ADR-005 (proposed)
+
+- Noetia+ and NoetiaX both require an active **Individual, Duo, or Family** book subscription. Premium intelligence is an **add-on**, not a standalone replacement.
+- Cancelling premium does **not** cancel the book subscription; ending the book subscription **ends** premium eligibility.
+- Acquired books stay permanently owned. **Book tokens and AI usage budgets stay completely separate.** Household membership does not automatically share private knowledge, highlights, or AI conversations.
+- **Open:** linked-member eligibility and qualifying states (TT-15); prices, billing structure, lifecycle and grace (TT-16). Supersedes in substance PO-022/PO-023 independence wording (PR #12); amendment text pending acceptance.
+
+### PO-027 — Research session book limits (TT-04)
+→ **[PO-027](../operating-framework/decisions/product-owner/PO-027-research-session-book-limits.md)** · ADR-006 (proposed)
+
+- Noetia+ **3** books, NoetiaX **10** books per research session; **every selected book counts**, including public domain.
+- Verified, AI-eligible public-domain editions may be selected without adding them to the library. Copyright and edition eligibility are verified **independently of ownership**.
+- The set **locks at the first analysis turn**; changes need a new or forked session. Limits are **enforced server-side**.
+
+### PO-028 — My Knowledge and Ask My Highlights (TT-05)
+→ **[PO-028](../operating-framework/decisions/product-owner/PO-028-my-knowledge-and-highlight-boundary.md)** · ADR-006 (proposed)
+
+- Full-book research stays restricted to the session's selected books.
+- **Ask My Highlights** may search and answer questions over the user's own highlights **across the whole personal library**, independently of the 3/10 limit, with **its own AI usage controls**.
+- Highlight access must not become an indirect route to full-book retrieval. Highlights and AI conversations are private to the individual account. This Book / My Knowledge / Expand remain distinct (PO-003).
+- **Open:** book-permission treatment of saved quotations in highlight answers (TT-27), semantic search and tier placement (TT-25), provider disclosure (TT-22), thresholds (TT-13).
+
+### PO-030 — Three-tier architecture governance (TT-21)
+→ **[PO-030](../operating-framework/decisions/product-owner/PO-030-three-tier-architecture-governance.md)**
+
+- NEM-003 preserved as historical architecture. The paused NEM-006 plan is **formally superseded**, its record preserved ([governance record](../architecture/three-tier-intelligence/08-architecture-governance-record.md)).
+- ADR-005 and ADR-006 prepared (**Proposed**). NEM-019 reconciled; **not approved or executed**.
+
+### Still open in the three-tier package
+TT-01 purchased-token expiry · TT-12 verified AI-eligible launch corpus and rights · NoetiaX depth and evaluation criteria (TT-07) · AI budget values and resets (TT-09, TT-11) · premium pricing and Stripe architecture (TT-16) · quotation and anti-reconstruction thresholds (TT-13) · retention and export (TT-14) · legal disclosures and provider data handling (TT-22). Draft records **PO-025** (three-tier structure) and **PO-029** (eligible corpus) remain **not decided**. See [`05-open-decisions.md`](../architecture/three-tier-intelligence/05-open-decisions.md).
+
+---
+
 ## Blockers closed by these decisions
 The three principal NEM-003 blockers are **resolved**:
 1. Provider architecture / economic philosophy → **PO-001 / ADR-001.**

@@ -96,6 +96,8 @@ PR #18's direction (approved 2026-10-30) is preserved. If this document is accep
 
 ## Proposed addition to `docs/noetia-plus/PRODUCT-DECISIONS.md`
 
+> **Update 2026-11-08 (SA-002-T0 Rev 2).** PO-026, PO-027, PO-028, and the new PO-030 are **decided** and are entered in `PRODUCT-DECISIONS.md` in a "Three-tier decisions" section, using the approved wording. The lines below are the **superseded T0 proposal**, kept as written; in particular PO-028 is no longer "search" only. PO-025 and PO-029 remain drafts. The PO-022/PO-023 Amendment 1 texts in this file still await acceptance.
+
 Not applied here. PR #12 adds a "Later decisions" section to the same file; add these lines to it on adoption:
 
 ```markdown
@@ -109,6 +111,8 @@ Not applied here. PR #12 adds a "Later decisions" section to the same file; add 
 ## Proposed Decision Registry rows
 
 For `docs/operating-framework/15-decision-registry.md` once it reaches `main`. Status changes to `DECIDED` only on acceptance.
+
+> **Update 2026-11-08.** When applied: PO-026, PO-027, PO-028 → `DECIDED` (2026-11-08); add `| PO-030 | PO | Three-tier architecture governance | DECIDED | Governance | PO-030 | Documentation only |`; ADR-006 title adds "and Research Briefs". PO-025, PO-029 stay `DRAFT`.
 
 ```
 | PO-025 | PO | Three-tier product structure | DRAFT | Product, Business | PO-025 | NOT IMPLEMENTED |

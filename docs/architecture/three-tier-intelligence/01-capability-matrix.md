@@ -51,8 +51,9 @@ The customer-facing label "Basic" is not used anywhere (`PO`). "Basic subscripti
 | Research Brief export | ✗ | ✓ | ✓ | `PO`; format `OPEN → TT-17` |
 | Brief replaces the conversation | ✗ | ✗ | ✗ | `PO`: a Brief comes from a session; no one-shot path (`PROPOSED`) |
 | Number of sessions per month | — | Governed by the budget | Governed by the budget | `PROPOSED`; `OPEN → TT-06` |
-| Lock selected books at the first analysis turn; change by new or forked session | — | ✓ | ✓ | `T0` (PO-027) |
-| Lexical search over own highlights, outside the book limit | Undecided | ✓ | ✓ | `T0` (PO-028); tier placement `OPEN → TT-25` |
+| Lock selected books at the first analysis turn; change by new or forked session | — | ✓ | ✓ | `PO` (PO-027, decided 2026-11-08) |
+| Every selected book counts, including public domain; verified public-domain editions selectable without the library | — | ✓ | ✓ | `PO` (PO-027, decided 2026-11-08) |
+| **Ask My Highlights**: search **and answers** over own highlights across the whole library, outside the book limit, with its own usage controls | Undecided | Undecided | Undecided | `PO` (PO-028, decided 2026-11-08); tier placement `OPEN → TT-25`; saved-quotation permissions `OPEN → TT-27` |
 
 ### Source awareness — the same integrity on both premium tiers
 

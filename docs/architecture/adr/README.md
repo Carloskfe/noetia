@@ -12,8 +12,8 @@ Format per ADR: **Status · Date · Decided by · Context · Decision · Consequ
 | [ADR-002](ADR-002-permission-aware-content-intelligence.md) | Permission-Aware Content Intelligence | Accepted |
 | [ADR-003](ADR-003-source-aware-hybrid-intelligence.md) | Source-Aware Hybrid Intelligence | Accepted |
 | [ADR-004](ADR-004-postgresql-pgvector-semantic-retrieval.md) | PostgreSQL + pgvector Semantic Retrieval | Accepted |
-| [ADR-005](ADR-005-tier-entitlements-prerequisites-and-budget-boundaries.md) | Tier Entitlements, Subscription Prerequisites, and AI Resource-Budget Boundaries | **Proposed (draft)** |
-| [ADR-006](ADR-006-research-sessions-book-limits-and-source-scope.md) | Research Sessions, Selected-Book Limits, Forking, and Source-Scope Isolation | **Proposed (draft)** |
+| [ADR-005](ADR-005-tier-entitlements-prerequisites-and-budget-boundaries.md) | Tier Entitlements, Subscription Prerequisites, and AI Resource-Budget Boundaries | **Proposed (draft, rev 2 2026-11-08)** — inputs PO-026 decided |
+| [ADR-006](ADR-006-research-sessions-book-limits-and-source-scope.md) | Research Sessions, Selected-Book Limits, Forking, Source-Scope Isolation, and Research Briefs | **Proposed (draft, rev 2 2026-11-08)** — inputs PO-027, PO-028 decided |
 
 ## Provenance
 ADR-001/002/003 were accepted via **NEM-005**, and **ADR-004 via NEM-005A**, recording Product Owner decisions PO-001/PO-002/PO-003/PO-004 (see [`docs/noetia-plus/PRODUCT-DECISIONS.md`](../../noetia-plus/PRODUCT-DECISIONS.md)). They are authoritative architecture that future implementation missions cite; they do **not** authorize implementation.

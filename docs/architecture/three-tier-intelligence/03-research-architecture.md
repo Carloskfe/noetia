@@ -20,7 +20,7 @@ Book selection → Research session → Source-aware conversation
 
 | Step | User sees | Server does | Noetia+ | NoetiaX |
 |---|---|---|---|---|
-| **1. Book selection** | Library picker with eligibility; question (optional) | Resolve tier; compute eligibility per book; validate count | ≤ 3 | ≤ 10 |
+| **1. Book selection** | Picker with eligibility: the user's library **plus verified, AI-eligible public-domain editions not in the library** (PO-027 rule 4); question (optional) | Resolve tier; compute eligibility per book **independently of ownership**; validate count server-side; every selected book counts, including public domain | ≤ 3 | ≤ 10 |
 | **2. Session start** | Selected books and what each one allows | Create session; confirm books are indexed; snapshot rights version | Same | Same |
 | **3. Conversation** | Streamed answer with citations and origin labels; mode control | Permission → retrieval → context → model → citation validation → meter | Single-pass, streamed | Same, or multi-pass (candidate) |
 | **4. Follow-ups** | Continued conversation | Resolve references; compact history; re-check tier, rights, and budget on **every turn** | Same | Same |
@@ -134,9 +134,9 @@ Full rules are in [ADR-006](../adr/ADR-006-research-sessions-book-limits-and-sou
 | **My Knowledge** | All selected books, plus the user's own highlights and notes **on those books** | Same as This Book |
 | **Expand** | Same sources as My Knowledge | Allowed, always labelled `broader`; never attributed to a book |
 
-**Library-wide use (T0, PO-028):** generated analysis is bound to the session's books. **Separate search over the user's own highlights is permitted outside the limit.** It is lexical, runs in PostgreSQL on the user's own rows, and involves no model, provider, chunks, or book text.
+**Library-wide use (PO-028, decided 2026-11-08):** full-book research is bound to the session's books. **Ask My Highlights may search and answer questions over the user's own highlights across the whole personal library**, independently of the 3/10 limit and with its own usage controls. It runs on a separate path whose context contains only the requesting user's highlight and note rows and book metadata, never chunks or book text, so it cannot become a route to full-book retrieval ([ADR-006](../adr/ADR-006-research-sessions-book-limits-and-source-scope.md)). Open: saved-quotation permissions (TT-27), semantic search and tier placement (TT-25), provider disclosure (TT-22).
 
-The earlier recommendation to allow Ask My Highlights generation over highlight text outside the limit is **not adopted** by this ruling (TT-24). Semantic book discovery across the library is a separate later question (TT-19).
+*Superseded T0 text (2026-11-06), preserved:* "Separate search over the user's own highlights is permitted outside the limit. It is lexical, runs in PostgreSQL on the user's own rows, and involves no model, provider, chunks, or book text. The earlier recommendation to allow Ask My Highlights generation over highlight text outside the limit is **not adopted** by this ruling (TT-24)." Semantic book discovery across the library remains a separate later question (TT-19).
 
 ### Trust boundary
 
