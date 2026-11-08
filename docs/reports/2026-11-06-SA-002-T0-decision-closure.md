@@ -114,7 +114,7 @@ None.
 | `docs/architecture/adr/ADR-006-…md` | Revision 2 (PO-027, PO-028 highlight path, Research Brief); still Proposed |
 | `docs/architecture/adr/README.md` | Index status for ADR-005/006 |
 | `docs/architecture/three-tier-intelligence/05-open-decisions.md` | Approved versus open: TT-02/04/05/21 decided; TT-01/12 open; TT-15 partly decided; TT-24 resolved; TT-27 added |
-| `docs/architecture/three-tier-intelligence/01-capability-matrix.md`, `02-reconciliation-report.md`, `03-research-architecture.md`, `README.md` | Rows and paragraphs contradicted by the approvals updated; superseded text preserved where it stated a ruling |
+| `docs/architecture/three-tier-intelligence/01-capability-matrix.md`, `02-reconciliation-report.md`, `03-research-architecture.md`, `06-implementation-roadmap.md` (T0 status row only), `README.md` | Rows and paragraphs contradicted by the approvals updated; superseded text preserved where it stated a ruling |
 | `docs/architecture/three-tier-intelligence/08-architecture-governance-record.md` | **New**: NEM-003 historical status; NEM-006 supersession |
 | `docs/engineering-missions/DRAFT/NEM-019-tier-aware-intelligence-control-plane.md` | Revision 3; still DRAFT |
 | `docs/operating-framework/analysis/t0-po-021-024-amendment-drafts.md` | Dated update notes on the T0 register and registry proposals (superseded lines preserved) |
