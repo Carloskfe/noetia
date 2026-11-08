@@ -1,6 +1,8 @@
 # NEM-020-D6 — Live Payment Exposure Assessment
 
-> **Status: ACCEPTED by Product Architecture (2026-11-08) as a read-only payment-exposure assessment · Containment NOT authorized · Merge NOT granted.** D6 remains an **unresolved live-payment exposure** and a separate, urgent Product Owner decision.
+> **Status (Rev 3): CONTAINMENT OPTION A AUTHORIZED by the Product Owner (2026-11-08) — NOT YET EXECUTED. Payments remain LIVE.** Claude has no production shell access (§7.5), so the change is run by the PO as operator using the gated procedure in **Appendix A**. Remote preflight checks passed (§7.5). Merge not granted.
+>
+> Assessment accepted by Product Architecture (2026-11-08).
 >
 > **Assessment:** Read-only. Nothing was changed in code, databases, Stripe, configuration, or production.
 >
@@ -27,7 +29,7 @@ Evidence labels: **[CODE]** read from `origin/main` `6a5e5c0` · **[PROD-GET]** 
 | | |
 |---|---|
 | **Dates** | Assessed 2026-11-08; delivered in chat 2026-11-08 (not marked pending publication — see §14); published 2026-11-08 under GOV-001 |
-| **Lifecycle status** | **Accepted (assessment)** — Product Architecture, 2026-11-08. The exposure itself is **open**: containment awaits a separate PO decision |
+| **Lifecycle status** | **In progress (containment)** — assessment accepted 2026-11-08; Option A authorized 2026-11-08; operator execution pending (Appendix A) |
 | **Delivery state** | **Not merged.** Nothing deployed |
 | **This report authorizes** | **Nothing.** Containment is a separate PO decision |
 
@@ -43,6 +45,7 @@ Evidence labels: **[CODE]** read from `origin/main` `6a5e5c0` · **[PROD-GET]** 
 |---|---|---|
 | 1 | 2026-11-08 | Assessment as delivered in chat on 2026-11-08, published without changing its findings; structured per the reporting protocol (commits `a4a2766`, `4558954`) |
 | 2 | 2026-11-08 | Product Architecture verdict recorded (accepted; containment not authorized; merge not granted). Findings unchanged |
+| 3 | 2026-11-08 | PO decision *NEM-020-D6 Production Payment Containment — APPROVED, Option A*. Remote preflight recorded (§7.5); procedure verified against the repository configuration and hardened (backup outside the repo, open-session stop gate, forced API-only recreate, fail-closed verification order); Appendix A operator procedure. **Containment not yet executed** |
 
 ## 3. Repository baseline
 
@@ -119,6 +122,29 @@ All Stripe use goes through `requireStripe()` (`gifts.service.ts:46-49`, `subscr
 | No live Checkout Sessions or Customers yet | [UNVERIFIED] |
 | Staging key mode (staging is also public) | [UNVERIFIED] |
 
+### 7.5 Containment preflight (Rev 3)
+
+**Authorization:** PO, *NEM-020-D6 Production Payment Containment* (2026-11-08), Option A: clear `STRIPE_SECRET_KEY`, recreate only the production `api` container, verify, prepare rollback. Not authorized: restoring or rotating keys, Stripe changes, payments or sessions, code, CI/CD, database writes, other deployments, staging changes, merges.
+
+**Executor.** This machine holds only the restricted offsite-backup SSH key (`noetia-offsite-backup`). Using it for a production change would exceed its purpose, and creating access is not authorized. **The PO runs Appendix A as operator**; Claude verifies the returned output and records it in Rev 4.
+
+| # | Preflight item (authorization §1) | Result | Evidence |
+|---|---|---|---|
+| 1 | Production environment, API, deployment configuration, health | **Partly verified remotely.** `GET /api/health`, `/api/books?limit=1`, `/api/subscriptions/plans`, `/`, `/gift` → 200 (2026-11-08). Server-side identity, container state, and running image: **operator** (A.2 P1, P3, P4) | [PROD-GET]; Appendix A |
+| 2 | No deployment underway | **Verified remotely:** last `cd.yml` run `6a5e5c0`, 2026-10-31, completed/success; none queued or running. Re-check immediately before execution (A.1, A.2 P2) | `gh run list --workflow cd.yml` |
+| 3 | Payment, subscription, pending-checkout activity | **Operator** (A.2 P6 database, P7 Stripe Dashboard). PO previously attested no payments, subscriptions, or collections | [PO] |
+| 4 | Removing the key fails closed | **Verified** in code (§7.3). No startup config validation reads it; the only readers are `gifts.service.ts:41`, `subscriptions.service.ts:56`, `webhooks.controller.ts:27` | [CODE] |
+| 5 | Targeted API-only recreation supported | **Verified** in configuration: `api` reads `env_file: .env.production`; its own healthcheck on `/health` with `start_interval: 5s`; startup command `node dist/main` runs **no migrations** (no `migrationsRun`; migrations run only in CD); `--no-deps --no-build --force-recreate` leaves db, cache, web, worker untouched | `docker-compose.server.yml` (`api:`), `services/api/Dockerfile:25` |
+| 6 | Protected rollback | Prepared (A.4). Backup stored **outside the git checkout** (`/root/noetia-d6/`, mode 700/600), because `.gitignore` does **not** cover `.env.production` (only `.env`, `.env.local`, `.env.*.local`) | `.gitignore:13-15` |
+
+**Procedure changes from §11.2 (Rev 1), after verification:**
+- Backup moved from `/opt/noetia/.env.production.pre-d6` to `/root/noetia-d6/` (outside the repository; restricted permissions; refuses to overwrite).
+- `--force-recreate --wait` added, so the recreate is deterministic and blocks until healthy.
+- **New stop gate: open live Checkout Sessions.** An already-created session stays payable on Stripe's hosted page until it expires (up to 24 hours), even after the key is removed. Expiring sessions is a Stripe write and is not authorized, so any open session stops the procedure for a new decision.
+- The payment-disabled check (gift POST) is allowed **only after** the running API is confirmed to hold no key, so it cannot reach Stripe.
+
+**Discovery:** `.env.production` is not ignored by `.gitignore`, contrary to CLAUDE.md's guidance to "confirm with `.gitignore`". No commit happens on the server, but a `git add .` there would stage it. Not changed (outside this authorization).
+
 ## 8. External references
 
 None. No external page was consulted.
@@ -131,7 +157,9 @@ None. No external page was consulted.
 | **High** | Card testing against an unauthenticated live checkout: dispute fees and Stripe account risk |
 | **High** | Live trialing subscriptions from plan checkout, handled by webhook code SA-003 found defective |
 | Medium | Live Customer objects with user emails created before launch |
-| Medium | Staging, if it also holds a live key, has the same exposure |
+| Medium | Staging, if it also holds a live key, has the same exposure (staging is not altered by the containment) |
+| Medium | Open live Checkout Sessions remain payable for up to 24 hours after containment (A.2 P7 gate) |
+| Low | `.env.production` not covered by `.gitignore` (§7.5) |
 | Low | Stripe API use through repeated unauthenticated session creation (throttled per IP) |
 
 ## 10. Decisions
@@ -187,7 +215,7 @@ Re-run the checker (expect `live`). Delete `.env.production.pre-d6` once the fin
 | Configuration, secrets | **None** |
 | Stripe and external services | **None.** No Stripe call |
 | Deployments, restarts | **None** |
-| Production | Four public GET requests only (§4) |
+| Production | Four public GET requests only (§4). Rev 3: five public GETs (preflight item 1); **no production change yet** |
 
 ## 13. Tests and validation
 
@@ -198,7 +226,11 @@ Re-run the checker (expect `live`). Delete `.env.production.pre-d6` once the fin
 | `GET /api/subscriptions/plans`, `/token-packages` | 200; 6 plans and 4 packages, all real-format price IDs |
 | POST to any payment endpoint | **Not run** (prohibited) |
 | Stripe Dashboard checks | **Not run** (no access; §16) |
-| Containment commands | **Not run** (not authorized); syntax reviewed only |
+| Containment commands | **Not run on production** (Rev 3: authorized, awaiting operator) |
+| Rev 3: Appendix A commands as rendered (15 table commands) | `bash -n` syntax check: all pass |
+| Rev 3: C1, C2, rollback on a fake env file (fake keys) | Backup created mode 600 and refuses to overwrite; C2 changes only `STRIPE_SECRET_KEY` and prints no value; checker `live` → `empty` → `live` after rollback; file mode preserved (640 → 640) |
+| Rev 3: P5 / V1 pipeline (simulated container env) | Prints only mode words |
+| Rev 3: remote preflight | `cd.yml` idle (last run `6a5e5c0`, success); five public endpoints 200 |
 
 ## 14. Deviations and discoveries
 
@@ -214,7 +246,7 @@ Not modified: reader / Escucha Activa; book ownership; token ledger; production 
 
 | # | Item | Owner |
 |---|---|---|
-| 1 | **Containment decision (§10b) — URGENT, still open** | PO |
+| 1 | ~~Containment decision~~ **Option A approved 2026-11-08.** Operator execution of Appendix A — **URGENT** | PO / operator |
 | 2 | Live mode: product and price counts, active/archived — are the stored price IDs live prices? | PO / operator |
 | 3 | Live webhook endpoints, and whether the production webhook secret matches | PO / operator |
 | 4 | Live Checkout Sessions by status and Customer count (counts only) | PO / operator |
@@ -223,8 +255,79 @@ Not modified: reader / Escucha Activa; book ownership; token ledger; production 
 
 ## 17. Next recommended action
 
-1. PO decides containment (§10b). The NEM-020 read-only inventory continues independently.
+1. **Operator runs Appendix A** and returns the outputs listed in A.5; Claude records them as Rev 4. The NEM-020 read-only inventory continues independently (A.2 P6 runs its Part A and Part B).
 2. Operator returns §16 items 2–6; results feed NEM-020 Rev 4.
 3. ~~Product Architecture reviews this report.~~ Done 2026-11-08 (accepted).
 
 *Recommendation only.*
+
+---
+
+## Appendix A — Containment Option A: operator procedure (Rev 3)
+
+**Rules.** Copy commands from the **rendered** GitHub page (table cells show `|`; the raw Markdown escapes it as `\|`). Run on the production server as root, in **one** SSH session, **one line at a time**. Copy from this report on GitHub, **never through a chat tool**. Every command prints only status words, counts, names, or timestamps — never a secret. If any line prints something that looks like a key, or a gate is not met: **STOP** and report. Do not paste environment-file contents anywhere.
+
+### A.1 On your own machine, immediately before starting
+
+```bash
+gh run list --repo Carloskfe/noetia --workflow cd.yml --limit 3
+```
+Gate: no run `queued` or `in_progress`. Do not merge anything to `main` until A.3 and A.4 verification are complete.
+
+### A.2 Preflight (read-only)
+
+Session setup — the NEM-020 Appendix D verified fetch (pinned commit; fails closed):
+```bash
+U="https://raw.githubusercontent.com/Carloskfe/noetia/b705fd58c3362accd06808878c062d7b9f4cfe2f/docs/reports/2026-11-07-NEM-020-pre-launch-billing-inventory.md"
+get(){ curl -fsSL "$U" | awk -v L="$1" 'index($0,"**"L)==1{getline;getline;print;exit}'; }
+K=$(get "Key-mode check payload" | base64 -d); [ "$(printf %s "$K" | sha256sum | cut -c1-64)" = 91aadfae43e4e76adfea1bc0bd7c4fdfb60b4e2f32f8e7c7d6e7006db7c5e719 ] && echo KEYCHECK OK || { echo KEYCHECK MISMATCH - STOP; unset K; }
+PA=$(get "Part A payload" | base64 -d | gunzip); [ "$(printf '%s\n' "$PA" | sha256sum | cut -c1-64)" = 47006ae346c39cbbf30a1e9745bc0998ee74184914b6a117f86d34202d872c64 ] && echo PARTA OK || { echo PARTA MISMATCH - STOP; unset PA; }
+PB=$(get "Part B payload" | base64 -d | gunzip); [ "$(printf '%s\n' "$PB" | sha256sum | cut -c1-64)" = 4dee07a517dd1225b0ae4ae977a02a353cc90ef5ea467b142c7d909949906e67 ] && echo PARTB OK || { echo PARTB MISMATCH - STOP; unset PB; }
+cd /opt/noetia && DC="docker compose --env-file .env.production -f docker-compose.server.yml" && echo READY
+```
+Gate: `KEYCHECK OK`, `PARTA OK`, `PARTB OK`, `READY`.
+
+| Step | Command (one line) | Gate (STOP if not met) |
+|---|---|---|
+| P1 Identity | `hostname; git rev-parse --short HEAD; stat -c '%a %U:%G' .env.production` | HEAD `6a5e5c0`. Record the file mode/owner |
+| P2 No deploy or maintenance | `pgrep -af 'docker compose\|docker-compose\|migration:run\|npm run build' \| grep -v pgrep \|\| echo NO-ACTIVE-OPERATION` | `NO-ACTIVE-OPERATION` |
+| P3 Containers | `$DC ps --format '{{.Service}} {{.Status}}'; docker inspect -f '{{.Name}} {{.State.StartedAt}} restarts={{.RestartCount}}' $($DC ps -q)` | All `Up`; `api` healthy. **Keep this output** for comparison in V2 |
+| P4 API image present | `docker image inspect "$(docker inspect -f '{{.Config.Image}}' $($DC ps -q api))" >/dev/null && echo API-IMAGE-PRESENT` | `API-IMAGE-PRESENT` |
+| P5 Key mode | `[ -n "$K" ] && awk "$K" .env.production` then `[ -n "$K" ] && $DC exec -T api sh -c 'printf "STRIPE_SECRET_KEY=%s\nSTRIPE_WEBHOOK_SECRET=%s\n" "$STRIPE_SECRET_KEY" "$STRIPE_WEBHOOK_SECRET"' \| awk "$K"` | Both `STRIPE MODE: live`; **no** `WARNING` line. Record `WEBHOOK SECRET` |
+| P6 Database activity (read-only) | NEM-020 Appendix D Step 3: identity line, then Part A, then Part B | `noetia\|noetia\|on\|68\|ReconcilePlanDisplayPrices1748300000067`; ends `ROLLBACK`. **STOP** if Q2 shows `with_stripe_sub` > 0 for `active`/`trialing`/`past_due`; Q9 shows `checkout.session.completed`, `invoice.paid`, `invoice.payment_succeeded`, `charge.succeeded`, or `payment_intent.succeeded`; or Q14 `gift_cards_with_checkout` > 0 |
+| P7 Stripe Dashboard, **live mode**, view only | Payments: succeeded / uncaptured / incomplete counts. Subscriptions: count by status. Checkout Sessions: **open** and **complete** counts. Webhooks: endpoint count, failed deliveries. Customers: count | **STOP** on any succeeded or uncaptured payment, any subscription, any **open** or **complete** Checkout Session, or any failed webhook delivery for a checkout event |
+
+### A.3 Containment
+
+| Step | Command (one line) | Gate |
+|---|---|---|
+| C1 Protected backup | `[ ! -e /root/noetia-d6/env.production.pre-d6 ] && install -d -m 700 /root/noetia-d6 && install -m 600 .env.production /root/noetia-d6/env.production.pre-d6 && cmp -s .env.production /root/noetia-d6/env.production.pre-d6 && stat -c '%a %U %n' /root/noetia-d6/env.production.pre-d6 && echo BACKUP-OK` | `600 root …` and `BACKUP-OK`. Nothing printed → a backup already exists: STOP |
+| C2 Clear the key | `[ -n "$K" ] && sed -i 's/^STRIPE_SECRET_KEY=.*/STRIPE_SECRET_KEY=/' .env.production && diff /root/noetia-d6/env.production.pre-d6 .env.production \| grep '^[<>]' \| cut -d= -f1; awk "$K" .env.production; stat -c '%a %U:%G' .env.production` | Only `< STRIPE_SECRET_KEY` and `> STRIPE_SECRET_KEY` lines; `STRIPE MODE: empty`; `WEBHOOK SECRET` as in P5; mode/owner as in P1. **If not met:** restore the file with `cat /root/noetia-d6/env.production.pre-d6 > .env.production` (the API was not recreated, so nothing changed in service) and STOP |
+| C3 Recreate only the API | `$DC up -d --no-deps --no-build --force-recreate --wait --wait-timeout 180 api; echo "exit=$?"` | `exit=0`. Expected impact: API unavailable roughly 10–60 seconds; web, database, cache, worker untouched |
+
+### A.4 Verification
+
+| Step | Command | Gate |
+|---|---|---|
+| V1 Running API holds no key | `[ -n "$K" ] && $DC exec -T api sh -c 'printf "STRIPE_SECRET_KEY=%s\nSTRIPE_WEBHOOK_SECRET=%s\n" "$STRIPE_SECRET_KEY" "$STRIPE_WEBHOOK_SECRET"' \| awk "$K"` | `STRIPE MODE: empty`. **If `live`: do NOT run V6**; STOP |
+| V2 Only the API restarted | `$DC ps --format '{{.Service}} {{.Status}}'; docker inspect -f '{{.Name}} {{.State.StartedAt}} restarts={{.RestartCount}}' $($DC ps -q)` | All `Up`, `api` healthy; only the api `StartedAt` differs from P3; `restarts=0` |
+| V3 No application errors | `$DC logs --since 10m api 2>&1 \| grep -ciE 'error\|exception\|unhandled'` | `0`. If not 0, review the lines **privately** before sharing (they may contain user data); report the count and message types only |
+| V4 Public endpoints (any machine) | `for u in /api/health "/api/books?limit=1" /api/subscriptions/plans / /gift /pricing; do curl -s -o /dev/null -w "$u %{http_code}\n" "https://noetia.app$u"; done` | All `200` |
+| V5 Non-payment functions (browser) | Log in; open Biblioteca; open a book and turn pages; play Escucha Activa audio for 30 seconds; open a fragment | All work |
+| V6 Payment initiation disabled | **Only after V1 = `empty`:** `curl -s -w ' HTTP %{http_code}\n' -X POST https://noetia.app/api/gifts/checkout -H 'Content-Type: application/json' -d '{"recipientEmail":"containment-check@example.invalid","tokenCount":1}'` | `{"error":"payments_not_configured"} HTTP 400`. With no key the API never contacts Stripe (§7.3) |
+| V7 Stripe Dashboard, live | Checkout Sessions and Customers since the containment time | No new objects |
+| V8 End session | `unset K PA PB U DC; unset -f get` | — |
+
+**If any verification fails: STOP and report the exact condition. Do not restore the key without explicit PO approval.** If the API is not healthy after C3, collect `$DC ps api` and `$DC logs --tail 50 api` (review privately first) and report.
+
+### A.5 Rollback (only with explicit PO approval)
+
+```bash
+cd /opt/noetia && cat /root/noetia-d6/env.production.pre-d6 > .env.production && awk "$K" .env.production && docker compose --env-file .env.production -f docker-compose.server.yml up -d --no-deps --no-build --force-recreate --wait --wait-timeout 180 api; echo "exit=$?"
+```
+Then V1 (expect `live`), V2, V4. `cat … >` keeps the original file's inode, owner, and mode. Keep the backup until the PO decides the final state; deleting it needs PO approval (it contains the live key). The password manager remains the canonical copy. A later CD deploy reads the same file, so containment persists across deploys.
+
+### A.6 Return to Claude
+
+The outputs of A.1, P1–P6, the P7 counts, C1–C3, V1–V4 and V6, the V5 and V7 results, and the attestation: *"No Stripe change, database write, other container restart, or staging change was made, and no secret was displayed or shared."*
+
