@@ -2,7 +2,7 @@
 
 > **Status (Rev 3): CONTAINMENT OPTION A AUTHORIZED by the Product Owner (2026-11-08) — NOT YET EXECUTED. Payments remain LIVE.** Claude has no production shell access (§7.5), so the change is run by the PO as operator using the gated procedure in **Appendix A**. Remote preflight checks passed (§7.5). Merge not granted.
 >
-> Assessment accepted by Product Architecture (2026-11-08).
+> Assessment accepted by Product Architecture (2026-11-08). **Rev 4:** Appendix A security correction (C2 verification without secret-bearing output; fail-closed gating) — ready for operator review.
 >
 > **Assessment:** Read-only. Nothing was changed in code, databases, Stripe, configuration, or production.
 >
@@ -46,6 +46,7 @@ Evidence labels: **[CODE]** read from `origin/main` `6a5e5c0` · **[PROD-GET]** 
 | 1 | 2026-11-08 | Assessment as delivered in chat on 2026-11-08, published without changing its findings; structured per the reporting protocol (commits `a4a2766`, `4558954`) |
 | 2 | 2026-11-08 | Product Architecture verdict recorded (accepted; containment not authorized; merge not granted). Findings unchanged |
 | 3 | 2026-11-08 | PO decision *NEM-020-D6 Production Payment Containment — APPROVED, Option A*. Remote preflight recorded (§7.5); procedure verified against the repository configuration and hardened (backup outside the repo, open-session stop gate, forced API-only recreate, fail-closed verification order); Appendix A operator procedure. **Containment not yet executed** |
+| 4 | 2026-11-08 | PO *Security Correction to Appendix A* (documentation only). **C2 rewritten**: no `diff`; in-place write from the backup; line-by-line comparison inside awk printing only counts and line numbers; mode/owner check; automatic restore on any failure. Safety review of all of Appendix A: success flags gate C2 → C3 and V1 → V6; backup SHA-256 stored at C1 and verified before rollback; rollback works in a fresh session. Procedure tested on fake files (§13). **Containment not yet executed** |
 
 ## 3. Repository baseline
 
@@ -230,6 +231,7 @@ Re-run the checker (expect `live`). Delete `.env.production.pre-d6` once the fin
 | Rev 3: Appendix A commands as rendered (15 table commands) | `bash -n` syntax check: all pass |
 | Rev 3: C1, C2, rollback on a fake env file (fake keys) | Backup created mode 600 and refuses to overwrite; C2 changes only `STRIPE_SECRET_KEY` and prints no value; checker `live` → `empty` → `live` after rollback; file mode preserved (640 → 640) |
 | Rev 3: P5 / V1 pipeline (simulated container env) | Prints only mode words |
+| Rev 4: hardened C1/C2/C3, V1/V6, rollback (fake files, stubbed `docker compose` and `curl`) | All 7 commands pass `bash -n`. C2 normal: 1 line cleared, inode and mode unchanged. Fail-closed cases all stop and leave the original content: extra unexpected change, key already empty, mode/owner mismatch, missing backup (file **not** truncated). CRLF, duplicate key lines, and a file without a trailing newline handled. Tampered backup → rollback refuses. C3 refuses without C2; V6 refuses unless the running API reports `empty`. Leak scan of all outputs: 0 secret strings |
 | Rev 3: remote preflight | `cd.yml` idle (last run `6a5e5c0`, success); five public endpoints 200 |
 
 ## 14. Deviations and discoveries
@@ -289,7 +291,7 @@ Gate: `KEYCHECK OK`, `PARTA OK`, `PARTB OK`, `READY`.
 
 | Step | Command (one line) | Gate (STOP if not met) |
 |---|---|---|
-| P1 Identity | `hostname; git rev-parse --short HEAD; stat -c '%a %U:%G' .env.production` | HEAD `6a5e5c0`. Record the file mode/owner |
+| P1 Identity | `hostname; git rev-parse --short HEAD; M0=$(stat -c '%a %U:%G' .env.production); echo "env file mode/owner: $M0"` | HEAD `6a5e5c0`. `M0` now holds the file mode/owner; C2 checks it |
 | P2 No deploy or maintenance | `pgrep -af 'docker compose\|docker-compose\|migration:run\|npm run build' \| grep -v pgrep \|\| echo NO-ACTIVE-OPERATION` | `NO-ACTIVE-OPERATION` |
 | P3 Containers | `$DC ps --format '{{.Service}} {{.Status}}'; docker inspect -f '{{.Name}} {{.State.StartedAt}} restarts={{.RestartCount}}' $($DC ps -q)` | All `Up`; `api` healthy. **Keep this output** for comparison in V2 |
 | P4 API image present | `docker image inspect "$(docker inspect -f '{{.Config.Image}}' $($DC ps -q api))" >/dev/null && echo API-IMAGE-PRESENT` | `API-IMAGE-PRESENT` |
@@ -299,33 +301,57 @@ Gate: `KEYCHECK OK`, `PARTA OK`, `PARTB OK`, `READY`.
 
 ### A.3 Containment
 
-| Step | Command (one line) | Gate |
-|---|---|---|
-| C1 Protected backup | `[ ! -e /root/noetia-d6/env.production.pre-d6 ] && install -d -m 700 /root/noetia-d6 && install -m 600 .env.production /root/noetia-d6/env.production.pre-d6 && cmp -s .env.production /root/noetia-d6/env.production.pre-d6 && stat -c '%a %U %n' /root/noetia-d6/env.production.pre-d6 && echo BACKUP-OK` | `600 root …` and `BACKUP-OK`. Nothing printed → a backup already exists: STOP |
-| C2 Clear the key | `[ -n "$K" ] && sed -i 's/^STRIPE_SECRET_KEY=.*/STRIPE_SECRET_KEY=/' .env.production && diff /root/noetia-d6/env.production.pre-d6 .env.production \| grep '^[<>]' \| cut -d= -f1; awk "$K" .env.production; stat -c '%a %U:%G' .env.production` | Only `< STRIPE_SECRET_KEY` and `> STRIPE_SECRET_KEY` lines; `STRIPE MODE: empty`; `WEBHOOK SECRET` as in P5; mode/owner as in P1. **If not met:** restore the file with `cat /root/noetia-d6/env.production.pre-d6 > .env.production` (the API was not recreated, so nothing changed in service) and STOP |
-| C3 Recreate only the API | `$DC up -d --no-deps --no-build --force-recreate --wait --wait-timeout 180 api; echo "exit=$?"` | `exit=0`. Expected impact: API unavailable roughly 10–60 seconds; web, database, cache, worker untouched |
+Rev 4: each step sets a flag only on success, and the next step refuses to run without it. Run the blocks exactly as shown, one line each.
+
+**C1 — Protected backup.** Copies the file to `/root/noetia-d6/` (directory 700, file 600, refuses to overwrite), confirms it is byte-identical, and stores its SHA-256 in a root-only file for rollback integrity. Prints only the mode, owner, and path.
+```bash
+unset C1OK; [ ! -e /root/noetia-d6/env.production.pre-d6 ] && install -d -m 700 /root/noetia-d6 && install -m 600 .env.production /root/noetia-d6/env.production.pre-d6 && cmp -s .env.production /root/noetia-d6/env.production.pre-d6 && (umask 077; sha256sum /root/noetia-d6/env.production.pre-d6 > /root/noetia-d6/env.production.pre-d6.sha256) && stat -c '%a %U %n' /root/noetia-d6/env.production.pre-d6 && C1OK=1 && echo BACKUP-OK
+```
+Gate: `600 root /root/noetia-d6/env.production.pre-d6` and `BACKUP-OK`. Nothing printed → a backup already exists or the copy failed: **STOP**.
+
+**C2 — Clear the key and verify without printing values.** Writes the cleared file **in place** from the backup (same inode, so the original mode and owner are kept), then compares the backup and the new file **line by line inside awk**: every line must be identical except `STRIPE_SECRET_KEY=…` lines, which must now be exactly `STRIPE_SECRET_KEY=`. It prints only counts and line numbers, never content. It then checks the mode/owner against `M0` (P1) and that the key checker reports `empty`. **Any failure restores the original file automatically** (the API has not been recreated, so service is unchanged) and prints STOP. No `diff` is used.
+```bash
+unset C2OK; [ "$C1OK" = 1 ] && [ -n "$K" ] && [ -n "$M0" ] && awk '/^STRIPE_SECRET_KEY=/{print "STRIPE_SECRET_KEY=";next}{print}' /root/noetia-d6/env.production.pre-d6 > .env.production && awk -v want='STRIPE_SECRET_KEY=' 'NR==FNR{a[FNR]=$0;n=FNR;next}{m=FNR;if($0!=a[FNR]){if(a[FNR]~/^STRIPE_SECRET_KEY=/&&$0==want)c++;else{bad++;print "UNEXPECTED DIFFERENCE at line " FNR}}}END{if(m!=n){bad++;print "LINE COUNT DIFFERS"}if(bad||c<1){print "C2 COMPARE FAIL";exit 1}print "C2 COMPARE OK: " c " line(s) cleared, " n-c " other lines identical"}' /root/noetia-d6/env.production.pre-d6 .env.production && [ "$(stat -c '%a %U:%G' .env.production)" = "$M0" ] && KM=$(awk "$K" .env.production) && echo "$KM" && echo "$KM" | grep -qx 'STRIPE MODE: empty' && C2OK=1 && echo C2-OK; [ "$C2OK" = 1 ] || { [ "$C1OK" = 1 ] && [ -s /root/noetia-d6/env.production.pre-d6 ] && cat /root/noetia-d6/env.production.pre-d6 > .env.production && echo "C2 FAILED - ORIGINAL FILE RESTORED - STOP" || echo "C2 NOT RUN OR FAILED - FILE NOT TOUCHED - STOP"; }
+```
+Gate: `C2 COMPARE OK: 1 line(s) cleared, N other lines identical`, `STRIPE MODE: empty`, `WEBHOOK SECRET` as in P5, `C2-OK`. Any `UNEXPECTED DIFFERENCE`, `LINE COUNT DIFFERS`, `C2 COMPARE FAIL`, or `STOP` line: **STOP** (file already restored).
+
+**C3 — Recreate only the API.** Runs only if C2 succeeded in this session.
+```bash
+if [ "$C2OK" = 1 ]; then $DC up -d --no-deps --no-build --force-recreate --wait --wait-timeout 180 api; echo "exit=$?"; else echo "C3 NOT RUN - C2 NOT CONFIRMED - STOP"; fi
+```
+Gate: `exit=0`. Expected impact: API unavailable roughly 10–60 seconds; web, database, cache, worker untouched (`--no-deps`; `--no-build` uses the existing image checked in P4).
 
 ### A.4 Verification
 
 | Step | Command | Gate |
 |---|---|---|
-| V1 Running API holds no key | `[ -n "$K" ] && $DC exec -T api sh -c 'printf "STRIPE_SECRET_KEY=%s\nSTRIPE_WEBHOOK_SECRET=%s\n" "$STRIPE_SECRET_KEY" "$STRIPE_WEBHOOK_SECRET"' \| awk "$K"` | `STRIPE MODE: empty`. **If `live`: do NOT run V6**; STOP |
+| V1 Running API holds no key | See the V1 block below the table | `STRIPE MODE: empty` and `V1-OK`. Otherwise **STOP** (V6 will refuse to run) |
 | V2 Only the API restarted | `$DC ps --format '{{.Service}} {{.Status}}'; docker inspect -f '{{.Name}} {{.State.StartedAt}} restarts={{.RestartCount}}' $($DC ps -q)` | All `Up`, `api` healthy; only the api `StartedAt` differs from P3; `restarts=0` |
 | V3 No application errors | `$DC logs --since 10m api 2>&1 \| grep -ciE 'error\|exception\|unhandled'` | `0`. If not 0, review the lines **privately** before sharing (they may contain user data); report the count and message types only |
 | V4 Public endpoints (any machine) | `for u in /api/health "/api/books?limit=1" /api/subscriptions/plans / /gift /pricing; do curl -s -o /dev/null -w "$u %{http_code}\n" "https://noetia.app$u"; done` | All `200` |
 | V5 Non-payment functions (browser) | Log in; open Biblioteca; open a book and turn pages; play Escucha Activa audio for 30 seconds; open a fragment | All work |
-| V6 Payment initiation disabled | **Only after V1 = `empty`:** `curl -s -w ' HTTP %{http_code}\n' -X POST https://noetia.app/api/gifts/checkout -H 'Content-Type: application/json' -d '{"recipientEmail":"containment-check@example.invalid","tokenCount":1}'` | `{"error":"payments_not_configured"} HTTP 400`. With no key the API never contacts Stripe (§7.3) |
+| V6 Payment initiation disabled | See the V6 block below the table (run on the server, in the same session) | `{"error":"payments_not_configured"} HTTP 400`. With no key the API never contacts Stripe (§7.3) |
 | V7 Stripe Dashboard, live | Checkout Sessions and Customers since the containment time | No new objects |
-| V8 End session | `unset K PA PB U DC; unset -f get` | — |
+| V8 End session | `unset K PA PB U DC M0 KM C1OK C2OK V1OK; unset -f get` | — |
+
+**V1** (sets `V1OK` only when the running API holds no key):
+```bash
+unset V1OK; [ -n "$K" ] && KM=$($DC exec -T api sh -c 'printf "STRIPE_SECRET_KEY=%s\nSTRIPE_WEBHOOK_SECRET=%s\n" "$STRIPE_SECRET_KEY" "$STRIPE_WEBHOOK_SECRET"' | awk "$K") && echo "$KM" && echo "$KM" | grep -qx 'STRIPE MODE: empty' && V1OK=1 && echo V1-OK
+```
+**V6** (refuses to run unless V1 succeeded in this session, so it cannot reach Stripe):
+```bash
+if [ "$V1OK" = 1 ]; then curl -s -w ' HTTP %{http_code}\n' -X POST https://noetia.app/api/gifts/checkout -H 'Content-Type: application/json' -d '{"recipientEmail":"containment-check@example.invalid","tokenCount":1}'; else echo "V6 NOT RUN - V1 NOT CONFIRMED - STOP"; fi
+```
 
 **If any verification fails: STOP and report the exact condition. Do not restore the key without explicit PO approval.** If the API is not healthy after C3, collect `$DC ps api` and `$DC logs --tail 50 api` (review privately first) and report.
 
 ### A.5 Rollback (only with explicit PO approval)
 
+Verifies the backup against the SHA-256 stored in C1 **before** restoring; restores in place (keeps inode, mode, owner); confirms the restored file is byte-identical to the backup; only then recreates the API. Works in a fresh session.
 ```bash
-cd /opt/noetia && cat /root/noetia-d6/env.production.pre-d6 > .env.production && awk "$K" .env.production && docker compose --env-file .env.production -f docker-compose.server.yml up -d --no-deps --no-build --force-recreate --wait --wait-timeout 180 api; echo "exit=$?"
+cd /opt/noetia && DC="docker compose --env-file .env.production -f docker-compose.server.yml" && if sha256sum -c --quiet /root/noetia-d6/env.production.pre-d6.sha256 && cat /root/noetia-d6/env.production.pre-d6 > .env.production && cmp -s /root/noetia-d6/env.production.pre-d6 .env.production; then echo RESTORE-OK; $DC up -d --no-deps --no-build --force-recreate --wait --wait-timeout 180 api; echo "exit=$?"; else echo "RESTORE NOT DONE - STOP"; fi
 ```
-Then V1 (expect `live`), V2, V4. `cat … >` keeps the original file's inode, owner, and mode. Keep the backup until the PO decides the final state; deleting it needs PO approval (it contains the live key). The password manager remains the canonical copy. A later CD deploy reads the same file, so containment persists across deploys.
+Gate: `RESTORE-OK` and `exit=0`; then V1 (expect `STRIPE MODE: live`), V2, V4. `RESTORE NOT DONE - STOP` → nothing was recreated; report. Keep the backup until the PO decides the final state; deleting it needs PO approval (it contains the live key). The password manager remains the canonical copy. A later CD deploy reads the same file, so containment persists across deploys.
 
 ### A.6 Return to Claude
 
