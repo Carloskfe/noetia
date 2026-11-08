@@ -54,6 +54,12 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 
 > Record location: the full records are in `docs/operating-framework/decisions/product-owner/`, which is **not yet on `main`** (it arrives with the operating-framework and three-tier branches). This file is the register on `main`, so these entries are recorded here.
 
+### PO-025 — Three-tier product structure (decided 2026-11-08)
+→ **[PO-025](../operating-framework/decisions/product-owner/PO-025-three-tier-product-structure.md)**
+
+- **Noetia** (multimodal reading and social platform), **Noetia+** (interactive, source-aware research), **NoetiaX** (qualitatively deeper research, not simply a larger book limit). Both premium tiers: interactive conversations and session-derived Research Briefs. Premium requires a qualifying book subscription (PO-026). Acquired books stay permanently owned; book tokens and AI budgets stay separate. "Basic" is not a customer-facing label.
+- **Not decided:** token expiration (**TT-01 open**; current behaviour 90 days is unchanged; PO-024's six-month proposal is neither implemented nor approved); premium prices; quantitative AI budgets; additional token entitlements.
+
 ### PO-026 — Premium subscription prerequisite (TT-02)
 → **[PO-026](../operating-framework/decisions/product-owner/PO-026-premium-subscription-prerequisite.md)** · ADR-005 (accepted 2026-11-08)
 
@@ -84,7 +90,7 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - ADR-005 and ADR-006 prepared, and **accepted on 2026-11-08** (revision 3) after independent Product Architecture review. NEM-019 reconciled; **not approved or executed**.
 
 ### Still open in the three-tier package
-TT-01 purchased-token expiry · TT-12 verified AI-eligible launch corpus and rights · NoetiaX depth and evaluation criteria (TT-07) · AI budget values and resets (TT-09, TT-11) · premium pricing and Stripe architecture (TT-16) · quotation and anti-reconstruction thresholds (TT-13) · retention and export (TT-14) · legal disclosures and provider data handling (TT-22). Draft records **PO-025** (three-tier structure) and **PO-029** (eligible corpus) remain **not decided**. See [`05-open-decisions.md`](../architecture/three-tier-intelligence/05-open-decisions.md).
+TT-01 purchased-token expiry · TT-12 verified AI-eligible launch corpus and rights · NoetiaX depth and evaluation criteria (TT-07) · AI budget values and resets (TT-09, TT-11) · premium pricing and Stripe architecture (TT-16) · quotation and anti-reconstruction thresholds (TT-13) · retention and export (TT-14) · legal disclosures and provider data handling (TT-22). **PO-025** (three-tier structure) was **decided on 2026-11-08** with TT-01 kept open; draft **PO-029** (eligible corpus) remains **not decided**. See [`05-open-decisions.md`](../architecture/three-tier-intelligence/05-open-decisions.md).
 
 ---
 

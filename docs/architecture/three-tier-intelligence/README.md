@@ -2,7 +2,7 @@
 
 **Noetia · Noetia+ · NoetiaX**
 
-**Status:** PROPOSED: awaiting Product Architecture review. T0 preliminary rulings are reflected and drafted as PO-025…029 and ADR-005/006; [T0 report](../../reports/2026-11-06-SA-002-T0-decision-closure.md). **Updated 2026-11-08:** TT-02, TT-04, TT-05, TT-21 **decided** (PO-026, PO-027, PO-028, PO-030); TT-01 and TT-12 remain open; ADR-005/006 revised and still Proposed; NEM-006 superseded ([08](08-architecture-governance-record.md)); NEM-019 still DRAFT. **ADR-005 and ADR-006 revision 3 accepted 2026-11-08**; NEM-019 revision 4 remains DRAFT ([T0 report, Revision 2](../../reports/2026-11-06-SA-002-T0-decision-closure.md#revision-2--product-owner-approvals-2026-11-08)).
+**Status:** PROPOSED: awaiting Product Architecture review. T0 preliminary rulings are reflected and drafted as PO-025…029 and ADR-005/006; [T0 report](../../reports/2026-11-06-SA-002-T0-decision-closure.md). **Updated 2026-11-08:** TT-02, TT-04, TT-05, TT-21 **decided** (PO-026, PO-027, PO-028, PO-030); TT-01 and TT-12 remain open; ADR-005/006 revised and still Proposed; NEM-006 superseded ([08](08-architecture-governance-record.md)); NEM-019 still DRAFT. **ADR-005 and ADR-006 revision 3 accepted 2026-11-08**; **PO-025 decided 2026-11-08** (TT-01 open); identifier NEM-019 reserved; NEM-019 revision 4 remains DRAFT ([T0 report, Revision 2](../../reports/2026-11-06-SA-002-T0-decision-closure.md#revision-2--product-owner-approvals-2026-11-08)).
 **Date:** 2026-11-06 · **Assignment ID:** `SA-002` (provisional) · **Authorization:** documentation and analysis only.
 
 > Nothing here authorizes implementation. No application code, database, infrastructure, Stripe, or deployment was changed. NEM-003 and all ADRs and PO records are preserved as written. Facts were verified against `origin/main` at `6a5e5c0`. This is product and architecture analysis, not legal advice.
@@ -25,7 +25,7 @@
 ## The main conclusions
 
 1. **The approved architecture holds.** No ADR needs replacing. Tiers fit as a resolver, a session book set, and per-tier budgets behind the existing Orchestrator.
-2. **Eleven conflicts are raised for the PO, six of them High** ([02 §2](02-reconciliation-report.md#2-conflicts-raised-for-product-owner-review)). T0 ruled on four of them, including token expiry: PO-024 is preserved.
+2. **Eleven conflicts are raised for the PO, six of them High** ([02 §2](02-reconciliation-report.md#2-conflicts-raised-for-product-owner-review)). T0 ruled on four of them, including token expiry (PO-024 preserved). **Updated 2026-11-08:** that token-expiry ruling was not adopted; **TT-01 is OPEN**.
 3. **Billing cannot safely carry a premium plan today.** One plan row would publicly list itself, mint book tokens, unlock all paid books, and overwrite the user's book plan ([02 §3](02-reconciliation-report.md#3-current-code-versus-the-design)).
 4. **Depth must be testable.** Proposed gate: the same books and question on both tiers, measured against criteria the PO approves.
 5. **Rights could leave nothing to analyse.** `books` has no rights or edition data, so default deny yields an empty corpus until the verified pilot set exists (PO-029, TT-26).

@@ -11,6 +11,35 @@
 | **[PROPOSED]** | Architecture proposal |
 | **[OPEN]** | Unresolved decision |
 
+## Revision 3 — PO-025 decided, NEM-019 identifier reserved, readiness (2026-11-08)
+
+> **Status: REVIEW — documentation only.** PO instruction *PO-025 Reconciliation and NEM-019 Governance Closure* (2026-11-08). **NEM-019 readiness: READY FOR PO APPROVAL.** NEM-019 remains **DRAFT**; it is not approved or executed.
+
+| Item | Result |
+|---|---|
+| **PO-025** | Token-expiration wording corrected: **TT-01 OPEN**; PO-024's six-month proposal stated as neither implemented nor approved; current behaviour (90 days in `subscriptions.service.ts:27,71` and `terms-of-service.ts:31,128`) stated as unchanged. Approved structure preserved. No prices, budget values, or additional token entitlements decided. **Contradiction check:** no material conflict with ADR-005/006 (accepted) or PO-026, PO-027, PO-028, PO-030. **Marked `DECIDED`, 2026-11-08** |
+| Same claim elsewhere | "PO-024 governs / preserved" corrected in three-tier `01`, `02`, `05`, `README` |
+| Not a conflict | SA-003's $5/$8 are planning prices (PR #36), and PO-025 sets no price. "Separate monthly budgets" comes from the 2026-11-06 scope update; values and reset remain open |
+| **NEM-019 identifier** | Verified on every remote branch: the only `NEM-019` mission file is this mission's (three-tier stack); PR #16's `REGISTRY.md` and NOF-001's registry list no NEM-019 or higher. **Reserved** by the PO on 2026-11-08 and recorded in `docs/engineering-missions/README.md` (*Mission identifier reservations*), NEM-019's header, `05`, `08` |
+| Left unchanged deliberately | Accepted ADR-005 cites "PO-025 (draft) … terminology only"; decided PO-026 cites "PO-025 (draft)" for internal language. Both were true when written; accepted ADR and decided PO text are not edited |
+
+**NEM-019 revision 4 recheck** against accepted ADR-005/006 and decided PO-025: product rules (§7), turn order and settlement (§9, AC-15c/15d), deletion (AC-15e/15f), eligibility (AC-11b), and context invariants (AC-12a) match the accepted text; references (§3, §4, §17) updated. No contradiction found.
+
+**Verdict: READY FOR PO APPROVAL.**
+
+| Remaining | Kind |
+|---|---|
+| PO approval of NEM-019 revision 4 (moving it out of DRAFT) | **The approval decision itself** — the only remaining prerequisite |
+| Retention of anonymized cost records after account deletion | Optional; either option satisfies AC-15e |
+| F-6 (merge creates production tables; separate deployment authorization) · F-10 (raw local test evidence in the completion report) | Execution and merge conditions, not approval blockers |
+| TT-01, TT-12, TT-27, TT-07, TT-09/10/11, TT-13, TT-14, TT-15, TT-16, TT-22, TT-25, pricing | **Later-phase decisions**; none blocks the dark control plane |
+
+| Rev | Date | Change |
+|---|---|---|
+| 3 | 2026-11-08 | PO-025 decided (TT-01 open); NEM-019 identifier reserved; readiness verdict |
+
+---
+
 ## Revision 2 — Product Owner approvals (2026-11-08)
 
 > **Status: REVIEW — documentation only; nothing merged or executed.** The Product Owner approved TT-02, TT-04, TT-05, and TT-21 on 2026-11-08. This revision records them, reconciles the three-tier package, ADR-005/006, and NEM-019, and assesses readiness. Revision 1 (2026-11-06, below) is preserved unchanged as the historical T0 record.

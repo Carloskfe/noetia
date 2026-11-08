@@ -178,5 +178,15 @@ NEM-003 is **not** to be rewritten, moved, reinterpreted, or implemented under t
 
 ---
 
+## Mission identifier reservations
+
+Identifiers the Product Owner has reserved for post-governance missions. **A reservation is not approval and authorizes no execution.** Mission reports are indexed in [`docs/reports/README.md`](../reports/README.md).
+
+| ID | Mission | Reserved | Status | Document |
+|----|---------|----------|--------|----------|
+| NEM-019 | Tier-Aware Intelligence Control Plane (Dark, Simulated Providers Only) | 2026-11-08 (PO) | **DRAFT** (revision 4) — not approved | [`DRAFT/NEM-019-tier-aware-intelligence-control-plane.md`](DRAFT/NEM-019-tier-aware-intelligence-control-plane.md) |
+
+---
+
 ## For Claude Code
 See the root `CLAUDE.md` § *Engineering Mission Governance*. In short: **never execute a mission because it exists or is approved** — execution needs an explicit Product Owner instruction naming it; validate assumptions against the repository first; STOP and ask on any conflict with product policy, security, financial rules, ownership, or protected systems; and STOP for review after authorized work.

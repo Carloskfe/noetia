@@ -1,7 +1,7 @@
 # NOETIA ENGINEERING MISSION — NEM-019
 ## Tier-Aware Intelligence Control Plane (Dark, Simulated Providers Only)
 
-**Status:** DRAFT (revision 4, 2026-11-08, amended the same day for §3, §4, AC-15c after ADR-005/006 acceptance; review corrections B-1…B-5 incorporated; revision 3 reconciled the PO approvals of TT-02, TT-04, TT-05, TT-21; **not approved**; identifier verified unused, not yet assigned)
+**Status:** DRAFT (revision 4, 2026-11-08, amended the same day for §3, §4, AC-15c after ADR-005/006 acceptance; review corrections B-1…B-5 incorporated; revision 3 reconciled the PO approvals of TT-02, TT-04, TT-05, TT-21; **not approved**; **identifier `NEM-019` reserved by the PO on 2026-11-08**; reservation is not approval)
 **Mission type:** IMPLEMENTATION
 **Implementation authorization:** LIMITED (once approved; **none while DRAFT**)
 **Schema changes:** ADDITIVE ONLY, applied to disposable test databases only
@@ -13,7 +13,9 @@
 
 ---
 
-> **Revision 4 amendment (2026-11-08).** ADR-005 and ADR-006 revision 3 were **accepted** on 2026-11-08. §3 and §4 updated; AC-15c distinguishes admission-time from settlement-time ledger failure. **This mission remains DRAFT; it is not approved.**
+> **Revision 4 amendment 2 (2026-11-08).** Identifier `NEM-019` reserved by the PO for this mission; PO-025 decided (TT-01 kept open). §3, §4, §17 updated. **Still DRAFT; not approved.**
+>
+> **Revision 4 amendment (2026-11-08). ADR-005 and ADR-006 revision 3 were **accepted** on 2026-11-08. §3 and §4 updated; AC-15c distinguishes admission-time from settlement-time ledger failure. **This mission remains DRAFT; it is not approved.**
 >
 > **Revision 4 (2026-11-08). Architecture review corrections B-1…B-5 (review PR #41, accepted by the PO) are incorporated in §3, §9, §10, §11, §12, and §16, together with the PO's added requirements on settlement recovery and the account-deletion test. PO-026, PO-027, PO-028, and PO-030 are unchanged.
 >
@@ -26,11 +28,10 @@ The Product Owner defined three tiers and issued preliminary rulings TT-01, 02, 
 Deliver a dark, fully tested control plane in `services/api/src/knowledge/` that can resolve a tier, create a research session within its book limit, lock and fork sessions, deny unverified rights, and reserve and settle an internal budget, using **simulated** model, plan, and ownership dependencies. **Done** means every guarantee in §11 is proven by tests. No customer can reach it, and it is never deployed under this mission.
 
 ## 3. Dependencies
-**Satisfied (2026-11-08):** PO-026, PO-027, PO-028, PO-030 decided; **ADR-005 and ADR-006 revision 3 accepted**.
+**Satisfied (2026-11-08):** PO-025, PO-026, PO-027, PO-028, PO-030 decided; **ADR-005 and ADR-006 revision 3 accepted**; **identifier `NEM-019` reserved**.
 
 **Required before approval:**
-- Product Owner approval of this mission text and confirmation of the `NEM-019` identifier.
-- **Product Owner ruling:** whether draft PO-025 (three-tier structure) must be accepted first. This mission uses only the tier names and the 3/10 limits, which PO-027 decides.
+- Product Owner approval of this mission text (revision 4).
 
 **Not required before approval (PO, 2026-11-08):** TT-01 (PO-024 Confirmation 1) and TT-12 (draft PO-029). Both must be resolved before their dependent commercial or content-release phases. The PO-022 and PO-023 amendment texts are record follow-ups to PO-026, not inputs to this mission.
 
@@ -39,7 +40,7 @@ Deliver a dark, fully tested control plane in `services/api/src/knowledge/` that
 **Test environment:** real-PostgreSQL tests run against a disposable local database. The NEM-014 CI job exists only on Release A, not on `main`, and CI changes are out of scope. CI must not be weakened or changed to accommodate this mission.
 
 ## 4. Source-of-truth references
-PO-026, PO-027, PO-028, PO-030 (decided) · PO-025, PO-029 (drafts) · ADR-005, ADR-006 (**accepted 2026-11-08, revision 3**) · PO-001…004 · ADR-001…004 · PO-021…024 · `docs/architecture/three-tier-intelligence/` · NEM-003 `03`, `08`, `09`, `18` as historical design · Code: `app.module.ts`, `migrations/`.
+PO-025, PO-026, PO-027, PO-028, PO-030 (decided) · PO-029 (draft) · ADR-005, ADR-006 (**accepted 2026-11-08, revision 3**) · PO-001…004 · ADR-001…004 · PO-021…024 · `docs/architecture/three-tier-intelligence/` · NEM-003 `03`, `08`, `09`, `18` as historical design · Code: `app.module.ts`, `migrations/`.
 
 ## 5. In scope
 Only under `services/api`:
@@ -208,7 +209,7 @@ STOP and mark BLOCKED if:
 - a real provider, spend, or access to a shared database seems necessary;
 - an existing table must be altered, or a deployed migration edited;
 - the module cannot stay unloaded without affecting another module;
-- a rule in PO-026…028 or PO-030 (decided), or PO-025/PO-029 (drafts), proves untestable or contradicts ADR-003;
+- a rule in PO-025…028 or PO-030 (decided), or PO-029 (draft), proves untestable or contradicts ADR-003;
 - a value would need inventing beyond marked test fixtures;
 - any accepted decision text differs from what §7 assumes.
 
