@@ -153,6 +153,21 @@ T0 Decisions ─▶ T1 Control plane (dark) ─▶ T2 Evaluation ─▶ T3 Seman
 | **Acceptance** | Per-tier COGS within the approved band at each step; reader metrics unchanged |
 | **Cost safeguard** | Automatic stop rules on bands and reader regression |
 
+### Architecture review gates (2026-11-08)
+
+Follow-ups from the [ADR-005/006 review](../../reports/2026-11-08-SA-002-T0-ADR-005-006-architecture-review.md), recorded in [05](05-open-decisions.md#architecture-follow-ups-from-the-adr-005006-review-2026-11-08). They are **phase gates, not product decisions**.
+
+| Phase | Gate |
+|---|---|
+| T1 NEM-019 | F-10 raw test evidence in the completion report. **Merging** its output additionally needs F-6 |
+| T4 Real Gateway | F-7 |
+| T5 Noetia+ closed beta | F-2, F-5, F-7, F-9 |
+| T6 Brief MVP | F-3 |
+| T8 Billing | F-4 |
+| Ask My Highlights (phase not yet placed) | F-1 (needs TT-27, TT-13) |
+| First production policy change | F-8 |
+| Before the three-tier stack merges | F-11 |
+
 ## 4. Cross-phase test requirements
 
 | Category | Requirement |
