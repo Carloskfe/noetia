@@ -1,6 +1,8 @@
 # NEM-020-D6 — Live Payment Exposure Assessment
 
-> **Status: COMPLETE (assessment) · Containment NOT authorized.** Read-only. Nothing was changed in code, databases, Stripe, configuration, or production.
+> **Status: ACCEPTED by Product Architecture (2026-11-08) as a read-only payment-exposure assessment · Containment NOT authorized · Merge NOT granted.** D6 remains an **unresolved live-payment exposure** and a separate, urgent Product Owner decision.
+>
+> **Assessment:** Read-only. Nothing was changed in code, databases, Stripe, configuration, or production.
 >
 > **Verdict: HIGH, bordering CRITICAL.** With the live Stripe key in production, `main` lets **any visitor, without logging in,** open a real Stripe Checkout page for a gift card whose price is built into the code. The public `/gift` page is served in production. A real charge then only requires someone to pay. Registered users can also reach plan and token checkout, whose stored price IDs are real-format (not placeholders); whether they are *live-mode* prices is unverified. **No payment has been found.**
 >
@@ -25,15 +27,22 @@ Evidence labels: **[CODE]** read from `origin/main` `6a5e5c0` · **[PROD-GET]** 
 | | |
 |---|---|
 | **Dates** | Assessed 2026-11-08; delivered in chat 2026-11-08 (not marked pending publication — see §14); published 2026-11-08 under GOV-001 |
-| **Lifecycle status** | **Review** — awaiting Product Architecture review and PO decision on containment |
+| **Lifecycle status** | **Accepted (assessment)** — Product Architecture, 2026-11-08. The exposure itself is **open**: containment awaits a separate PO decision |
 | **Delivery state** | **Not merged.** Nothing deployed |
 | **This report authorizes** | **Nothing.** Containment is a separate PO decision |
+
+### Review record
+
+| Date | Reviewer role | Verdict | Conditions | Merge authorization |
+|---|---|---|---|---|
+| 2026-11-08 | Product Architecture (independent review), recorded under PO instruction *GOV-001 Review Closure and PR Reconciliation* | **Accepted** as a read-only payment-exposure assessment | Payment containment **not authorized** by that instruction; remains a separate, urgent PO decision | **NOT GRANTED** |
 
 ### Revision history
 
 | Rev | Date | Change |
 |---|---|---|
-| 1 | 2026-11-08 | Assessment as delivered in chat on 2026-11-08, published without changing its findings; structured per the reporting protocol |
+| 1 | 2026-11-08 | Assessment as delivered in chat on 2026-11-08, published without changing its findings; structured per the reporting protocol (commits `a4a2766`, `4558954`) |
+| 2 | 2026-11-08 | Product Architecture verdict recorded (accepted; containment not authorized; merge not granted). Findings unchanged |
 
 ## 3. Repository baseline
 
@@ -205,7 +214,7 @@ Not modified: reader / Escucha Activa; book ownership; token ledger; production 
 
 | # | Item | Owner |
 |---|---|---|
-| 1 | Containment decision (§10b) | PO |
+| 1 | **Containment decision (§10b) — URGENT, still open** | PO |
 | 2 | Live mode: product and price counts, active/archived — are the stored price IDs live prices? | PO / operator |
 | 3 | Live webhook endpoints, and whether the production webhook secret matches | PO / operator |
 | 4 | Live Checkout Sessions by status and Customer count (counts only) | PO / operator |
@@ -216,6 +225,6 @@ Not modified: reader / Escucha Activa; book ownership; token ledger; production 
 
 1. PO decides containment (§10b). The NEM-020 read-only inventory continues independently.
 2. Operator returns §16 items 2–6; results feed NEM-020 Rev 4.
-3. Product Architecture reviews this report.
+3. ~~Product Architecture reviews this report.~~ Done 2026-11-08 (accepted).
 
 *Recommendation only.*
