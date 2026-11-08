@@ -22,6 +22,7 @@ Established by **NEM-004** (the transition mission). Governance applies fully to
 | `APPROVED/` | Product-Owner-accepted specs — **approval ≠ execute**. |
 | `IN-PROGRESS/` | Missions with an explicit execution instruction. |
 | `COMPLETED/` | Missions accepted after review. |
+| [`../reports/`](../reports/README.md) | Mission reports and the authoritative reporting protocol (outside this directory). |
 
 ---
 
@@ -159,6 +160,8 @@ CI/CD must not be modified except by a mission that specifically authorizes it.
 ## Completion report standard
 
 Every implementation mission report contains: **Mission** (id + title) · **Status** · **Changed Files** (paths + purpose) · **Database** (migrations/backfills) · **Tests** (added/changed + results) · **Verification** (build/lint/type/runtime) · **Deployment** (whether + result) · **Deviations** · **Risks** · **Discoveries** (out-of-scope findings) · **Protected Systems Confirmation** (explicitly state what was NOT modified) · **Commit** (SHA) · **Recommended Next Step** (recommendation only — do not auto-execute).
+
+**Reporting protocol.** The authoritative, permanent reporting protocol for **every** meaningful iteration — implementation, audit, research, review, and documentation work, including read-only and blocked iterations — is [`docs/reports/README.md`](../reports/README.md). Its unified report structure (§4.1) includes every item above; this completion report, the mission document's §18, and the [Definition of Done](DEFINITION-OF-DONE.md) remain required for implementation missions, and the mission document links to its report. That protocol also defines the standing documentation-only publication permission (§5.0), publication when repository writes are not authorized (§5.2), review and merge controls (§5.4), conflict escalation (§6), and retention (§10). Apart from §5.0, reporting never grants a repository write; the authorization levels above still apply, and no other reporting standard is in force.
 
 ---
 

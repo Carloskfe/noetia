@@ -30,6 +30,12 @@ Before executing any Noetia Engineering Mission (NEM), read [`docs/engineering-m
 - Before implementation, **validate the mission's assumptions against the current repository** (read the mission, inspect the code, identify protected systems, migrations, and infrastructure needs, and confirm the authorization level).
 - If mission requirements conflict with current code, approved product policy, security, financial rules, ownership principles, or protected systems (Escucha Activa / reader, permanent book ownership, production data, business-rule engines), **STOP and ask the Product Owner** — do not silently choose.
 - After completing authorized work, **STOP and wait for Product Architecture review** unless explicitly instructed otherwise. A commit, passing tests, or a deployment does not by itself complete a mission.
+- **Reporting (authoritative protocol: [`docs/reports/README.md`](docs/reports/README.md); no other reporting standard applies):**
+  - Every meaningful iteration (missions, audits, research, reviews, documentation work, including read-only and blocked work) produces or updates **one** report with the complete structure (§4.1). A concise chat summary never replaces it.
+  - **Standing permission (§5.0):** for explicitly authorized work, documentation-only publication is permitted unless expressly restricted — the report, its index entry, and a Draft PR on an isolated branch from `origin/main`. Nothing else: no code, config, infrastructure, CI/CD, database, Stripe, production, deploy, merge, PR closure, or branch deletion.
+  - If an instruction prohibits repository changes, deliver the complete report in the response, marked **PENDING PUBLICATION — PRODUCT OWNER AUTHORIZATION REQUIRED**, with its intended path (§5.2).
+  - **Merging (§5.4):** only after Product Architecture review, Product Owner acceptance, and a separate PO instruction naming the PR. `main` deploys to production, so each proposed merge includes a deployment-impact assessment and a check that no deploy is running.
+  - If an instruction conflicts with that protocol or another standing Product Owner requirement, **stop and notify the Product Owner before acting** (§6).
 
 ---
 
@@ -55,7 +61,7 @@ Before executing any Noetia Engineering Mission (NEM), read [`docs/engineering-m
 
 ## Git Workflow
 
-After completing any meaningful unit of work, commit and push to GitHub immediately so progress is never lost.
+After completing any meaningful unit of work, commit and push to GitHub immediately so progress is never lost — **but only when the current mission or Product Owner instruction authorizes those repository operations.** This section describes *how* to commit; it never grants permission to commit, push, open PRs, or merge. When writes are not authorized, record the work in the iteration report instead ([`docs/reports/README.md`](docs/reports/README.md) §5.2). `main` deploys to production on every push, so mission work goes through a branch and Draft PR, never a direct push to `main`, unless explicitly authorized.
 
 **Commit after every:**
 - Completed task or group of tasks from a sprint
@@ -610,6 +616,7 @@ All docs live in `docs/`. Engineering-relevant docs:
 |----------|---------|
 | [PRD.md](docs/PRD.md) | Product vision, feature specs, roadmap, KPIs |
 | [TASKS.md](docs/TASKS.md) | Sprint tracker and active backlog |
+| [reports/README.md](docs/reports/README.md) | **Authoritative reporting protocol** (every meaningful iteration) and index of mission reports |
 | [sync-procedures.md](docs/sync-procedures.md) | Whisper pipeline, VTT steps, quality status table |
 | [whisper-sync-troubleshooting.md](docs/whisper-sync-troubleshooting.md) | Root-cause diagnosis for books below 90% coverage |
 | [database-migrations.md](docs/database-migrations.md) | Migration history (000–063), golden rules, run commands |
