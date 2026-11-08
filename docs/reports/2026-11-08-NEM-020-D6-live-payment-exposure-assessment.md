@@ -2,13 +2,13 @@
 
 > **Status (Rev 5): CONTAINED — temporary control in place since 2026-11-08; D6 NOT CLOSED.** The PO executed Appendix A (Option A): `STRIPE_SECRET_KEY` is empty in `.env.production` and in the running API, only the API was recreated, and an unauthenticated gift checkout now returns `400 {"error":"payments_not_configured"}` [PO-VERIFIED, §7.6]. Plan, token-package, single-book, portal, cancel/resume/sync, and webhook paths are **fail-closed in code but not tested in production** (§7.7). Closure requires the durable payments control (option E) and the follow-ups in §16. Merge not granted.
 >
-> History: assessment accepted by Product Architecture (2026-11-08); Option A authorized (Rev 3); Appendix A security correction (Rev 4); containment outcome **accepted as verified** by Product Architecture, status CONTAINED — NOT CLOSED (Rev 5 review). **Rev 6:** documentation corrections only — scope clarified (§4), reported versus unreported Appendix A checks separated (§7.6); verdict unchanged.
+> History: assessment accepted by Product Architecture (2026-11-08); Option A authorized (Rev 3); Appendix A security correction (Rev 4); containment outcome **accepted as verified** by Product Architecture, status CONTAINED — NOT CLOSED (Rev 5 review). **Rev 6:** documentation corrections only — scope clarified (§4), reported versus unreported Appendix A checks separated (§7.6); verdict unchanged. **Rev 7:** final review corrections — historical recommendation marked, §17 updated, §7.6 reconciled with the PO's verification evidence.
 >
 > **Assessment:** Read-only. Nothing was changed in code, databases, Stripe, configuration, or production.
 >
 > **Verdict: HIGH, bordering CRITICAL.** With the live Stripe key in production, `main` lets **any visitor, without logging in,** open a real Stripe Checkout page for a gift card whose price is built into the code. The public `/gift` page is served in production. A real charge then only requires someone to pay. Registered users can also reach plan and token checkout, whose stored price IDs are real-format (not placeholders); whether they are *live-mode* prices is unverified. **No payment has been found.**
 >
-> **Recommended containment (requires a separate PO decision):** clear `STRIPE_SECRET_KEY` in `.env.production` and recreate only the `api` container (§11, option A), then a durable payments kill-switch under its own mission (option E).
+> **Historical (Rev 1 recommendation):** clear `STRIPE_SECRET_KEY` in `.env.production` and recreate only the `api` container (§11, option A), then a durable payments kill-switch under its own mission (option E). **Option A has since been authorized (Rev 3), executed, and verified by the PO (Rev 5, §7.6). Option E remains open (§16 item 1a).**
 
 Evidence labels: **[PO-VERIFIED]** executed and observed in production by the Product Owner as operator (2026-11-08), not observed by Claude · **[CODE]** read from `origin/main` `6a5e5c0` · **[PROD-GET]** observed through a public, unauthenticated HTTP GET to production · **[PO]** attested by the Product Owner · **[UNVERIFIED]** · **[PROPOSED]** recommendation only.
 
@@ -39,6 +39,7 @@ Evidence labels: **[PO-VERIFIED]** executed and observed in production by the Pr
 |---|---|---|---|---|
 | 2026-11-08 | Product Architecture (independent review), recorded under PO instruction *GOV-001 Review Closure and PR Reconciliation* | **Accepted** as a read-only payment-exposure assessment | Payment containment **not authorized** by that instruction; remains a separate, urgent PO decision | **NOT GRANTED** |
 | 2026-11-08 | Product Architecture (review of Rev 5), recorded under PO instruction *Noetia D6 — Revision 6 documentation corrections* | Containment outcome **accepted as verified**; status **CONTAINED — NOT CLOSED** | Rev 6 corrections 1–5 (scope, reported vs unreported checks, unverified items, tested vs code-only paths, separate security findings) | **NOT GRANTED** |
+| 2026-11-08 | Product Architecture (review of Rev 6), recorded under PO instruction *Noetia D6 — Revision 6 final review corrections* | **Conditionally accepted**; containment findings and governance classification (CONTAINED — NOT CLOSED) correct | Rev 7 corrections: mark the introductory recommendation historical; update §17; reconcile §7.6 with the PO's verification evidence | **NOT GRANTED** |
 
 ### Revision history
 
@@ -50,12 +51,13 @@ Evidence labels: **[PO-VERIFIED]** executed and observed in production by the Pr
 | 4 | 2026-11-08 | PO *Security Correction to Appendix A* (documentation only). **C2 rewritten**: no `diff`; in-place write from the backup; line-by-line comparison inside awk printing only counts and line numbers; mode/owner check; automatic restore on any failure. Safety review of all of Appendix A: success flags gate C2 → C3 and V1 → V6; backup SHA-256 stored at C1 and verified before rollback; rollback works in a fresh session. Procedure tested on fake files (§13). **Containment not yet executed** |
 | 5 | 2026-11-08 | **Containment executed and verified by the PO** (§7.6). Post-containment code review of every Stripe-dependent path (§7.7) and non-payment impact (§7.8); `.env.production` mode `644` recorded as a separate security follow-up (§7.9); risks, open items, and governance status updated (§9, §16, §17). Status: **Contained, not closed** |
 | 6 | 2026-11-08 | Product Architecture review of Rev 5 recorded. Documentation corrections: §4 scope applies to the initial assessment and to Claude's own work, not to the separately authorized PO containment; §7.6 split into reported results and Appendix A checks **not reported**; Stripe Customer counts, webhook endpoint configuration, and database activity gates marked **[UNVERIFIED]**; §13 overstatement ("all gates passed") corrected. No new findings; verdict and status unchanged |
+| 7 | 2026-11-08 | Product Architecture conditional acceptance of Rev 6 recorded. Introductory Option A recommendation marked **historical**; §17 rewritten (Rev 5 and Rev 6 reviews completed, duplicate and obsolete items removed); §7.6 reconciled with the PO's verification evidence: pipeline idle, `HEAD 6a5e5c0`, no active maintenance, API image present, both pre-change key checks passed, subscriptions and gift-card tables empty, filtered post-recreation logs without application errors — distinguished from evidence not provided to Claude. Full NEM-020 Part A/B inventory and other unverified checks remain outstanding. Verdict, status, payment-path analysis, and security follow-ups unchanged |
 
 ## 3. Repository baseline
 
 | Item | Value |
 |---|---|
-| Code examined | `origin/main` `6a5e5c0` (the CD-deployed branch). Production's exact running commit was **not** checked [UNVERIFIED] |
+| Code examined | `origin/main` `6a5e5c0` (the CD-deployed branch). Production's exact running commit was **not** checked at assessment time. Rev 7: the PO confirmed the server checkout `HEAD` is `6a5e5c0` (§7.6.1) [PO-VERIFIED] |
 | This branch | `docs/nem-020-d6-live-payment-exposure`, created from `origin/main` `6a5e5c0` |
 | Parent report | `docs/nem-020-pre-launch-billing-inventory` `0e5cbcb` (PR #37, Rev 3) |
 
@@ -155,38 +157,43 @@ All Stripe use goes through `requireStripe()` (`gifts.service.ts:46-49`, `subscr
 
 Executed by the Product Owner as operator on 2026-11-08 using Appendix A (Rev 4). Claude did not access production. Accepted as verified by Product Architecture (Rev 5 review).
 
-**7.6.1 Reported and verified [PO-VERIFIED]** — results the PO reported; the raw outputs were not provided to Claude.
+**Evidence basis (Rev 7).** Every result below was observed by the PO in the verification session on the production server or Stripe Dashboard **[PO-VERIFIED]**. The raw command outputs were **not provided to Claude**; Claude records the PO's confirmed results and has not inspected them. Accepted as verified by Product Architecture (Rev 5 and Rev 6 reviews).
 
-| Check | Result |
+**7.6.1 Confirmed in the PO's verification session [PO-VERIFIED; raw outputs not provided to Claude]**
+
+| Appendix A step | Result confirmed by the PO |
 |---|---|
-| Preflight (summary) | PO summary: database and Stripe Live Dashboard checks found **no existing transactions** before containment. Individual P6 and P7 gate outputs were not provided (§7.6.2) |
-| C1 backup | Root-only backup created and verified |
-| C2 key cleared | `STRIPE_SECRET_KEY` cleared in `.env.production`; all other lines preserved |
-| C3 recreate | Only the `api` container recreated, using its existing image |
-| V1 running API | `STRIPE MODE: empty`; Stripe webhook secret still present |
-| V2 services | All 12 production services running; API healthy, 0 restarts |
-| V4 health | `/api/health` → HTTP 200 |
-| V5 non-payment functions | Login, library, reading, audio synchronization, and highlights passed manual checks |
-| V6 payment initiation | Unauthenticated `POST /api/gifts/checkout` (valid body, `tokenCount: 1`) → **HTTP 400 `{"error":"payments_not_configured"}`** |
-| Persistence | Gift-card count remains **0** |
+| A.1 Pipeline | Deployment pipeline idle |
+| P1 Identity | Production `HEAD` `6a5e5c0`; `.env.production` mode `644` (§7.9) |
+| P2 Maintenance | No active deployment, migration, or maintenance operation |
+| P4 Image | API image present |
+| P5 Key checks | Both pre-change Stripe key checks (environment file and running API) passed |
+| P6 Database (partial) | Subscriptions and gift-card tables empty |
+| P6/P7 summary | No existing transactions in the database or the Stripe Live Dashboard before containment |
+| C1 Backup | Root-only backup created and verified |
+| C2 Key cleared | `STRIPE_SECRET_KEY` cleared in `.env.production`; all other lines preserved |
+| C3 Recreate | Only the `api` container recreated, using its existing image |
+| V1 Running API | `STRIPE MODE: empty`; Stripe webhook secret still present |
+| V2 Services | All 12 production services running; API healthy, 0 restarts |
+| V3 Logs | Filtered post-recreation API logs: no application error |
+| V4 Health | `/api/health` → HTTP 200 |
+| V5 Non-payment functions | Login, library, reading, audio synchronization, and highlights passed manual checks |
+| V6 Payment initiation | Unauthenticated `POST /api/gifts/checkout` (valid body, `tokenCount: 1`) → **HTTP 400 `{"error":"payments_not_configured"}`** |
+| Persistence | Gift-card count remains **0** after V6 |
 | V7 Stripe | Final Live Dashboard inspection: no new **payment** activity |
 
-**7.6.2 Appendix A checks not reported (incomplete or unreported)** — not evidence of failure; these results are simply not on record.
+**7.6.2 Outstanding — not confirmed or not on record**
 
-| Appendix A step | What is not on record | Status |
+| Item | What is outstanding | Status |
 |---|---|---|
-| A.1 | `gh run list` output immediately before execution | Unreported |
-| P1 | Server `HEAD` commit and recorded file mode/owner (`M0`); the PO separately reported mode `644` (§7.9) | Partly reported |
-| P2–P4 | No-active-operation check, pre-change container baseline, image presence | Unreported (C3 outcome reported) |
-| P5 | Pre-change key-mode output for the file and running API, and absence of a duplicate-line `WARNING` | Unreported |
-| P6 | Raw Part A / Part B outputs: identity line, Q2 subscriptions by status, Q9 processed event types, Q14 `gift_cards_with_checkout`, ending `ROLLBACK` | **[UNVERIFIED]** — only the summary "no existing transactions" and the gift-card count (0) are on record |
-| P7 | Live counts: succeeded / uncaptured / incomplete payments; subscriptions by status; **open and complete Checkout Sessions**; **Customers**; **webhook endpoints and failed deliveries** | **[UNVERIFIED]** — only "no existing transactions" is on record |
-| V3 | API log error count after recreation | Unreported |
-| V4 | `/api/books?limit=1`, `/api/subscriptions/plans`, `/`, `/gift`, `/pricing` | Unreported (only `/api/health` 200); V5 manual checks cover reading paths |
-| V7 | New Checkout Sessions and **Customers** since containment | Payment activity reported; Customers **[UNVERIFIED]** |
-| A.6 | Operator attestation (no Stripe change, database write, other restart, or staging change; no secret shown) | Not reported verbatim |
+| **NEM-020 Part A / Part B inventory** (P6) | Full raw outputs: identity line, Q1–Q11 (twice) and Q12–Q14, including Q9 processed event types and Q14 `gift_cards_with_checkout`, ending `ROLLBACK` | **Outstanding [UNVERIFIED]** — only the empty subscriptions and gift-card tables are confirmed |
+| P7 Stripe Live counts | Succeeded / uncaptured / incomplete payments by count; subscriptions by status; **open and complete Checkout Sessions**; **Customers**; **webhook endpoints and failed deliveries** | **[UNVERIFIED]** — only "no existing transactions" is confirmed |
+| P3 / V2 baseline | Pre-change container start-time baseline for the V2 comparison | Not on record (C3 and V2 outcomes confirmed) |
+| V4 other endpoints | `/api/books?limit=1`, `/api/subscriptions/plans`, `/`, `/gift`, `/pricing` | Not on record (V5 manual checks cover the reading paths) |
+| V7 Customers | New Customers since containment | **[UNVERIFIED]** |
+| A.6 Attestation | The operator attestation in its exact wording | Not on record |
 
-These gaps do not change the containment verdict: V1 and V6 directly show that payment initiation is disabled. They do affect NEM-020: P6 is its Part A/B inventory, which remains outstanding.
+These items do not change the containment verdict: V1 and V6 directly show that payment initiation is disabled. The NEM-020 Part A/B inventory remains a NEM-020 deliverable.
 
 ### 7.7 Remaining payment paths: fail-closed in code, not tested in production
 
@@ -314,7 +321,7 @@ Re-run the checker (expect `live`). Delete `.env.production.pre-d6` once the fin
 | Rev 3: C1, C2, rollback on a fake env file (fake keys) | Backup created mode 600 and refuses to overwrite; C2 changes only `STRIPE_SECRET_KEY` and prints no value; checker `live` → `empty` → `live` after rollback; file mode preserved (640 → 640) |
 | Rev 3: P5 / V1 pipeline (simulated container env) | Prints only mode words |
 | Rev 4: hardened C1/C2/C3, V1/V6, rollback (fake files, stubbed `docker compose` and `curl`) | All 7 commands pass `bash -n`. C2 normal: 1 line cleared, inode and mode unchanged. Fail-closed cases all stop and leave the original content: extra unexpected change, key already empty, mode/owner mismatch, missing backup (file **not** truncated). CRLF, duplicate key lines, and a file without a trailing newline handled. Tampered backup → rollback refuses. C3 refuses without C2; V6 refuses unless the running API reports `empty`. Leak scan of all outputs: 0 secret strings |
-| Rev 5: production containment (PO as operator) | **Reported** gates passed (§7.6.1), including V1 `empty` and V6 `400 payments_not_configured`, gift-card count 0. Rev 6 correction: several Appendix A outputs were not reported (§7.6.2) |
+| Rev 5: production containment (PO as operator) | Gates confirmed by the PO passed (§7.6.1), including V1 `empty`, V3 no application error, and V6 `400 payments_not_configured`; gift-card count 0. Outstanding items in §7.6.2 |
 | Rev 5: authenticated payment paths in production | **Not tested** (code-verified only, §7.7) |
 | Rev 3: remote preflight | `cd.yml` idle (last run `6a5e5c0`, success); five public endpoints 200 |
 
@@ -342,15 +349,17 @@ Not modified: reader / Escucha Activa; book ownership; token ledger; production 
 | 4 | **[UNVERIFIED]** Live Checkout Sessions by status (open, complete) and Customer count (counts only) | PO / operator |
 | 4a | **[UNVERIFIED]** Database activity gates: raw P6 / NEM-020 Part A and Part B outputs (Q2, Q9, Q14) | PO / operator |
 | 5 | Staging key mode (NEM-020 Appendix D, Step 4) | PO / operator |
-| 6 | Production running commit | PO / operator |
+| 6 | ~~Production running commit~~ **Confirmed: server `HEAD` `6a5e5c0`** (§7.6.1) | PO |
 
 ## 17. Next recommended action
 
-1. **Recommended D6 governance status: CONTAINED — not closed.** The temporary control is verified; keep D6 open until option E is deployed and verified, then mark it Completed with a final revision.
-2. Product Architecture reviews Rev 5.
-3. PO decides §16 items 1a–1d; 1b (file permissions) is the quickest risk reduction.
-4. The Appendix A P6 outputs (Part A and Part B) feed NEM-020 Rev 4; §16 items 2–6 remain open.
-3. ~~Product Architecture reviews this report.~~ Done 2026-11-08 (accepted).
+**Governance status: CONTAINED — NOT CLOSED.** The temporary control is verified (§7.6). D6 stays open until the durable payments control (option E) is deployed and verified; a final revision then marks it Completed.
+
+Reviews completed: Product Architecture accepted the assessment (2026-11-08), accepted the containment outcome as verified (Rev 5 review), and conditionally accepted Rev 6; this Rev 7 applies those conditions.
+
+1. **Product Architecture final review of Rev 7.**
+2. **PO decisions** on §16 items 1a (option E mission), 1b (`.env.production` permissions and `.gitignore`; the quickest risk reduction), 1c (backup retention), and 1d (key-restoration guard).
+3. **Outstanding evidence** (§7.6.2, §16 items 2–5 and 4a): the NEM-020 Part A/B inventory and the Stripe Live counts feed NEM-020 Rev 4.
 
 *Recommendation only.*
 
