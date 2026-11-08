@@ -11,6 +11,8 @@ Evidence labels: **[REPO]** observed in the repository or on GitHub · **[UNMERG
 
 ---
 
+Draft PR: [#39](https://github.com/Carloskfe/noetia/pull/39).
+
 ## 1. Mission and objective
 
 | | |
@@ -143,6 +145,7 @@ None.
 
 | Rating | Risk | Mitigation |
 |---|---|---|
+| **High** | #16 and #23's `CLAUDE.md` section merge **without conflict** (§13), so a reviewer would get no warning before a competing protocol lands | Trim #23 and close #16 before either is considered for merge |
 | High | Merging #23 or #36 as they stand reintroduces competing protocol text (R2, R5) | Merge this PR first; trim #23 and #36 before they merge (§11.2) |
 | High | A documentation merge triggers a production deploy and could interrupt a running deploy (R9) | §5.4 deployment-impact check and `gh run list` confirmation |
 | Medium | Non-draft PRs (#10–#13, #16) are easy to merge by accident | Mark Draft (approval needed) |
@@ -195,7 +198,18 @@ Also published under GOV-001 §7: Draft PR [#38](https://github.com/Carloskfe/no
 
 ## 13. Tests and validation
 
-See the PR description (*Revision 1*) for the commit SHA and the local test-merge results against #14, #16, #23, #24, and #36. Additional checks: every index link target exists on its branch; protocol section anchors referenced from `CLAUDE.md` and the missions README exist; the diff against `origin/main` contains only the four files above.
+| Check | Result |
+|---|---|
+| Diff against `origin/main` `6a5e5c0` | Exactly the four files in §12 |
+| Index branch links (19) | All targets exist on their branches |
+| Relative links and internal anchors | All resolve |
+| Local test merge with #14 | Clean (its `CLAUDE.md` change is in the Testing section) |
+| Local test merge with #16 | **Clean — `REPORTING-PROTOCOL.md` would land silently** |
+| Local test merge with #23 | Conflict in `docs/reports/README.md` only — **its `CLAUDE.md` protocol section would merge silently** |
+| Local test merge with #24 | Conflict in `docs/reports/README.md` |
+| Local test merge with #36 | Conflict in `CLAUDE.md`, `docs/engineering-missions/README.md`, `docs/reports/README.md` |
+
+Test merges ran in a temporary detached worktree, were aborted, and the worktree was removed. Nothing was pushed to any other branch.
 
 ## 14. Deviations and discoveries
 
