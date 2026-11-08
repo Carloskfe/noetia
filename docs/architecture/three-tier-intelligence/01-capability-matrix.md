@@ -35,7 +35,7 @@ The customer-facing label "Basic" is not used anywhere (`PO`). "Basic subscripti
 | Permanent ownership of acquired books | ✓ | ✓ | ✓ | `PO`, PO-021 |
 | Buy token packages at $9.99 / $24.99 / $39.99 / $74.99 | ✓ | ✓ at the same prices | ✓ at the same prices | `PO` |
 | Redeem a token for a book | ✓ | ✓ | ✓ | Existing |
-| Purchased-token expiry | Same for all tiers | Same | Same | `T0`: **PO-024 governs**, with no universal 90-day rule. 1-token: 90 days; 3/5/10: six calendar months |
+| Purchased-token expiry | Same for all tiers | Same | Same | `OPEN → TT-01` (updated 2026-11-08). Current behaviour: 90 days (code, Terms). PO-024 (unmerged) proposes 1-token: 90 days; 3/5/10: six calendar months — **not implemented or approved** |
 | A premium tier unlocks unowned paid books | ✗ | ✗ | ✗ | PO-021, PO-022 |
 | A premium tier includes book tokens of its own | — | Not assumed | Not assumed | `OPEN → TT-16` |
 | Available without a qualifying book subscription | — | ✗ | ✗ | `T0` (PO-026). Qualifying plans and states: `OPEN → TT-15` |

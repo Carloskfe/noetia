@@ -38,7 +38,7 @@ None of these is resolved here. Each has a decision entry in [05](05-open-decisi
 
 | Conflict | T0 ruling | Remaining |
 |---|---|---|
-| C-1 Token expiry | PO-024 preserved | Code, ToS, and copy remain at 90 days, so remediation is needed; PO-024's own open items |
+| C-1 Token expiry | PO-024 preserved (T0 preliminary). **Updated 2026-11-08: not adopted; TT-01 OPEN** | Code, ToS, and copy remain at 90 days and are not redefined; PO-024 is neither implemented nor approved |
 | C-2 Prerequisite | Both tiers require a qualifying book subscription (PO-026). **Decided 2026-11-08:** active Individual, Duo, or Family subscription; add-on | Linked members, states, and lifecycle (TT-15, TT-16) |
 | C-3 Limits versus My Knowledge | Analysis bound to selected books; separate highlight search (PO-028). **Decided 2026-11-08:** Ask My Highlights may also **answer** library-wide, with its own controls | Saved-quotation permissions (TT-27); semantic search (TT-25). TT-24 resolved |
 | C-6 Rights | Verified public domain first, then opt-in; default deny (PO-029) | Evidence standard, verifier, jurisdiction (TT-26) |
