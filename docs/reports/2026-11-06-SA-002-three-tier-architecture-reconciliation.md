@@ -26,7 +26,7 @@ Two facts constrain timing. Adding a premium plan on today's billing code would 
 
 The proposed next mission (NEM-019, draft) builds limit enforcement, tier resolution, and budget accounting with a fake provider: no AI spend, no billing, no deployment.
 
-**Deliverables:** [`docs/architecture/three-tier-intelligence/`](../architecture/three-tier-intelligence/README.md) and [NEM-019 draft](../engineering-missions/DRAFT/NEM-019-tier-aware-intelligence-control-plane.md).
+**Deliverables:** [`docs/architecture/three-tier-intelligence/`](../architecture/three-tier-intelligence/README.md) and [NEM-019 draft](../engineering-missions/APPROVED/NEM-019-tier-aware-intelligence-control-plane.md).
 
 ## 5. Verified findings
 

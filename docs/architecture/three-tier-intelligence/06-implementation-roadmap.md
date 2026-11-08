@@ -64,7 +64,7 @@ T0 Decisions ─▶ T1 Control plane (dark) ─▶ T2 Evaluation ─▶ T3 Seman
 | **Tests** | None |
 | **Cost safeguard** | None needed: no spend |
 
-### T1 — Tier-aware control plane, dark (draft: [NEM-019](../../engineering-missions/DRAFT/NEM-019-tier-aware-intelligence-control-plane.md))
+### T1 — Tier-aware control plane, dark (approved 2026-11-08, not authorized for execution: [NEM-019](../../engineering-missions/APPROVED/NEM-019-tier-aware-intelligence-control-plane.md))
 
 | | |
 |---|---|

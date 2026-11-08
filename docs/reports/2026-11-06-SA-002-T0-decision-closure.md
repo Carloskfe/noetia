@@ -11,6 +11,23 @@
 | **[PROPOSED]** | Architecture proposal |
 | **[OPEN]** | Unresolved decision |
 
+## Revision 4 — NEM-019 approved, not authorized for execution (2026-11-08)
+
+> **Status: REVIEW — documentation only.** PO instruction *Formal Product Owner Approval of NEM-019*: **NEM-019 revision 4, including the 2026-11-08 amendments, is APPROVED** as the engineering specification for the initial tier-aware intelligence control plane. **APPROVED ≠ EXECUTE:** execution requires a separate, explicit PO instruction naming NEM-019. Nothing was implemented, migrated, deployed, or merged.
+
+| Item | Result |
+|---|---|
+| Location | Moved with `git mv` from `docs/engineering-missions/DRAFT/` to [`APPROVED/`](../engineering-missions/APPROVED/NEM-019-tier-aware-intelligence-control-plane.md) (history preserved; Git detects the rename) |
+| Status | **APPROVED — NOT AUTHORIZED FOR EXECUTION**; Product Owner approval **granted 2026-11-08**; implementation authorization LIMITED to §5 and **not active** |
+| Scope and acceptance criteria | **Unchanged.** Only the header block and §3 (approval recorded) changed; §1–§2 and §4–§19 are byte-identical to revision 4 as of PR #44 |
+| Register and references | Mission identifier register (`docs/engineering-missions/README.md`), three-tier `05`, `06`, `08`, `README`, `PRODUCT-DECISIONS.md`. **Link targets only** updated in PO-030 and the SA-002 report; their text is unchanged. Plain-text historical file listings (SA-002 report §11, this report's Revision 2 change table) keep the old path as a record of what was changed then |
+
+| Rev | Date | Change |
+|---|---|---|
+| 4 | 2026-11-08 | NEM-019 revision 4 approved; moved to `APPROVED/`; not authorized for execution |
+
+---
+
 ## Revision 3 — PO-025 decided, NEM-019 identifier reserved, readiness (2026-11-08)
 
 > **Status: REVIEW — documentation only.** PO instruction *PO-025 Reconciliation and NEM-019 Governance Closure* (2026-11-08). **NEM-019 readiness: READY FOR PO APPROVAL.** NEM-019 remains **DRAFT**; it is not approved or executed.

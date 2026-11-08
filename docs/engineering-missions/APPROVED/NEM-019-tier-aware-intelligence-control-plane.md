@@ -1,23 +1,25 @@
 # NOETIA ENGINEERING MISSION — NEM-019
 ## Tier-Aware Intelligence Control Plane (Dark, Simulated Providers Only)
 
-**Status:** DRAFT (revision 4, 2026-11-08, amended the same day for §3, §4, AC-15c after ADR-005/006 acceptance; review corrections B-1…B-5 incorporated; revision 3 reconciled the PO approvals of TT-02, TT-04, TT-05, TT-21; **not approved**; **identifier `NEM-019` reserved by the PO on 2026-11-08**; reservation is not approval)
+**Status:** **APPROVED — NOT AUTHORIZED FOR EXECUTION** (revision 4, including the 2026-11-08 amendments). Approved by the Product Owner on **2026-11-08**. Identifier `NEM-019` (reserved 2026-11-08).
 **Mission type:** IMPLEMENTATION
-**Implementation authorization:** LIMITED (once approved; **none while DRAFT**)
+**Implementation authorization:** LIMITED to §5 — **not active**: execution requires a separate, explicit Product Owner instruction naming NEM-019
 **Schema changes:** ADDITIVE ONLY, applied to disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED
 **Production deployment:** NOT AUTHORIZED (staging also NOT AUTHORIZED)
-**Product Owner approval:** REQUIRED
+**Product Owner approval:** **GRANTED 2026-11-08** (revision 4, including the 2026-11-08 amendments)
 
 > Reminder: **APPROVED ≠ EXECUTE.** Even after Product Owner approval, this mission is executed only on an explicit Product Owner instruction naming it (e.g. "Execute NEM-019 according to the approved mission").
 
 ---
 
-> **Revision 4 amendment 2 (2026-11-08).** Identifier `NEM-019` reserved by the PO for this mission; PO-025 decided (TT-01 kept open). §3, §4, §17 updated. **Still DRAFT; not approved.**
+> **Product Owner approval (2026-11-08).** *Formal Product Owner Approval of NEM-019*: revision 4, including the 2026-11-08 amendments, is **APPROVED** as the engineering specification for the initial tier-aware intelligence control plane, following PO-025…028 and PO-030 (decided), ADR-005/006 revision 3 (accepted), corrections B-1…B-5, and identifier reservation. **Approval is not execution.** Every restriction in this document remains binding. Moved from `DRAFT/` to `APPROVED/`; scope (§5–§6) and acceptance criteria (§11–§12) are unchanged by the approval.
 >
-> **Revision 4 amendment (2026-11-08). ADR-005 and ADR-006 revision 3 were **accepted** on 2026-11-08. §3 and §4 updated; AC-15c distinguishes admission-time from settlement-time ledger failure. **This mission remains DRAFT; it is not approved.**
+> **Revision 4 amendment 2 (2026-11-08).** Identifier `NEM-019` reserved by the PO for this mission; PO-025 decided (TT-01 kept open). §3, §4, §17 updated. *(At the time: still DRAFT.)*
 >
-> **Revision 4 (2026-11-08). Architecture review corrections B-1…B-5 (review PR #41, accepted by the PO) are incorporated in §3, §9, §10, §11, §12, and §16, together with the PO's added requirements on settlement recovery and the account-deletion test. PO-026, PO-027, PO-028, and PO-030 are unchanged.
+> **Revision 4 amendment (2026-11-08).** ADR-005 and ADR-006 revision 3 were **accepted** on 2026-11-08. §3 and §4 updated; AC-15c distinguishes admission-time from settlement-time ledger failure. *(At the time: DRAFT, not approved.)*
+>
+> **Revision 4 (2026-11-08).** Architecture review corrections B-1…B-5 (review PR #41, accepted by the PO) are incorporated in §3, §9, §10, §11, §12, and §16, together with the PO's added requirements on settlement recovery and the account-deletion test. PO-026, PO-027, PO-028, and PO-030 are unchanged.
 >
 > **Revision 3 (2026-11-08).** TT-02, TT-04, TT-05, and TT-21 are **decided** (PO-026, PO-027, PO-028, PO-030). §1, §3, §4, §6, §7, §11, §12, §16, and §17 are updated; nothing else changes. Under PO-030 rule 7 this mission is **not** approved or executed by that decision.
 
@@ -30,8 +32,7 @@ Deliver a dark, fully tested control plane in `services/api/src/knowledge/` that
 ## 3. Dependencies
 **Satisfied (2026-11-08):** PO-025, PO-026, PO-027, PO-028, PO-030 decided; **ADR-005 and ADR-006 revision 3 accepted**; **identifier `NEM-019` reserved**.
 
-**Required before approval:**
-- Product Owner approval of this mission text (revision 4).
+**Approval:** **granted by the Product Owner on 2026-11-08** (revision 4). No further prerequisite for approval remains.
 
 **Not required before approval (PO, 2026-11-08):** TT-01 (PO-024 Confirmation 1) and TT-12 (draft PO-029). Both must be resolved before their dependent commercial or content-release phases. The PO-022 and PO-023 amendment texts are record follow-ups to PO-026, not inputs to this mission.
 

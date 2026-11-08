@@ -35,5 +35,5 @@ Source-of-truth hierarchy (`docs/engineering-missions/README.md`): Product Owner
 
 - PO-026, PO-027, PO-028, PO-030 are decided Product Owner records.
 - ADR-005 and ADR-006 were **accepted** on 2026-11-08 (revision 3) and carry ADR authority. *(Previously Proposed.)*
-- NEM-019 is a **DRAFT**; it authorizes nothing until approved, and executes only on an explicit PO instruction. Its identifier was **reserved by the PO on 2026-11-08** ([mission identifier reservations](../../engineering-missions/README.md#mission-identifier-reservations)); reservation is not approval.
+- NEM-019 was **APPROVED on 2026-11-08** (revision 4) and is **not authorized for execution**; it executes only on an explicit PO instruction naming it. *(Previously DRAFT.)* Its identifier was **reserved by the PO on 2026-11-08** ([mission identifier reservations](../../engineering-missions/README.md#mission-identifier-reservations)); reservation is not approval.
 - NEM-003 documents and the NEM-006 record are historical context where superseded.

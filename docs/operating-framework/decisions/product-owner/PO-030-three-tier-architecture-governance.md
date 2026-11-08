@@ -27,7 +27,7 @@
 | 2 | [Governance record §2](../../../architecture/three-tier-intelligence/08-architecture-governance-record.md#2-nem-006-supersession). The NEM-006 mission file is not on `main` and is not edited |
 | 3, 4 | [ADR-005](../../../architecture/adr/ADR-005-tier-entitlements-prerequisites-and-budget-boundaries.md), [ADR-006](../../../architecture/adr/ADR-006-research-sessions-book-limits-and-source-scope.md), both **Proposed** |
 | 5 | [`docs/noetia-plus/PRODUCT-DECISIONS.md`](../../../noetia-plus/PRODUCT-DECISIONS.md), the decision register on `main` |
-| 6, 7 | [NEM-019](../../../engineering-missions/DRAFT/NEM-019-tier-aware-intelligence-control-plane.md) revision 3; status remains **DRAFT** |
+| 6, 7 | [NEM-019](../../../engineering-missions/APPROVED/NEM-019-tier-aware-intelligence-control-plane.md) revision 3; status remains **DRAFT** |
 
 ## Not decided by this record
 
