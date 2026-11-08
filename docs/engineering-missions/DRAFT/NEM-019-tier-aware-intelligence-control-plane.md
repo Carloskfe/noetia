@@ -1,7 +1,7 @@
 # NOETIA ENGINEERING MISSION — NEM-019
 ## Tier-Aware Intelligence Control Plane (Dark, Simulated Providers Only)
 
-**Status:** DRAFT (revision 2, after T0; identifier verified unused, not yet assigned)
+**Status:** DRAFT (revision 3, 2026-11-08: reconciled with the Product Owner approvals of TT-02, TT-04, TT-05, TT-21; **not approved**; identifier verified unused, not yet assigned)
 **Mission type:** IMPLEMENTATION
 **Implementation authorization:** LIMITED (once approved; **none while DRAFT**)
 **Schema changes:** ADDITIVE ONLY, applied to disposable test databases only
@@ -13,23 +13,30 @@
 
 ---
 
+> **Revision 3 (2026-11-08).** TT-02, TT-04, TT-05, and TT-21 are **decided** (PO-026, PO-027, PO-028, PO-030). §1, §3, §4, §6, §7, §11, §12, §16, and §17 are updated; nothing else changes. Under PO-030 rule 7 this mission is **not** approved or executed by that decision.
+
 ## 1. Context
-The Product Owner defined three tiers and issued preliminary rulings TT-01, 02, 04, 05, 12, and 21 (T0). Three things carry the most risk and depend on no model or price: **server-side limit enforcement, tier resolution, and budget accounting**. Building them first with simulated dependencies makes those guarantees testable at zero AI cost. This mission does not resume NEM-006, which stays PAUSED.
+The Product Owner defined three tiers and issued preliminary rulings TT-01, 02, 04, 05, 12, and 21 (T0). On 2026-11-08 the PO **decided** TT-02, TT-04, TT-05, and TT-21; TT-01 and TT-12 remain open and are **not prerequisites** for this dark control plane. Three things carry the most risk and depend on no model or price: **server-side limit enforcement, tier resolution, and budget accounting**. Building them first with simulated dependencies makes those guarantees testable at zero AI cost. This mission does not resume NEM-006, which is **formally superseded** (PO-030), and inherits no authorization from it.
 
 ## 2. Objective
 Deliver a dark, fully tested control plane in `services/api/src/knowledge/` that can resolve a tier, create a research session within its book limit, lock and fork sessions, deny unverified rights, and reserve and settle an internal budget, using **simulated** model, plan, and ownership dependencies. **Done** means every guarantee in §11 is proven by tests. No customer can reach it, and it is never deployed under this mission.
 
 ## 3. Dependencies
+**Satisfied (2026-11-08):** PO-026, PO-027, PO-028, PO-030 decided.
+
 **Required before approval:**
-- Product Owner acceptance of PO-025…PO-029, the PO-022 and PO-023 amendments, and PO-024 Confirmation 1.
-- Product Architecture acceptance of ADR-005 and ADR-006.
+- Product Architecture acceptance of ADR-005 and ADR-006 (revision 2).
+- Product Owner approval of this mission text and confirmation of the `NEM-019` identifier.
+- **Product Owner ruling:** whether draft PO-025 (three-tier structure) must be accepted first. This mission uses only the tier names and the 3/10 limits, which PO-027 decides.
+
+**Not required before approval (PO, 2026-11-08):** TT-01 (PO-024 Confirmation 1) and TT-12 (draft PO-029). Both must be resolved before their dependent commercial or content-release phases. The PO-022 and PO-023 amendment texts are record follow-ups to PO-026, not inputs to this mission.
 
 **Not required:** provider credentials, pgvector, Stripe, `subscriptions` access, tokens, prices, budget values, NEM-006B, NEM-011, NEM-013, NEM-014, staging, rights backfill, or Terms changes.
 
 **Test environment:** real-PostgreSQL tests run against a disposable local database. The NEM-014 CI job exists only on Release A, not on `main`, and CI changes are out of scope. CI must not be weakened or changed to accommodate this mission.
 
 ## 4. Source-of-truth references
-PO-025…029 · ADR-005, ADR-006 · PO-001…004 · ADR-001…004 · PO-021…024 · `docs/architecture/three-tier-intelligence/` · NEM-003 `03`, `08`, `09`, `18` as historical design · Code: `app.module.ts`, `migrations/`.
+PO-026, PO-027, PO-028, PO-030 (decided) · PO-025, PO-029 (drafts) · ADR-005, ADR-006 (proposed, revision 2) · PO-001…004 · ADR-001…004 · PO-021…024 · `docs/architecture/three-tier-intelligence/` · NEM-003 `03`, `08`, `09`, `18` as historical design · Code: `app.module.ts`, `migrations/`.
 
 ## 5. In scope
 Only under `services/api`:
@@ -50,7 +57,7 @@ Only under `services/api`:
 - **AI retrieval:** pgvector, embeddings, `book_chunks`, Meilisearch, real retrieval.
 - **Real AI providers:** any SDK, credential, network call, or spend.
 - **Research Brief generation,** deep analysis, position maps, synthesis.
-- **Highlight search (PO-028):** later phase.
+- **Ask My Highlights (PO-028):** search and answers over own highlights are a later phase. This mission only makes the budget-policy shape capability-keyed (§7) so that phase can have its own controls.
 - Reader, Escucha Activa, sync maps, `fragments` or its write paths, `user_books`, library.
 - Web and mobile UI, i18n, pricing, Terms. Worker, BullMQ.
 - Catalogue changes, ingestion, rights backfill.
@@ -59,12 +66,14 @@ Only under `services/api`:
 - Changes to NEM-003, ADR-001…004, or PO records. "Not mentioned" is not "authorized".
 
 ## 7. Product rules
-- Noetia+ maximum 3 selected books; NoetiaX maximum 10 (PO-027).
+- Noetia+ maximum 3 selected books; NoetiaX maximum 10, **enforced server-side** (PO-027).
+- **Every selected book counts**, including public domain. A verified, AI-eligible public-domain edition is selectable **without** a library entry; eligibility is determined **independently of ownership** (PO-027).
 - The set locks at the first analysis turn; changes need a new or forked session (PO-027).
-- Both tiers require a qualifying book subscription (PO-026). **Grants never bypass this.** `unknown` denies.
-- No plan, state, or linked member is assumed to qualify (TT-15).
-- Generated analysis is limited to selected books (PO-028).
-- Default deny; `isFree` and other metadata are never rights evidence (PO-029).
+- Both tiers require an active **Individual, Duo, or Family** book subscription, as an add-on (PO-026). **Grants never bypass this.** `unknown` denies. Premium state never writes to a book plan.
+- No **linked member** and no subscription **state** is assumed to qualify (TT-15); the port has no production adapter.
+- Household membership shares no sessions, highlights, or conversations (PO-026 rule 6).
+- Full-book research is limited to selected books (PO-028 rule 1). Budget policies are keyed by tier **and capability**, so highlight-based intelligence can have its own controls later (PO-028 rule 4); no values.
+- Default deny; `isFree` and other metadata are never rights evidence (ADR-006; draft PO-029). No real-book rights record is created.
 - `BOOK TOKEN ≠ AI USAGE`. No model name in any customer-visible response. "Basic" never appears in customer-visible text.
 
 ## 8. Protected systems
@@ -106,11 +115,12 @@ Must remain untouched and undegraded: Escucha Activa and sync; reader; ownership
 8. Deleting a book in the test database succeeds and leaves session history readable.
 
 **Prerequisite (PO-026)**
-9. Free-account and token-package-only fixtures are denied, even with a grant. A linked-member fixture is denied.
+9. Free-account and token-package-only fixtures are denied, even with a grant. Individual, Duo, and Family subscriber fixtures are allowed **only** when the simulated port answers `qualifying`. A linked-member fixture is denied (TT-15 open).
 10. `unknown` denies. There is no write path from premium state to any book plan.
 
-**Rights (PO-029)**
+**Rights and selection (PO-027; ADR-006; draft PO-029)**
 11. `isFree = true` with no record is denied. Partial, stale-`textHash`, and revoked records are denied. An owned book with no rights record is denied.
+11a. A **verified public-domain fixture** that is not in the user's library can be selected, and it **counts** toward the limit (a fourth such book on Noetia+ is rejected). An unverified public-domain fixture cannot be selected.
 12. Migrations and seeds insert no rights record for a real book.
 
 **Source scope (PO-028)**
@@ -119,6 +129,8 @@ Must remain untouched and undegraded: Escucha Activa and sync; reader; ownership
 
 **Budget and isolation**
 15. A reservation cannot exceed the budget under concurrency; settlement and failure paths behave as specified.
+15a. Budget policies resolve by tier **and capability**; a reservation for one capability cannot draw on another's fixture budget.
+15b. A household-member fixture cannot read another member's session or conversation.
 16. Architecture tests prove: reader, library, token, and subscription modules do not import `knowledge/*`; `knowledge/*` does not import token, subscription, plan, or Stripe code.
 17. Token scenarios change no budget, because no shared code path exists.
 
@@ -130,7 +142,7 @@ Must remain untouched and undegraded: Escucha Activa and sync; reader; ownership
 **Unit** (`tests/unit/knowledge/**`, ≥ 80%): every public method; happy path, edge, and failure.
 **Integration** (disposable PostgreSQL and Redis): locks, constraints, reservations, migrations up and down.
 **Named negative and concurrency cases:**
-- fourth book on Noetia+; eleventh book on any tier; duplicate IDs; forged `limit`, `tier`, `budget`, or `plan`
+- fourth book on Noetia+ (including a fourth public-domain book); eleventh book on any tier; duplicate IDs; forged `limit`, `tier`, `budget`, `plan`, or `owned`
 - N parallel adds at the limit; add racing the first turn; parallel first turns; parallel forks
 - add after lock; downgrade during an active turn; upgrade with a locked set
 - other user's session; household member access
@@ -153,12 +165,13 @@ Technical note on the control plane; migration entries; a `docs/reports/` report
 
 | Decision | How this mission stays safe without it |
 |---|---|
-| TT-15 Qualifying plans, linked members, states | Port has no adapter; `unknown` denies |
+| TT-15 Linked members, states (subscription types decided by PO-026) | Port has no adapter; `unknown` denies |
 | TT-16 Billing and lifecycle | Stripe out of scope |
 | TT-09, 11 Budget values, reset date | Marked test fixtures; shape is configurable |
 | TT-14 Retention | History preserved; no purge logic |
 | TT-23 Pilot participants | Grants never bypass; no pilot exists here |
-| TT-24, 25 Highlight generation and search | Not built; generation stays session-bound |
+| TT-25, 27 Semantic highlight search; saved-quotation permissions (TT-24 resolved by PO-028) | Ask My Highlights not built; session generation stays session-bound |
+| TT-01 Token expiry; TT-12 launch corpus | Tokens out of scope; no real rights record |
 | TT-26 Evidence standard, verifier | No real rights record is created |
 | PO-024 open items | Tokens out of scope |
 
@@ -170,7 +183,7 @@ STOP and mark BLOCKED if:
 - a real provider, spend, or access to a shared database seems necessary;
 - an existing table must be altered, or a deployed migration edited;
 - the module cannot stay unloaded without affecting another module;
-- a rule in PO-025…029 proves untestable or contradicts ADR-003;
+- a rule in PO-026…028 or PO-030 (decided), or PO-025/PO-029 (drafts), proves untestable or contradicts ADR-003;
 - a value would need inventing beyond marked test fixtures;
 - any accepted decision text differs from what §7 assumes.
 

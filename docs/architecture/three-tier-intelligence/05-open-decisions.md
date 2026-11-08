@@ -22,12 +22,16 @@ This document keeps approved decisions and open questions strictly apart. **A re
 | PostgreSQL + pgvector, exact search first, retrieval interface | PO-004, ADR-004 | Merged |
 | Initial provider configuration (revisable) | PO-005 | Unmerged (`nem-009-resilience-impl`) |
 | Subscriptions never unlock paid books; acquisition by token only | PO-021 + Amendment 1 | Unmerged (PR #12) |
-| Noetia+ requires an active book plan; cancelling Noetia+ does not cancel it; ending it ends Noetia+ | PO direction 2026-10-30 | Direction approved; records **not** amended (PR #18). See TT-02 |
+| Noetia+ requires an active book plan; cancelling Noetia+ does not cancel it; ending it ends Noetia+ | PO direction 2026-10-30 | Direction approved; **extended to both tiers and decided as PO-026 (2026-11-08)** |
 | Final premium prices are **not** authorized | Assignment | — |
+| **TT-02** Premium prerequisite: active Individual, Duo, or Family subscription; add-on; cancel/end rules; ownership; tokens ≠ AI budgets; no automatic household sharing | **PO, 2026-11-08** | **DECIDED** → [PO-026](../../operating-framework/decisions/product-owner/PO-026-premium-subscription-prerequisite.md) |
+| **TT-04** Session limits 3 / 10; every selected book counts, including public domain; verified public-domain editions selectable without the library; lock at first turn; new or forked session to change; server-side; eligibility independent of ownership | **PO, 2026-11-08** | **DECIDED** → [PO-027](../../operating-framework/decisions/product-owner/PO-027-research-session-book-limits.md) |
+| **TT-05** Full-book research bound to selected books; **Ask My Highlights searches and answers over own highlights library-wide**, outside the limit, with its own usage controls; no route to full-book retrieval; private; modes preserved | **PO, 2026-11-08** ("Option A"; rule text governs) | **DECIDED** → [PO-028](../../operating-framework/decisions/product-owner/PO-028-my-knowledge-and-highlight-boundary.md) |
+| **TT-21** NEM-003 historical; **NEM-006 formally superseded**; ADR-005 and ADR-006 prepared; register updated; NEM-019 reconciled but not approved | **PO, 2026-11-08** | **DECIDED** → [PO-030](../../operating-framework/decisions/product-owner/PO-030-three-tier-architecture-governance.md); [08](08-architecture-governance-record.md) |
 
 ### T0 preliminary rulings (2026-11-06)
 
-Drafted as PO-025…029 and amendment drafts. **These are not authoritative records until the Product Owner accepts the text.** Summaries are in Part B.
+Drafted as PO-025…029 and amendment drafts. **Updated 2026-11-08:** TT-02, TT-04, TT-05, and TT-21 are now **decided** (above). **TT-01 and TT-12 remain open**: their T0 preliminary rulings were not adopted as decisions, and PO-025 (three-tier structure) and PO-029 (eligible corpus) remain **drafts, not decided**. TT-01 and TT-12 do not block the dark NEM-019 control plane but must be resolved before their dependent commercial or content-release phases.
 
 **Corrected:** the earlier statement that purchased tokens expire after 90 days does not stand. PO-024 governs (TT-01).
 
@@ -35,17 +39,17 @@ Drafted as PO-025…029 and amendment drafts. **These are not authoritative reco
 
 ## Part B — Open decisions
 
-**Priority:** **Ruled** received a T0 preliminary ruling · **P1** blocks that phase's build · **P2** can wait. **No open item below blocks NEM-019.**
+**Priority:** **DECIDED** / **RESOLVED** settled by the PO on 2026-11-08 · **OPEN** a T0 preliminary ruling exists but was not adopted · **Ruled** received a T0 preliminary ruling · **P1** blocks that phase's build · **P2** can wait. **No open item below blocks NEM-019.**
 
 ### Product definition
 
 | ID | Pri | Question | Why it matters | Options | Consequence | Recommended default |
 |---|---|---|---|---|---|---|
-| **TT-01** | **Ruled** | Purchased-token expiry | — | — | — | **Preliminary ruling: preserve PO-024; no universal 90-day rule.** Remediation: [report](../../reports/2026-11-06-SA-002-T0-decision-closure.md) |
-| **TT-02** | **Ruled** | Premium prerequisite | — | — | — | **Preliminary ruling: both tiers require a qualifying book subscription; no standalone tier** ([PO-026](../../operating-framework/decisions/product-owner/PO-026-premium-subscription-prerequisite.md)). Household and states stay open (TT-15) |
+| **TT-01** | **OPEN** (P1 before token and commercial phases) | Purchased-token expiry conflict | Code, Terms, and copy say 90 days; PO-024 says otherwise | — | Commercial invariant | T0 preliminary ruling (preserve PO-024; no universal 90-day rule) **not adopted as a decision**. Remediation analysis: [report](../../reports/2026-11-06-SA-002-T0-decision-closure.md). Not a prerequisite for dark NEM-019 |
+| **TT-02** | **DECIDED 2026-11-08** | Premium prerequisite | — | — | — | Active Individual, Duo, or Family subscription; add-on ([PO-026](../../operating-framework/decisions/product-owner/PO-026-premium-subscription-prerequisite.md)). Linked members and states stay open (TT-15) |
 | **TT-03** | P1 | **What does "Noetia" include, and how is the prerequisite worded without "Basic"?** Also, should the author hosting label "Básico" change? | Prevents "Basic" returning through copy | (a) "Noetia" = platform, including free accounts and plans; prerequisite named as "an Individual, Duo or Family plan". (b) A new name for the paid base | Copy, legal text, i18n | **(a)**. Author label: separate cleanup, no urgency |
-| **TT-04** | **Ruled** | Limit semantics | — | — | — | **Preliminary ruling: 3 and 10; lock at the first analysis turn; change by new or forked session** ([PO-027](../../operating-framework/decisions/product-owner/PO-027-research-session-book-limits.md)) |
-| **TT-05** | **Ruled** | My Knowledge and highlights | — | — | — | **Preliminary ruling: analysis bound to selected books; separate search over own highlights** ([PO-028](../../operating-framework/decisions/product-owner/PO-028-my-knowledge-and-highlight-boundary.md)). Earlier option (b) not adopted (TT-24) |
+| **TT-04** | **DECIDED 2026-11-08** | Limit semantics | — | — | — | 3 and 10; every selected book counts, including public domain; verified public-domain editions selectable without the library; lock at first turn; new or forked session; server-side; eligibility independent of ownership ([PO-027](../../operating-framework/decisions/product-owner/PO-027-research-session-book-limits.md)) |
+| **TT-05** | **DECIDED 2026-11-08** | My Knowledge and highlights | — | — | — | Full-book research bound to selected books; Ask My Highlights **searches and answers** over own highlights library-wide, with its own usage controls ([PO-028](../../operating-framework/decisions/product-owner/PO-028-my-knowledge-and-highlight-boundary.md)). This matches option (b) of the original table; the PO confirmed the rule text governs |
 | **TT-06** | P2 | Monthly session count, beyond budgets? | Visible limits versus simplicity | None / hidden / visible | Budget already bounds cost | **None** at first |
 | **TT-07** | P1 | **What is NoetiaX's depth?** Which of DX-1…DX-8, and which benchmark criteria prove it? | `PO` requires qualitative depth, and it defines the value of the tier | Any subset | Build cost, run cost | **DX-1, 2, 4, 7**, with the same-books benchmark as acceptance |
 | **TT-08** | P1 | **How deep is Noetia+ on agreements and contradictions?** | ADR-001 classes this as advanced; it is in every Brief | (a) Standard class only, passage-level, labelled accordingly. (b) Capped advanced use. (c) Advanced by default | (c) likely breaks the ~$1.50 guideline | **(a) or (b), by evaluation** |
@@ -59,14 +63,14 @@ Drafted as PO-025…029 and amendment drafts. **These are not authoritative reco
 | **TT-09** | P1 | **COGS targets per tier.** Does ~$1.50 apply to Noetia+ only? What for NoetiaX? Band denominator (Q-E11)? Causas and Marketing on premium (W-3, B-6)? Creator share of premium revenue? | Sets budget bounds; the ToS promises Causas on "every payment" | Per item | Budgets and prices depend on them | Apply bands **per tier**; set NoetiaX target after measurement. No default on Causas or creator share |
 | **TT-10** | P1 | **What do customers see?** | NEM-003 D10 suggested named units; the assignment says internal budgets | (a) Plain "monthly capacity" indicator. (b) Named units. (c) Hidden until near the limit | Transparency versus flexibility; possibly consumer-law relevance | **(a)**; never tokens or dollars |
 | **TT-11** | P1 | **Reset date, and what happens at the limit** | Experience; revenue | Upgrade prompt, wait, read-only; add-on credits (D12) | Add-ons need a separate ledger, never book tokens | **Billing-anchored reset; read-only plus upgrade prompt; no add-ons at launch** |
-| **TT-15** | P1 | **Household and subscription state.** Do Duo and Family qualify? Linked members? Per-member budgets? `trialing`, `canceling`, `past_due`? (D8, Q-E7) | Eligibility, privacy, cost | Per item | Resolver rules | **Per member; own entitlement required; data never shared** |
+| **TT-15** | P1 (**partly decided**) | **Household and subscription state.** ~~Do Duo and Family qualify?~~ **Yes, as subscription types (PO-026).** Still open: do **linked members** (not the subscriber) qualify? Per-member budgets? Which states count (`trialing`, `canceling`, `past_due`)? (D8, Q-E7) | Eligibility, privacy, cost | Per item | Resolver rules | **Per member; own entitlement required; data never shared** (data sharing now decided: none automatic, PO-026 rule 6). SA-003 Rev 5's working baseline (members eligible; 72-hour grace) is a recommendation, not a decision |
 | **TT-16** | P1 | **Prices and billing.** Prices (D1, Q-E13); one Subscription or two (Q-E14); annual; trial; tier swap and proration; refunds; cross-line coupons (Q-E12) | Not authorized here | See [04 §3](04-entitlements-and-budgets.md#3-compatibility-verification) | Billing mission | One Subscription with line items under TT-02(a). **No price proposed** |
 
 ### Rights, legal, and retention
 
 | ID | Pri | Question | Why it matters | Options | Consequence | Recommended default |
 |---|---|---|---|---|---|---|
-| **TT-12** | **Ruled** | Launch corpus | — | — | — | **Preliminary ruling: verified public domain first, then explicit opt-in; default deny** ([PO-029](../../operating-framework/decisions/product-owner/PO-029-eligible-research-corpus.md)). Evidence standard is TT-26 |
+| **TT-12** | **OPEN** (P1 before content release) | Verified AI-eligible launch corpus and rights | Default deny leaves no eligible book today | — | Content release | T0 preliminary ruling (verified public domain first, then explicit opt-in; default deny; draft [PO-029](../../operating-framework/decisions/product-owner/PO-029-eligible-research-corpus.md)) **not adopted as a decision**. Evidence standard is TT-26. Not a prerequisite for dark NEM-019, which seeds no real rights record |
 | **TT-13** | P1 | **Quotation and reconstruction thresholds** (D4), including Briefs | Legal exposure; thresholds are not safe harbours | Configurable per book, turn, session, and Brief | Engineering enforces what is set | Conservative placeholder; Product/Legal to set |
 | **TT-14** | P1 | **Retention** after cancel or downgrade (D5), export rights, and Brief treatment after rights revocation | Ownership philosophy versus rights | Read-only retain; delete; export window | Storage, privacy | **Retain read-only with export; delete on account deletion; revocation removes quoted text but keeps the user's own work.** Legal review |
 | **TT-17** | P2 | **Brief export format(s) and sharing** | [03 §6](03-research-architecture.md#6-research-brief) | In-app, Markdown, PDF, DOCX, link | Effort, rights | **None selected, per the assignment** |
@@ -78,18 +82,24 @@ Drafted as PO-025…029 and amendment drafts. **These are not authoritative reco
 | ID | Pri | Question | Why it matters | Options | Consequence | Recommended default |
 |---|---|---|---|---|---|---|
 | **TT-23** | P1 (T5) | May a no-charge pilot participant without a book plan use a grant? | PO-026 has no pilot exception, and grants do not bypass it | (a) Participants hold a qualifying plan. (b) An explicit, time-boxed pilot exception | (a) Needs real plans before the pilot. (b) Needs its own decision | Decide before T5 |
-| **TT-24** | P1 (T5) | Is generation over highlights alone permitted outside a session? | PO-028 permits *search*. NEM-003's Ask My Highlights generates | (a) No. (b) Yes, under book permissions | (b) sends saved quotations to providers across any number of books | **(a)**: current reading of the ruling; confirm |
+| **TT-24** | **RESOLVED 2026-11-08** | Is generation over highlights alone permitted outside a session? | — | — | — | **Yes**: PO-028 rule 2 permits search **and answers** over own highlights library-wide. Whether book permissions apply is split out as TT-27 |
 | **TT-25** | P2 | Semantic highlight search? Which tier has highlight search? | Semantic search sends notes and quotations to a provider | Lexical only; semantic gated by title rights and privacy disclosure | Privacy, rights | Lexical first; tier undecided |
 | **TT-26** | P1 (T2) | Legal evidence standard, named verifier, and jurisdictions for rights verification | Public-domain status varies by country; markets span the Americas and Spain | Per [07](07-rights-verification-requirements.md) | Blocks evaluation corpus sign-off | Legal review |
+
+### Raised by the 2026-11-08 approvals
+
+| ID | Pri | Question | Why it matters | Options | Consequence | Recommended default |
+|---|---|---|---|---|---|---|
+| **TT-27** | P1 (before Ask My Highlights) | How do **book AI permissions** apply when saved-quotation text (`fragments.text`) is sent to a model in Ask My Highlights, for books not selected in any session or with restrictive AI rights? | PO-028 rule 2 permits answers library-wide; rule 5 forbids an indirect route to full-book retrieval; a saved quotation is client-supplied and may be genuine publisher text | (a) Apply each book's AI permissions to its saved quotations, excluding restricted books. (b) Treat all saved quotations as user content. (c) Notes only for restricted books | (b) weakens rule 5 and publisher controls | **(a)** — recommendation only; Product/Legal decision |
 
 ### Governance
 
 | ID | Pri | Question | Why it matters | Options | Consequence | Recommended default |
 |---|---|---|---|---|---|---|
-| **TT-21** | **Ruled** | Governance | — | — | — | **Preliminary ruling: draft new PO records and ADR-005/006; NEM-003 unchanged; amendments prepared for review.** NEM-006 was not addressed, so it **stays PAUSED**. The earlier recommendation to cancel it is withdrawn pending a PO decision |
+| **TT-21** | **DECIDED 2026-11-08** | Governance | — | — | — | NEM-003 historical; **NEM-006 formally superseded**, record preserved; ADR-005 and ADR-006 prepared (Proposed); register updated; NEM-019 reconciled, **not approved or executed** ([PO-030](../../operating-framework/decisions/product-owner/PO-030-three-tier-architecture-governance.md); [08](08-architecture-governance-record.md)) |
 
 ---
 
 ## Decisions needed for the draft mission
 
-**No open product decision blocks NEM-019.** It needs acceptance of the drafted PO-025…029 and amendments, and of ADR-005/006. Every open item above is held safe by a default-deny port, an out-of-scope exclusion, or a test fixture ([NEM-019 §16](../../engineering-missions/DRAFT/NEM-019-tier-aware-intelligence-control-plane.md)).
+**No open product decision blocks NEM-019** (updated 2026-11-08). PO-026, PO-027, PO-028, and PO-030 are decided. Before approval it still needs: Product Architecture acceptance of ADR-005 and ADR-006; PO approval of the mission text; and a PO ruling on whether draft PO-025 must be accepted first (NEM-019 §3). TT-01 and TT-12 are explicitly **not** prerequisites for the dark control plane. Every open item above is held safe by a default-deny port, an out-of-scope exclusion, or a test fixture ([NEM-019 §16](../../engineering-missions/DRAFT/NEM-019-tier-aware-intelligence-control-plane.md)).

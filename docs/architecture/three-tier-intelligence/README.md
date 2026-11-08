@@ -2,7 +2,7 @@
 
 **Noetia · Noetia+ · NoetiaX**
 
-**Status:** PROPOSED: awaiting Product Architecture review. T0 preliminary rulings are reflected and drafted as PO-025…029 and ADR-005/006; [T0 report](../../reports/2026-11-06-SA-002-T0-decision-closure.md).
+**Status:** PROPOSED: awaiting Product Architecture review. T0 preliminary rulings are reflected and drafted as PO-025…029 and ADR-005/006; [T0 report](../../reports/2026-11-06-SA-002-T0-decision-closure.md). **Updated 2026-11-08:** TT-02, TT-04, TT-05, TT-21 **decided** (PO-026, PO-027, PO-028, PO-030); TT-01 and TT-12 remain open; ADR-005/006 revised and still Proposed; NEM-006 superseded ([08](08-architecture-governance-record.md)); NEM-019 revision 3, still DRAFT ([T0 report, Revision 2](../../reports/2026-11-06-SA-002-T0-decision-closure.md#revision-2--product-owner-approvals-2026-11-08)).
 **Date:** 2026-11-06 · **Assignment ID:** `SA-002` (provisional) · **Authorization:** documentation and analysis only.
 
 > Nothing here authorizes implementation. No application code, database, infrastructure, Stripe, or deployment was changed. NEM-003 and all ADRs and PO records are preserved as written. Facts were verified against `origin/main` at `6a5e5c0`. This is product and architecture analysis, not legal advice.
@@ -19,6 +19,7 @@
 | 6 | Next Engineering Mission draft | [NEM-019 (DRAFT)](../../engineering-missions/DRAFT/NEM-019-tier-aware-intelligence-control-plane.md) |
 | — | Roadmap | [06-implementation-roadmap.md](06-implementation-roadmap.md) |
 | — | Rights verification requirements | [07-rights-verification-requirements.md](07-rights-verification-requirements.md) |
+| — | Governance record: NEM-003 and NEM-006 | [08-architecture-governance-record.md](08-architecture-governance-record.md) |
 | — | Mission report | [2026-11-06 report](../../reports/2026-11-06-SA-002-three-tier-architecture-reconciliation.md) |
 
 ## The main conclusions
