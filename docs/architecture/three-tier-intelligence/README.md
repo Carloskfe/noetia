@@ -2,7 +2,7 @@
 
 **Noetia · Noetia+ · NoetiaX**
 
-**Status:** PROPOSED: awaiting Product Architecture review. T0 preliminary rulings are reflected and drafted as PO-025…029 and ADR-005/006; [T0 report](../../reports/2026-11-06-SA-002-T0-decision-closure.md). **Updated 2026-11-08:** TT-02, TT-04, TT-05, TT-21 **decided** (PO-026, PO-027, PO-028, PO-030); TT-01 and TT-12 remain open; ADR-005/006 revised and still Proposed; NEM-006 superseded ([08](08-architecture-governance-record.md)); NEM-019 revision 3, still DRAFT ([T0 report, Revision 2](../../reports/2026-11-06-SA-002-T0-decision-closure.md#revision-2--product-owner-approvals-2026-11-08)).
+**Status:** PROPOSED: awaiting Product Architecture review. T0 preliminary rulings are reflected and drafted as PO-025…029 and ADR-005/006; [T0 report](../../reports/2026-11-06-SA-002-T0-decision-closure.md). **Updated 2026-11-08:** TT-02, TT-04, TT-05, TT-21 **decided** (PO-026, PO-027, PO-028, PO-030); TT-01 and TT-12 remain open; ADR-005/006 revised and still Proposed; NEM-006 superseded ([08](08-architecture-governance-record.md)); NEM-019 still DRAFT. **ADR-005 and ADR-006 revision 3 accepted 2026-11-08**; NEM-019 revision 4 remains DRAFT ([T0 report, Revision 2](../../reports/2026-11-06-SA-002-T0-decision-closure.md#revision-2--product-owner-approvals-2026-11-08)).
 **Date:** 2026-11-06 · **Assignment ID:** `SA-002` (provisional) · **Authorization:** documentation and analysis only.
 
 > Nothing here authorizes implementation. No application code, database, infrastructure, Stripe, or deployment was changed. NEM-003 and all ADRs and PO records are preserved as written. Facts were verified against `origin/main` at `6a5e5c0`. This is product and architecture analysis, not legal advice.

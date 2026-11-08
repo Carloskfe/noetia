@@ -1,8 +1,8 @@
 # ADR-006 — Research Sessions, Selected-Book Limits, Forking, Source-Scope Isolation, and Research Briefs
 
-- **Status:** Proposed (draft; not accepted) — **revision 3, 2026-11-08**: review corrections B-2, B-3, B-4, B-5 incorporated (review PR #41, accepted by the PO); ready for formal acceptance review
-- **Date:** 2026-11-06 (SA-002-T0); revised 2026-11-08 (SA-002-T0 Rev 2; review corrections)
-- **Decided by:** pending: Product Architecture acceptance. Product Owner inputs: **PO-027, PO-028 (decided 2026-11-08)**, PO-029 (draft; TT-12 open), PO-030 (decided; requires this ADR)
+- **Status:** **Accepted** (revision 3), 2026-11-08
+- **Date:** proposed 2026-11-06 (SA-002-T0); revised 2026-11-08 (SA-002-T0 Rev 2; review corrections); **accepted 2026-11-08**
+- **Decided by:** Product Owner (PO-027, PO-028; PO-030 requires this ADR) + Product Architecture (independent review, 2026-11-08). PO-029 is a **draft** (TT-12 open); the rights rules below rest on ADR-002 default deny, not on PO-029
 - **Relates:** extends ADR-002, ADR-003, ADR-004 without altering their decisions; NEM-003 remains historical design.
 
 ## Context
@@ -34,7 +34,7 @@ Selection changes and the lock each run in a short transaction holding a row loc
 | Failure at | Effect |
 |---|---|
 | Steps 1–3 | Rejected in preflight: **no lock, no charge** |
-| Step 4 | The reservation is released through the ledger (idempotent); no lock |
+| Step 4 | The reservation is released through the ledger (idempotent); no lock. If the release cannot be written, the reservation stays held until reconciliation releases it; no provider call is made |
 | Steps 5–6 | The lock stands. Settlement follows ADR-005: recorded from reported usage; if unknown or the ledger is unavailable, the reservation stays **held and unresolved** until reconciliation. **Settlement is never assumed** |
 
 ### Forking and history
@@ -82,7 +82,9 @@ A **separate path from research sessions**. It may **search and answer** over th
 
 *Revision 1 text, superseded:* "Lexical search over the requesting user's own rows… It involves no model, no provider, no chunks, and no book text." Superseded by PO-028 rule 2 (answers permitted).
 
-### Rights (PO-029)
+### Rights (default deny; ADR-002)
+*Draft PO-029 and TT-12/TT-26 will set the launch corpus and evidence standard; nothing here decides them.*
+
 Default deny. Eligibility requires an authoritative record for the exact text version. `isFree`, `pendingRights`, sync quality, `uploadedById`, and catalogue visibility are never evidence.
 
 ### Research Brief
@@ -119,6 +121,7 @@ A Research Brief is a **structured, versioned, immutable, user-private record of
 | 1 | 2026-11-06 | Drafted under SA-002-T0 from preliminary rulings |
 | 2 | 2026-11-08 | Reconciled with decided PO-027 (public-domain books count; selection without library; eligibility independent of ownership; server-side) and PO-028 (Ask My Highlights search and answers across the library with its own controls; highlight Context Builder invariant). Research Brief section added (PO-030 rule 4). Still **Proposed** |
 | 3 | 2026-11-08 | Review corrections (PR #41): **B-3** Context Builder invariant scoped to research sessions, with declared invariants for every other model path; **B-4** eligibility = rights verification AND access basis; **B-5** turn order and failure effects; **B-2** account deletion. Still **Proposed**. PO-027 and PO-028 unchanged |
+| 4 | 2026-11-08 | **Accepted 2026-11-08 by Product Owner authorization (*Final ADR Corrections and Architecture Acceptance*) following the independent Product Architecture review (PR #41) and the incorporation of B-1…B-5 (PR #42).** Acceptance edits, no change of substance: step-4 release failure stated; Rights heading no longer implies draft PO-029 is decided. PO-027 and PO-028 unchanged |
 
 ## Legal note
 Product and architecture policy, not legal advice.

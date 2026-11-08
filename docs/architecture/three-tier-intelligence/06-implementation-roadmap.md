@@ -59,7 +59,7 @@ T0 Decisions ─▶ T1 Control plane (dark) ─▶ T2 Evaluation ─▶ T3 Seman
 |---|---|
 | **Scope** | PO rules on P0 decisions; records and ADRs updated (documentation only) |
 | **Depends on** | This package |
-| **Status** | Preliminary rulings received; PO-025…029 and ADR-005/006 drafted. **2026-11-08:** TT-02, TT-04, TT-05, TT-21 **decided** (PO-026, PO-027, PO-028, PO-030); ADR-005/006 revision 2 **Proposed**; TT-01 and TT-12 open (not T1 prerequisites). Ask My Highlights (PO-028) is not yet placed in a phase |
+| **Status** | Preliminary rulings received; PO-025…029 and ADR-005/006 drafted. **2026-11-08:** TT-02, TT-04, TT-05, TT-21 **decided** (PO-026, PO-027, PO-028, PO-030); ADR-005/006 **accepted** 2026-11-08 (revision 3); TT-01 and TT-12 open (not T1 prerequisites). Ask My Highlights (PO-028) is not yet placed in a phase |
 | **Acceptance** | PO accepts the records and amendments; Product Architecture accepts the ADRs |
 | **Tests** | None |
 | **Cost safeguard** | None needed: no spend |

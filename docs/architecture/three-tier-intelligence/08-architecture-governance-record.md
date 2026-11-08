@@ -34,6 +34,6 @@ This record states the standing of the two earlier Noetia+ missions relative to 
 Source-of-truth hierarchy (`docs/engineering-missions/README.md`): Product Owner decisions → approved ADRs → approved missions → code → baseline docs → historical documents. After PO-030:
 
 - PO-026, PO-027, PO-028, PO-030 are decided Product Owner records.
-- ADR-005 and ADR-006 are **Proposed**; they gain ADR authority only when accepted.
+- ADR-005 and ADR-006 were **accepted** on 2026-11-08 (revision 3) and carry ADR authority. *(Previously Proposed.)*
 - NEM-019 is a **DRAFT**; it authorizes nothing until approved, and executes only on an explicit PO instruction.
 - NEM-003 documents and the NEM-006 record are historical context where superseded.

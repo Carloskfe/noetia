@@ -1,8 +1,8 @@
 # ADR-005 — Tier Entitlements, Subscription Prerequisites, and AI Resource-Budget Boundaries
 
-- **Status:** Proposed (draft; not accepted) — **revision 3, 2026-11-08**: review corrections B-1, B-2, B-5 incorporated (review PR #41, accepted by the PO); ready for formal acceptance review
-- **Date:** 2026-11-06 (SA-002-T0); revised 2026-11-08 (SA-002-T0 Rev 2; review corrections)
-- **Decided by:** pending: Product Architecture acceptance. Product Owner inputs: **PO-026 (decided 2026-11-08)**, PO-028 rule 4 (decided), PO-025 (draft), PO-030 (decided; requires this ADR)
+- **Status:** **Accepted** (revision 3), 2026-11-08
+- **Date:** proposed 2026-11-06 (SA-002-T0); revised 2026-11-08 (SA-002-T0 Rev 2; review corrections); **accepted 2026-11-08**
+- **Decided by:** Product Owner (PO-026, PO-028 rule 4; PO-030 requires this ADR) + Product Architecture (independent review, 2026-11-08). PO-025 (draft) is cited for terminology only and is not a normative input
 - **Relates:** builds on ADR-001, ADR-002; PO-021…024. Extends NEM-003 `08` and `07`, which remain unchanged as historical design.
 
 ## Context
@@ -17,7 +17,7 @@ A single **entitlement resolver** inside `knowledge/` is the only place tier is 
 - **Prerequisite is a port.** The resolver asks a `QualifyingPlanPort` for `qualifying`, `not_qualifying`, or `unknown`; **`unknown` denies**. PO-026 names the qualifying subscription types (Individual, Duo, Family). Mapping real subscriptions, **linked members**, and **states** to these answers is a later mission, after TT-15; until then no production adapter exists.
 - **Eligibility ends with the book subscription** (PO-026 rule 3). Cancelling premium never acts on the book subscription (rule 2).
 - **Resource budgets are a separate domain.** Each premium tier has its own policy, and policies are keyed by **capability** as well as tier, so highlight-based intelligence has **its own AI usage controls** (PO-028 rule 4). No values are set here. Allowances use internal resource units; actual cost is recorded separately in micro-USD from versioned rate cards. Reservation precedes any model call and settlement follows it, as specified below.
-- **Budget authority (B-1).** The PostgreSQL ledger is the **only authority** for allowances, reservations, and settlements. Redis, if used, is an admission-control cache that can be rebuilt from the ledger and is never the sole record of a reservation. If the reservation store or the ledger is unavailable, errors, or rejects a write, the request is **denied before any model call** (fail closed). Every reservation carries an idempotency key (one per turn or request), an owner, a capability, and an expiry. Budget keys in any shared store are namespaced and always carry an expiry. No values are set here.
+- **Budget authority (B-1).** The PostgreSQL ledger is the **only authority** for allowances, reservations, and settlements. Redis, if used, is an admission-control cache that can be rebuilt from the ledger and is never the sole record of a reservation. **At admission**, if the reservation store or the ledger is unavailable, errors, or rejects a write, the request is **denied before any model call** (fail closed): no reservation, lock, or charge. A ledger failure **at settlement** is handled by *Durable settlement and recovery* below, never by assuming success or releasing the reservation. Every reservation carries an idempotency key (one per turn or request), an owner, a capability, and an expiry. Budget keys in any shared store are namespaced and always carry an expiry. No values are set here.
 - **Durable settlement and recovery (B-5).**
   - A reservation is **written to the ledger before** any provider call. Settlement is a separate ledger entry keyed by the same idempotency key, protected by a uniqueness constraint, so a replay or retry **can never charge twice**.
   - **Settlement is never assumed.** After a provider success, failure, timeout, or abort, settlement records the usage the Gateway reports. If actual usage is unknown, or the ledger cannot be written at that moment, the reservation stays **held and unresolved**: it continues to count against the budget at its reserved amount and is never released to zero automatically.
@@ -63,6 +63,7 @@ Qualifying plans, linked members, and states (TT-15) · billing structure and li
 | 1 | 2026-11-06 | Drafted under SA-002-T0 from preliminary rulings |
 | 2 | 2026-11-08 | Reconciled with decided PO-026 (qualifying subscription types; add-on; eligibility ends with the book subscription; household privacy) and PO-028 rule 4 (separate usage controls for highlight intelligence). Still **Proposed** |
 | 3 | 2026-11-08 | Review corrections (PR #41): **B-1** budget authority and fail-closed reservation store; **B-5** durable, idempotent settlement and recovery, no duplicate charges, fail-closed admission while unresolved reservations threaten integrity; **B-2** account deletion never blocked. Still **Proposed**. PO-026 and PO-028 unchanged |
+| 4 | 2026-11-08 | **Accepted 2026-11-08 by Product Owner authorization (*Final ADR Corrections and Architecture Acceptance*) following the independent Product Architecture review (PR #41) and the incorporation of B-1…B-5 (PR #42).** Acceptance edits, no change of substance: admission-time versus settlement-time ledger failure made explicit; PO-025 marked non-normative. PO-026 and PO-028 unchanged |
 
 ## Legal note
 Product and architecture policy, not legal advice.
