@@ -1,12 +1,13 @@
 # NEM-020 — Pre-Launch Billing and Commercial Data Inventory: completion report (partial)
 
-> **Status: PARTIAL — Phase 2 (operator-assisted) authorized 2026-11-07; awaiting operator output.** Q12–Q14 approved. Execution sequence: **Appendix C** (Rev 2).
+> **Status: PARTIAL (Rev 3, 2026-11-08) — preliminary production checks recorded; inventory outputs still outstanding.** Execution: **Appendix D** (Rev 3, supersedes the hand-pasted commands in Appendix C).
 >
-> **Readiness: ADR-007 acceptance — BLOCKED · NEM-021 — BLOCKED**, until the production inventory and the Stripe mode verdict are recorded (§17).
-> - Validation on a disposable local database is **complete and passed** (V-1, V-2, V-4).
-> - No production, staging, or Stripe data has been read yet. Claude has no authorized read-only access to any of them (§7.2).
-> - Operator instructions are ready in **Appendix A** (database and key mode) and **Appendix B** (Stripe Dashboard).
-> - **Stripe mode verdict: UNDETERMINED.** No inventory finding below describes production.
+> **Readiness: ADR-007 acceptance — BLOCKED · NEM-021 — BLOCKED** (§17).
+> - **CRITICAL (D6): production runs a *live* Stripe key, and `main` has a checkout that needs no login and no configured Stripe price** (`POST /gifts/checkout`, $9.99 / $24.99). Real charges appear possible today, contrary to Q4 (coordinated launch) and the pre-launch premise. No charge has been found. Containment is a production change and needs a separate Product Owner decision (§16, item 8).
+> - Production identity, read-only session, migration head, and Part A/B checksums: **confirmed by the PO** (§7.3).
+> - Production Q1–Q14 outputs, staging, webhook-secret status, and most of the Stripe checklist: **not yet received**.
+> - A key-mode checker copy relayed through a chat tool was **silently corrupted** (D5). Appendix D fetches payloads from a pinned commit and verifies them, so nothing is hand-copied.
+> - **Stripe mode verdict: key = live (PO-attested); webhook and price-ID modes UNDETERMINED.**
 
 Evidence labels: **[VERIFIED]** run and observed in this iteration · **[CODE]** read from `origin/main` · **[DOC]** stated in repository documentation, not re-verified · **[BLOCKED]** not accessible · **[PROPOSED]** recommendation only.
 
@@ -30,8 +31,8 @@ Safety conditions in force: no production writes, migrations, or configuration c
 
 | | |
 |---|---|
-| **Dates** | Executed and reported 2026-11-07 |
-| **Lifecycle status** | **In progress (partial)** — Phase 2 authorized; production, staging, and Stripe items await operator output (Appendix C) |
+| **Dates** | Executed and reported 2026-11-07; Rev 3 2026-11-08 |
+| **Lifecycle status** | **In progress (partial)** — preliminary production checks recorded; inventory outputs await the operator (Appendix D); live-key exposure escalated (D6) |
 | **Delivery state** | **Not merged.** Nothing deployed |
 | **This report authorizes** | **Nothing.** The treatment matrix is a recommendation |
 
@@ -41,6 +42,7 @@ Safety conditions in force: no production writes, migrations, or configuration c
 |---|---|---|
 | 1 | 2026-11-07 | Local validation (V-1, V-2, V-4); access assessment; operator runbook; Stripe checklist; conditional treatment matrix. Production, staging, and Stripe results pending |
 | 2 | 2026-11-07 | Phase 2 authorization (*NEM-020 Phase 2: Operator-Assisted Inventory*): Q12–Q14 approved; payloads and checksums re-verified from the pushed branch; session guard `default_transaction_read_only=on` added and validated; environment and identity gates; Appendix C execution sequence. Still no production, staging, or Stripe data |
+| 3 | 2026-11-08 | PO preliminary evidence recorded (§7.3); D5 key-checker transcription corruption diagnosed; **D6 CRITICAL live checkout exposure** escalated; Appendix D pinned-commit fetch-and-verify procedure (validated locally); risks, decisions, and next actions updated. Inventory outputs still not received |
 
 ## 3. Repository baseline
 
@@ -65,6 +67,9 @@ Safety conditions in force: no production writes, migrations, or configuration c
 - **Production, staging, and Stripe were not read** [BLOCKED]. Claude has no read-only database role, no general SSH access (the only key on this machine is the restricted offsite-backup key), and no Stripe access. Per the safety conditions, operator instructions are prepared instead (Appendices A and B).
 - **Stripe mode verdict: UNDETERMINED.** Repository evidence only: CLAUDE.md says Stripe keys are "not yet in `.env.production`" [DOC]; Release A was validated with a test key (PR #14) [DOC].
 - **Two safety discoveries:** (D1) the documented key-mode check in `docs/production-safety/02-stripe-mode-verification.md` §A **prints the raw secret line** if the key is quoted or a restricted `rk_` key [VERIFIED with fake values]; a safe replacement is in Appendix A. (D2) `stripe_processed_events` stores no mode, so Q9 cannot prove "no live webhook traffic"; Stripe Dashboard S5/S6 are the authoritative evidence.
+- **Rev 3 — production preliminary checks** (PO-attested, 2026-11-08): database `noetia` / user `noetia`, read-only session on, 68 migrations, head `…067`; Part A/B checksums pass; Stripe key **live** in the environment file and the running API; Dashboard shows no payments or subscriptions; PO confirms no collections to date.
+- **Rev 3 — CRITICAL (D6):** with a live key, `POST /gifts/checkout` (no authentication, inline price) and per-title purchase (inline `books.priceCents`) can create real Stripe charges now. Plan checkout can too if `plans.stripePriceId` holds real live IDs (Q1).
+- **Rev 3 — D5:** the key-mode checker copy the operator first used had a one-character corruption from a chat relay; the committed payload is correct.
 - **Three legacy commercial objects are outside Q1–Q11:** `subscriptions.tokenBalance` (pre-ledger credits), `books.priceCents` (per-title checkout), and Causas / gift-card checkout references. Supplementary queries Q12–Q14 are validated but **require Product Owner approval** before an operator runs them.
 
 ## 6. Work completed
@@ -99,6 +104,8 @@ Safety conditions in force: no production writes, migrations, or configuration c
 
 ### 7.2 Access assessment
 
+Rev 3: unchanged. Claude still has no read-only access; all production and staging evidence comes from the operator.
+
 | Target | Authorized read-only access for Claude? | Evidence | Treatment |
 |---|---|---|---|
 | Production database | **No** | No read-only role exists; creating one is a new credential (prohibited). Only SSH key on this machine is `noetia_backup_ed25519` (offsite-backup, restricted); using it for queries would exceed its purpose. A root SSH session is write-capable, which Annex A §3.2 excludes | Operator runs Appendix A |
@@ -111,27 +118,45 @@ No connection to production, staging, or Stripe was attempted.
 
 ### 7.3 Inventory results
 
+Rev 3 label: **[PO]** attested by the Product Owner as operator, 2026-11-08; not observed by Claude.
+
 | Item | Production | Staging | Status |
 |---|---|---|---|
-| Q1–Q11 | — | — | **[BLOCKED]** awaiting operator (Appendix A) |
-| Q12–Q14 | — | — | **Approved (Rev 2)**; awaiting operator |
-| S1 key mode, webhook secret | — | — | **[BLOCKED]** awaiting operator |
-| S2–S8, test mode | — | n/a | **[BLOCKED]** awaiting operator (Appendix B) |
-| S2–S8, live mode | — | n/a | **[BLOCKED]** awaiting operator (Appendix B) |
+| Step 2 identity | `noetia` / `noetia`, read-only on, 68 migrations, head `ReconcilePlanDisplayPrices1748300000067` **[PO]** | — | Prod **done**; staging pending |
+| Container health | DB healthy **[PO]** | DB healthy **[PO]** | Done |
+| No deploy / migration in progress (OC-2) | None detected **[PO]** | — | Done |
+| Part A / Part B checksums | Pass **[PO]** | (same session) | Done |
+| Key-mode checker checksum | **Failed on first copy** (D5) | — | Re-run from Appendix D |
+| S1 key mode | **live**, env file and running API **[PO]** | — | Re-confirm with the verified checker (D5) |
+| S1 webhook secret | — | — | **Unknown** (the corrupted copy broke exactly this test) |
+| Q1–Q11 output | — | — | **Not received** |
+| Q12–Q14 output | — | — | **Not received** |
+| S5 / S6a | "No payments or subscriptions shown"; no collections ever **[PO]** | n/a | Mode not stated; record live and test separately |
+| S2–S4, S6b, S7, S8 | — | n/a | **Not received** |
 
 ### 7.4 Stripe mode verdict (doc 02 decision matrix)
 
-**UNDETERMINED.** Repository-only indications, not evidence of production state:
-- CLAUDE.md §Infrastructure: Stripe "Keys not yet in `.env.production`" [DOC, date unknown].
-- PR #14 (Release A) was validated with a Stripe test key [DOC].
-
-If S1 shows `absent`, `empty`, or `test` and S5/S6 live counts are 0, the expected verdict is *test/test/test (pre-launch)* or *no Stripe configured*. That remains to be confirmed.
+**Rev 3: key = live (PO-attested) / webhook = ? / price IDs = ? — UNDETERMINED overall.**
+- CLAUDE.md §Infrastructure ("Keys not yet in `.env.production`") is **out of date** [DOC contradicted by PO evidence].
+- Webhook mode needs S2 (live endpoint present?) and S1 webhook-secret status. Price-ID mode needs Q1 (`placeholder` vs real IDs) and S3 live.
+- Zero live subscriptions and zero collections (PO) satisfy the pre-launch premise, so **no stop condition has triggered**. The live key creates an exposure (D6), not evidence of a charge.
 
 ### 7.5 Discoveries
 
 - **D1 — doc 02 §A can disclose the secret** [VERIFIED with fake values]. Its `sed` only matches `sk_live_`/`sk_test_`. For a quoted value or a restricted key (`rk_…`) it prints the **raw line**, including the secret. The replacement in Appendix A.2 prints only `live` / `test` / `empty` / `absent` / `unrecognized`, notes restricted keys and duplicate lines, and was tested on five fake files.
 - **D2 — Q9 cannot show mode.** `stripe_processed_events` stores no `livemode`. Q9 shows only whether webhook traffic was processed and when.
 - **D3 — legacy objects outside Q1–Q11.** `subscriptions.tokenBalance` is the pre-ledger `creditsRemaining` column (migration `038`), still on the entity (`subscription.entity.ts:59`) while balances are now computed from the ledger (`subscriptions.service.ts:326,340`) [CODE]. Any non-zero value may represent historical token rights (PO-024). `books.priceCents` drives a single-title Stripe checkout (`subscriptions.service.ts:236-244`) [CODE]. Q12–Q14 size these.
+- **D5 — chat-relay corruption of the key checker (Rev 3)** [VERIFIED]. The operator's decoded checker hashed to `90551c89…82fd2c` instead of `91aadfae…5e719`. A search over single-character substitutions of the committed payload found exactly one match: base64 position 406, `3` → `n`, which decodes `ws=(w~` as `ws=(v~`. The webhook-secret result was therefore wrong; the key-mode logic was unaffected. **The committed payload is correct.** Cause: the commands passed through a chat tool before reaching the terminal. Appendix D removes hand copying.
+- **D6 — CRITICAL: live charges possible before launch (Rev 3)** [CODE, `origin/main` `6a5e5c0`, combined with PO-attested live key].
+
+  | Path | Auth | Price source | Live exposure |
+  |---|---|---|---|
+  | `POST /gifts/checkout` (`gifts.controller.ts:9`, `gifts.service.ts:62-71`) | **None** (only the global `ThrottlerGuard`) | Inline `price_data`: 999 / 2499 cents | **Any visitor, now** |
+  | `POST /subscriptions/books/:bookId/purchase` (`subscriptions.service.ts:236-244`) | JWT + confirmed email | Inline `books.priceCents` | If any published book has `priceCents > 0` (Q13) |
+  | `POST /subscriptions/checkout` (`subscriptions.service.ts:211-214`) | JWT + confirmed email | `plans.stripePriceId` | If those IDs are real live prices (Q1) |
+  | `POST /subscriptions/tokens/purchase` (`subscriptions.service.ts:260`) | JWT + confirmed email | `token_packages.stripePriceId`, placeholders rejected | Low (Q7) |
+
+  This contradicts Q4 (no tier sells before the coordinated launch, SA-003 Rev 7) and would place real charges on a system with no refund, dispute, or reconciliation process (SA-003). It is not a stop condition, because no live charge exists. Containment (remove or replace the live key, or disable the routes) is a production configuration or code change **outside this mission**; it needs a separate PO decision (§16, item 8).
 - **D4 — the report index is not on `main`.** `docs/reports/README.md` exists only in PRs #23 and #36. Creating it here would conflict with both, so this PR does not add an index row (§14).
 
 ## 8. External references
@@ -143,8 +168,11 @@ None. No external page was used in this iteration.
 | Rating | Risk | Mitigation |
 |---|---|---|
 | **High** | Running doc 02 §A as written could print the production secret key to a terminal or screen share (D1) | Use Appendix A.2 only; correct doc 02 in a later authorized change |
-| **High** | Stripe mode remains unknown, so NEM-021/022 cannot be planned against confirmed facts | Operator completes Appendices A and B |
-| Medium | Operator transcription errors in counts | Part A runs twice per session (V-2); operator pastes raw aggregate output |
+| **Critical** | A live charge from an unauthenticated gift checkout, or a per-title purchase, before the coordinated launch (D6) | PO containment decision (§16 item 8); operator checks live Checkout Sessions and Payments (Appendix D, Step 6) |
+| **High** | Webhook and price-ID modes unknown, so NEM-021/022 cannot be planned against confirmed facts | Operator completes Appendix D |
+| **High** | Commands or payloads corrupted in transit through a chat tool (D5) | Appendix D: fetch from pinned commit, fail closed on checksum mismatch |
+| Medium | Operator transcription errors in counts | Part A runs twice per session (V-2); operator returns raw aggregate output, not retyped |
+| Medium | CLAUDE.md states Stripe keys are not in production (stale) | Correct in a later authorized documentation change |
 | Medium | Legacy token rights in `subscriptions.tokenBalance` overlooked if Q12 is not approved | PO decision 2 |
 | Medium | Staging migration head may differ from production (staging was seeded from a mission branch) | Q11 recorded per environment; stop condition |
 | Low | Production query load | Small aggregate queries; `statement_timeout 30s`, `lock_timeout 5s` |
@@ -156,6 +184,8 @@ None. No external page was used in this iteration.
 - Session timeouts added before the approved queries in the operator script (`SET` only; the Q1–Q11 text is unchanged).
 - The Annex A SQL was run **twice in one session** in the operator script, to meet V-2 in a single command.
 - Counts below 5 will be reported as `<5` in the published update, except the counts Annex A §9.1 exempts.
+- Rev 3: PO-attested preliminary checks recorded as **[PO]**, distinct from **[VERIFIED]**.
+- Rev 3: D6 escalated without any containment action; containment is outside the mission.
 
 **(b) Requiring Product Owner approval:** see §16.
 
@@ -186,7 +216,8 @@ Inventory facts are pending; each row states the recommendation **if** the facts
 | Customer Portal | S7 | Plan switching should be **off** until NEM-022; no change now | ADR-007 Decision 4 |
 
 ### 11.2 Required corrections
-1. Complete Appendices A and B (operator).
+0. **Urgent, separate from this mission:** PO decision on D6 containment. Recommended: remove the live key from production (or replace it with a test key) until the M10 gate review, since nothing should sell before M11; the alternative is a code change disabling the inline-price routes.
+1. Complete Appendix D (operator).
 2. Correct `docs/production-safety/02-stripe-mode-verification.md` §A (D1) in a later authorized documentation change. Not changed here; it is outside this mission's deliverables.
 
 ### 11.3 Optional
@@ -196,12 +227,12 @@ Inventory facts are pending; each row states the recommendation **if** the facts
 
 | Item | Change |
 |---|---|
-| Files | `docs/reports/2026-11-07-NEM-020-pre-launch-billing-inventory.md` (**new**, this report) |
+| Files | `docs/reports/2026-11-07-NEM-020-pre-launch-billing-inventory.md` (**new**, this report; Rev 3 edits this file only) |
 | Database, migrations, backfills | **None** on production or staging. A disposable local container received migrations `000`–`067` and synthetic fixtures, then was destroyed |
 | Configuration and secrets | **None** |
 | External services (Stripe, providers, DNS) | **None.** No Stripe access |
 | Deployments | **None** |
-| Servers | **No connection** to production or staging |
+| Servers | **No connection** to production or staging by Claude. Rev 3 evidence was gathered by the PO as operator |
 
 ## 13. Tests and validation
 
@@ -214,6 +245,9 @@ Inventory facts are pending; each row states the recommendation **if** the facts
 | Operator pipeline (`base64` → `gunzip` → `psql -f -`) | Pass (byte-identical output) |
 | Part B (Q12–Q14) syntax | Pass |
 | Key-mode check on 5 fake env files | Pass (no secret printed); doc 02 §A printed a fake secret (D1) |
+| Rev 3: Appendix D fetch from pinned commit | Pass: all three payloads match; a wrong expected hash is rejected and the variable is cleared |
+| Rev 3: Appendix D command shapes on disposable DB (`000`–`067`) | Pass: prod-shape (`docker compose exec -T -e PGOPTIONS…`) and staging-shape (`docker exec -i -e PGOPTIONS…`) Part A and B exit 0, no errors, end `ROLLBACK`, identical output |
+| Rev 3: D5 diagnosis | Single substitution `3`→`n` at base64 position 406 reproduces `90551c89…` exactly |
 | V-3 on production / staging | **Not run** (blocked) |
 | Production, staging, Stripe inventory | **Not run** (blocked) |
 
@@ -241,12 +275,16 @@ Not modified: reader / Escucha Activa; book ownership (`user_books`); token ledg
 | 5 | Where the report index row should live (D4) | PO |
 | 6 | Authorization to correct doc 02 §A (D1) | PO |
 | 7 | Canonical placement of the NEM-020 mission document (still SA-003 Annex A) | PO |
+| 8 | **D6 containment (urgent):** remove/replace the live key, disable inline-price checkout routes, or accept the risk until M11. Needs its own authorization; not part of NEM-020 | PO |
+| 9 | Correct CLAUDE.md §Infrastructure (Stripe keys are in production) — separate documentation authorization | PO |
+| 10 | Operator execution of Appendix D (key mode re-run, Q1–Q14 prod, staging, Stripe both modes) | PO / operator |
 
 ## 17. Next recommended action
 
-1. The operator runs **Appendix A** (production first, then staging) and **Appendix B** (test mode, then live mode), and returns the raw aggregate output and the filled checklist.
-2. If any stop condition triggers, stop and notify the Product Owner; do not continue.
-3. Otherwise, with authorization, Claude adds Rev 2 to this report: results with small-count suppression, the doc 02 verdict, and a final treatment matrix.
+1. **PO decides D6 containment** (§16 item 8). This does not block the read-only inventory, which can proceed in parallel.
+2. The operator runs **Appendix D** and returns the raw aggregate output, the filled Appendix B checklist (live and test separately), and the attestation.
+3. If any stop condition triggers, stop and notify the Product Owner; do not continue.
+4. Otherwise Claude adds Rev 4: results with small-count suppression, the doc 02 verdict, and the final treatment matrix. ADR-007 acceptance and NEM-021 stay BLOCKED until then; independent review (ChatGPT) precedes either decision.
 
 *Recommendation only.*
 
@@ -354,6 +392,8 @@ Operator attestation to return with the checklist: *"No Stripe write action was 
 
 ## Appendix C — Phase 2 operator execution sequence (Rev 2)
 
+> **Rev 3:** the gates and C.1 confirmations remain valid. The **commands** are superseded by **Appendix D**, which removes hand-pasted payloads (D5).
+
 Authorized by the Product Owner, *NEM-020 Phase 2: Operator-Assisted Inventory* (2026-11-07). **Supersedes the commands in A.3 and A.4**, which lack the session guard. A.1 payloads, checksums, and the A.2 key-mode check are unchanged and re-verified (§C.0).
 
 ### C.0 Review performed before release (Rev 2) [VERIFIED]
@@ -397,3 +437,48 @@ Authorized by the Product Owner, *NEM-020 Phase 2: Operator-Assisted Inventory* 
 ### C.3 Return
 
 Outputs of Steps 1–10 (aggregates, mode words, container names, migration names only), the filled Appendix B checklist, and the attestation: *"No write, restart, configuration change, or Stripe write was performed, and no secret was displayed or shared."*
+
+## Appendix D — Pinned-commit fetch-and-verify sequence (Rev 3)
+
+**Why.** A payload relayed through a chat tool was silently corrupted (D5). The repository is public, so the server fetches each payload directly from GitHub at the **immutable** commit `b705fd58c3362accd06808878c062d7b9f4cfe2f` (Rev 2; payloads unchanged since) and checks its SHA-256 in the same command. A corrupted download, a wrong URL, or a mistyped hash fails closed: the variable is cleared and every later command is skipped. Nothing is written to disk on the server. Validated locally (§13).
+
+**Rules.** Copy commands from this report on GitHub or directly from the Claude Code terminal — **never through a chat tool**. Results may be shared with reviewers. Run one line at a time in one SSH session. C.1 confirmations apply. Stop on `MISMATCH`, any `ERROR`, any output other than mode words from the key checker, or any C.2 gate failure.
+
+**1. Session setup and verification**
+```bash
+U="https://raw.githubusercontent.com/Carloskfe/noetia/b705fd58c3362accd06808878c062d7b9f4cfe2f/docs/reports/2026-11-07-NEM-020-pre-launch-billing-inventory.md"
+get(){ curl -fsSL "$U" | awk -v L="$1" 'index($0,"**"L)==1{getline;getline;print;exit}'; }
+K=$(get "Key-mode check payload" | base64 -d); [ "$(printf %s "$K" | sha256sum | cut -c1-64)" = 91aadfae43e4e76adfea1bc0bd7c4fdfb60b4e2f32f8e7c7d6e7006db7c5e719 ] && echo KEYCHECK OK || { echo KEYCHECK MISMATCH - STOP; unset K; }
+PA=$(get "Part A payload" | base64 -d | gunzip); [ "$(printf '%s\n' "$PA" | sha256sum | cut -c1-64)" = 47006ae346c39cbbf30a1e9745bc0998ee74184914b6a117f86d34202d872c64 ] && echo PARTA OK || { echo PARTA MISMATCH - STOP; unset PA; }
+PB=$(get "Part B payload" | base64 -d | gunzip); [ "$(printf '%s\n' "$PB" | sha256sum | cut -c1-64)" = 4dee07a517dd1225b0ae4ae977a02a353cc90ef5ea467b142c7d909949906e67 ] && echo PARTB OK || { echo PARTB MISMATCH - STOP; unset PB; }
+```
+Gate: three `OK` lines.
+
+**2. Production key mode** (mode words only)
+```bash
+[ -n "$K" ] && cd /opt/noetia && awk "$K" .env.production
+[ -n "$K" ] && cd /opt/noetia && docker compose --env-file .env.production -f docker-compose.server.yml exec -T api sh -c 'printf "STRIPE_SECRET_KEY=%s\nSTRIPE_WEBHOOK_SECRET=%s\n" "$STRIPE_SECRET_KEY" "$STRIPE_WEBHOOK_SECRET"' | awk "$K"
+```
+
+**3. Production inventory** (identity first; gate `noetia|noetia|on|68|ReconcilePlanDisplayPrices1748300000067`)
+```bash
+cd /opt/noetia && docker compose --env-file .env.production -f docker-compose.server.yml exec -T -e PGOPTIONS='-c default_transaction_read_only=on' db psql -U noetia -d noetia -tA -c "SELECT current_database(), current_user, current_setting('default_transaction_read_only'), (SELECT count(*) FROM migrations), (SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 1);"
+[ -n "$PA" ] && cd /opt/noetia && printf '%s\n' "$PA" | docker compose --env-file .env.production -f docker-compose.server.yml exec -T -e PGOPTIONS='-c default_transaction_read_only=on' db psql -U noetia -d noetia -v ON_ERROR_STOP=1 -P pager=off -f -
+[ -n "$PB" ] && cd /opt/noetia && printf '%s\n' "$PB" | docker compose --env-file .env.production -f docker-compose.server.yml exec -T -e PGOPTIONS='-c default_transaction_read_only=on' db psql -U noetia -d noetia -v ON_ERROR_STOP=1 -P pager=off -f -
+```
+Gate: `transaction_read_only = on` at the top, no `ERROR`, ends `ROLLBACK`. **Stop** if Q2 shows `with_stripe_sub` > 0 on any active/trialing/past_due row, or Q9 shows payment event types (e.g. `checkout.session.completed`, `invoice.paid`, `charge.succeeded`).
+
+**4. Staging** (identity gate as C.2 Step 8)
+```bash
+C=$(docker ps --format '{{.Names}}' | grep -m1 -E '^noetia_staging-db'); echo "staging db: ${C:-NONE}"
+[ -n "$C" ] && docker exec -i -e PGOPTIONS='-c default_transaction_read_only=on' "$C" sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA -c "SHOW default_transaction_read_only;" -c "SELECT current_database(), current_user, (SELECT count(*) FROM migrations), (SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 1);"'
+[ -n "$K" ] && awk "$K" /opt/noetia-staging/.env.staging
+[ -n "$C" ] && [ -n "$PA" ] && printf '%s\n' "$PA" | docker exec -i -e PGOPTIONS='-c default_transaction_read_only=on' "$C" sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -P pager=off -f -'
+[ -n "$C" ] && [ -n "$PB" ] && printf '%s\n' "$PB" | docker exec -i -e PGOPTIONS='-c default_transaction_read_only=on' "$C" sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -P pager=off -f -'
+```
+
+**5. Clean up:** `unset K PA PB U C; unset -f get`
+
+**6. Stripe Dashboard** — Appendix B, **live mode first** (D6), then test mode, each value labelled with its mode. In live mode also record the count of **Checkout Sessions** (Payments → Checkout sessions, if shown) by status, with no IDs. Stop conditions as Appendix B.
+
+**Return:** outputs of Steps 1–4, the filled checklist, and the C.3 attestation.
