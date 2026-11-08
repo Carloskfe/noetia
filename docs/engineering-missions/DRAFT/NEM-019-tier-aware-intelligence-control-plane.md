@@ -1,7 +1,7 @@
 # NOETIA ENGINEERING MISSION — NEM-019
 ## Tier-Aware Intelligence Control Plane (Dark, Simulated Providers Only)
 
-**Status:** DRAFT (revision 4, 2026-11-08: review corrections B-1…B-5 incorporated; revision 3 reconciled the PO approvals of TT-02, TT-04, TT-05, TT-21; **not approved**; identifier verified unused, not yet assigned)
+**Status:** DRAFT (revision 4, 2026-11-08, amended the same day for §3, §4, AC-15c after ADR-005/006 acceptance; review corrections B-1…B-5 incorporated; revision 3 reconciled the PO approvals of TT-02, TT-04, TT-05, TT-21; **not approved**; identifier verified unused, not yet assigned)
 **Mission type:** IMPLEMENTATION
 **Implementation authorization:** LIMITED (once approved; **none while DRAFT**)
 **Schema changes:** ADDITIVE ONLY, applied to disposable test databases only
@@ -13,7 +13,9 @@
 
 ---
 
-> **Revision 4 (2026-11-08).** Architecture review corrections B-1…B-5 (review PR #41, accepted by the PO) are incorporated in §3, §9, §10, §11, §12, and §16, together with the PO's added requirements on settlement recovery and the account-deletion test. PO-026, PO-027, PO-028, and PO-030 are unchanged.
+> **Revision 4 amendment (2026-11-08).** ADR-005 and ADR-006 revision 3 were **accepted** on 2026-11-08. §3 and §4 updated; AC-15c distinguishes admission-time from settlement-time ledger failure. **This mission remains DRAFT; it is not approved.**
+>
+> **Revision 4 (2026-11-08). Architecture review corrections B-1…B-5 (review PR #41, accepted by the PO) are incorporated in §3, §9, §10, §11, §12, and §16, together with the PO's added requirements on settlement recovery and the account-deletion test. PO-026, PO-027, PO-028, and PO-030 are unchanged.
 >
 > **Revision 3 (2026-11-08).** TT-02, TT-04, TT-05, and TT-21 are **decided** (PO-026, PO-027, PO-028, PO-030). §1, §3, §4, §6, §7, §11, §12, §16, and §17 are updated; nothing else changes. Under PO-030 rule 7 this mission is **not** approved or executed by that decision.
 
@@ -24,10 +26,9 @@ The Product Owner defined three tiers and issued preliminary rulings TT-01, 02, 
 Deliver a dark, fully tested control plane in `services/api/src/knowledge/` that can resolve a tier, create a research session within its book limit, lock and fork sessions, deny unverified rights, and reserve and settle an internal budget, using **simulated** model, plan, and ownership dependencies. **Done** means every guarantee in §11 is proven by tests. No customer can reach it, and it is never deployed under this mission.
 
 ## 3. Dependencies
-**Satisfied (2026-11-08):** PO-026, PO-027, PO-028, PO-030 decided.
+**Satisfied (2026-11-08):** PO-026, PO-027, PO-028, PO-030 decided; **ADR-005 and ADR-006 revision 3 accepted**.
 
 **Required before approval:**
-- Product Architecture acceptance of ADR-005 and ADR-006 (**revision 3**, with review corrections B-1…B-5).
 - Product Owner approval of this mission text and confirmation of the `NEM-019` identifier.
 - **Product Owner ruling:** whether draft PO-025 (three-tier structure) must be accepted first. This mission uses only the tier names and the 3/10 limits, which PO-027 decides.
 
@@ -38,7 +39,7 @@ Deliver a dark, fully tested control plane in `services/api/src/knowledge/` that
 **Test environment:** real-PostgreSQL tests run against a disposable local database. The NEM-014 CI job exists only on Release A, not on `main`, and CI changes are out of scope. CI must not be weakened or changed to accommodate this mission.
 
 ## 4. Source-of-truth references
-PO-026, PO-027, PO-028, PO-030 (decided) · PO-025, PO-029 (drafts) · ADR-005, ADR-006 (proposed, revision 2) · PO-001…004 · ADR-001…004 · PO-021…024 · `docs/architecture/three-tier-intelligence/` · NEM-003 `03`, `08`, `09`, `18` as historical design · Code: `app.module.ts`, `migrations/`.
+PO-026, PO-027, PO-028, PO-030 (decided) · PO-025, PO-029 (drafts) · ADR-005, ADR-006 (**accepted 2026-11-08, revision 3**) · PO-001…004 · ADR-001…004 · PO-021…024 · `docs/architecture/three-tier-intelligence/` · NEM-003 `03`, `08`, `09`, `18` as historical design · Code: `app.module.ts`, `migrations/`.
 
 ## 5. In scope
 Only under `services/api`:
@@ -145,7 +146,7 @@ Must remain untouched and undegraded: Escucha Activa and sync; reader; ownership
 15. A reservation cannot exceed the budget under concurrency; settlement and failure paths behave as specified.
 15a. Budget policies resolve by tier **and capability**; a reservation for one capability cannot draw on another's fixture budget.
 15b. A household-member fixture cannot read another member's session or conversation.
-15c. **Budget authority and turn order (B-1, B-5):** with the reservation store or the ledger unavailable, a turn is denied, no provider call occurs, and no lock or charge is recorded; a failure in the lock transaction releases the reservation; a budget rejection never locks the set.
+15c. **Budget authority and turn order (B-1, B-5).** **Admission-time failure:** if the reservation store or the ledger is unavailable, errors, or rejects a write during admission, the turn is **denied before any provider call**: no new reservation, no session lock, no charge. **Settlement-time ledger failure:** if the ledger is unavailable when settling a turn whose provider call has started, the existing reservation is **preserved as unresolved**; settlement is **not** assumed and the reservation is **not** released; durable, idempotent reconciliation settles it later with no duplicate charge (AC-15d). A failure in the lock transaction releases the reservation, or keeps it held until reconciliation releases it if the release cannot be written; no provider call is made. A budget rejection never locks the set.
 15d. **Settlement recovery (B-5):** a simulated provider failure, timeout, or abort with unknown usage leaves the reservation held and unresolved; a ledger outage at settlement leaves it held; reconciliation later settles it exactly once; replaying the same idempotency key, retrying settlement, or running reconciliation twice never produces a duplicate charge; expired reservations are flagged, not released to zero; while unresolved reservations exceed the fixture bound, new admissions in that scope are denied.
 
 **Account deletion (B-2)**

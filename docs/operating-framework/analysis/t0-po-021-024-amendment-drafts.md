@@ -112,7 +112,7 @@ Not applied here. PR #12 adds a "Later decisions" section to the same file; add 
 
 For `docs/operating-framework/15-decision-registry.md` once it reaches `main`. Status changes to `DECIDED` only on acceptance.
 
-> **Update 2026-11-08.** When applied: PO-026, PO-027, PO-028 → `DECIDED` (2026-11-08); add `| PO-030 | PO | Three-tier architecture governance | DECIDED | Governance | PO-030 | Documentation only |`; ADR-006 title adds "and Research Briefs". PO-025, PO-029 stay `DRAFT`.
+> **Update 2026-11-08.** When applied: PO-026, PO-027, PO-028 → `DECIDED` (2026-11-08); add `| PO-030 | PO | Three-tier architecture governance | DECIDED | Governance | PO-030 | Documentation only |`; ADR-006 title adds "and Research Briefs". **ADR-005 and ADR-006 → `ACCEPTED` (2026-11-08, revision 3).** PO-025, PO-029 stay `DRAFT`.
 
 ```
 | PO-025 | PO | Three-tier product structure | DRAFT | Product, Business | PO-025 | NOT IMPLEMENTED |

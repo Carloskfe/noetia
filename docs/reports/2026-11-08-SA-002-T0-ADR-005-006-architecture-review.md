@@ -1,5 +1,7 @@
 # SA-002-T0 — Product Architecture Review of ADR-005 and ADR-006
 
+> **Revision 3 (2026-11-08): ADR-005 and ADR-006 revision 3 recorded as ACCEPTED** by PO authorization after the final consistency check (no material contradiction). NEM-019 revision 4 remains **DRAFT**.
+>
 > **Revision 2 (2026-11-08): the PO accepted B-1…B-5 and they are incorporated (ADR-005/006 rev 3, NEM-019 rev 4); see the Revision 2 section below.**
 >
 > **Verdicts: ADR-005 — ACCEPT WITH REQUIRED CORRECTIONS · ADR-006 — ACCEPT WITH REQUIRED CORRECTIONS.** Both directions are sound and compatible with ADR-001…004 and with the current code. **Five blockers** (B-1…B-5) must be corrected in the ADR text, and mirrored in NEM-019, before NEM-019 can be approved. All five are documentation corrections; none needs a Product Owner product decision.
@@ -28,6 +30,7 @@
 |---|---|---|
 | 1 | 2026-11-08 | Review: both ADRs accept with required corrections; five blockers; eleven follow-ups; six advisories (PR #41, `6bf4f53`) |
 | 2 | 2026-11-08 | PO accepted B-1…B-5; corrections incorporated (this section); F-1…F-11 recorded in `05` and `06` |
+| 3 | 2026-11-08 | PO *Final ADR Corrections and Architecture Acceptance*: NEM-019 §4 now cites ADR-005/006 revision 3; AC-15c separates admission-time from settlement-time ledger failure, consistent with AC-15d and ADR-005. **Final consistency check:** no material contradiction among ADR-005/006 rev 3, PO-026/027/028/030, NEM-019 rev 4, and ADR-001…004. Three wording clarifications made at acceptance (no change of substance): ADR-005 admission versus settlement ledger failure; ADR-006 step-4 release failure; ADR-006 Rights heading no longer implies draft PO-029 is decided. **ADR-005 and ADR-006 accepted 2026-11-08.** PO-030's implementation table still shows the ADRs as Proposed; it is a decision record and was not edited |
 
 ---
 
