@@ -1,5 +1,11 @@
-import { OwnershipAnswer, UnboundOwnershipPort, UnboundTextIdentityPort } from '../../../../src/knowledge/rights/rights.ports';
-import { isCompleteRecord, RightsRecord, RightsService } from '../../../../src/knowledge/rights/rights.service';
+import {
+  AttestationAnswer,
+  OwnershipAnswer,
+  UnboundOwnershipPort,
+  UnboundRightsVerificationAuthority,
+  UnboundTextIdentityPort,
+} from '../../../../src/knowledge/rights/rights.ports';
+import { isCompleteRecord, isWellFormedRecord, RightsRecord, RightsService } from '../../../../src/knowledge/rights/rights.service';
 import { bookId, FakeDb, USER_A } from '../support/fixtures';
 import { FIXTURE_TEXT_HASH as HASH, RESEARCH_OP as OP, verifiedRecord } from '../support/rights-fixture';
 
@@ -7,6 +13,7 @@ function setup(opts: {
   records?: RightsRecord[];
   hash?: string | null | 'throw';
   ownership?: OwnershipAnswer | 'throw';
+  attestation?: AttestationAnswer | 'throw';
 }) {
   const db = new FakeDb();
   db.on(/FROM book_ai_rights/, (p) => (opts.records ?? []).filter((r) => r.textHash === p[1]));
@@ -22,7 +29,13 @@ function setup(opts: {
       return opts.ownership ?? 'unknown';
     }),
   };
-  return { svc: new RightsService(db as any, ownership as any, textIdentity as any), db, ownership };
+  const authority = {
+    attest: jest.fn(async () => {
+      if (opts.attestation === 'throw') throw new Error('authority down');
+      return opts.attestation ?? 'attested';
+    }),
+  };
+  return { svc: new RightsService(db as any, ownership as any, textIdentity as any, authority as any), db, ownership, authority };
 }
 
 describe('RightsService (default deny; ADR-006 B-4; draft PO-029)', () => {
@@ -35,7 +48,7 @@ describe('RightsService (default deny; ADR-006 B-4; draft PO-029)', () => {
   });
 
   it('unknown text identity denies (no production adapter)', async () => {
-    const svc = new RightsService(new FakeDb() as any, new UnboundOwnershipPort(), new UnboundTextIdentityPort());
+    const svc = new RightsService(new FakeDb() as any, new UnboundOwnershipPort(), new UnboundTextIdentityPort(), new UnboundRightsVerificationAuthority());
     expect(await svc.eligibility(USER_A, B, OP)).toEqual({ eligible: false, reason: 'text_identity_unknown' });
   });
 
@@ -61,7 +74,7 @@ describe('RightsService (default deny; ADR-006 B-4; draft PO-029)', () => {
   });
 
   it('a record past its review date is denied', async () => {
-    expect(await setup({ records: [verifiedRecord({ reviewDate: '2020-01-01' })] }).svc.eligibility(USER_A, B, OP)).toEqual({ eligible: false, reason: 'review_expired' });
+    expect(await setup({ records: [verifiedRecord({ verifiedAt: '2019-06-01T00:00:00Z', reviewDate: '2020-01-01' })] }).svc.eligibility(USER_A, B, OP)).toEqual({ eligible: false, reason: 'review_expired' });
   });
 
   it('AC-11a: a verified public-domain edition is eligible WITHOUT ownership', async () => {
@@ -78,6 +91,63 @@ describe('RightsService (default deny; ADR-006 B-4; draft PO-029)', () => {
     it('entitled is allowed', async () => {
       expect(await setup({ records: [licensed], ownership: 'entitled' }).svc.eligibility(USER_A, B, OP)).toEqual({ eligible: true, basis: 'entitlement' });
     });
+  });
+
+  describe('F-12 trust boundary: a verified row is data, not authority', () => {
+    it('production default (no verification authority) denies a complete, verified, current-text record', async () => {
+      const db = new FakeDb().on(/FROM book_ai_rights/, () => [verifiedRecord()]);
+      const svc = new RightsService(db as any, { check: async () => 'entitled' } as any, { currentTextHash: async () => HASH } as any, new UnboundRightsVerificationAuthority());
+      expect(await svc.eligibility(USER_A, B, OP)).toEqual({ eligible: false, reason: 'not_attested' });
+    });
+
+    it.each(['not_attested', 'unknown', 'throw'] as const)('attestation %s denies', async (attestation) => {
+      expect(await setup({ records: [verifiedRecord()], attestation }).svc.eligibility(USER_A, B, OP)).toEqual({ eligible: false, reason: 'not_attested' });
+    });
+
+    it('the authority is asked about the exact record (book, text hash, verifier, evidence)', async () => {
+      const { svc, authority } = setup({ records: [verifiedRecord()] });
+      await svc.eligibility(USER_A, B, OP);
+      expect(authority.attest).toHaveBeenCalledWith(expect.objectContaining({ bookId: B, textHash: HASH, verifier: 'fixture-verifier' }));
+    });
+
+    it('attestation is never consulted for a record that already fails earlier checks', async () => {
+      const { svc, authority } = setup({ records: [verifiedRecord({ status: 'revoked' })] });
+      await svc.eligibility(USER_A, B, OP);
+      expect(authority.attest).not.toHaveBeenCalled();
+    });
+
+    it('a malformed record is denied before attestation', async () => {
+      const { svc, authority } = setup({ records: [verifiedRecord({ verifiedAt: '2999-01-01T00:00:00Z' })] });
+      expect(await svc.eligibility(USER_A, B, OP)).toEqual({ eligible: false, reason: 'malformed_record' });
+      expect(authority.attest).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('isWellFormedRecord (F-12: form, not legal sufficiency)', () => {
+    const now = new Date('2026-11-09T12:00:00Z');
+    it('accepts the well-formed fixture', () => expect(isWellFormedRecord(verifiedRecord(), now)).toBe(true));
+    it.each([
+      ['verification in the future', { verifiedAt: '2026-12-01T00:00:00Z' }],
+      ['unparseable verification date', { verifiedAt: 'yesterday' }],
+      ['unparseable review date', { reviewDate: 'soon' }],
+      ['review before verification', { reviewDate: '2025-12-31' }],
+      ['author death date in the future', { authorDeathDate: '2030-01-01' }],
+      ['unparseable translator death date', { isTranslation: true, translators: ['T'], translatorDeathDate: 'n/a', translationDate: '1830' }],
+      ['edition year in the future', { editionYear: 2999 }],
+      ['edition year not an integer', { editionYear: 18.5 as any }],
+      ['edition year zero', { editionYear: 0 }],
+      ['non-URL source', { sourceUrl: 'trust me' }],
+      ['non-http evidence link', { evidenceLinks: ['https://example.invalid/ok', 'ftp://example.invalid/x'] }],
+      ['javascript: evidence link', { evidenceLinks: ['javascript:alert(1)'] }],
+      ['malformed operation token', { permittedOperations: ['research analysis'] }],
+      ['whitespace in text hash', { textHash: 'sha256: abc' }],
+    ])('rejects %s', (_label, over) => {
+      expect(isWellFormedRecord(verifiedRecord(over as Partial<RightsRecord>), now)).toBe(false);
+    });
+    it('accepts Date objects as returned by the pg driver', () => {
+      expect(isWellFormedRecord(verifiedRecord({ verifiedAt: new Date('2026-01-01T00:00:00Z'), reviewDate: new Date('2099-01-01') }), now)).toBe(true);
+    });
+    it('rejects a missing review date', () => expect(isWellFormedRecord(verifiedRecord({ reviewDate: null }), now)).toBe(false));
   });
 
   describe('isCompleteRecord (07 §3)', () => {

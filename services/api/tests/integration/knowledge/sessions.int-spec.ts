@@ -89,6 +89,37 @@ describe('NEM-019 sessions on real PostgreSQL', () => {
       expect(await denial(w.sessions.create(u, [b]))).toBe('book_ineligible');
     });
 
+    it('F-12: a row written directly with status verified grants nothing under the production default authority', async () => {
+      const { UnboundRightsVerificationAuthority } = await import('../../../src/knowledge/rights/rights.ports');
+      const prod = wire(ds, { authority: new UnboundRightsVerificationAuthority() });
+      const u = await readyUser(ds, prod);
+      const b = await createBook(ds, { isFree: true });
+      await insertRights(ds, b); // complete, well-formed, status 'verified' — but not attested
+      prod.fx.textHash.set(b, IT_HASH);
+      prod.fx.ownership.set(`${u}:${b}`, 'entitled');
+      expect(await denial(prod.sessions.create(u, [b]))).toBe('book_ineligible');
+    });
+
+    it('F-12: a record the authority does not attest is denied; malformed values are denied', async () => {
+      const u = await readyUser(ds, w);
+      const [b1, b2] = [await createBook(ds), await createBook(ds)];
+      await insertRights(ds, b1, { verifier: 'self-declared' });
+      await insertRights(ds, b2, { verifiedAt: '2999-01-01T00:00:00Z' });
+      w.fx.textHash.set(b1, IT_HASH);
+      w.fx.textHash.set(b2, IT_HASH);
+      expect(await denial(w.sessions.create(u, [b1]))).toBe('book_ineligible');
+      expect(await denial(w.sessions.create(u, [b2]))).toBe('book_ineligible');
+    });
+
+    it('F-12: attestation withdrawn after selection → the book is excluded from the next turn and disclosed', async () => {
+      const u = await readyUser(ds, w);
+      const [b1, b2] = [await eligibleBook(ds, w), await eligibleBook(ds, w)];
+      const s = await w.sessions.create(u, [b1, b2]);
+      w.fx.unattested.add(b2);
+      const r = await w.turns.run(u, s.id, 'attestation-withdrawn');
+      expect(r.excludedBookIds).toEqual([b2]);
+    });
+
     it('verified licensed: denied without entitlement, allowed with it (B-4)', async () => {
       const u = await readyUser(ds, w);
       const b = await createBook(ds);

@@ -1,6 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { KnowledgeDbService } from '../common/knowledge-db.service';
-import { OWNERSHIP_PORT, OwnershipPort, TEXT_IDENTITY_PORT, TextIdentityPort } from './rights.ports';
+import {
+  OWNERSHIP_PORT,
+  OwnershipPort,
+  RIGHTS_VERIFICATION_AUTHORITY_PORT,
+  RightsVerificationAuthorityPort,
+  TEXT_IDENTITY_PORT,
+  TextIdentityPort,
+} from './rights.ports';
 
 export interface RightsRecord {
   status: string;
@@ -34,6 +41,8 @@ export type IneligibleReason =
   | 'no_rights_record'
   | 'not_verified'
   | 'incomplete_record'
+  | 'malformed_record'
+  | 'not_attested'
   | 'operation_not_permitted'
   | 'review_expired'
   | 'not_entitled';
@@ -65,10 +74,52 @@ export function isCompleteRecord(r: RightsRecord): boolean {
   return true;
 }
 
+const validDate = (v: unknown): Date | null => {
+  if (v === null || v === undefined || v === '') return null;
+  const d = v instanceof Date ? v : new Date(String(v));
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+const isHttpUrl = (v: unknown) => {
+  if (typeof v !== 'string') return false;
+  try {
+    const u = new URL(v);
+    return u.protocol === 'https:' || u.protocol === 'http:';
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * F-12: values that are present but malformed cannot grant eligibility.
+ * Dates must parse and be coherent (no verification in the future, review
+ * after verification, death dates not in the future); the edition year must be
+ * plausible; the source and every evidence link must be http(s) URLs; operations
+ * and the text hash must be non-blank tokens. This checks FORM only — it is not
+ * a judgement on the authenticity or legal sufficiency of the evidence.
+ */
+export function isWellFormedRecord(r: RightsRecord, now = new Date()): boolean {
+  const verifiedAt = validDate(r.verifiedAt);
+  const review = validDate(r.reviewDate);
+  if (!verifiedAt || !review) return false;
+  if (verifiedAt.getTime() > now.getTime()) return false;
+  if (review.getTime() < new Date(verifiedAt.toISOString().slice(0, 10)).getTime()) return false;
+  for (const d of [r.authorDeathDate, r.translatorDeathDate]) {
+    if (d === null || d === undefined) continue;
+    const parsed = validDate(d);
+    if (!parsed || parsed.getTime() > now.getTime()) return false;
+  }
+  if (!Number.isInteger(Number(r.editionYear)) || Number(r.editionYear) < 1 || Number(r.editionYear) > now.getUTCFullYear()) return false;
+  if (!isHttpUrl(r.sourceUrl) || !(r.evidenceLinks ?? []).every(isHttpUrl)) return false;
+  if (!(r.permittedOperations ?? []).every((o) => typeof o === 'string' && /^[a-z][a-z0-9_]*$/.test(o))) return false;
+  if (typeof r.textHash !== 'string' || /\s/.test(r.textHash)) return false;
+  return true;
+}
+
 /**
  * Eligibility resolver (ADR-006, B-4). DEFAULT DENY.
- * Eligible = a verified, complete, current-text rights record permitting the
- * operation AND an access basis: a public-domain edition (no library entry
+ * Eligible = a verified, complete, well-formed, current-text rights record
+ * permitting the operation, ATTESTED by the verification authority (F-12), AND
+ * an access basis: a public-domain edition (no library entry
  * needed, PO-027 rule 4) or entitlement to a licensed book via OwnershipPort.
  * Ownership never makes a book AI-eligible (PO-027 rule 8). `isFree` and other
  * catalogue metadata are never read here.
@@ -79,6 +130,7 @@ export class RightsService {
     private readonly db: KnowledgeDbService,
     @Inject(OWNERSHIP_PORT) private readonly ownership: OwnershipPort,
     @Inject(TEXT_IDENTITY_PORT) private readonly textIdentity: TextIdentityPort,
+    @Inject(RIGHTS_VERIFICATION_AUTHORITY_PORT) private readonly authority: RightsVerificationAuthorityPort,
   ) {}
 
   async eligibility(userId: string, bookId: string, operation: string, now = new Date()): Promise<Eligibility> {
@@ -98,10 +150,23 @@ export class RightsService {
     if (!r) return { eligible: false, reason: 'no_rights_record' };
     if (r.status !== 'verified') return { eligible: false, reason: 'not_verified' };
     if (!isCompleteRecord(r)) return { eligible: false, reason: 'incomplete_record' };
+    if (!isWellFormedRecord(r, now)) return { eligible: false, reason: 'malformed_record' };
     if (!(r.permittedOperations ?? []).includes(operation)) return { eligible: false, reason: 'operation_not_permitted' };
     if (r.reviewDate && new Date(r.reviewDate).getTime() < now.getTime()) {
       return { eligible: false, reason: 'review_expired' };
     }
+
+    // F-12 trust boundary: a complete, well-formed `verified` row is still only
+    // data. It grants nothing unless the verification authority attests it.
+    let attestation;
+    try {
+      attestation = await this.authority.attest({
+        bookId, textHash: r.textHash, verifier: r.verifier, verifiedAt: r.verifiedAt, evidenceLinks: r.evidenceLinks,
+      });
+    } catch {
+      attestation = 'unknown';
+    }
+    if (attestation !== 'attested') return { eligible: false, reason: 'not_attested' };
 
     if (r.rightsBasis === 'public_domain') return { eligible: true, basis: 'public_domain' };
 

@@ -32,3 +32,33 @@ export class UnboundTextIdentityPort implements TextIdentityPort {
     return null;
   }
 }
+
+/**
+ * F-12 trust boundary. Confirms that a rights record was produced by the
+ * AUTHORIZED verification process (verifier, evidence standard, and
+ * jurisdiction under TT-26). A row in book_ai_rights is data anyone holding the
+ * shared database role could write; it is not, by itself, proof of authority.
+ *
+ * NO production adapter exists (no authorized verification process exists
+ * yet). The default binding answers `unknown`, and `unknown` denies.
+ */
+export type AttestationAnswer = 'attested' | 'not_attested' | 'unknown';
+
+export interface RightsAttestationSubject {
+  bookId: string;
+  textHash: string;
+  verifier: string | null;
+  verifiedAt: string | Date | null;
+  evidenceLinks: string[] | null;
+}
+
+export interface RightsVerificationAuthorityPort {
+  attest(subject: RightsAttestationSubject): Promise<AttestationAnswer>;
+}
+export const RIGHTS_VERIFICATION_AUTHORITY_PORT = Symbol('RIGHTS_VERIFICATION_AUTHORITY_PORT');
+
+export class UnboundRightsVerificationAuthority implements RightsVerificationAuthorityPort {
+  async attest(): Promise<AttestationAnswer> {
+    return 'unknown';
+  }
+}

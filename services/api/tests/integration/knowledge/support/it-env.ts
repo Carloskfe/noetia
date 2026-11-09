@@ -14,7 +14,7 @@ import { QualifyingPlanAnswer } from '../../../../src/knowledge/entitlement/qual
 import { AdmissionCachePort, RedisAdmissionCache } from '../../../../src/knowledge/metering/admission-cache';
 import { BudgetLedgerService } from '../../../../src/knowledge/metering/budget-ledger.service';
 import { RateCardService } from '../../../../src/knowledge/metering/rate-card.service';
-import { OwnershipAnswer } from '../../../../src/knowledge/rights/rights.ports';
+import { OwnershipAnswer, RightsVerificationAuthorityPort } from '../../../../src/knowledge/rights/rights.ports';
 import { RightsService } from '../../../../src/knowledge/rights/rights.service';
 import { ContextBuilderService } from '../../../../src/knowledge/sessions/context-builder.service';
 import { SessionsService } from '../../../../src/knowledge/sessions/sessions.service';
@@ -121,11 +121,16 @@ export interface Fixtures {
   ownership: Map<string, OwnershipAnswer>;
   textHash: Map<string, string>;
   context: ContextItem[];
+  /** Test verification authority: attests fixture-verifier records unless the book is listed here. */
+  unattested: Set<string>;
 }
 
 /** Wire the real services against the disposable DB with simulated ports. */
-export function wire(ds: DataSource, opts: { cache?: AdmissionCachePort; config?: Partial<KnowledgeConfig> } = {}) {
-  const fx: Fixtures = { plan: new Map(), ownership: new Map(), textHash: new Map(), context: [] };
+export function wire(
+  ds: DataSource,
+  opts: { cache?: AdmissionCachePort; config?: Partial<KnowledgeConfig>; authority?: RightsVerificationAuthorityPort } = {},
+) {
+  const fx: Fixtures = { plan: new Map(), ownership: new Map(), textHash: new Map(), context: [], unattested: new Set() };
   const config = { ...IT_CONFIG, ...opts.config };
   const db = new KnowledgeDbService(ds, config);
   const metrics = new KnowledgeMetricsService();
@@ -134,6 +139,9 @@ export function wire(ds: DataSource, opts: { cache?: AdmissionCachePort; config?
     db,
     { check: async (u, b) => fx.ownership.get(`${u}:${b}`) ?? 'unknown' },
     { currentTextHash: async (b) => fx.textHash.get(b) ?? null },
+    opts.authority ?? {
+      attest: async (r) => (r.verifier === 'fixture-verifier' && !fx.unattested.has(r.bookId) ? 'attested' : 'not_attested'),
+    },
   );
   const rateCards = new RateCardService(db);
   const ledger = new BudgetLedgerService(db, rateCards, metrics, config, opts.cache);

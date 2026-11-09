@@ -13,7 +13,14 @@ import { ADMISSION_CACHE, createAdmissionRedis, RedisAdmissionCache } from './me
 import { BudgetLedgerService } from './metering/budget-ledger.service';
 import { RateCardService } from './metering/rate-card.service';
 import { ReconciliationJobService } from './metering/reconciliation-job.service';
-import { OWNERSHIP_PORT, TEXT_IDENTITY_PORT, UnboundOwnershipPort, UnboundTextIdentityPort } from './rights/rights.ports';
+import {
+  OWNERSHIP_PORT,
+  RIGHTS_VERIFICATION_AUTHORITY_PORT,
+  TEXT_IDENTITY_PORT,
+  UnboundOwnershipPort,
+  UnboundRightsVerificationAuthority,
+  UnboundTextIdentityPort,
+} from './rights/rights.ports';
 import { RightsService } from './rights/rights.service';
 import { ContextBuilderService } from './sessions/context-builder.service';
 import { CONTEXT_SOURCE_PORT, EmptyContextSource } from './sessions/context-source.port';
@@ -49,6 +56,7 @@ import { TurnService } from './sessions/turn.service';
     { provide: QUALIFYING_PLAN_PORT, useClass: UnboundQualifyingPlanPort },
     { provide: OWNERSHIP_PORT, useClass: UnboundOwnershipPort },
     { provide: TEXT_IDENTITY_PORT, useClass: UnboundTextIdentityPort },
+    { provide: RIGHTS_VERIFICATION_AUTHORITY_PORT, useClass: UnboundRightsVerificationAuthority },
     { provide: CONTEXT_SOURCE_PORT, useClass: EmptyContextSource },
     {
       provide: ADMISSION_CACHE,

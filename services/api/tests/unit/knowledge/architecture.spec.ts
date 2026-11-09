@@ -52,6 +52,24 @@ describe('NEM-019 architecture boundaries (AC-16, AC-17, AC-18, AC-12a, §10)', 
     expect(offenders.map(rel)).toEqual([]);
   });
 
+  it('F-12: no application code writes book_ai_rights (only its CREATE/DROP migration touches it)', () => {
+    const writers = walk(SRC).filter((f) => /\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+"?book_ai_rights\b/i.test(readFileSync(f, 'utf8')));
+    expect(writers.map(rel)).toEqual([]);
+  });
+
+  it('F-12: every rights/entitlement port is bound to its unbound (deny) adapter in the module', () => {
+    const mod = readFileSync(join(SRC, 'knowledge/knowledge.module.ts'), 'utf8');
+    for (const [token, cls] of [
+      ['QUALIFYING_PLAN_PORT', 'UnboundQualifyingPlanPort'],
+      ['OWNERSHIP_PORT', 'UnboundOwnershipPort'],
+      ['TEXT_IDENTITY_PORT', 'UnboundTextIdentityPort'],
+      ['RIGHTS_VERIFICATION_AUTHORITY_PORT', 'UnboundRightsVerificationAuthority'],
+      ['CONTEXT_SOURCE_PORT', 'EmptyContextSource'],
+    ]) {
+      expect(mod).toMatch(new RegExp(`provide: ${token}, useClass: ${cls}\\b`));
+    }
+  });
+
   it('knowledge/* contains no *.entity.ts (the app entity glob must not pick anything up while dark)', () => {
     expect(knowledgeFiles.filter((f) => f.endsWith('.entity.ts')).map(rel)).toEqual([]);
   });
