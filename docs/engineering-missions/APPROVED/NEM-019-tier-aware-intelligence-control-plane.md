@@ -1,9 +1,9 @@
 # NOETIA ENGINEERING MISSION — NEM-019
 ## Tier-Aware Intelligence Control Plane (Dark, Simulated Providers Only)
 
-**Status:** **APPROVED — NOT AUTHORIZED FOR EXECUTION** (revision 4, including the 2026-11-08 amendments). Approved by the Product Owner on **2026-11-08**. Identifier `NEM-019` (reserved 2026-11-08).
+**Status:** **REVIEW** — executed under explicit Product Owner execution authorization (*Clarification: Execute NEM-019*, 2026-11-09); implementation in a Draft PR, **not merged, not deployed**; awaiting Product Architecture review. Specification unchanged: revision 4 (including the 2026-11-08 amendments), approved 2026-11-08. Identifier `NEM-019` (reserved 2026-11-08).
 **Mission type:** IMPLEMENTATION
-**Implementation authorization:** LIMITED to §5 — **not active**: execution requires a separate, explicit Product Owner instruction naming NEM-019
+**Implementation authorization:** LIMITED to §5 — **activated 2026-11-09** by explicit Product Owner instruction naming NEM-019
 **Schema changes:** ADDITIVE ONLY, applied to disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED
 **Production deployment:** NOT AUTHORIZED (staging also NOT AUTHORIZED)
@@ -13,6 +13,8 @@
 
 ---
 
+> **Execution (2026-11-09).** The Product Owner explicitly authorized execution of NEM-019 according to approved revision 4. Implementation, tests, technical note ([09](../../architecture/three-tier-intelligence/09-nem-019-control-plane-technical-note.md)), and the [implementation report](../../reports/2026-11-09-NEM-019-implementation-report.md) are in a Draft PR. Status **REVIEW**: completion requires Product Architecture review and Product Owner acceptance. No scope, acceptance criterion, or restriction in this document was changed.
+>
 > **Product Owner approval (2026-11-08).** *Formal Product Owner Approval of NEM-019*: revision 4, including the 2026-11-08 amendments, is **APPROVED** as the engineering specification for the initial tier-aware intelligence control plane, following PO-025…028 and PO-030 (decided), ADR-005/006 revision 3 (accepted), corrections B-1…B-5, and identifier reservation. **Approval is not execution.** Every restriction in this document remains binding. Moved from `DRAFT/` to `APPROVED/`; scope (§5–§6) and acceptance criteria (§11–§12) are unchanged by the approval.
 >
 > **Revision 4 amendment 2 (2026-11-08).** Identifier `NEM-019` reserved by the PO for this mission; PO-025 decided (TT-01 kept open). §3, §4, §17 updated. *(At the time: still DRAFT.)*

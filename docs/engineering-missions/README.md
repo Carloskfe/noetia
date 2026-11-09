@@ -184,7 +184,7 @@ Identifiers the Product Owner has reserved for post-governance missions. **A res
 
 | ID | Mission | Reserved | Status | Document |
 |----|---------|----------|--------|----------|
-| NEM-019 | Tier-Aware Intelligence Control Plane (Dark, Simulated Providers Only) | 2026-11-08 (PO) | **APPROVED 2026-11-08 — NOT AUTHORIZED FOR EXECUTION** (revision 4) | [`APPROVED/NEM-019-tier-aware-intelligence-control-plane.md`](APPROVED/NEM-019-tier-aware-intelligence-control-plane.md) |
+| NEM-019 | Tier-Aware Intelligence Control Plane (Dark, Simulated Providers Only) | 2026-11-08 (PO) | **REVIEW** — approved 2026-11-08 (revision 4); execution authorized by the PO 2026-11-09; Draft PR, not merged or deployed | [`APPROVED/NEM-019-tier-aware-intelligence-control-plane.md`](APPROVED/NEM-019-tier-aware-intelligence-control-plane.md) |
 
 ---
 

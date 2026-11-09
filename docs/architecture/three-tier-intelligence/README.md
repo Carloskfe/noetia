@@ -20,6 +20,7 @@
 | — | Roadmap | [06-implementation-roadmap.md](06-implementation-roadmap.md) |
 | — | Rights verification requirements | [07-rights-verification-requirements.md](07-rights-verification-requirements.md) |
 | — | Governance record: NEM-003 and NEM-006 | [08-architecture-governance-record.md](08-architecture-governance-record.md) |
+| — | NEM-019 control plane technical note (implemented, dark, in review) | [09-nem-019-control-plane-technical-note.md](09-nem-019-control-plane-technical-note.md) |
 | — | Mission report | [2026-11-06 report](../../reports/2026-11-06-SA-002-three-tier-architecture-reconciliation.md) |
 
 ## The main conclusions
