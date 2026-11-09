@@ -58,6 +58,49 @@ describe('NEM-021 contract v1 architecture', () => {
     expect(users).toEqual([]);
   });
 
+  describe('F-7 — only the designated validators can register configuration as validated', () => {
+    const VALIDATED = join(CONTRACT, 'validated.ts');
+    const src = stripComments(readFileSync(VALIDATED, 'utf8'));
+    const sealers = [join(CONTRACT, 'capability.ts'), join(CONTRACT, 'pricing.ts'), join(CONTRACT, 'unit-weights.ts')];
+
+    it('validated.ts exports no sealing primitive: only validateAndSeal (validates first), requireValidated, isValidated', () => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const mod = require(VALIDATED);
+      expect(Object.keys(mod).filter((k) => typeof mod[k] === 'function').sort()).toEqual(['isValidated', 'requireValidated', 'validateAndSeal']);
+      expect(src).not.toMatch(/export\s+(?:function|const|let|var|class)\s+(?:seal|sealValidated|registry)\b/);
+      expect(src).not.toMatch(/export\s*\{[^}]*\b(?:seal|sealValidated|registry)\b/);
+    });
+
+    it('the registry is written in exactly one place: the private seal(), reached only after the kind\'s own validator', () => {
+      const writes = contractFiles.flatMap((f) => [...stripComments(readFileSync(f, 'utf8')).matchAll(/\bregistry\.set\(/g)].map(() => rel(f)));
+      expect(writes).toEqual([rel(VALIDATED)]);
+      expect(src).toMatch(/^const registry = new WeakMap/m);              // module-private, not exported
+      const seal = src.slice(src.indexOf('function seal<'));
+      expect(seal).toContain('registry.set(');
+      expect([...src.matchAll(/\bfunction seal\b/g)]).toHaveLength(1);   // one definition, not exported
+      expect([...src.matchAll(/\bseal\(/g)]).toHaveLength(1);           // exactly one call site
+      const vas = src.slice(src.indexOf('export function validateAndSeal'), src.indexOf('function seal<'));
+      expect(vas.indexOf('validate(value)')).toBeGreaterThan(-1);
+      expect(vas.indexOf('validate(value)')).toBeLessThan(vas.indexOf('seal('));  // validation precedes sealing
+      expect(vas).toMatch(/if \(!r\.ok\) throw/);
+    });
+
+    it('validateAndSeal is called only by the three assert* validators; nothing else in src imports validated.ts', () => {
+      const allSrc = walk(join(API, 'src'));
+      const callers = allSrc.filter((f) => f !== VALIDATED && /\bvalidateAndSeal\(/.test(stripComments(readFileSync(f, 'utf8')))).map(rel).sort();
+      expect(callers).toEqual(sealers.map(rel).sort());
+      for (const f of sealers) {
+        const calls = [...stripComments(readFileSync(f, 'utf8')).matchAll(/export function (assert\w+)\(v: unknown\)[^{]*\{\s*return validateAndSeal\(/g)];
+        expect(calls).toHaveLength(1);
+      }
+      const importers = allSrc.filter((f) => f !== VALIDATED && imports(f).some((i) => /(^|\/)validated$/.test(i))).map(rel).sort();
+      expect(importers).toEqual([...sealers, join(CONTRACT, 'index.ts')].map(rel).sort());
+      // The public entry point exposes the checks, never the sealing path.
+      const index = stripComments(readFileSync(join(CONTRACT, 'index.ts'), 'utf8'));
+      expect(index).not.toMatch(/validateAndSeal|\bseal\b|export \* from '\.\/validated'/);
+    });
+  });
+
   it('declares a version policy and schema version 1', () => {
     const v = readFileSync(join(CONTRACT, 'version.ts'), 'utf8');
     expect(v).toMatch(/CONTRACT_VERSION = '1\.0\.0'/);

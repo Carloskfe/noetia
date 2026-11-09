@@ -1,5 +1,5 @@
 import { ValidatedCapabilityDescriptor } from './capability';
-import { requireValidated, sealValidated, Validated } from './validated';
+import { requireValidated, validateAndSeal, Validated } from './validated';
 import { ContractError } from './contract-error';
 import {
   applyFactorBps, ExactAmount, fromPicoSum, MAX_COUNT, MAX_MODIFIER_BPS, roundCeiling, roundHalfUp,
@@ -96,9 +96,7 @@ export function validatePricingSchema(v: unknown): ValidationResult<PricingSchem
 
 /** The validation boundary for pricing (F-6): validate once, return a sealed, frozen copy. */
 export function assertPricingSchema(v: unknown): ValidatedPricingSchema {
-  const r = validatePricingSchema(v);
-  if (!r.ok) throw new ContractError('invalid_schema', r.errors.join('; '));
-  return sealValidated(r.value, 'pricing schema');
+  return validateAndSeal('pricing schema', v) as ValidatedPricingSchema;
 }
 
 /** Units the schema prices in any table (all tables carry the same keys after validation). */

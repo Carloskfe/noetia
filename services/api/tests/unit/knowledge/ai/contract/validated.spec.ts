@@ -6,6 +6,7 @@ import {
   FIXTURE_DESCRIPTORS, FIXTURE_PRICING_A, FIXTURE_UNIT_WEIGHTS, FIXTURE_USAGE,
   RAW_FIXTURE_DESCRIPTORS, RAW_FIXTURE_PRICING_A, RAW_FIXTURE_PRICING_B, RAW_FIXTURE_UNIT_WEIGHTS,
 } from '../../../../../src/knowledge/ai/contract/fixtures';
+import * as validatedModule from '../../../../../src/knowledge/ai/contract/validated';
 
 /**
  * F-6: monetary calculations accept configuration only from its validator (`assert*`), which is
@@ -145,5 +146,47 @@ describe('F-6 — sealed configuration is immutable and detached from its input'
     expect(isValidated(RAW_FIXTURE_DESCRIPTORS[0], 'capability descriptor')).toBe(false);
     expect(() => requireValidated(FIXTURE_UNIT_WEIGHTS, 'unit-weight schema')).not.toThrow();
     expect(() => requireValidated(FIXTURE_UNIT_WEIGHTS, 'capability descriptor')).toThrow(code('unvalidated_config'));
+  });
+});
+
+describe('F-7 — configuration cannot be sealed without its designated validator', () => {
+  const { validateAndSeal } = validatedModule;
+  const malformed = {
+    'pricing schema': () => { const s = clone(RAW_FIXTURE_PRICING_A) as any; s.base.output = -1; return s; },
+    'unit-weight schema': () => { const w = clone(RAW_FIXTURE_UNIT_WEIGHTS) as any; w.weights.output = 1.5; return w; },
+    'capability descriptor': () => { const d = clone(RAW_FIXTURE_DESCRIPTORS[0]) as any; delete d.nonTokenUnits; return d; },
+  } as const;
+  const CODES = { 'pricing schema': 'invalid_schema', 'unit-weight schema': 'invalid_schema', 'capability descriptor': 'invalid_descriptor' } as const;
+
+  it('the module exposes no way to register an object other than validateAndSeal', () => {
+    expect(any(validatedModule).sealValidated).toBeUndefined();
+    expect(any(validatedModule).seal).toBeUndefined();
+    expect(any(validatedModule).registry).toBeUndefined();
+  });
+
+  it.each(Object.keys(malformed) as (keyof typeof malformed)[])('%s: validateAndSeal runs the designated validator and refuses malformed input', (kind) => {
+    const bad = malformed[kind]();
+    expect(() => validateAndSeal(kind, bad)).toThrow(code(CODES[kind]));
+    expect(isValidated(bad, kind)).toBe(false);
+  });
+
+  it('a value valid for one kind cannot be sealed as another kind', () => {
+    expect(() => validateAndSeal('capability descriptor', clone(RAW_FIXTURE_PRICING_A))).toThrow(code('invalid_descriptor'));
+    expect(() => validateAndSeal('pricing schema', clone(RAW_FIXTURE_DESCRIPTORS[0]))).toThrow(code('invalid_schema'));
+    expect(() => validateAndSeal('unit-weight schema', clone(RAW_FIXTURE_PRICING_A))).toThrow(code('invalid_schema'));
+  });
+
+  it.each([['an unknown kind', 'free pass'], ['a prototype key', 'constructor'], ['a prototype key', '__proto__']])(
+    '%s (%s) cannot be used to seal anything', (_l, kind) => {
+      expect(() => validateAndSeal(any(kind), clone(RAW_FIXTURE_PRICING_A))).toThrow(code('unvalidated_config'));
+    });
+
+  it('the assert* validators and validateAndSeal are one path: same validation, same sealed shape', () => {
+    const viaAssert = assertPricingSchema(clone(RAW_FIXTURE_PRICING_A));
+    const viaSeal = validateAndSeal('pricing schema', clone(RAW_FIXTURE_PRICING_A));
+    expect(viaSeal).toEqual(viaAssert);
+    expect(isValidated(viaSeal, 'pricing schema')).toBe(true);
+    expect(Object.isFrozen(viaSeal)).toBe(true);
+    expect(priceUsage(USAGE_A, any(viaSeal)).microUsd).toBe(priceUsage(USAGE_A, viaAssert).microUsd);
   });
 });

@@ -1,6 +1,5 @@
 import { ValidatedCapabilityDescriptor } from './capability';
-import { requireValidated, sealValidated, Validated } from './validated';
-import { ContractError } from './contract-error';
+import { requireValidated, validateAndSeal, Validated } from './validated';
 import { fromPicoSum, MAX_COUNT, roundCeiling, roundHalfUp } from './money';
 import { AttemptBounds, checkRateTable, exactUsageSum, exactWorstCaseSum, RateTable } from './rates';
 import { assertNormalizedUsage, NormalizedUsage } from './usage';
@@ -42,9 +41,7 @@ export function validateUnitWeightSchema(v: unknown): ValidationResult<UnitWeigh
 
 /** The validation boundary for unit weights (F-6): validate once, return a sealed, frozen copy. */
 export function assertUnitWeightSchema(v: unknown): ValidatedUnitWeightSchema {
-  const r = validateUnitWeightSchema(v);
-  if (!r.ok) throw new ContractError('invalid_schema', r.errors.join('; '));
-  return sealValidated(r.value, 'unit-weight schema');
+  return validateAndSeal('unit-weight schema', v) as ValidatedUnitWeightSchema;
 }
 
 /** Allowance units consumed by settled usage (half up, once). */

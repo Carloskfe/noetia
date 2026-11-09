@@ -1,4 +1,8 @@
-import { ContractError } from './contract-error';
+import { validateCapabilityDescriptor } from './capability';
+import { ContractError, ContractErrorCode } from './contract-error';
+import { validatePricingSchema } from './pricing';
+import { validateUnitWeightSchema } from './unit-weights';
+import { ValidationResult } from './validation';
 
 /**
  * The single runtime validation boundary for configuration (checkpoint finding F-6).
@@ -9,6 +13,11 @@ import { ContractError } from './contract-error';
  * - no revalidation per calculation (a constant-time membership check);
  * - a raw object, a spread copy, or a hand-built object is not registered and is rejected;
  * - registered objects are frozen, so they cannot be changed after validation.
+ *
+ * Sealing cannot be reached without validation (checkpoint finding F-7): the registry and the
+ * sealing step are module-private, and the only exported way to register an object,
+ * `validateAndSeal`, runs the designated validator for that kind itself. A caller cannot supply
+ * its own validator, a kind outside the closed list, or an already-"validated" value.
  */
 
 declare const VALIDATED: unique symbol;
@@ -30,8 +39,31 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
-/** Called only by the `assert*` validators after successful validation. */
-export function sealValidated<T>(value: T, kind: ConfigKind): Validated<T> {
+/**
+ * The designated validator for each kind, and its failure code. Called lazily: `capability.ts`,
+ * `pricing.ts`, and `unit-weights.ts` import this module, so their validators are resolved at call
+ * time, never at module load.
+ */
+const VALIDATORS: Record<ConfigKind, { validate: (v: unknown) => ValidationResult<unknown>; code: ContractErrorCode }> = {
+  'pricing schema': { validate: (v) => validatePricingSchema(v), code: 'invalid_schema' },
+  'unit-weight schema': { validate: (v) => validateUnitWeightSchema(v), code: 'invalid_schema' },
+  'capability descriptor': { validate: (v) => validateCapabilityDescriptor(v), code: 'invalid_descriptor' },
+};
+
+/**
+ * Validate `value` with the designated validator for `kind` and return a registered, deep-frozen
+ * copy. This is the only path into the registry; the `assert*` functions are thin wrappers over it.
+ */
+export function validateAndSeal(kind: ConfigKind, value: unknown): Validated<unknown> {
+  if (!Object.prototype.hasOwnProperty.call(VALIDATORS, kind)) throw new ContractError('unvalidated_config', 'unknown configuration kind');
+  const { validate, code } = VALIDATORS[kind];
+  const r = validate(value);
+  if (!r.ok) throw new ContractError(code, r.errors.join('; '));
+  return seal(r.value, kind);
+}
+
+/** Module-private: never exported, so nothing outside `validateAndSeal` can register an object. */
+function seal<T>(value: T, kind: ConfigKind): Validated<T> {
   const copy = deepFreeze(JSON.parse(JSON.stringify(value)) as T);
   registry.set(copy as unknown as object, kind);
   return copy as Validated<T>;

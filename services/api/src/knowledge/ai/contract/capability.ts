@@ -2,7 +2,7 @@ import { ContractError } from './contract-error';
 import { MAX_COUNT, MAX_MODIFIER_BPS } from './money';
 import { ERROR_CATEGORIES, ErrorCategory, NoChargeDeclaration } from './outcomes';
 import { Checker, KEY_PATTERN, LIFETIME_PATTERN, ValidationResult } from './validation';
-import { requireValidated, sealValidated, Validated } from './validated';
+import { requireValidated, validateAndSeal, Validated } from './validated';
 import { SCHEMA_VERSION } from './version';
 
 /** What a provider model can do, as declared by its adapter (or the simulator). */
@@ -124,9 +124,7 @@ export function validateCapabilityDescriptor(v: unknown): ValidationResult<Capab
 
 /** The validation boundary for descriptors (F-6): validate once, return a sealed, frozen copy. */
 export function assertCapabilityDescriptor(v: unknown): ValidatedCapabilityDescriptor {
-  const r = validateCapabilityDescriptor(v);
-  if (!r.ok) throw new ContractError('invalid_descriptor', r.errors.join('; '));
-  return sealValidated(r.value, 'capability descriptor');
+  return validateAndSeal('capability descriptor', v) as ValidatedCapabilityDescriptor;
 }
 
 /**
