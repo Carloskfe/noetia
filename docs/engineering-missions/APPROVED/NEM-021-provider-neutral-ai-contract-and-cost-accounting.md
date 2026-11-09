@@ -1,10 +1,10 @@
 # NOETIA ENGINEERING MISSION — NEM-021 (E1)
 ## Provider-Neutral AI Contract and Cost Accounting
 
-**Status:** **IN PROGRESS — PHASE 1 ACCEPTED; CONTRACT V1 FROZEN 2026-11-09** at baseline `697f8ea` (Product Architecture checkpoint PASSED on revision 3, F-1…F-7 resolved; [Phase 1 report §12](../../reports/2026-11-09-NEM-021-phase-1-contract-v1-report.md)). **Phase 2 is not started and not authorized** (requires a separate PO instruction). Specification: Revision 3, including corrections F-1…F-4. Approved by the Product Owner on **2026-11-09** ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)). Drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md).
+**Status:** **BLOCKED — PHASE 2 PRE-EXECUTION CHECK FAILED (2026-11-09).** Phase 1 accepted; contract v1 frozen at baseline `697f8ea` ([Phase 1 report §12](../../reports/2026-11-09-NEM-021-phase-1-contract-v1-report.md)). Phase 2 is **authorized** (PO, 2026-11-09) but **not started**: two test preconditions conflict with the required migrations ≥ 073 and need decisions D-1 (PO) and D-2 (Product Architecture) ([Phase 2 report](../../reports/2026-11-09-NEM-021-phase-2-cost-aware-ledger-report.md)). Specification: Revision 3, including corrections F-1…F-4. Approved by the Product Owner on **2026-11-09** ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)). Drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md).
 **Identifier:** `NEM-021`, reserved by the PO on 2026-11-09 ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)).
 **Mission type:** IMPLEMENTATION
-**Implementation authorization:** LIMITED to §5 **Phase 1** (items 1–6) — **active since 2026-11-09**. Phase 2 (items 7–15) is **not authorized**. Its first precondition (Product Architecture review and freeze of contract v1) was **met on 2026-11-09**. The second (an explicit PO instruction authorizing continuation) is **outstanding**
+**Implementation authorization:** LIMITED to §5 **Phase 1** (items 1–6) — **active since 2026-11-09**. Phase 2 (items 7–15) is **authorized since 2026-11-09** (PO instruction below; freeze precondition met the same day). Execution is **BLOCKED** at the pre-execution check pending D-1 and D-2
 **Schema changes:** ADDITIVE ONLY (new migrations ≥ 073), applied to disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED
 **Production deployment:** NOT AUTHORIZED (staging also NOT AUTHORIZED; merge to `main` NOT AUTHORIZED)
@@ -20,6 +20,14 @@
 > **Change control after the freeze:** any change to the frozen contract module, its fixtures, or its golden vectors requires **explicit Product Architecture review** before it is merged into a dependent branch. Additive, backward-compatible changes are versioned **v1.x**, keep every existing fixture and golden vector valid, and re-run the NEM-021 and NEM-022 suites. An incompatible change requires `schemaVersion: 2` and its own review. Phase 2 and NEM-022 consume contract v1 as frozen and may not redefine it (§5, `version.ts`).
 >
 > **Not authorized by this acceptance:** Phase 2, NEM-022, merge, deployment (staging or production), migrations, infrastructure or CI/CD changes, provider connections, credentials, or AI costs. Mission completion still requires Phase 2, the final review (§19), and PO acceptance.
+
+> **Phase 2 execution authorization (2026-11-09):** PO instruction *"NEM-021 Phase 2 Execution Authorization"*: *"The Product Owner explicitly authorizes execution of **NEM-021 Phase 2**, according to the approved specification. … This authorization covers only Phase 2 (§5, items 7–15) and the tests, documentation, and governance records required by NEM-021. Do not interpret this as authorization for NEM-022, merging, deployment, AI provider integration, or additional infrastructure."* Also excluded: CI/CD changes, staging or production, real prices or budget values, changes to frozen contract v1 without Product Architecture review, and modifying NEM-019 migrations or tests to make regressions pass. *"If any precondition fails, STOP and report the blocker."* Frozen baseline `697f8ea947bbb486028d71a8cc5d9931ac9e7ce8`; branch `feat/nem-021-provider-neutral-contract`; Draft PR #50.
+>
+> **Pre-execution result (2026-11-09): BLOCKED.**
+> - **B-1:** NEM-019's positional migration test (`a-schema-migrations.int-spec.ts` AC-19) fails with any migration ≥ 073. Verified with a temporary probe; specification §17 makes this a stop condition.
+> - **B-2:** the frozen contract test tree contains a Phase-1-only guard that fails as soon as migration 073 exists or ledger code imports the contract; changing it needs Product Architecture review.
+>
+> No Phase 2 code written. Options and recommendations: [Phase 2 report §11](../../reports/2026-11-09-NEM-021-phase-2-cost-aware-ledger-report.md).
 
 > **Execution authorization (2026-11-09):** *"I authorize execution of NEM-021 according to its approved specification, using the existing development branch and disposable local test environments. Stop for Product Architecture review after Phase 1 contract v1, before Phase 2 ledger implementation. Do not execute NEM-022, merge, deploy, connect AI providers, or incur AI costs."* Branch: `feat/nem-021-provider-neutral-contract`, stacked on PR #49.
 
