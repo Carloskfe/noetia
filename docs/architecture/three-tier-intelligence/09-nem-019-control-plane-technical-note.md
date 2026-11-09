@@ -1,6 +1,6 @@
 # 09 — NEM-019 Intelligence Control Plane: Technical Note
 
-**Status:** Implemented on branch `feat/nem-019-intelligence-control-plane` (Draft PR). **Dark. Not merged, not deployed.** Awaiting Product Architecture review.
+**Status:** Implemented on branch `feat/nem-019-intelligence-control-plane` (Draft PR #46). **Dark. Not merged, not deployed.** Revision 2 (2026-11-09) adds the Product Architecture review corrections **B-6** and **F-12** (§9). Awaiting Product Architecture re-review.
 **Mission:** [NEM-019 revision 4](../../engineering-missions/APPROVED/NEM-019-tier-aware-intelligence-control-plane.md) · **Normative inputs:** ADR-005 rev 3, ADR-006 rev 3 (accepted 2026-11-08) · PO-025…028, PO-030 (decided) · PO-029 (draft).
 **Report:** [`docs/reports/2026-11-09-NEM-019-implementation-report.md`](../../reports/2026-11-09-NEM-019-implementation-report.md)
 
@@ -58,7 +58,7 @@ Because the context is built from the step-2 set and step 4 verifies the set is 
 
 ## 4. Rights (default deny; ADR-002/006; 07 §3)
 
-Eligible ⇔ current `textHash` known (port) **and** a `book_ai_rights` row for that exact hash **and** `status = 'verified'` **and** every 07 §3 element present **and** the operation (`research_analysis`) listed **and** `reviewDate` not passed **and** an access basis: `public_domain` (no library entry needed) or, for `licensed`/`rights_holder_opt_in`, `OwnershipPort = entitled`. `isFree` and catalogue metadata are never read. No rights row exists for any real book.
+Eligible ⇔ current `textHash` known (port) **and** a `book_ai_rights` row for that exact hash **and** `status = 'verified'` **and** every 07 §3 element present **and** every value well-formed (F-12) **and** the operation (`research_analysis`) listed **and** `reviewDate` not passed **and** the record is **attested by the verification authority** (F-12; no production adapter, so `unknown` denies) **and** an access basis: `public_domain` (no library entry needed) or, for `licensed`/`rights_holder_opt_in`, `OwnershipPort = entitled`. `isFree` and catalogue metadata are never read. No rights row exists for any real book.
 
 Completeness interpretation (engineering, for review): public-domain records also require the author death date, and for translations the translator death date and translation date; licensed records may omit death dates (living authors) but a translation still needs translators.
 
@@ -66,7 +66,7 @@ Completeness interpretation (engineering, for review): public-domain records als
 
 - **Authority:** `ai_budget_ledger`, append-only, integer units, integer micro-USD cost from versioned `ai_rate_cards` (BigInt arithmetic).
 - **Uniqueness:** partial unique indexes allow one `reservation`, one **resolution** (`settlement` *or* `release`), and one `expired_flag` per idempotency key; `compensation` entries are unrestricted and never edit prior rows. A replay, retry, race, or second reconciler cannot charge twice — enforced by the database, not only the code.
-- **Admission** (`reserve`) runs under `pg_advisory_xact_lock` per `user:capability`, checks the scope's unresolved bound (units and oldest age), the overall unresolved bound, and the period allowance (settled + compensated + still-unresolved reserved units), then inserts with `ON CONFLICT DO NOTHING` (duplicate → `duplicate_turn`). Any error, unavailable Redis cache, missing policy, or unset overall bound → `budget_unavailable` **before** any provider call.
+- **Admission** (`reserve`) runs under two transaction-scoped advisory locks taken in a fixed order: one **global** admission lock (B-6), then one per `user:capability`. Under them it rejects a replayed key as `duplicate_turn`, then checks the scope's unresolved bound (units and oldest age), the overall unresolved bound **including the new reservation's units** (exact capacity admitted, never exceeded), and the period allowance (settled + compensated + still-unresolved reserved units), then inserts with `ON CONFLICT DO NOTHING` (duplicate → `duplicate_turn`). Any error, unavailable Redis cache, missing policy, or unset overall bound → `budget_unavailable` **before** any provider call.
 - **Redis** is optional and only caches "scope exhausted" for a short, namespaced, expiring key (`intelligence:admission:v1:<user>:<capability>`). It is cleared on settlement and can be lost without consequence. When bound and unavailable, admission is denied.
 - **Reconciliation** (`reconcile`, run every 60 s by `ReconciliationJobService` only while the module is loaded): no-provider evidence → release; known reported usage → settle (with rate card from the usage event's provider and model key); otherwise held, and once expired, flagged exactly once and **never released to zero**.
 
@@ -93,8 +93,58 @@ Every knowledge table that references `users(id)` (`ai_grants`, `ai_conversation
 | E9 | Operation key `research_analysis`; capability `research_session` seeded for both tiers | ADR-002 leaves field names to implementation |
 | E10 | Operational defaults: statement timeout 5 s, provider timeout 30 s, cache TTL 60 s, reconciliation every 60 s | Operational, not product or budget values; configurable by env |
 | E11 | Integration tests in `tests/integration/` with `jest.integration.config.js`; not in `npm test` or CI | §3: CI must not change; the suite refuses non-local or non-`_test` databases |
+| E12 | One global advisory lock serializes all budget admissions (B-6) | Simplest reliable mechanism on existing PostgreSQL; no new service. Throughput limit noted in §9 |
+| E13 | `RightsVerificationAuthorityPort` with no adapter; well-formedness check (F-12) | A `verified` row is data, not authority; no authorized verification process exists yet |
 
-## 9. Running the tests
+## 9. Product Architecture review corrections (revision 2, 2026-11-09)
+
+Both findings were approved by the Product Owner (*NEM-019 Product Architecture Review Corrections*). No ADR, PO decision, mission scope, or acceptance criterion was changed.
+
+### B-6 — Global unresolved-budget concurrency
+
+**Root cause (confirmed).** `reserve` serialized only per `user:capability` (`pg_advisory_xact_lock(hash(user:capability))`). The overall unresolved bound is shared by all users, so concurrent admissions for **different** users each read the same global total under READ COMMITTED and all inserted. Separately, the check was `existing > bound`, which ignored the new reservation's own units and admitted one reservation past the bound even without a race.
+
+**Reproduction (before the fix).** 20 distinct users racing for global capacity 5 × 10 units → **16 admitted** (110 units over the bound); the sequential exact-capacity test also failed.
+
+**Correction.**
+1. A single global transaction-scoped advisory lock (`hashtextextended('intelligence:budget:global-admission:v1', 0)`) is taken **first**, then the existing per-scope lock, in a fixed order (no deadlock possible; advisory locks are re-entrant within a session). The global check and the reservation insert run inside that one transaction and the locks are released at commit, after the row is visible.
+2. The check is now `existing + reserveUnitsPerTurn > bound` → deny. Exact capacity is admitted; one unit short is rejected.
+3. A replayed idempotency key is now rejected as `duplicate_turn` **before** budget checks. The previous order could report a replay at the allowance boundary as `budget_exhausted` (never a double reservation, but a nondeterministic reason; found by the B-6 tests). The unique index stays as the backstop.
+
+Redis is not involved; PostgreSQL remains the only authority. Per-scope limits, idempotency, settlement, reconciliation, and fail-closed behaviour are unchanged and re-tested.
+
+**Evidence.** `ledger.int-spec` *B-6*: 20 distinct users for capacity 5 → exactly 5 admitted, total exactly at the bound; sequential exact-capacity admitted and over-capacity (and 9-units-free) rejected; per-user limits, duplicate keys, and settlement under the global lock. Passed on 5 consecutive runs of the ledger suite and 3 consecutive full integration runs. Unit tests assert the lock order (global → scope → overall check → insert) and the boundary arithmetic.
+
+**Trade-off.** All admissions are now serialized through one lock. Each holds it only for the duration of one short admission transaction (statement timeout applies). This is adequate for the dark plane and early volumes; a sharded or counter-row design can replace it later without changing the ledger's authority.
+
+### F-12 — Rights-verification trust boundary
+
+**Who sets `book_ai_rights.status = 'verified'`? Nobody, by design of this mission.** Findings against the repository:
+
+| Question | Finding |
+|---|---|
+| Application code that writes `book_ai_rights` | **None.** Only `SELECT` in `rights.service.ts`; architecture test now fails on any `INSERT`/`UPDATE`/`DELETE` |
+| API route, admin endpoint, import, ingestion, or script | **None** (repository-wide search of `.ts/.js/.sql/.sh/.py`) |
+| Migration or seed | Creates the empty table only (AC-12) |
+| Database operation | **Possible.** API, migrations, scripts, and operators share one PostgreSQL role (`noetia`, owner); there is no separate grant or audit trail for this table. Any holder of those credentials could insert a `verified` row |
+
+**Trust boundary (now enforced in code).**
+
+```
+metadata completeness  (isCompleteRecord: every 07 §3 element present)
+        ⊂ well-formed  (isWellFormedRecord: coherent dates, plausible year, http(s) URLs, tokens)
+        ⊂ attested     (RightsVerificationAuthorityPort: produced by the AUTHORIZED verification process)
+        ⊂ AI-eligible  (+ verified status, current textHash, permitted operation, review date, access basis)
+```
+
+Completeness and well-formedness check **form only**; neither judges authenticity or legal sufficiency. Authority is a port with **no production adapter** (the authorized process — verifier, evidence standard, jurisdiction — is TT-26, open), so a directly written `verified` row grants nothing. Missing, malformed, unattested, revoked, expired, stale, or past-review records all deny. No real book is marked verified; no review workflow, legal engine, or admin interface was built.
+
+**Production prerequisites (not in this mission).**
+1. An authorized rights-verification process and its authority adapter (TT-26: evidence standard, named verifier, jurisdiction; `LEGAL REVIEW REQUIRED`).
+2. Write control on `book_ai_rights`: a separate database role/grants or an append-only audit of status changes (infrastructure/DB-role change; needs its own authorization).
+3. A `TextIdentityPort` adapter (current text hash from storage).
+
+## 10. Running the tests
 
 ```bash
 # Unit (part of npm test). On the dev VM keep workers capped (docs/operations/dev-vm-resources.md):

@@ -2,10 +2,49 @@
 
 **Mission:** NEM-019 — Tier-Aware Intelligence Control Plane (Dark, Simulated Providers Only), revision 4 (approved 2026-11-08)
 **Authorization:** Product Owner, *Clarification: Execute NEM-019* (2026-11-09) — LIMITED to §5; schema ADDITIVE ONLY on disposable test databases; infrastructure, staging, and production NOT AUTHORIZED
-**Status:** **REVIEW** — awaiting Product Architecture review (`REVIEW-CHECKLIST.md`) and Product Owner acceptance. **Not merged. Not deployed.**
+**Status:** **REVIEW** — revision 2 incorporates the approved review corrections **B-6** and **F-12** (§0); awaiting Product Architecture re-review and Product Owner acceptance. **Not merged. Not deployed.**
 **Branch:** `feat/nem-019-intelligence-control-plane`, stacked on `docs/nem-019-approval` (PR #45 → #44 → #43 → #42 → #41 → #40 → #35 → #34)
-**Commits:** `97a2a7a` (migrations) · `d8ef627` (module + tests) · `d04f310` (docs) · this report in the following commit
+**Commits:** `97a2a7a` (migrations) · `d8ef627` (module + tests) · `d04f310` (docs) · `47c5ef5` (report) · revision 2: B-6 and F-12 commits listed in the PR
 **Technical note:** [09-nem-019-control-plane-technical-note.md](../architecture/three-tier-intelligence/09-nem-019-control-plane-technical-note.md)
+
+---
+
+## 0. Revision 2 — Product Architecture review corrections (2026-11-09)
+
+Authorized by the Product Owner (*NEM-019 Product Architecture Review Corrections*: B-6 and F-12). Same branch, same Draft PR #46. **No approved product decision, ADR, PO record, mission scope, or acceptance criterion was changed.** Full write-up: [technical note §9](../architecture/three-tier-intelligence/09-nem-019-control-plane-technical-note.md#9-product-architecture-review-corrections-revision-2-2026-11-09).
+
+### B-6 — global unresolved-budget concurrency: CONFIRMED and CORRECTED
+- **Root cause:** admission was serialized only per `user:capability`, but the overall unresolved bound is shared, so concurrent admissions for different users read the same total and all inserted. The check also ignored the new reservation's own units (`existing > bound`).
+- **Reproduced before the fix:** 20 distinct users racing for capacity 5 → **16 admitted** (110 units over the bound). The exact-capacity test also failed.
+- **Correction:** one global PostgreSQL transaction-scoped advisory lock taken first, then the per-scope lock (fixed order, no deadlock). The check is now `existing + new > bound` → deny. A replayed key is reported as `duplicate_turn` before budget checks (this fixes a nondeterministic denial reason found by the new tests; it never caused a double reservation). No Redis authority, no new service, no new dependency.
+- **Evidence:** the multi-user race test admits exactly 5 and the total lands exactly on the bound. Exact capacity is admitted, while over-capacity and 9-of-10-free are rejected. Per-user limits, idempotency and settlement were re-verified under the global lock. Results: 5/5 consecutive ledger-suite runs and 3/3 full integration runs. Unit tests assert the lock order and the boundary arithmetic.
+- **Trade-off:** all admissions are serialized through one short-held lock. This is acceptable for the dark plane and early volumes, and is noted as a risk.
+
+### F-12 — rights-verification trust boundary: INVESTIGATED; GAP CLOSED IN CODE; PRODUCTION PREREQUISITE IDENTIFIED
+- **Who sets `status = 'verified'`:** no component. No application code, API, admin route, import, ingestion, script or seed writes `book_ai_rights`; only `rights.service.ts` reads it.
+- **Gap found:** a direct database write by anyone holding the shared `noetia` role (API, migrations, scripts and operators share it, with no separate grant or audit) could create a complete `verified` row. Before this revision, that row would have granted eligibility once a `TextIdentityPort` adapter existed. Malformed values (verification in the future, review before verification, non-URL evidence, `javascript:` links, implausible years) also passed the completeness check.
+- **Correction (fail closed, no new mechanism invented):**
+  - Eligibility now additionally requires `isWellFormedRecord` (form only).
+  - It also requires attestation by a new `RightsVerificationAuthorityPort`, with **no production adapter** (`unknown` → deny, reason `not_attested`).
+  - An architecture test fails if any application code writes `book_ai_rights`, and another asserts that every rights and entitlement port is bound to its deny adapter.
+- **Evidence:** unit tests cover 14 malformed cases, attestation `not_attested`/`unknown`/throwing, and the production default denying a complete verified row. Integration tests show that a directly inserted `verified` row (even `isFree` and owned) is denied under the production default; that an unattested or malformed row is denied; and that withdrawn attestation excludes the book from the next turn, with the exclusion disclosed.
+- **Production prerequisites (unchanged scope; separate authorization needed):**
+  1. An authorized verification process and its authority adapter (TT-26; legal review).
+  2. Write control or an audit trail on `book_ai_rights` (DB role/grants: infrastructure).
+  3. A `TextIdentityPort` adapter.
+
+  No real book was marked verified. No review workflow, legal engine or admin interface was built.
+
+### Updated results (revision 2)
+| Check | Result |
+|---|---|
+| Full api unit suite | **1182 / 1182 passed** (87 suites) |
+| New unit tests (`tests/unit/knowledge/**` + 4 migration specs) | 249 passed · `src/knowledge/**`: Statements 98.8% · Branches 94.7% · Functions 94.4% · Lines 98.9% |
+| Integration (disposable PG 16 + Redis 7) | **56 / 56 passed**, 3 consecutive full runs (ledger suite 5 consecutive runs) |
+| `tsc` (src + tests) / `eslint src/knowledge` | 0 errors / 0 errors, 0 warnings |
+| Global branch-coverage gate | Still fails, **pre-existing**: 73.76% (68.83% without NEM-019) |
+| Acceptance criteria | **All still verified**; none failed or unverified. AC-11 and AC-15/15c/15d evidence strengthened |
+| Real AI provider, AI spend, production entitlement/ownership/rights adapter | **None introduced.** All ports still bind deny adapters; simulated provider only |
 
 ---
 
@@ -119,6 +158,8 @@ None from scope or acceptance criteria. Engineering choices within scope (all fa
 3. **Enabling the flag in any shared environment** would expose routes (still deny-all, because no adapters are bound). It needs its own authorization, as do the migrations.
 4. **Race tests** prove invariants but cannot force every interleaving on every run (AC-4 note).
 5. **Migration numbering** depends on NEM-016 keeping 068. If either branch is renumbered, re-check the order before any deployment.
+6. **Admission throughput (B-6):** one global advisory lock serializes every budget admission. It is held only for one short transaction, but it is a single point of contention at scale.
+7. **Rights authority (F-12):** until an authorized verification process and write control on `book_ai_rights` exist, rights depend on the authority port staying unbound (deny). Binding a permissive adapter would make any directly written row authoritative.
 
 ## 10. Discoveries (out of scope; not acted on)
 
