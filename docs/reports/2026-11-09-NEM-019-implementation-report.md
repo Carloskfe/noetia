@@ -1,0 +1,142 @@
+# NEM-019 — Implementation Report
+
+**Mission:** NEM-019 — Tier-Aware Intelligence Control Plane (Dark, Simulated Providers Only), revision 4 (approved 2026-11-08)
+**Authorization:** Product Owner, *Clarification: Execute NEM-019* (2026-11-09) — LIMITED to §5; schema ADDITIVE ONLY on disposable test databases; infrastructure, staging, and production NOT AUTHORIZED
+**Status:** **REVIEW** — awaiting Product Architecture review (`REVIEW-CHECKLIST.md`) and Product Owner acceptance. **Not merged. Not deployed.**
+**Branch:** `feat/nem-019-intelligence-control-plane`, stacked on `docs/nem-019-approval` (PR #45 → #44 → #43 → #42 → #41 → #40 → #35 → #34)
+**Commits:** `97a2a7a` (migrations) · `d8ef627` (module + tests) · `d04f310` (docs) · this report in the following commit
+**Technical note:** [09-nem-019-control-plane-technical-note.md](../architecture/three-tier-intelligence/09-nem-019-control-plane-technical-note.md)
+
+---
+
+## 1. Pre-execution check (README §IN PROGRESS)
+
+| Check | Result |
+|---|---|
+| Entire mission read | Yes (revision 4, all 19 sections) |
+| Relevant code inspected | `app.module.ts`, `data-source.ts`, migrations 000–067, `users.service.ts` `deleteAccount`, `books.service.ts` `remove`, `book.entity.ts`, `jwt-auth.guard.ts`, `redis.provider.ts`, metrics module, jest config |
+| Assumptions verified | ADR-005/006 rev 3 and decided PO-026/027/028/030 match §7 (3/10 limits, public domain counts, add-on prerequisite, household privacy). All 68 existing migrations apply cleanly to an empty PostgreSQL 16 |
+| Protected systems | Escucha Activa/sync, reader, ownership, `user_books`, `fragments`, tokens, Stripe, production data — none touched |
+| Migrations | Four additive migrations; 068 is used by unmerged NEM-016 branches, so 069–072 were used |
+| Infrastructure | None required. Two throwaway local containers for tests (removed at the end) |
+| Authorization level | LIMITED, as stated |
+| Contradictions | **None material.** Engineering choices E1–E11 (technical note §8) are listed for review |
+
+## 2. Changed files (65 files, +5002 / −3)
+
+| Path | Purpose |
+|---|---|
+| `services/api/src/app.module.ts` | **Only existing runtime file changed** (+3 lines): spreads `knowledgeModules()` (default off) |
+| `services/api/src/knowledge/**` (27 files) | Entitlement, rights, metering, sessions, AI gateway/router/simulated provider, module, registration |
+| `services/api/src/migrations/1748300000069…072-*.ts` | Additive migrations (§3) |
+| `services/api/tests/unit/knowledge/**` (17 files) | Unit, architecture, and registration/HTTP tests |
+| `services/api/tests/unit/migrations/1748300000069…072-*.spec.ts` | Migration unit tests |
+| `services/api/tests/integration/knowledge/**` (5 files) | Integration tests against disposable PostgreSQL + Redis |
+| `services/api/jest.integration.config.js` | Separate config for integration tests; not used by `npm test` or CI |
+| `docs/architecture/three-tier-intelligence/09-…technical-note.md` (+ README row) | Technical note |
+| `docs/database-migrations.md` | Entries 069–072 |
+| `docs/engineering-missions/APPROVED/NEM-019-….md`, `docs/engineering-missions/README.md` | Status → REVIEW, execution note. **No scope, AC, or restriction text changed** |
+| `docs/reports/2026-11-09-NEM-019-implementation-report.md` | This report |
+
+No `package.json`, lockfile, Dockerfile, CI, compose, Traefik, or `.env` change. No new dependency.
+
+## 3. Database
+
+Migrations `069 CreateIntelligenceEntitlement`, `070 CreateIntelligenceSessions`, `071 CreateBookAiRights`, `072 CreateIntelligenceMetering` create the ten tables listed in §5.7. Seeds: only `ai_tier_policies` (Noetia+ 3, NoetiaX 10, idempotent). No budget, rate-card, or rights row. **Run only on the disposable database** `nem019_test` (local container). Not run on dev, staging, or production. No backfill.
+
+## 4. Tests
+
+| Suite | Result |
+|---|---|
+| New unit tests (`tests/unit/knowledge/**`, 4 migration specs) | **221 passed** |
+| Full api unit suite (`npx jest --maxWorkers=2 --coverage`) | **1154 passed, 87 suites, 0 failed** (948 pre-existing tests unchanged and passing) |
+| Integration (`jest.integration.config.js`, disposable PG 16 + Redis 7) | **50 passed**, run three times consecutively with identical results |
+| Coverage of `src/knowledge/**` (all files, unit only) | Statements 98.9% · Branches 95.5% · Functions 94.2% · Lines 98.8% |
+| Global coverage gate | **Branches 73.19% < 80% — FAILS, pre-existing.** Without NEM-019 the same gate is 68.83% (measured on the same tree, knowledge excluded). NEM-019 raises it; it does not cause it. See Discoveries |
+
+## 5. Acceptance criteria
+
+Legend: **V** = verified by an automated test named below · **V\*** = verified with a stated limitation.
+
+| AC | Result | Evidence |
+|---|---|---|
+| 1 Flag off: module not loaded, no route, existing suites pass | **V** | `knowledge.registration.spec`: module file never `require`d; `POST/GET /knowledge/sessions` → 404; 948 pre-existing tests pass |
+| 2 Flag on: real user gets `prerequisite_missing` | **V** | `knowledge.registration.spec`: all five `use` routes → 403 `prerequisite_missing` with the default bindings |
+| 3 Max 3 / max 10; DB rejects position 11 | **V** | `sessions.int-spec` limits; `a-schema-migrations.int-spec` CHECK rejects 11 and 0 |
+| 4 Parallel adds never exceed; add vs first turn consistent | **V\*** | `sessions.int-spec`: 8 parallel adds → exactly 3; add-vs-turn race ×5 asserts the locked hash always equals the stored set. Limitation: a race test cannot force both interleavings on every run; the unit test forces the "add wins" interleaving deterministically (`set_changed`) |
+| 5 No change after first turn; fork required; parallel first turns → one lock | **V** | `sessions.int-spec`: add/remove after lock → `session_locked`; 5 parallel first turns → one lock, one hash, `turnCount` 5 |
+| 6 NoetiaX → Noetia+ over 3: `read_only`, fork offer, history kept | **V** | `sessions.int-spec` downgrade; also downgrade during an active turn |
+| 7 Fork from a larger set carries no generated context | **V** | `sessions.int-spec` and unit fork cases (subset carries; superset/ineligible/deleted does not) |
+| 8 Book deletion succeeds; history readable | **V** | `sessions.int-spec`: `Repository<Book>.remove` (same call as `BooksService.remove`) succeeds; snapshot title shown, lock intact, next turn runs |
+| 9 Free / token-only denied even with grant; Individual/Duo/Family only when `qualifying`; linked member denied | **V** | `entitlement.service.spec` fixture port; `sessions.int-spec` free user with NoetiaX grant |
+| 10 `unknown` denies; no write path to any book plan | **V** | Unit: unbound port denies; `architecture.spec`: no knowledge SQL touches `plans`, `subscriptions`, `token_*`, `user_books`, `fragments` |
+| 11 `isFree` without record, partial, stale hash, revoked, owned-without-record denied | **V** | `rights.service.spec` + `sessions.int-spec` (each case on real rows) |
+| 11a Verified PD selectable without library entry and counts; unverified PD denied | **V** | `sessions.int-spec`: 3 PD books with zero `user_books` rows; 4th rejected; unverified denied |
+| 11b Licensed: denied when `not_entitled`/`unknown`, allowed when entitled | **V** | `sessions.int-spec` + unit |
+| 12 No rights record for a real book from migrations/seeds | **V** | Migration unit test (no INSERT); integration: 0 rows straight after a fresh up-migration |
+| 12a Every model path has a declared invariant and a proving test; missing one fails | **V** | `architecture.spec`: registry check, unregistered-caller check (with self-test), `sealContext` restricted to Context Builders; Gateway rejects unsealed/mismatched contexts |
+| 13 Unselected highlight/note/chunk cannot reach context; violation aborts | **V** | `turn.service.spec` + `context-builder.service.spec`: no reservation, no lock, no provider call, metric fires |
+| 14 Planner naming an unselected book rejected | **V** | `model-gateway.service.spec`, `turn.service.spec` (usage settled once, turn rejected, metric) |
+| 15 Reservation cannot exceed budget under concurrency; settlement/failure paths | **V** | `ledger.int-spec`: 20 concurrent reserves at allowance 50/10 → exactly 5 |
+| 15a Budgets by tier **and** capability; no cross-capability draw | **V** | `ledger.int-spec` |
+| 15b Household member cannot read another member's session | **V** | `sessions.int-spec` isolation (get, add, fork, turn → `not_found`) |
+| 15c Admission-time failure denies before provider (no reservation/lock/charge); settlement-time failure keeps reservation unresolved; lock-tx failure releases; budget rejection never locks | **V** | `ledger.int-spec`: ledger down at admission → no row; **real Redis client on a closed port** → denied, provider not called, not locked; lock-tx failure → `reservation` + `release`, provider not called; budget rejection → unlocked. Unit: release-failure leaves `provider='none'` evidence |
+| 15d Unknown usage held; ledger outage held; reconciled exactly once; replay/retry/double reconcile never duplicate; expired flagged not released; bound exceeded denies | **V** | `ledger.int-spec`: outage → held → reconcile ×2 → one settlement (`28` micro-USD); 3 concurrent reconcilers → one; settle/settle/release race → one; expired → one `expired_flag`, still counted; scope and overall bounds deny; **DB unique index itself refuses a second resolution** |
+| 15e Account deletion with rows in every user-related AI table | **V** | `account-deletion.int-spec`: unchanged `UsersService.deleteAccount` (email stubbed) succeeds; 0 rows left in `ai_grants`, `ai_conversations`, `ai_session_books`, `ai_usage_events`, `ai_budget_ledger` (including a held reservation and a fork); `feature_flags` has no user column |
+| 15f Schema test: every knowledge→users FK is CASCADE or SET NULL | **V** | `a-schema-migrations.int-spec` (4 FKs, all CASCADE; every other knowledge FK CASCADE/SET NULL) |
+| 16 Reader/library/token/subscription don't import knowledge; knowledge doesn't import token/subscription/plan/Stripe | **V** | `architecture.spec` |
+| 17 Token scenarios change no budget | **V** | `ledger.int-spec`: a real `token_ledger` issue + redeem leaves the user's ledger untouched; architecture test |
+| 18 No provider SDK; no outbound provider call | **V** | `architecture.spec` (package.json, HTTP clients, `fetch`); router refuses non-simulated providers |
+| 19 Migrations up/down; no existing table altered; reverting restores prior state | **V\*** | `a-schema-migrations.int-spec`: schema snapshot of all non-new tables and constraints identical before, after revert, and after re-run. Limitation: "removing the module registration" was verified as flag-off (module not loaded), not by deleting the line; the line is a single spread in `app.module.ts` |
+
+**Failed criteria: none. Unverified criteria: none.** The two V\* limitations are stated above. §13 metrics: the six counters are registered and incremented without content labels (`common.spec`).
+
+## 6. Verification
+
+- `tsc --noEmit -p tsconfig.test.json` (src + tests): **0 errors**
+- `eslint src/knowledge/**`: **0 errors, 0 warnings** (migrations are ignored by the repo's eslint config)
+- `nest build` was not run separately; it uses the same `tsc` configuration
+- Runtime: the module was booted in a Nest test application with the flag on and off (HTTP over an ephemeral local port)
+
+## 7. Deployment
+
+**None.** Nothing was merged or pushed to `main`; no staging or production action; no migration on any shared database.
+
+## 8. Deviations
+
+None from scope or acceptance criteria. Engineering choices within scope (all fail closed) are E1–E11 in the [technical note §8](../architecture/three-tier-intelligence/09-nem-019-control-plane-technical-note.md#8-engineering-choices-for-review). The ones Product Architecture should look at first:
+
+- **E1** tier comes only from `ai_grants` (billing entitlement is a later mission);
+- **E2** an extra `TextIdentityPort` (no adapter) to support stale-`textHash` denial;
+- **E6** usage/budget rows use `ON DELETE CASCADE` (the open retention choice);
+- **E8** a passed `reviewDate` denies;
+- the rights **completeness interpretation** (technical note §4).
+
+## 9. Risks
+
+1. **Same-database evidence.** Usage evidence and the ledger share PostgreSQL. A total outage at settlement loses the usage record, and the reservation stays held, then flagged, indefinitely. That follows ADR-005 (never released to zero), but an operator procedure for compensating entries is needed before launch.
+2. **Admission cache staleness.** An "exhausted" marker can deny for up to its TTL (default 60 s) after the allowance frees up. This is conservative.
+3. **Enabling the flag in any shared environment** would expose routes (still deny-all, because no adapters are bound). It needs its own authorization, as do the migrations.
+4. **Race tests** prove invariants but cannot force every interleaving on every run (AC-4 note).
+5. **Migration numbering** depends on NEM-016 keeping 068. If either branch is renumbered, re-check the order before any deployment.
+
+## 10. Discoveries (out of scope; not acted on)
+
+1. **Global api branch-coverage gate already fails on the base branch** (68.83% < 80%). `npm run test:cov` exits non-zero without NEM-019. Recommend a separate remediation mission or a threshold review.
+2. **`services/api/node_modules` is not ignored** in this worktree's git status (`?? services/api/node_modules`). It was not committed. Worth checking `.gitignore` for nested `node_modules`.
+3. **`docs/database-migrations.md` history stops at 063.** Migrations 064–067 (already on `main`) are undocumented. Only 069–072 were added here.
+4. **`supertest` is not a dependency**, so HTTP-level tests used Node's built-in `fetch`.
+
+## 11. Protected systems confirmation
+
+**Not modified:** Escucha Activa, sync maps and their services, reader (`app/(reader)`, `PagedReader`, phrase rendering), `books`, `library`, `fragments` and write paths, `user_books`, tokens (`token_ledger`, `token_packages`, redemption, expiry), Stripe, `plans`, `subscriptions`, webhooks, checkout, `SubscriptionGuard`, `users.service.ts`, web, mobile, worker, image-gen, i18n, pricing, Terms, catalogue/ingestion, NEM-003, ADR-001…006, PO records, CI/CD, Docker, compose, Traefik, infrastructure, staging, production. No provider SDK, credential, network call, or spend. No production data accessed.
+
+## 12. Test-resource cleanup
+
+The disposable containers `nem019-test-pg` and `nem019-test-redis` (started only for this mission, bound to 127.0.0.1, no named volumes) are removed after the final run. No shared or production Docker resource was touched. See the PR description for the confirmation.
+
+## 13. Recommended next step (recommendation only — not started)
+
+1. Product Architecture review of this Draft PR against `REVIEW-CHECKLIST.md`, with particular attention to E1, E2, E6, E8, and the rights completeness interpretation.
+2. A PO decision on anonymized cost-record retention after account deletion (CASCADE vs SET NULL).
+3. Later missions, each separately authorized: the `QualifyingPlanPort` adapter (after TT-15), `OwnershipPort`/`TextIdentityPort` adapters, a ledger compensation runbook, and deployment of migrations 069–072.
