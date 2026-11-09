@@ -1,7 +1,7 @@
 # 09 — NEM-019 Intelligence Control Plane: Technical Note
 
-**Status:** Implemented on branch `feat/nem-019-intelligence-control-plane` (Draft PR #46). **Dark. Not merged, not deployed.** Revision 2 (2026-11-09) adds the Product Architecture review corrections **B-6** and **F-12** (§9). Awaiting Product Architecture re-review.
-**Mission:** [NEM-019 revision 4](../../engineering-missions/APPROVED/NEM-019-tier-aware-intelligence-control-plane.md) · **Normative inputs:** ADR-005 rev 3, ADR-006 rev 3 (accepted 2026-11-08) · PO-025…028, PO-030 (decided) · PO-029 (draft).
+**Status:** Implementation **accepted by the Product Owner on 2026-11-09** for its approved scope (branch `feat/nem-019-intelligence-control-plane`, Draft PR #46, including revision 2 corrections **B-6** and **F-12**, §9). **Dark. Not merged, not deployed, not authorized for production.**
+**Mission:** [NEM-019 revision 4](../../engineering-missions/COMPLETED/NEM-019-tier-aware-intelligence-control-plane.md) · **Normative inputs:** ADR-005 rev 3, ADR-006 rev 3 (accepted 2026-11-08) · PO-025…028, PO-030 (decided) · PO-029 (draft).
 **Report:** [`docs/reports/2026-11-09-NEM-019-implementation-report.md`](../../reports/2026-11-09-NEM-019-implementation-report.md)
 
 This note describes what was built and the engineering choices made inside the mission's scope. It does not change any ADR or PO decision.

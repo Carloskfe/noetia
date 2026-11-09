@@ -2,9 +2,9 @@
 
 **Mission:** NEM-019 — Tier-Aware Intelligence Control Plane (Dark, Simulated Providers Only), revision 4 (approved 2026-11-08)
 **Authorization:** Product Owner, *Clarification: Execute NEM-019* (2026-11-09) — LIMITED to §5; schema ADDITIVE ONLY on disposable test databases; infrastructure, staging, and production NOT AUTHORIZED
-**Status:** **REVIEW** — revision 2 incorporates the approved review corrections **B-6** and **F-12** (§0); awaiting Product Architecture re-review and Product Owner acceptance. **Not merged. Not deployed.**
+**Status:** **COMPLETED — implementation accepted by the Product Owner on 2026-11-09** for its approved scope only (§0.1). **Not merged. Not deployed. Not authorized for production.**
 **Branch:** `feat/nem-019-intelligence-control-plane`, stacked on `docs/nem-019-approval` (PR #45 → #44 → #43 → #42 → #41 → #40 → #35 → #34)
-**Commits:** `97a2a7a` (migrations) · `d8ef627` (module + tests) · `d04f310` (docs) · `47c5ef5` (report) · revision 2: B-6 and F-12 commits listed in the PR
+**Commits:** `97a2a7a` (migrations) · `d8ef627` (module + tests) · `d04f310` (docs) · `47c5ef5` (report) · revision 2: `dd5a49b` (B-6) · `8d74085` (F-12) · `9d23ff1` (docs) · acceptance record: the documentation commit that follows `9d23ff1`
 **Technical note:** [09-nem-019-control-plane-technical-note.md](../architecture/three-tier-intelligence/09-nem-019-control-plane-technical-note.md)
 
 ---
@@ -12,6 +12,52 @@
 ## 0. Revision 2 — Product Architecture review corrections (2026-11-09)
 
 Authorized by the Product Owner (*NEM-019 Product Architecture Review Corrections*: B-6 and F-12). Same branch, same Draft PR #46. **No approved product decision, ADR, PO record, mission scope, or acceptance criterion was changed.** Full write-up: [technical note §9](../architecture/three-tier-intelligence/09-nem-019-control-plane-technical-note.md#9-product-architecture-review-corrections-revision-2-2026-11-09).
+
+### 0.1 Product Owner acceptance (2026-11-09)
+
+**Decision recorded** (*NEM-019 Product Owner Acceptance*): the implementation is **accepted for its approved scope**, a dark, default-disabled intelligence control plane using simulated AI providers only. The independent Product Architecture review accepted both corrective findings, B-6 and F-12. The acceptance applies **only** to the implementation reviewed in Draft PR #46, including revision 2.
+
+**Pre-acceptance verification (2026-11-09):**
+- PR #46 head is `9d23ff1`, the reviewed revision-2 head. There are no commits after it, no uncommitted changes, it is a Draft, open, and unmerged.
+- The base `docs/nem-019-approval` (#45) is unchanged at `73666e6` and is an ancestor of the branch.
+- The only change after acceptance is the documentation commit that records this decision.
+
+**Acceptance ≠ production authorization.** Each of the following still needs its own explicit Product Owner authorization:
+
+| Not authorized | Note |
+|---|---|
+| Merging PR #46 or any dependency PR (#45 → #34) | F-6: CD runs every migration on each push to `main`, so a merge creates the ten tables in production. Needs a deployment authorization, a snapshot, and GOV-001 §5.4 checks |
+| Applying migrations 069–072 to any shared database (dev, staging, production) | Verified only on disposable databases |
+| Enabling `KnowledgeModule` (`KNOWLEDGE_MODULE_ENABLED=true`) anywhere | Routes would exist; they still deny everything while every port is unbound |
+| Binding any production adapter | `QualifyingPlanPort` (after TT-15), `OwnershipPort`, `TextIdentityPort`, `RightsVerificationAuthorityPort` (after TT-26) |
+| Real AI provider, credentials, or AI expenditure | Simulated provider only; the router refuses non-simulated providers |
+| Stripe, subscription, or book-token changes | Out of scope; untouched |
+| The next engineering mission | Requires separate authorization |
+
+**Remaining production prerequisites** (none are satisfied by this acceptance):
+1. An authorized rights-verification process and its authority adapter (TT-26: evidence standard, named verifier, jurisdiction; `LEGAL REVIEW REQUIRED`) (F-12).
+2. Write control or an append-only audit on `book_ai_rights`: a separate DB role/grants. This is an infrastructure change (F-12).
+3. A `TextIdentityPort` adapter (current text hash from object storage).
+4. A `QualifyingPlanPort` adapter mapping real Individual/Duo/Family subscriptions, linked members, and states (TT-15, TT-16).
+5. Approved budget values, reset period, and the overall unresolved bound (TT-09, TT-11). Today only marked test fixtures exist, and an unset overall bound denies.
+6. An operator runbook for ledger compensation and for held/expired reservations (risk 1).
+7. A deployment plan for migrations 069–072 under F-6, plus a re-check of migration order against NEM-016's 068.
+8. A CI path for PostgreSQL-backed proofs (F-10: CI on `main` has no PostgreSQL; integration proofs ran locally, and raw output is in Appendix A).
+9. Resolution of the SA-003 conflicts C1–C14 before the three-tier stack merges (F-11).
+10. The global branch-coverage gate, which already failed before NEM-019 (Discovery 1).
+
+**Product Owner decisions that remain OPEN** (not closed by this acceptance):
+- TT-01 (token expiry) and TT-12 (launch corpus; PO-029 is still a draft).
+- TT-15 (linked members and states) and TT-16 (billing and lifecycle).
+- TT-09 and TT-11 (budget values and reset).
+- TT-14 (retention).
+- TT-23 (pilot participants).
+- TT-25 and TT-27 (semantic highlight search; saved-quotation permissions).
+- TT-26 (evidence standard and verifier).
+- PO-024 open items.
+- Retention of anonymized cost records after account deletion (B-2; the implementation uses `CASCADE`, E6).
+
+**No approved product decision, ADR, PO record, mission scope, or acceptance criterion was changed** by recording this acceptance. PO-030 and the 2026-11-06 reports are not edited; a redirect stub at the old `APPROVED/` path keeps their links working.
 
 ### B-6 — global unresolved-budget concurrency: CONFIRMED and CORRECTED
 - **Root cause:** admission was serialized only per `user:capability`, but the overall unresolved bound is shared, so concurrent admissions for different users read the same total and all inserted. The check also ignored the new reservation's own units (`existing > bound`).
@@ -74,7 +120,7 @@ Authorized by the Product Owner (*NEM-019 Product Architecture Review Correction
 | `services/api/jest.integration.config.js` | Separate config for integration tests; not used by `npm test` or CI |
 | `docs/architecture/three-tier-intelligence/09-…technical-note.md` (+ README row) | Technical note |
 | `docs/database-migrations.md` | Entries 069–072 |
-| `docs/engineering-missions/APPROVED/NEM-019-….md`, `docs/engineering-missions/README.md` | Status → REVIEW, execution note. **No scope, AC, or restriction text changed** |
+| `docs/engineering-missions/APPROVED/NEM-019-….md` (moved to `COMPLETED/` on acceptance), `docs/engineering-missions/README.md` | Status → REVIEW, execution note. **No scope, AC, or restriction text changed** |
 | `docs/reports/2026-11-09-NEM-019-implementation-report.md` | This report |
 
 No `package.json`, lockfile, Dockerfile, CI, compose, Traefik, or `.env` change. No new dependency.
@@ -181,3 +227,54 @@ The disposable containers `nem019-test-pg` and `nem019-test-redis` (started only
 1. Product Architecture review of this Draft PR against `REVIEW-CHECKLIST.md`, with particular attention to E1, E2, E6, E8, and the rights completeness interpretation.
 2. A PO decision on anonymized cost-record retention after account deletion (CASCADE vs SET NULL).
 3. Later missions, each separately authorized: the `QualifyingPlanPort` adapter (after TT-15), `OwnershipPort`/`TextIdentityPort` adapters, a ledger compensation runbook, and deployment of migrations 069–072.
+
+
+---
+
+## Appendix A — Raw test output (F-10)
+
+These are verbatim summary lines captured from the runs during this mission. Integration runs used the disposable containers `nem019-test-pg` (PostgreSQL 16) and `nem019-test-redis` (Redis 7) on 127.0.0.1; both were removed afterwards. The full per-test output was not retained. Re-run with the commands in [technical note §10](../architecture/three-tier-intelligence/09-nem-019-control-plane-technical-note.md#10-running-the-tests).
+
+**B-6 reproduction, before the fix** (`ledger.int-spec -t "B-6"`):
+```
+✕ 20 distinct users racing for capacity 5 → exactly 5 admitted; total lands exactly on the bound, never over
+✕ exact capacity is admitted; one unit over is rejected (sequential boundary)
+✓ per-user scope limits, idempotency, and settlement still hold under the global lock
+Expected length: 5
+Received length: 16
+Tests:       2 failed, 21 skipped, 1 passed, 24 total
+```
+
+**Revision 2, final** (head `9d23ff1`):
+```
+# npx jest --maxWorkers=2 --coverage --silent          (full api unit suite)
+All files                       |   92.38 |    73.76 |      90 |   93.44 |
+Jest: "global" coverage threshold for branches (80%) not met: 73.76%
+Test Suites: 87 passed, 87 total
+Tests:       1182 passed, 1182 total
+
+# npx jest --maxWorkers=2 tests/unit/knowledge tests/unit/migrations
+Tests:       249 passed, 249 total
+
+# coverage of src/knowledge/** (unit only)
+All files                       |   98.83 |    94.71 |   94.44 |    98.9 |
+
+# npx jest -c jest.integration.config.js --runInBand    (three consecutive runs)
+Tests:       56 passed, 56 total
+Tests:       56 passed, 56 total
+Tests:       56 passed, 56 total
+
+# ledger suite after the B-6 fix (five consecutive runs)
+Tests:       24 passed, 24 total   (×5)
+
+# npx tsc --noEmit -p tsconfig.test.json ; npx eslint "src/knowledge/**/*.ts"
+tsc exit 0
+eslint exit 0
+```
+
+**Baseline for the coverage discovery** (same tree, knowledge excluded):
+```
+All files                       |   90.46 |    68.83 |   87.56 |    91.8 |
+Jest: "global" coverage threshold for branches (80%) not met: 68.83%
+Tests:       948 passed, 948 total
+```
