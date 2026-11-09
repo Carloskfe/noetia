@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { dirname, join, relative, resolve } from 'path';
 
@@ -8,6 +9,11 @@ const CONTRACT = join(KNOWLEDGE, 'ai/contract');
 const walk = (dir: string): string[] => readdirSync(dir).flatMap((f) => {
   const p = join(dir, f);
   return statSync(p).isDirectory() ? walk(p) : p.endsWith('.ts') ? [p] : [];
+});
+/** Every file (including JSON fixtures), unlike `walk`, which lists .ts files only. */
+const walkAll = (dir: string): string[] => readdirSync(dir).flatMap((f) => {
+  const p = join(dir, f);
+  return statSync(p).isDirectory() ? walkAll(p) : [p];
 });
 const rel = (p: string) => relative(API, p).split('\\').join('/');
 const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
@@ -51,11 +57,74 @@ describe('NEM-021 contract v1 architecture', () => {
     }
   });
 
-  it('Phase 1 adds no migration and touches no NEM-019 runtime file (contract is not yet wired in)', () => {
-    const migrations = readdirSync(join(API, 'src/migrations')).filter((m) => /^17483000000(7[3-9]|[89]\d)/.test(m));
-    expect(migrations).toEqual([]);
-    const users = walk(KNOWLEDGE).filter((f) => !f.startsWith(CONTRACT) && imports(f).some((i) => /ai\/contract|\.\/contract/.test(i))).map(rel);
-    expect(users).toEqual([]);
+  /**
+   * D-2 (Product Architecture approved, 2026-11-09): the Phase-1-only guard ("no migration ≥ 073; no knowledge file
+   * imports the contract") is replaced by these Phase 2 checks. The frozen contract source, its fixtures, and its golden
+   * vectors are pinned by content digest at the v1 freeze baseline (697f8ea).
+   */
+  describe('Phase 2 boundaries (D-2)', () => {
+    const MIGRATIONS = join(API, 'src/migrations');
+    const LAST_HISTORICAL = BigInt(1748300000072);
+    const stamp = (f: string) => BigInt(f.slice(0, 13));
+    const migrationFiles = readdirSync(MIGRATIONS).filter((f) => /^\d{13}-.*\.ts$/.test(f));
+    const digest = (files: string[]) => {
+      const h = createHash('sha256');
+      for (const f of [...files].sort((a, b) => (rel(a) < rel(b) ? -1 : 1))) {
+        h.update(rel(f)); h.update('\0'); h.update(readFileSync(f)); h.update('\0');
+      }
+      return h.digest('hex');
+    };
+    /** Body of the migration's up() method (comments removed). */
+    const upBody = (f: string) => {
+      const src = stripComments(readFileSync(join(MIGRATIONS, f), 'utf8'));
+      const start = src.indexOf('async up(');
+      const end = src.indexOf('async down(');
+      return start >= 0 && end > start ? src.slice(start, end) : '';
+    };
+
+    it('migrations ≥ 073 are additive only, and every historical migration (≤ 072) is byte-for-byte unchanged', () => {
+      const historical = migrationFiles.filter((f) => stamp(f) <= LAST_HISTORICAL).map((f) => join(MIGRATIONS, f));
+      expect(historical).toHaveLength(72);
+      expect(digest(historical)).toBe('4d9726fb3670864edb0ceb1e4c4987b55d7a6705a83074e06189be480ae44efc');
+      const destructive = /\bDROP\b|\bRENAME\b|\bALTER\s+COLUMN\b|\bTRUNCATE\b|\bDELETE\s+FROM\b|\bUPDATE\s+\w+\s+SET\b|\bSET\s+DATA\s+TYPE\b/i;
+      const offenders = migrationFiles.filter((f) => stamp(f) > LAST_HISTORICAL)
+        .filter((f) => upBody(f) === '' || destructive.test(upBody(f))); // SQL lives in string literals, so strings are kept
+      expect(offenders).toEqual([]);
+      // Self-test: the rule rejects destructive statements and accepts additive ones.
+      expect(destructive.test('ALTER TABLE ai_budget_ledger DROP COLUMN units')).toBe(true);
+      expect(destructive.test('ALTER TABLE t ALTER COLUMN c TYPE text')).toBe(true);
+      expect(destructive.test('ALTER TABLE ai_budget_ledger ADD COLUMN "reservedMicroUsd" bigint')).toBe(false);
+    });
+
+    it('contract integration is limited to the ledger/metering layer', () => {
+      const users = walk(KNOWLEDGE).filter((f) => !f.startsWith(CONTRACT) && imports(f).some((i) => /ai\/contract|\.\/contract|\.\.\/contract/.test(i)));
+      expect(users.filter((f) => !f.startsWith(join(KNOWLEDGE, 'metering') + '/')).map(rel)).toEqual([]);
+    });
+
+    it('Gateway, router, and turn execution remain outside Phase 2 (unchanged; no contract or cost-ledger imports)', () => {
+      const pinned = ['ai/model-gateway.service.ts', 'ai/model-router.service.ts', 'ai/model-provider.ts', 'ai/model-paths.ts',
+        'ai/simulated-provider.service.ts', 'sessions/turn.service.ts'].map((f) => join(KNOWLEDGE, f));
+      expect(digest(pinned)).toBe('d35dca78fa19d341673922c1eca521f274ddad25fadfd86ff3fd70b25130a283');
+      const outside = walk(KNOWLEDGE).filter((f) => !f.startsWith(CONTRACT)
+        && (f.startsWith(join(KNOWLEDGE, 'ai') + '/') || f.startsWith(join(KNOWLEDGE, 'sessions') + '/')));
+      const offenders = outside.filter((f) => imports(f).some((i) => /contract|cost-ledger|cost-config|cost-reconciliation/.test(i))).map(rel);
+      expect(offenders).toEqual([]);
+    });
+
+    it('no duplicate pricing calculation: outside the contract, no money primitive or per-million/bps arithmetic', () => {
+      const primitives = /\b(?:roundCeiling|roundHalfUp|fromPicoSum|applyFactorBps|exactUsageSum|exactWorstCaseSum|canonicalModifierOrder|selectTier)\s*\(|\b1_?000_?000n\b|\b10_?000n\b|\bPER_MILLION\b|\bBPS_DENOMINATOR\b/;
+      const offenders = walk(KNOWLEDGE).filter((f) => !f.startsWith(CONTRACT))
+        .filter((f) => primitives.test(stripStrings(stripComments(readFileSync(f, 'utf8'))))).map(rel);
+      expect(offenders).toEqual([]);
+      expect(primitives.test('const micro = (tokens * rate) / 1_000_000n;')).toBe(true); // self-test
+    });
+
+    it('frozen contract source, fixtures, and golden vectors are unchanged since the v1 freeze (697f8ea)', () => {
+      expect(contractFiles.length).toBeGreaterThan(0);
+      expect(digest(walkAll(CONTRACT))).toBe('aabc0d142f2c3d45400f61efce7662f1bba94a1d8864164bd6db412d16d9d41d');
+      const tests = walkAll(join(API, 'tests/unit/knowledge/ai/contract')).filter((f) => !f.endsWith('contract-architecture.spec.ts'));
+      expect(digest(tests)).toBe('518dcac722f82effcbf38c0851249abfe596058de634eaf9845ba8c7773c4ee1');
+    });
   });
 
   describe('F-7 — only the designated validators can register configuration as validated', () => {
