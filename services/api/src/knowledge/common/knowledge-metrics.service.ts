@@ -7,7 +7,11 @@ function counter(name: string, help: string, labelNames: string[] = []): Counter
   return new Counter({ name, help, labelNames });
 }
 
-/** NEM-019 §13 metrics. Labels carry no content, user id, or book id. */
+/**
+ * NEM-019 §13 metrics plus the NEM-021 cost-aware ledger counters (§5.14, §9.1). Labels carry no content,
+ * user id, book id, provider, or model. Micro-USD counters are observability only: Prometheus counters are
+ * floating point, so they are never used for accounting (the ledger rows are the record).
+ */
 @Injectable()
 export class KnowledgeMetricsService {
   private readonly resolverDenied = counter(
@@ -29,10 +33,31 @@ export class KnowledgeMetricsService {
     'intelligence_reservation_expired_total', 'Expired reservations flagged by reconciliation',
   );
 
+  private readonly reservedMicroUsd = counter(
+    'intelligence_budget_reserved_micro_usd_total', 'Worst-case micro-USD reserved by cost-aware admissions',
+  );
+  private readonly settledMicroUsd = counter(
+    'intelligence_budget_settled_micro_usd_total', 'Actual micro-USD settled (full actual, including any overrun)',
+  );
+  private readonly costOverrun = counter(
+    'intelligence_cost_overrun_total', 'Attempts whose actual cost exceeded the reservation (classified once)',
+  );
+  private readonly overspendMicroUsd = counter(
+    'intelligence_overspend_micro_usd_total', 'Micro-USD by which actual cost exceeded reservations (classification only)',
+  );
+  private readonly globalAllowanceRejected = counter(
+    'intelligence_global_allowance_rejected_total', 'Cost-aware admissions rejected by the global micro-USD allowance',
+  );
+
   resolverDeniedInc(reason: string) { this.resolverDenied.inc({ reason }); }
   limitRejectedInc(tier: string) { this.limitRejected.inc({ tier }); }
   scopeViolationInc() { this.scopeViolation.inc(); }
   budgetReservedInc() { this.budgetReserved.inc(); }
   budgetRejectedInc(tier: string) { this.budgetRejected.inc({ tier }); }
   reservationExpiredInc() { this.reservationExpired.inc(); }
+  reservedMicroUsdInc(amount: bigint) { this.reservedMicroUsd.inc(Number(amount)); }
+  settledMicroUsdInc(amount: bigint) { this.settledMicroUsd.inc(Number(amount)); }
+  costOverrunInc() { this.costOverrun.inc(); }
+  overspendMicroUsdInc(amount: bigint) { this.overspendMicroUsd.inc(Number(amount)); }
+  globalAllowanceRejectedInc() { this.globalAllowanceRejected.inc(); }
 }

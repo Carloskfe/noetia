@@ -66,9 +66,20 @@ export const GLOBAL_ADMISSION_LOCK = 'intelligence:budget:global-admission:v1';
 /** No provider was called for this key: usage is known to be zero. */
 export const NO_PROVIDER = 'none';
 
-const UNRESOLVED = `r."entryType" = 'reservation' AND NOT EXISTS (
+/**
+ * A reservation (alias `r`) with no settlement or release yet. Shared with the NEM-021 cost ledger, so both
+ * ledgers agree on what "unresolved" means; overall and per-scope unresolved bounds count both kinds.
+ */
+export const UNRESOLVED = `r."entryType" = 'reservation' AND NOT EXISTS (
   SELECT 1 FROM ai_budget_ledger s
    WHERE s."idempotencyKey" = r."idempotencyKey" AND s."entryType" IN ('settlement', 'release'))`;
+
+/**
+ * NEM-021: per-attempt reservations (attemptNumber set) are resolved only by the cost ledger, from the
+ * contract's normalized usage and the pinned pricing schema. Legacy settlement, release, and reconciliation
+ * act on legacy (turn-level, units-only) reservations only.
+ */
+const LEGACY_ONLY = `r."attemptNumber" IS NULL`;
 
 /**
  * The PostgreSQL budget ledger — the ONLY budget authority (ADR-005 B-1, B-5).
@@ -245,7 +256,7 @@ export class BudgetLedgerService {
          ("userId", "sessionId", "policyId", tier, capability, "idempotencyKey", "entryType", units, "costMicroUsd", "rateCardId")
        SELECT r."userId", r."sessionId", r."policyId", r.tier, r.capability, r."idempotencyKey", $2, $3, $4, $5
          FROM ai_budget_ledger r
-        WHERE r."idempotencyKey" = $1 AND ${UNRESOLVED}
+        WHERE r."idempotencyKey" = $1 AND ${UNRESOLVED} AND ${LEGACY_ONLY}
        ON CONFLICT DO NOTHING
        RETURNING id`,
       [key, type, units, cost, rateCardId],
@@ -288,7 +299,7 @@ export class BudgetLedgerService {
               u."unitsReported"::text AS "unitsReported"
          FROM ai_budget_ledger r
          LEFT JOIN ai_usage_events u ON u."idempotencyKey" = r."idempotencyKey"
-        WHERE ${UNRESOLVED}
+        WHERE ${UNRESOLVED} AND ${LEGACY_ONLY}
         ORDER BY r.id`,
     );
     for (const row of rows) {
