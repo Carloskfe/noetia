@@ -16,10 +16,11 @@
 | 3 | Interactive research and Research Brief architecture | [03-research-architecture.md](03-research-architecture.md) |
 | 4 | Entitlement and resource-budget design | [04-entitlements-and-budgets.md](04-entitlements-and-budgets.md) |
 | 5 | Approved versus open decisions | [05-open-decisions.md](05-open-decisions.md) |
-| 6 | Next Engineering Mission | [NEM-019 (APPROVED 2026-11-08, not authorized for execution)](../../engineering-missions/APPROVED/NEM-019-tier-aware-intelligence-control-plane.md) |
+| 6 | Next Engineering Mission | [NEM-019 (COMPLETED 2026-11-09: implementation accepted; dark; not merged, deployed, or production-authorized)](../../engineering-missions/COMPLETED/NEM-019-tier-aware-intelligence-control-plane.md) |
 | — | Roadmap | [06-implementation-roadmap.md](06-implementation-roadmap.md) |
 | — | Rights verification requirements | [07-rights-verification-requirements.md](07-rights-verification-requirements.md) |
 | — | Governance record: NEM-003 and NEM-006 | [08-architecture-governance-record.md](08-architecture-governance-record.md) |
+| — | NEM-019 control plane technical note (implementation accepted 2026-11-09; dark; not merged or deployed) | [09-nem-019-control-plane-technical-note.md](09-nem-019-control-plane-technical-note.md) |
 | — | Mission report | [2026-11-06 report](../../reports/2026-11-06-SA-002-three-tier-architecture-reconciliation.md) |
 
 ## The main conclusions

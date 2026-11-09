@@ -26,6 +26,7 @@ import { PushModule } from './push/push.module';
 import { StatsModule } from './stats/stats.module';
 import { EventsModule } from './events/events.module';
 import { PersonasModule } from './personas/personas.module';
+import { knowledgeModules } from './knowledge/knowledge.registration';
 
 @Module({
   imports: [
@@ -69,6 +70,8 @@ import { PersonasModule } from './personas/personas.module';
     StatsModule,
     EventsModule,
     PersonasModule,
+    // NEM-019: dark intelligence control plane — loaded only when KNOWLEDGE_MODULE_ENABLED === 'true' (default off).
+    ...knowledgeModules(),
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
