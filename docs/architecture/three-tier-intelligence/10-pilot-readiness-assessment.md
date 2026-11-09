@@ -8,6 +8,17 @@ Tier definitions (Noetia / Noetia+ / NoetiaX) and the **3-book and 10-book** ses
 
 ---
 
+> **Strategy update (2026-11-09) — read first.** The Product Owner has redirected Noetia+ / NoetiaX development to **complete the product on simulated providers and acquire no paid AI service before a separately authorized launch-readiness gate.** This assessment's **§1 (recommendation), §2 (pilot options), §9 (pilot mission sequence) and §11 (pilot design) are therefore superseded** by the [P0 decisions packet, Revision 2](../../operating-framework/analysis/p0-pilot-decisions-packet.md) (§A2–§A6).
+>
+> **Still valid as reference for that gate:**
+> - §4 economics method (with the verified price correction in the packet, C1);
+> - §5 budget mechanisms;
+> - §6 full-book versus retrieval comparison;
+> - §7 deployment sequencing;
+> - §8 rights approach.
+>
+> No PO decision is changed by this note.
+
 ## Revision 3 summary (review corrections P-6…P-8)
 
 - **P-6:** every monthly scenario was recomputed from §4.2–§4.4 with the script in Appendix A.
@@ -554,5 +565,6 @@ Output at revision 3:
 | 1 | 2026-11-09 | Initial DRAFT assessment |
 | 2 | 2026-11-09 | Product Architecture review corrections P-1…P-5 (summary at top). Scope unchanged: assessment only; no new PO decision, ADR, or mission |
 | 3 | 2026-11-09 | Review corrections P-6…P-8: every cost entry recomputed by script (Appendix A). High full-context Sonnet $113 → **$133.80**; also corrected High full-context Opus $205 → $247.80, Low full-context Sonnet $1.05 → $0.96, Low retrieval Sonnet $0.4 → $0.33, and the spending target $105 → $103. Context-size sensitivity restated by `C` (60 K = $0.61; the former "60 K, n = 2" row = 120 K = $0.98). Maximum exposure explicitly conditional on internal enforcement **and** provider limit behaviour; no unverified provider limit is described as a guarantee |
+| 4 | 2026-11-09 | Strategy-update note (top): §1, §2, §9, §11 superseded by the P0 packet Revision 2; no other content changed |
 
 *Documentation only. No application code, migration, infrastructure, CI/CD, Stripe, subscription, or production setting was changed. No AI provider was called, and no AI charge was incurred.*
