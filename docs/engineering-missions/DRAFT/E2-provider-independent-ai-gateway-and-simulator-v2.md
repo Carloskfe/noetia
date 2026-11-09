@@ -12,6 +12,11 @@
 
 > **No live-provider connection of any kind is permitted in this mission:** no SDK, credential, endpoint, or network call. The router refuses every non-simulated provider.
 
+> **Revision 2 (2026-11-09):** aligned with E1 Revision 2:
+> - errors and outcomes use the single shared model in E1 §9.3 (F-3);
+> - all pricing and rounding comes only from E1's contract functions (F-2);
+> - end-to-end criteria assert E1's admission invariant and overrun rules, not an absolute dollar ceiling (F-1).
+
 ---
 
 ## 1. Context
@@ -42,19 +47,21 @@ Only under `services/api/src/knowledge/ai/` (plus tests):
 1. **Gateway on contract v1:** `GatewayRequest` (model-path id, sealed context, instruction template id, required capabilities, output mode, `maxOutputTokens`, cache intent, attempt key) and `GatewayResponse` (segments with origin labels, citations, normalized usage record, outcome, stop reason, refusal category). No free-form prompt assembly outside templates bound to model paths.
 2. **Capability negotiation:**
    - the router selects a registered **simulated** provider and model whose descriptor satisfies the request's required capabilities and context size;
-   - if none does, the request is denied with a safe reason (`capability_unavailable`) **before** reservation;
+   - if none does, the attempt ends with error `capability_unavailable` and outcome `not_sent` (E1 §9.3) **before** any reservation;
+   - requests whose counted input exceeds the descriptor's context limit end with `context_too_large` **before** reservation;
    - the router allowlist still admits only simulated providers.
-3. **Error normalization and retry policy:**
-   - provider errors map to contract outcomes (`rate_limited` with retry-after, `timeout`, `refused` with category, `invalid_request`, `context_too_large`, `failure`);
-   - retries are bounded and configurable;
-   - **each attempt reserves and settles separately** through E1's per-attempt API;
-   - no retry after a refusal or an invalid request.
+3. **Error normalization and retry policy (shared model, E1 §9.3):**
+   - every provider or simulator result maps to exactly one row of the E1 §9.3 table: `error` category (`rate_limited`, `timeout`, `refusal`, `invalid_request`, `context_too_large`, `provider_unavailable`, `malformed_output`, `client_abort`, `internal`, `capability_unavailable`) → `outcome` → `usageCompleteness` → retryability;
+   - E2 defines **no** additional categories or outcomes; additions go into contract v1.x with a new table row;
+   - retries follow the table only (`rate_limited` after retry-after, `timeout`, `provider_unavailable`), are bounded and configurable, and **each attempt reserves and settles separately** through E1's per-attempt API;
+   - the ledger action comes from E1's `ledgerActionFor`; the Gateway never decides release or hold itself;
+   - HTTP/denial mapping for callers is a separate presentation layer over `error`.
 4. **Streaming contract:**
    - an async stream of events (segment delta, citation, usage-final, terminal outcome);
    - client abort propagates to the provider;
    - settlement happens on terminal events;
-   - an aborted or partial stream yields `partial` or `unknown` usage, which E1 holds at the reserved amount.
-5. **Structured-output contract:** JSON-schema-validated outputs. An invalid output is a `failure` with usage settled; no unvalidated object reaches callers.
+   - a client abort yields `error: client_abort`, `outcome: aborted`, and `partial` or `unknown` usage, which E1 holds at the reserved amount.
+5. **Structured-output contract:** JSON-schema-validated outputs. An invalid output yields `outcome: completed`, `error: malformed_output`, and `complete` usage, which is settled; no unvalidated object reaches callers.
 6. **Citation and source-reference handling:**
    - citations reference context item refs and anchors from the sealed context only;
    - any citation outside the allowed set is a **scope violation** (segments dropped, metric, existing rules);
@@ -69,7 +76,18 @@ Only under `services/api/src/knowledge/ai/` (plus tests):
    - HTTP-429-style rate limits with retry-after;
    - timeouts, partial streams, malformed structured output, citation errors;
    - emits contract-v1 usage records only.
-8. **Provider contract test suite:** `runProviderContract(adapterFactory)`, a reusable harness any future adapter must pass (capabilities, usage completeness, error mapping, streaming termination, structured output, citation refs, cache accounting, abort, idempotent attempt keys). Run now against simulator v2.
+8. **Provider contract test suite:** `runProviderContract(adapterFactory)`, a reusable harness any future adapter must pass. It covers:
+   - capabilities;
+   - **every row of the E1 §9.3 outcome table** (error → outcome → completeness);
+   - streaming termination;
+   - structured output;
+   - citation refs;
+   - cache accounting;
+   - abort;
+   - idempotent attempt keys;
+   - **usage records that price identically through E1's `priceUsage` golden vectors**.
+
+   Run now against simulator v2.
 9. **End-to-end settlement:**
    - negotiation → token count → E1 `worstCaseCost` reservation → simulated call → normalized usage → E1 settlement;
    - covers the success, retry, refusal, timeout, abort, and partial-stream paths;
@@ -99,7 +117,7 @@ Only under `services/api/src/knowledge/ai/` (plus tests):
 Reader, Escucha Activa, sync, ownership, `user_books`, `fragments`, tokens, Stripe, subscriptions, production data. NEM-019 and E1 guarantees (B-1, B-2, B-5, B-6, F-12, dark registration, the turn order, the Context Builder invariant). `app.module.ts` is unchanged.
 
 ## 9. Technical requirements
-- All types come from contract v1. An architecture test fails on a duplicate definition.
+- All types, outcome and error categories, and **all monetary arithmetic** come from contract v1 (E1 §9.2, §9.3). An architecture test fails on a duplicate definition or on any pricing or rounding code outside the contract module.
 - The Gateway never calls a provider without a confirmed reservation for that attempt.
 - Timeouts and abort through `AbortController`; no provider call inside a database transaction.
 - Deterministic simulator: the same seed, fixture, and request produce identical outputs and usage.
@@ -114,13 +132,16 @@ Reader, Escucha Activa, sync, ownership, `user_books`, `fragments`, tokens, Stri
 
 ## 11. Acceptance criteria
 1. Capability negotiation selects only descriptors that satisfy the request, and denies with `capability_unavailable` before any reservation when none does.
-2. Every error class maps to its contract outcome; retries reserve per attempt and stop on refusal or invalid request; retry-after is honoured.
-3. Streaming: deltas, citations, and the final usage arrive in order; abort cancels the simulated call; partial or unknown usage is held by the ledger.
-4. Structured output: valid objects pass; invalid ones become `failure` with usage settled; callers never receive unvalidated objects.
+2. Every simulator and provider error maps to exactly one E1 §9.3 row. Retries occur only for retryable rows, each as a new reserved attempt; retry-after is honoured. `context_too_large` and `capability_unavailable` are caught before any reservation. Release happens only on `zero_confirmed`.
+3. Streaming: deltas, citations, and the final usage arrive in order; abort cancels the simulated call and yields `client_abort` / `aborted`, with partial or unknown usage held by the ledger.
+4. Structured output: valid objects pass; invalid ones yield `completed` + `malformed_output`, with usage settled; callers never receive unvalidated objects.
 5. A citation outside the sealed allowed set triggers the scope-violation path; a `library` segment without a valid citation is never returned as `library`.
 6. Simulator v2 reproduces fixture-defined cache writes and reads, whole-request tier repricing (via E1 fixtures), refusals, 429s, timeouts, and malformed output, deterministically.
 7. `runProviderContract(simulatorV2)` passes; a deliberately broken adapter fixture fails the suite (self-test).
-8. End-to-end: across success, retry, refusal, timeout, abort, and partial-stream paths, settled + held micro-USD never exceeds the global allowance under concurrent distinct users (real PostgreSQL).
+8. **End-to-end, through the E1 ledger (real PostgreSQL), across success, retry, refusal, timeout, abort, and partial-stream paths:**
+   - E1's **admission invariant** holds at every admission under concurrent distinct users;
+   - when simulated actual usage stays within reservations, final settled + held ≤ allowance;
+   - with an injected under-priced schema, the overrun is recorded exactly, the breaker opens, and later admissions on that schema are denied.
 9. The NEM-019 turn order and Context Builder tests pass unchanged; every model path still declares an invariant with a proving test.
 10. Dark: flag off means no module and no route; architecture tests show no SDK, HTTP client, or credential access and no non-simulated provider in the router.
 11. All NEM-019 and E1 suites pass unchanged.

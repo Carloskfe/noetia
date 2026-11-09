@@ -12,6 +12,8 @@
 
 > **APPROVED ≠ EXECUTE.** Execution requires a separate PO instruction naming this mission.
 
+> **Revision 2 (2026-11-09):** review corrections F-1 (global allowance invariant and overruns, §9.1), F-2 (deterministic monetary arithmetic, §9.2), F-3 (one shared outcome/error model, §9.3). Acceptance criteria and tests updated to match. Mission structure and contract-first sequencing unchanged.
+
 ---
 
 ## 1. Context
@@ -44,26 +46,27 @@ Only under `services/api`:
 
 **Phase 1 — Shared provider contract v1** (`src/knowledge/ai/contract/`), then a **review checkpoint**:
 1. **Capability descriptor:** provider key, model key, capability keys supported, model-path ids served, `maxContextTokens`, `maxOutputTokens`, feature flags (`citations`, `structuredOutput`, `streaming`, `cacheHints` with supported lifetimes, `tokenCounting`, `embeddings`), and token-counting method (`exact` | `estimated` with a conservative factor).
-2. **Normalized usage record:** per-class token counts (`inputUncached`, `cacheWrite` keyed by lifetime, `cacheRead`, `output`, `reasoning` if reported separately), `nonTokenUnits` map, outcome (`success` | `failure` | `timeout` | `aborted` | `refused` | `rate_limited`), usage completeness (`complete` | `partial` | `unknown`), provider and model keys, attempt key, timestamps. No content fields.
-3. **Pricing schema:** version, effective-from, `verifiedAt`, source note; per-class integer micro-USD prices per million tokens (or per unit); **threshold tiers that reprice the whole request** above an input-token threshold; modifiers (batch, region) as integer basis points; non-token unit prices; a test-fixture marker.
-4. **Pure functions:** `priceUsage(usage, schema)`, and `worstCaseCost(descriptor, schema, inputTokens, maxOutputTokens, cacheIntent)`. The worst case prices every input token at the highest applicable class and tier, plus the output bound.
+2. **Normalized usage record:** per-class token counts (`inputUncached`, `cacheWrite` keyed by lifetime, `cacheRead`, `output`, `reasoning` if reported separately), `nonTokenUnits` map, **`outcome`** and optional **`error`** per the shared outcome model (§9.3), **usage completeness** (`complete` | `partial` | `unknown` | `zero_confirmed`), provider and model keys, attempt key, timestamps. No content fields.
+3. **Pricing schema:** version, effective-from, `verifiedAt`, source note; per-class prices as integer **micro-USD per million tokens** (non-token units: micro-USD per million units); **threshold tiers that reprice the whole request** when input tokens are **strictly greater** than the threshold; modifiers as integer **factor basis points** (10,000 = ×1.0); arithmetic per §9.2; non-token unit prices; a test-fixture marker.
+4. **Pure functions:** `priceUsage(usage, schema)` (settlement rounding) and `worstCaseCost(descriptor, schema, inputTokens, maxOutputTokens, cacheIntent)` (reservation rounding). The worst case prices every input token at the highest applicable class and tier, plus the output bound. Both follow §9.2 exactly. A shared `ledgerActionFor(outcome, error, completeness)` encodes the §9.3 table.
 5. **Unit-weight schema** (ADR-005 internal units): versioned per-class weights mapping usage to allowance units, independent of prices.
 6. **Deterministic fixtures:** at least two pricing fixtures modelled on **different published pricing structures** (one with lifetime-specific cache writes and no long-context tier; one with whole-request long-context repricing), each marked as a fixture, plus usage fixtures covering every class and outcome.
 
 **Checkpoint:** Product Architecture reviews contract v1 (types, fixtures, functions, version policy) and freezes it as `v1` before Phase 2 starts.
 
 **Phase 2 — Cost-aware ledger:**
-7. **Additive migrations (≥ 073):**
+7. **Additive migrations (≥ 073)** (NEM-019's `ai_usage_events.outcome` CHECK is **not** altered; new nullable columns `contractOutcome`, `errorCategory`, and `usageCompleteness` carry the §9.3 model, and the legacy column receives the mapped value):
    - `ai_pricing_schemas` (versioned, JSON validated against contract v1; fixture marker);
    - `ai_unit_weight_schemas`;
    - `ai_global_budget_policies` (period, allowance in micro-USD, overall unresolved bound in micro-USD; fixture marker; **no real values seeded**);
-   - nullable columns on NEM-019 ledger and usage tables for reserved and settled micro-USD, per-class usage (JSON), pricing-schema id, attempt number.
+   - nullable columns on NEM-019 ledger and usage tables for reserved and settled micro-USD, per-class usage (JSON), pricing-schema id, attempt number, and the §9.3 outcome fields;
+   - an append-only `ai_cost_overruns` table keyed by attempt (overrun debt) and an overrun-breaker table keyed by pricing-schema id (open/closed, opened-at, closed-by-review reference).
 
    No NEM-019 migration is edited. User foreign keys keep `ON DELETE CASCADE` or `SET NULL` (B-2).
 8. **Cost-aware reservation:**
    - per attempt, reserve `worstCaseCost` in micro-USD (global guard) and in units (per-user allowance), pinned to the pricing and weight schema versions current at reservation;
    - **deny** if no active schema exists for the provider and model, if the input-token count is unavailable and no conservative estimate is configured, or if any check fails.
-9. **Global spending allowance (D14):** at admission, under the existing **B-6 global advisory lock** (taken before the scope lock), `settled + compensated + unresolved-reserved micro-USD + new worst case ≤ allowance`, or deny.
+9. **Global spending allowance (D14):** at admission, under the existing **B-6 global advisory lock** (taken before the scope lock), apply the **admission invariant** and the overrun rules in §9.1, or deny.
 10. **Per-attempt reservation (D15):**
     - each provider attempt has its own idempotency key derived from the turn key and attempt number;
     - a ledger API exposes `reserveAttempt` / `settleAttempt` / `releaseAttempt`;
@@ -72,9 +75,14 @@ Only under `services/api`:
     - settle from the normalized usage record, priced with the **pinned** schema;
     - one resolution per attempt key (existing unique index pattern);
     - unknown or partial usage leaves the reservation **held at its reserved amount**;
-    - actual cost above the reserved amount is recorded, raises `intelligence_cost_overrun_total`, and is counted against the allowance; it never adjusts other entries.
+    - actual cost above the reserved amount is **never capped or hidden**: it is recorded exactly, the excess is booked as overrun debt, and the §9.1 breaker trips. No other entry is ever adjusted;
+    - release (no charge) happens **only** when the outcome model says usage is `zero_confirmed` (§9.3).
 12. **Reconciliation:** extended to attempt keys and the micro-USD dimension; still settles only from durable usage evidence, flags expiry once, and never releases to zero.
-13. **Fail-closed admission:** carries over B-1. New causes include a missing or expired pricing schema, an exceeded global allowance, and an exceeded micro-USD unresolved bound.
+13. **Fail-closed admission:** carries over B-1. New causes:
+    - a missing or expired pricing schema;
+    - no remaining capacity (`committed ≥ allowance`, including after an overrun);
+    - an exceeded micro-USD unresolved bound;
+    - an **open overrun breaker** for the pricing schema in use (§9.1).
 14. **Metrics (no content labels):** `intelligence_budget_reserved_micro_usd_total`, `intelligence_budget_settled_micro_usd_total`, `intelligence_cost_overrun_total`, `intelligence_global_allowance_rejected_total`, plus the six NEM-019 counters.
 15. Tests (§12), a technical-note update, `docs/database-migrations.md` entries, and a completion report.
 
@@ -98,7 +106,7 @@ Reader, Escucha Activa, sync, ownership, `user_books`, `fragments`, tokens, Stri
 
 ## 9. Technical requirements
 - **One contract module.** Ledger code imports contract types; no duplicate schema definitions anywhere (architecture test).
-- **Integer arithmetic only:** micro-USD and token counts as integers or BigInt; basis-point modifiers; rounding up on reservation, exact on settlement.
+- **Monetary arithmetic, allowance invariant, and outcome model:** see §9.1–§9.3. Floating-point arithmetic on money or tokens is prohibited (architecture test).
 - **Worst-case correctness:**
   - the tier is chosen from the input-token count at reservation;
   - cache intent decides whether input is priced at the write or the uncached class (whichever is higher if uncertain);
@@ -108,6 +116,63 @@ Reader, Escucha Activa, sync, ownership, `user_books`, `fragments`, tokens, Stri
 - Every new table and column respects B-2 (cascade or set null; no content).
 - Statement timeout applies to new transactions (existing helper).
 
+### 9.1 Global allowance invariant, overruns, and capacity (F-1)
+
+**Definitions, per allowance period:**
+- `committed = settled + compensated + held reservations (at their reserved amount) + recorded overrun debt`;
+- `capacity = allowance − committed`, which may be negative after an overrun.
+
+**Admission invariant (hard; enforced by the ledger):** an attempt is admitted only if, at that moment, under the B-6 global lock, `committed + worstCaseCost(attempt) ≤ allowance`. The invariant holds at **every admission**; it is what the ledger guarantees and what tests assert.
+
+**Spend bound (conditional, not absolute):** `final settled cost ≤ allowance + Σ recorded overruns`. Overruns are **zero whenever the worst-case model is correct**: the pricing schema matches billing, the descriptor bounds hold, and the provider honours `max_tokens`. The ledger cannot make an absolute dollar guarantee against a wrong model. That residual belongs to the external provider limit at the gate.
+
+**Overrun treatment:**
+1. Settlement records the actual cost exactly; the excess (`actual − reserved`) is appended as overrun debt for that attempt (once; idempotent by attempt key).
+2. The debt counts in `committed` for the rest of the period. Capacity may go negative, and **no admission succeeds while `capacity < worstCaseCost` of the requested attempt**.
+3. Any overrun **opens a breaker** on the pricing schema used: new admissions priced with that schema **fail closed** (`budget_unavailable`). It closes only when a reviewed replacement schema version is activated; the review reference is recorded.
+4. `intelligence_cost_overrun_total` and `intelligence_overspend_micro_usd_total` increment; no content.
+5. Debt is not carried into the next period automatically (no implicit carry-over); period roll-over is configuration and needs no product value now.
+
+**In-flight exposure:** attempts already admitted when the breaker opens may still overrun under the same model error. That residual is bounded by those attempts' reservations times the pricing error and is reported, not prevented. It is listed as a residual risk.
+
+### 9.2 Deterministic monetary arithmetic (F-2)
+
+| Item | Rule |
+|---|---|
+| Price units | Integer **micro-USD per 1,000,000 tokens** (or per 1,000,000 non-token units). Any price with up to 6 decimal places in USD per million is exact (e.g. $0.01/M = 10,000; $0.125/M = 125,000) |
+| Exact intermediate | `Σ_class tokens_c × price_c` as **BigInt**, in pico-USD (10⁻⁶ micro-USD). No intermediate rounding |
+| Tier selection | Before pricing: the tier is chosen from the request's **total input tokens** (all input classes); "above threshold" means strictly greater; the chosen tier prices **all** classes |
+| Modifiers | Integer factor basis points, applied as exact rational multiplication in a **canonical order** (batch, then region, then any others by key ascending): numerator × factor, denominator × 10,000. Exact arithmetic makes the result order-independent; the canonical order is fixed for auditability |
+| Rounding (single, at the end) | Reservation (`worstCaseCost`): **ceiling** to integer micro-USD. Settlement (`priceUsage`): **round half up** to integer micro-USD. Allowance units use the same rules with unit weights |
+| Aggregates | Turn, user, and period totals are sums of per-attempt rounded amounts (documented, so totals are reproducible from ledger rows) |
+| Bounds and overflow | Token counts are integers within `[0, 2⁵³−1]` and within descriptor bounds. Prices ≤ a configured maximum (schema validation). All money math in BigInt. Values written to `bigint` columns must be ≤ 2⁶³−1, otherwise the request is **denied** (fail closed) and a validation error is recorded |
+| Floating point | Prohibited for money and tokens (architecture test over `knowledge/*`) |
+| Reproducibility | The same usage, schema version, and modifiers always produce the same micro-USD. Settlement and reconciliation use the schema version pinned at reservation |
+
+### 9.3 Shared outcome and error model (F-3)
+
+One model in contract v1, used by E1 (settlement) and E2 (Gateway, retries, contract tests). **`outcome`** says what happened to the attempt; **`error`** says why (absent on success); **`usageCompleteness`** says what the ledger may do.
+
+| `error` (category) | `outcome` | Usage completeness | Retryable (E2) | Ledger action (E1) |
+|---|---|---|---|---|
+| — | `completed` | `complete` | — | Settle actual |
+| `malformed_output` (structured output failed validation) | `completed` | `complete` | No (default) | Settle actual; caller gets a failure |
+| `refusal` | `refused` | `complete` or `partial` | No | Settle reported; partial → hold the remainder of the reservation until reconciliation |
+| `invalid_request` | `rejected` | `zero_confirmed` | No | Release |
+| `context_too_large` (provider-reported) | `rejected` | `zero_confirmed` | No | Release. The Gateway should catch it **before reservation** from the descriptor; reaching the provider is a defect metric |
+| `rate_limited` | `rejected` | `zero_confirmed` | Yes, after retry-after, as a **new attempt** | Release this attempt |
+| `provider_unavailable` | `failed` | `unknown` unless the provider confirms zero | Yes (bounded), new attempt | Hold (or release if `zero_confirmed`) |
+| `timeout` | `timed_out` | `unknown` | Yes (bounded), new attempt | Hold |
+| `client_abort` | `aborted` | `partial` or `unknown` | No | Hold |
+| `internal` | `failed` | `unknown` | No | Hold |
+| `capability_unavailable` (Gateway decision) | `not_sent` | n/a | No | **No reservation is made**; no usage record |
+
+**Rules:**
+- Release only on `zero_confirmed`; otherwise settle reported usage or hold.
+- Legacy NEM-019 `ai_usage_events.outcome` gets a mapped value: `completed` → `success`; `refused`, `rejected`, and `failed` → `failure`; `timed_out` → `timeout`; `aborted` → `aborted`. The precise values live in the new nullable columns.
+- The table is part of contract v1. Additions (new categories) are additive v1.x changes and must include a row here.
+
+
 ## 10. Security / privacy / copyright
 No content, prompts, book text, or PII in usage records, ledger rows, logs, metrics, or fixtures. Pricing schemas carry no secrets. Fixture prices are labelled as fixtures and are never seeded by migrations.
 
@@ -116,22 +181,40 @@ No content, prompts, book text, or PII in usage records, ledger rows, logs, metr
 1. Contract v1 types, fixtures, `priceUsage`, and `worstCaseCost` exist in one module and were reviewed at the checkpoint before any Phase 2 commit.
 2. `priceUsage` reproduces hand-computed costs for every class, tier, and modifier on both pricing fixtures (table-driven tests).
 3. `worstCaseCost ≥ priceUsage(usage)` for every usage fixture that respects the descriptor bounds (property-based or exhaustive test).
+3a. **Arithmetic (F-2):**
+   - golden vectors with fractional prices (e.g. 1 token at $0.01/M: reservation 1 micro-USD by ceiling, settlement 0 by half-up);
+   - tier boundary at exactly the threshold versus one above;
+   - modifier combinations give identical results in any input order;
+   - determinism across repeated runs;
+   - overflow and out-of-range inputs are denied;
+   - no floating point in money paths (architecture test).
+3b. **Outcome model (F-3):** `ledgerActionFor` returns the §9.3 action for every row; release happens only on `zero_confirmed`; the legacy-column mapping is exact.
 
 **Ledger (Phase 2)**
-4. With variable-cost attempts from N distinct users in parallel, total `settled + held` micro-USD never exceeds the global allowance; exact capacity is admitted; one micro-USD over is rejected (real PostgreSQL).
+4. **Admission invariant (F-1):**
+   - with variable-cost attempts from N distinct users in parallel, `committed + reservation ≤ allowance` holds at **every** admission (instrumented check);
+   - when actual ≤ reserved for all attempts, final settled + held ≤ allowance;
+   - exact capacity is admitted, and one micro-USD over is rejected (real PostgreSQL).
 5. Per-user unit allowances, per-scope unresolved bounds, and idempotency behave as in NEM-019 (all existing NEM-019 unit and integration tests pass unchanged).
 6. Each retry attempt reserves separately; a turn with three attempts holds three reservations until each resolves.
 7. Settlement uses the pinned schema even if a newer schema is activated mid-flight.
 8. Unknown or partial usage holds at the reserved amount; a ledger outage at settlement holds; reconciliation settles exactly once; replays never double-charge.
-9. Overrun (actual > reserved) is recorded once, increments the overrun metric, and counts against the allowance.
-10. Missing schema, missing count, unset global policy, an exceeded global allowance, and an exceeded micro-USD unresolved bound each **deny before any provider call**.
+9. **Overrun (F-1), with an injected under-priced schema:**
+   - actual cost is recorded exactly and never capped;
+   - the excess is booked once as debt;
+   - `committed` includes it;
+   - the breaker opens and denies new admissions on that schema until a reviewed replacement is activated;
+   - admissions stop while capacity is insufficient;
+   - final total equals the allowance bound plus exactly the injected overruns (no hidden or double-counted amount).
+10. Missing schema, missing count, unset global policy, insufficient capacity (including after overrun), an exceeded micro-USD unresolved bound, and an open overrun breaker each **deny before any provider call**.
 11. Account deletion (unchanged `UsersService.deleteAccount`) removes every new row for the user; the FK schema test covers new tables.
 12. Architecture tests: no provider SDK or HTTP client in `knowledge/*`; no schema duplication; no token or subscription imports; router still refuses non-simulated providers.
 13. Migrations run up and down on a disposable database, and no existing table outside NEM-019's set is altered.
 
 ## 12. Required tests
 - **Unit** (`tests/unit/knowledge/**`, ≥ 80%): contract functions (table-driven and property tests), schema validation, ledger services with mocks, metrics.
-- **Integration** (disposable PostgreSQL and Redis): multi-user global-allowance race; exact versus over capacity; per-attempt retries; pinned-version settlement; held/overrun/reconciliation; account deletion; migrations up/down.
+- **Integration** (disposable PostgreSQL and Redis): multi-user race asserting the admission invariant at every admission; exact versus over capacity; injected-overrun breaker and debt accounting; per-attempt retries; pinned-version settlement; held/release per the §9.3 table; reconciliation; account deletion; migrations up/down.
+- **Arithmetic golden vectors and property tests** (§9.2), shared as fixtures with E2.
 - **Regression:** the full NEM-019 suites (1,182 unit tests at acceptance; 56 integration tests) pass unchanged.
 - Raw test output in the completion report (F-10: CI has no PostgreSQL).
 
