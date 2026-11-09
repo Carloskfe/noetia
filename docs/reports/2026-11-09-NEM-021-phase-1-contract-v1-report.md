@@ -2,7 +2,7 @@
 
 **Mission:** NEM-021 — Provider-Neutral AI Contract and Cost Accounting (E1), approved specification Revision 3 (PO-032)
 **Authorization:** Product Owner execution instruction (2026-11-09), **Phase 1 only**. Stop for the Product Architecture checkpoint before Phase 2.
-**Status:** **PHASE 1 COMPLETE, REVISION 2 (checkpoint corrections F-5 and F-6, §10) — AWAITING INDEPENDENT PRODUCT ARCHITECTURE CHECKPOINT RE-REVIEW.** Contract v1 is **not frozen**. Phase 2 (ledger) is **not started and not authorized**.
+**Status:** **PHASE 1 COMPLETE, REVISION 3 (checkpoint corrections F-5 and F-6, §10; final boundary correction F-7, §11) — AWAITING FINAL PRODUCT ARCHITECTURE CHECKPOINT REVIEW.** Contract v1 is **not frozen**. Phase 2 (ledger) is **not started and not authorized**.
 **Branch:** `feat/nem-021-provider-neutral-contract`, stacked on `docs/e1-e2-mission-drafts` (PR #49) → #48 → … → #46 (NEM-019 code) → … → #34. **Not merged; not deployed.**
 
 ---
@@ -61,7 +61,7 @@ Module: `services/api/src/knowledge/ai/contract/`, exported through `index.ts`. 
 
 ## 4. Tests and verification (actual results, 2026-11-09)
 
-> Revision 1 results below. **Revision 2 results (after F-5/F-6) are in §10.4** and supersede these numbers.
+> Revision 1 results below. Revision 2 results are in §10.4. **Revision 3 results (after F-7) are in §11.4** and supersede both.
 
 ```
 # npx jest --runInBand tests/unit/knowledge/ai/contract
@@ -128,6 +128,8 @@ Not modified: reader, Escucha Activa, sync, ownership, `user_books`, `fragments`
 Product Architecture is asked to review contract v1 (types, fixtures, functions, version policy, and the assumptions in §6) and, if accepted, **freeze it as v1**. **Phase 2 does not begin** until that review and a Product Owner instruction to continue.
 
 **Revision 2:** returned for independent checkpoint re-review with corrections F-5 and F-6 (§10). Contract v1 is **not frozen** by this revision.
+
+**Revision 3:** F-5 accepted at re-review; the remaining F-6 issue (F-7) is corrected (§11). Returned for final checkpoint review. Contract v1 remains **unfrozen**.
 
 ---
 
@@ -205,3 +207,71 @@ Tests:       56 passed, 56 total
 - **NEM-022 implication:** adapters and the simulator must declare `nonTokenUnits` and pass an explicit bound per declared unit on every attempt.
 
 **Status:** returned to Product Architecture for independent checkpoint re-review. **Contract v1 is not frozen. Phase 2 and NEM-022 are not started.**
+
+---
+
+## 11. Revision 3 — final validation-boundary correction F-7 (2026-11-09)
+
+Product Architecture re-review: **F-5 resolved.** One remaining F-6 issue, raised as F-7.
+
+### 11.1 F-7 — unauthorized configuration sealing: CORRECTED
+
+**Defect.** `validated.ts` exported `sealValidated(value, kind)`. Any module could import it and register malformed configuration as validated without running the matching validator. That defeated the boundary.
+
+**Correction (minimal).** Only the gate into the registry changed. Sealing now *includes* validation, so the two cannot be separated:
+- `sealValidated` is removed. The registry and the sealing step (`seal`) are **module-private** in `validated.ts`.
+- The only exported function that registers anything is `validateAndSeal(kind, value)`. It looks up the **designated validator for that kind** (`validatePricingSchema`, `validateUnitWeightSchema`, `validateCapabilityDescriptor`) in a closed, module-private table and runs it. It throws the kind's code (`invalid_schema` / `invalid_descriptor`) on failure, and seals only the validated value. Callers cannot pass their own validator, use a kind outside the closed list (including prototype keys such as `constructor` or `__proto__`), or skip validation.
+- `assertPricingSchema`, `assertUnitWeightSchema`, and `assertCapabilityDescriptor` are now one-line wrappers over `validateAndSeal`. There is still exactly one validation implementation per kind, and no validation logic is duplicated.
+- `validateAndSeal` is **not** re-exported from the public `index.ts`. Ordinary consumers see only `assert*`, `requireValidated`, and `isValidated`.
+- **Unchanged:** deep-frozen validated copies; detachment from the input; constant-time `requireValidated` (`WeakMap` lookup) at every monetary entry point; every F-1…F-6 rule.
+- The validators are resolved lazily (at call time), because `capability.ts`, `pricing.ts`, and `unit-weights.ts` import `validated.ts` for `requireValidated`. Nothing runs at module load, so the import cycle is inert.
+
+### 11.2 Tests
+
+**Architecture** (`contract-architecture.spec.ts`, 3 new tests):
+- `validated.ts` exports exactly three runtime functions: `isValidated`, `requireValidated`, `validateAndSeal`. No export of `seal`, `sealValidated`, or `registry` in any form.
+- `registry.set(` appears in exactly one file and one place, inside the single private `seal` definition, which has exactly one call site. In `validateAndSeal`, the validator call comes before that call and a failure throws.
+- Across **all of `src/`**, `validateAndSeal` is called only by the three `assert*` validators, each a single `return validateAndSeal(…)`. Only those three files and `index.ts` import `validated.ts`, and `index.ts` does not expose the sealing path.
+
+**Behaviour** (`validated.spec.ts`, 9 new tests):
+- The module has no `sealValidated`, `seal`, or `registry` export at runtime.
+- For each kind, malformed configuration passed straight to `validateAndSeal` is refused with the kind's code and never registered.
+- A valid value of one kind cannot be sealed as another kind.
+- Unknown kinds and prototype keys (`free pass`, `constructor`, `__proto__`) are refused with `unvalidated_config`.
+- `assert*` and `validateAndSeal` produce the same frozen, registered value and the same price.
+
+**Retained:** every F-6 negative test for malformed rates, tiers, modifiers, weights, and descriptors, and every F-5 test, unchanged.
+
+**Mutation check:** exporting `seal` fails 2 tests. Removing the validation failure check in `validateAndSeal` breaks the suites (2 failures, and `validated.spec.ts` cannot load). Both pass again with the source restored.
+
+### 11.3 Files changed in revision 3
+
+`validated.ts` (private sealing, `validateAndSeal`), `capability.ts`, `pricing.ts`, `unit-weights.ts` (the `assert*` bodies become one-line wrappers; one unused import removed), `contract-architecture.spec.ts`, `validated.spec.ts`, and this report. No public API or contract-type change beyond removing `sealValidated` (never exported from `index.ts`). No NEM-019 file, migration, dependency, CI, Docker, or infrastructure change. No Phase 2 or NEM-022 work.
+
+### 11.4 Revision 3 test results (actual, 2026-11-09)
+
+```
+# npx jest --maxWorkers=2 tests/unit/knowledge/ai/contract
+Test Suites: 7 passed, 7 total
+Tests:       208 passed, 208 total          (196 in revision 2 + 12 for F-7)
+
+# contract coverage (--collectCoverageFrom 'src/knowledge/ai/contract/**/*.ts')
+Statements 97.84 % (544/556) · Branches 92.72 % (255/275) · Functions 98.70 % (76/77) · Lines 100 % (460/460)
+
+# full api unit regression: npx jest --maxWorkers=2
+Test Suites: 94 passed, 94 total
+Tests:       1390 passed, 1390 total        (1,182 pre-existing + 208 contract)
+
+# NEM-019 integration regression on disposable PostgreSQL 16 + Redis 7 (containers removed afterwards)
+Test Suites: 4 passed, 4 total
+Tests:       56 passed, 56 total
+
+# npx tsc --noEmit -p tsconfig.test.json → exit 0
+# npx eslint src/knowledge/ai/contract tests/unit/knowledge/ai/contract → 0 errors (`no-explicit-any` warnings in test mutators only)
+```
+
+**Failures during the work, now fixed:**
+- One new architecture assertion miscounted `seal(` matches (the definition is `function seal<T>(`, which the pattern does not match). The assertion was corrected to count the definition and the call site separately. No product code was involved.
+- ESLint flagged a `ContractError` import left unused in `unit-weights.ts`. It was removed.
+
+**Status:** returned to Product Architecture for **final checkpoint review**. **Contract v1 is not frozen. Phase 2 and NEM-022 are not started.**
