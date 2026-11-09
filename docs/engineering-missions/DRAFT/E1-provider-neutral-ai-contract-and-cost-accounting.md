@@ -12,6 +12,7 @@
 
 > **APPROVED ≠ EXECUTE.** Execution requires a separate PO instruction naming this mission.
 
+> **Revision 3 (2026-11-09):** review correction F-4: each monetary obligation is counted exactly once (§9.1); overrun is an audit classification, not an extra charge; `zero_confirmed` requires authoritative no-charge evidence (§9.3).
 > **Revision 2 (2026-11-09):** review corrections F-1 (global allowance invariant and overruns, §9.1), F-2 (deterministic monetary arithmetic, §9.2), F-3 (one shared outcome/error model, §9.3). Acceptance criteria and tests updated to match. Mission structure and contract-first sequencing unchanged.
 
 ---
@@ -46,7 +47,7 @@ Only under `services/api`:
 
 **Phase 1 — Shared provider contract v1** (`src/knowledge/ai/contract/`), then a **review checkpoint**:
 1. **Capability descriptor:** provider key, model key, capability keys supported, model-path ids served, `maxContextTokens`, `maxOutputTokens`, feature flags (`citations`, `structuredOutput`, `streaming`, `cacheHints` with supported lifetimes, `tokenCounting`, `embeddings`), and token-counting method (`exact` | `estimated` with a conservative factor).
-2. **Normalized usage record:** per-class token counts (`inputUncached`, `cacheWrite` keyed by lifetime, `cacheRead`, `output`, `reasoning` if reported separately), `nonTokenUnits` map, **`outcome`** and optional **`error`** per the shared outcome model (§9.3), **usage completeness** (`complete` | `partial` | `unknown` | `zero_confirmed`), provider and model keys, attempt key, timestamps. No content fields.
+2. **Normalized usage record:** per-class token counts (`inputUncached`, `cacheWrite` keyed by lifetime, `cacheRead`, `output`, `reasoning` if reported separately), `nonTokenUnits` map, **`outcome`** and optional **`error`** per the shared outcome model (§9.3), **usage completeness** (`complete` | `partial` | `unknown` | `zero_confirmed`), **`zeroUsageEvidence`** (`provider_reported_zero` | `documented_no_charge` | `none`; §9.3), provider and model keys, attempt key, timestamps. No content fields.
 3. **Pricing schema:** version, effective-from, `verifiedAt`, source note; per-class prices as integer **micro-USD per million tokens** (non-token units: micro-USD per million units); **threshold tiers that reprice the whole request** when input tokens are **strictly greater** than the threshold; modifiers as integer **factor basis points** (10,000 = ×1.0); arithmetic per §9.2; non-token unit prices; a test-fixture marker.
 4. **Pure functions:** `priceUsage(usage, schema)` (settlement rounding) and `worstCaseCost(descriptor, schema, inputTokens, maxOutputTokens, cacheIntent)` (reservation rounding). The worst case prices every input token at the highest applicable class and tier, plus the output bound. Both follow §9.2 exactly. A shared `ledgerActionFor(outcome, error, completeness)` encodes the §9.3 table.
 5. **Unit-weight schema** (ADR-005 internal units): versioned per-class weights mapping usage to allowance units, independent of prices.
@@ -60,7 +61,7 @@ Only under `services/api`:
    - `ai_unit_weight_schemas`;
    - `ai_global_budget_policies` (period, allowance in micro-USD, overall unresolved bound in micro-USD; fixture marker; **no real values seeded**);
    - nullable columns on NEM-019 ledger and usage tables for reserved and settled micro-USD, per-class usage (JSON), pricing-schema id, attempt number, and the §9.3 outcome fields;
-   - an append-only `ai_cost_overruns` table keyed by attempt (overrun debt) and an overrun-breaker table keyed by pricing-schema id (open/closed, opened-at, closed-by-review reference).
+   - an append-only `ai_cost_overruns` table keyed by attempt (**classification records** of excess already included in settled cost; never summed into `committed`) and an overrun-breaker table keyed by pricing-schema id (open/closed, opened-at, closed-by-review reference).
 
    No NEM-019 migration is edited. User foreign keys keep `ON DELETE CASCADE` or `SET NULL` (B-2).
 8. **Cost-aware reservation:**
@@ -75,8 +76,8 @@ Only under `services/api`:
     - settle from the normalized usage record, priced with the **pinned** schema;
     - one resolution per attempt key (existing unique index pattern);
     - unknown or partial usage leaves the reservation **held at its reserved amount**;
-    - actual cost above the reserved amount is **never capped or hidden**: it is recorded exactly, the excess is booked as overrun debt, and the §9.1 breaker trips. No other entry is ever adjusted;
-    - release (no charge) happens **only** when the outcome model says usage is `zero_confirmed` (§9.3).
+    - actual cost above the reserved amount is **never capped or hidden**: the full actual is settled; the excess is **classified** as an overrun (audit record, not an additional charge); the §9.1 breaker trips. No other entry is ever adjusted;
+    - release (no charge) happens **only** when usage is `zero_confirmed` **with authoritative evidence** (§9.3).
 12. **Reconciliation:** extended to attempt keys and the micro-USD dimension; still settles only from durable usage evidence, flags expiry once, and never releases to zero.
 13. **Fail-closed admission:** carries over B-1. New causes:
     - a missing or expired pricing schema;
@@ -118,20 +119,31 @@ Reader, Escucha Activa, sync, ownership, `user_books`, `fragments`, tokens, Stri
 
 ### 9.1 Global allowance invariant, overruns, and capacity (F-1)
 
-**Definitions, per allowance period:**
-- `committed = settled + compensated + held reservations (at their reserved amount) + recorded overrun debt`;
+**Definitions, per allowance period. Each monetary obligation is counted exactly once:**
+
+| Term | Meaning | In `committed`? |
+|---|---|---|
+| **Settled** | The **full actual cost** of every resolved attempt, including any amount above its reservation | Yes |
+| **Held** | For each unresolved attempt, its unresolved reserved exposure: `max(0, reserved − settled so far for that attempt)`. Zero once the attempt is fully resolved | Yes |
+| **Compensated** | Separately established adjustments (signed) that are **not** already included in settled or held, e.g. a later provider-invoice correction recorded as a compensating entry | Yes |
+| **Overrun** | `actual − reserved` for an attempt whose actual exceeds its reservation: an **auditable classification** of excess that is already inside *settled* | **No.** Never added again |
+
+- `committed = settled + held + compensated`
 - `capacity = allowance − committed`, which may be negative after an overrun.
+
+**Transition rule:** when an attempt settles, its held exposure is replaced by its settled actual in the same transaction, so the obligation moves from *held* to *settled* and is never in both. A partial settlement reduces held by the settled amount, floored at zero. Release sets held to zero with no settled amount.
 
 **Admission invariant (hard; enforced by the ledger):** an attempt is admitted only if, at that moment, under the B-6 global lock, `committed + worstCaseCost(attempt) ≤ allowance`. The invariant holds at **every admission**; it is what the ledger guarantees and what tests assert.
 
 **Spend bound (conditional, not absolute):** `final settled cost ≤ allowance + Σ recorded overruns`. Overruns are **zero whenever the worst-case model is correct**: the pricing schema matches billing, the descriptor bounds hold, and the provider honours `max_tokens`. The ledger cannot make an absolute dollar guarantee against a wrong model. That residual belongs to the external provider limit at the gate.
 
 **Overrun treatment:**
-1. Settlement records the actual cost exactly; the excess (`actual − reserved`) is appended as overrun debt for that attempt (once; idempotent by attempt key).
-2. The debt counts in `committed` for the rest of the period. Capacity may go negative, and **no admission succeeds while `capacity < worstCaseCost` of the requested attempt**.
+1. Settlement records the **full actual cost** in *settled*. The excess (`actual − reserved`) is written once as an **overrun classification** for that attempt (idempotent by attempt key) for audit, metrics, and the breaker. It is **not** added to `committed` again.
+2. Because *settled* already contains the excess, capacity may go negative; **no admission succeeds while `capacity < worstCaseCost` of the requested attempt**.
 3. Any overrun **opens a breaker** on the pricing schema used: new admissions priced with that schema **fail closed** (`budget_unavailable`). It closes only when a reviewed replacement schema version is activated; the review reference is recorded.
 4. `intelligence_cost_overrun_total` and `intelligence_overspend_micro_usd_total` increment; no content.
-5. Debt is not carried into the next period automatically (no implicit carry-over); period roll-over is configuration and needs no product value now.
+5. Settled cost, including excess, belongs to the period in which it was settled. Nothing is carried into the next period automatically; period roll-over is configuration and needs no product value now.
+6. **Reconciliation** follows the same rule: settling a held attempt from evidence moves it from held to settled; any overrun classification is written at that point only; a later correction is a compensating entry, never an edit and never a second settlement.
 
 **In-flight exposure:** attempts already admitted when the breaker opens may still overrun under the same model error. That residual is bounded by those attempts' reservations times the pricing error and is reported, not prevented. It is listed as a residual risk.
 
@@ -158,9 +170,9 @@ One model in contract v1, used by E1 (settlement) and E2 (Gateway, retries, cont
 | — | `completed` | `complete` | — | Settle actual |
 | `malformed_output` (structured output failed validation) | `completed` | `complete` | No (default) | Settle actual; caller gets a failure |
 | `refusal` | `refused` | `complete` or `partial` | No | Settle reported; partial → hold the remainder of the reservation until reconciliation |
-| `invalid_request` | `rejected` | `zero_confirmed` | No | Release |
-| `context_too_large` (provider-reported) | `rejected` | `zero_confirmed` | No | Release. The Gateway should catch it **before reservation** from the descriptor; reaching the provider is a defect metric |
-| `rate_limited` | `rejected` | `zero_confirmed` | Yes, after retry-after, as a **new attempt** | Release this attempt |
+| `invalid_request` | `rejected` | `zero_confirmed` **only with evidence**, else `unknown` | No | Release if evidenced; otherwise hold |
+| `context_too_large` (provider-reported) | `rejected` | `zero_confirmed` **only with evidence**, else `unknown` | No | Release if evidenced; otherwise hold. The Gateway should catch it **before reservation** from the descriptor; reaching the provider is a defect metric |
+| `rate_limited` | `rejected` | `zero_confirmed` **only with evidence**, else `unknown` | Yes, after retry-after, as a **new attempt** | Release this attempt if evidenced; otherwise hold |
 | `provider_unavailable` | `failed` | `unknown` unless the provider confirms zero | Yes (bounded), new attempt | Hold (or release if `zero_confirmed`) |
 | `timeout` | `timed_out` | `unknown` | Yes (bounded), new attempt | Hold |
 | `client_abort` | `aborted` | `partial` or `unknown` | No | Hold |
@@ -168,7 +180,12 @@ One model in contract v1, used by E1 (settlement) and E2 (Gateway, retries, cont
 | `capability_unavailable` (Gateway decision) | `not_sent` | n/a | No | **No reservation is made**; no usage record |
 
 **Rules:**
-- Release only on `zero_confirmed`; otherwise settle reported usage or hold.
+- **`zero_confirmed` requires authoritative no-charge evidence**, recorded in `zeroUsageEvidence`:
+  - `provider_reported_zero`: the provider's response for that attempt carries a usage object reporting zero billable units; or
+  - `documented_no_charge`: the adapter's declared capability descriptor states, with a reference to the provider's documentation, that this error class is never billed, and contract tests verify the adapter only claims it for that class.
+- **An error category alone never authorizes release.** Without evidence, completeness is `unknown` and the reservation is **held**.
+- The simulator marks its evidence explicitly so tests cover both evidenced and unevidenced rejections.
+- Release only on evidenced `zero_confirmed`; otherwise settle reported usage or hold.
 - Legacy NEM-019 `ai_usage_events.outcome` gets a mapped value: `completed` → `success`; `refused`, `rejected`, and `failed` → `failure`; `timed_out` → `timeout`; `aborted` → `aborted`. The precise values live in the new nullable columns.
 - The table is part of contract v1. Additions (new categories) are additive v1.x changes and must include a row here.
 
@@ -188,7 +205,7 @@ No content, prompts, book text, or PII in usage records, ledger rows, logs, metr
    - determinism across repeated runs;
    - overflow and out-of-range inputs are denied;
    - no floating point in money paths (architecture test).
-3b. **Outcome model (F-3):** `ledgerActionFor` returns the §9.3 action for every row; release happens only on `zero_confirmed`; the legacy-column mapping is exact.
+3b. **Outcome model (F-3):** `ledgerActionFor` returns the §9.3 action for every row; release happens only on **evidenced** `zero_confirmed`; the legacy-column mapping is exact.
 
 **Ledger (Phase 2)**
 4. **Admission invariant (F-1):**
@@ -201,11 +218,17 @@ No content, prompts, book text, or PII in usage records, ledger rows, logs, metr
 8. Unknown or partial usage holds at the reserved amount; a ledger outage at settlement holds; reconciliation settles exactly once; replays never double-charge.
 9. **Overrun (F-1), with an injected under-priced schema:**
    - actual cost is recorded exactly and never capped;
-   - the excess is booked once as debt;
-   - `committed` includes it;
+   - the excess is classified once as an overrun record;
+   - `committed` counts the obligation **exactly once** (through settled);
    - the breaker opens and denies new admissions on that schema until a reviewed replacement is activated;
    - admissions stop while capacity is insufficient;
    - final total equals the allowance bound plus exactly the injected overruns (no hidden or double-counted amount).
+9a. **Golden accounting test (F-4):**
+   - reservation 1,000,000 micro-USD ($1.00), no other obligations: `committed` = 1,000,000 (held) before settlement;
+   - actual 1,400,000 ($1.40): after settlement, settled = 1,400,000, held = 0, overrun classification = 400,000, and **`committed` = 1,400,000, not 1,800,000**;
+   - replaying settlement and running reconciliation twice leave all four values unchanged;
+   - a partial settlement case (reserved 1.00, partial 0.30 settled, then final 1.10) gives committed 1.00 → 1.00 → 1.10, never above the true obligation.
+9b. **Release evidence (F-4):** a `rejected` attempt with an error category but `zeroUsageEvidence = none` is **held**, not released. The same attempt with `provider_reported_zero` or a contract-verified `documented_no_charge` is released.
 10. Missing schema, missing count, unset global policy, insufficient capacity (including after overrun), an exceeded micro-USD unresolved bound, and an open overrun breaker each **deny before any provider call**.
 11. Account deletion (unchanged `UsersService.deleteAccount`) removes every new row for the user; the FK schema test covers new tables.
 12. Architecture tests: no provider SDK or HTTP client in `knowledge/*`; no schema duplication; no token or subscription imports; router still refuses non-simulated providers.
@@ -213,7 +236,7 @@ No content, prompts, book text, or PII in usage records, ledger rows, logs, metr
 
 ## 12. Required tests
 - **Unit** (`tests/unit/knowledge/**`, ≥ 80%): contract functions (table-driven and property tests), schema validation, ledger services with mocks, metrics.
-- **Integration** (disposable PostgreSQL and Redis): multi-user race asserting the admission invariant at every admission; exact versus over capacity; injected-overrun breaker and debt accounting; per-attempt retries; pinned-version settlement; held/release per the §9.3 table; reconciliation; account deletion; migrations up/down.
+- **Integration** (disposable PostgreSQL and Redis): multi-user race asserting the admission invariant at every admission; exact versus over capacity; injected-overrun breaker and once-only accounting (golden test §11.9a); per-attempt retries; pinned-version settlement; held/release per the §9.3 table; reconciliation; account deletion; migrations up/down.
 - **Arithmetic golden vectors and property tests** (§9.2), shared as fixtures with E2.
 - **Regression:** the full NEM-019 suites (1,182 unit tests at acceptance; 56 integration tests) pass unchanged.
 - Raw test output in the completion report (F-10: CI has no PostgreSQL).

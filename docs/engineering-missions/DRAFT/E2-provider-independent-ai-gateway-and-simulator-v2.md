@@ -12,6 +12,7 @@
 
 > **No live-provider connection of any kind is permitted in this mission:** no SDK, credential, endpoint, or network call. The router refuses every non-simulated provider.
 
+> **Revision 3 (2026-11-09):** aligned with E1 Revision 3 (F-4): release requires authoritative no-charge evidence (`zeroUsageEvidence`), never an error category alone; settlement accounting counts each obligation once.
 > **Revision 2 (2026-11-09):** aligned with E1 Revision 2:
 > - errors and outcomes use the single shared model in E1 §9.3 (F-3);
 > - all pricing and rounding comes only from E1's contract functions (F-2);
@@ -55,6 +56,7 @@ Only under `services/api/src/knowledge/ai/` (plus tests):
    - E2 defines **no** additional categories or outcomes; additions go into contract v1.x with a new table row;
    - retries follow the table only (`rate_limited` after retry-after, `timeout`, `provider_unavailable`), are bounded and configurable, and **each attempt reserves and settles separately** through E1's per-attempt API;
    - the ledger action comes from E1's `ledgerActionFor`; the Gateway never decides release or hold itself;
+   - the Gateway sets `zeroUsageEvidence` only from the provider's attempt-level usage report (`provider_reported_zero`) or from a `documented_no_charge` declaration in the adapter's descriptor. **An error category alone never yields `zero_confirmed`**; without evidence, completeness is `unknown` and the attempt is held;
    - HTTP/denial mapping for callers is a separate presentation layer over `error`.
 4. **Streaming contract:**
    - an async stream of events (segment delta, citation, usage-final, terminal outcome);
@@ -75,10 +77,12 @@ Only under `services/api/src/knowledge/ai/` (plus tests):
    - refusals by category;
    - HTTP-429-style rate limits with retry-after;
    - timeouts, partial streams, malformed structured output, citation errors;
+   - rejections **with and without** no-charge evidence (`zeroUsageEvidence`), scripted per fixture;
    - emits contract-v1 usage records only.
 8. **Provider contract test suite:** `runProviderContract(adapterFactory)`, a reusable harness any future adapter must pass. It covers:
    - capabilities;
    - **every row of the E1 §9.3 outcome table** (error → outcome → completeness);
+   - **evidence discipline:** an adapter may claim `zero_confirmed` only with `provider_reported_zero` for that attempt or a referenced `documented_no_charge` for that error class, and the suite fails an adapter that claims it otherwise;
    - streaming termination;
    - structured output;
    - citation refs;
@@ -132,7 +136,7 @@ Reader, Escucha Activa, sync, ownership, `user_books`, `fragments`, tokens, Stri
 
 ## 11. Acceptance criteria
 1. Capability negotiation selects only descriptors that satisfy the request, and denies with `capability_unavailable` before any reservation when none does.
-2. Every simulator and provider error maps to exactly one E1 §9.3 row. Retries occur only for retryable rows, each as a new reserved attempt; retry-after is honoured. `context_too_large` and `capability_unavailable` are caught before any reservation. Release happens only on `zero_confirmed`.
+2. Every simulator and provider error maps to exactly one E1 §9.3 row. Retries occur only for retryable rows, each as a new reserved attempt; retry-after is honoured. `context_too_large` and `capability_unavailable` are caught before any reservation. Release happens only on **evidenced** `zero_confirmed`; a rejection without evidence is held.
 3. Streaming: deltas, citations, and the final usage arrive in order; abort cancels the simulated call and yields `client_abort` / `aborted`, with partial or unknown usage held by the ledger.
 4. Structured output: valid objects pass; invalid ones yield `completed` + `malformed_output`, with usage settled; callers never receive unvalidated objects.
 5. A citation outside the sealed allowed set triggers the scope-violation path; a `library` segment without a valid citation is never returned as `library`.
@@ -141,7 +145,7 @@ Reader, Escucha Activa, sync, ownership, `user_books`, `fragments`, tokens, Stri
 8. **End-to-end, through the E1 ledger (real PostgreSQL), across success, retry, refusal, timeout, abort, and partial-stream paths:**
    - E1's **admission invariant** holds at every admission under concurrent distinct users;
    - when simulated actual usage stays within reservations, final settled + held ≤ allowance;
-   - with an injected under-priced schema, the overrun is recorded exactly, the breaker opens, and later admissions on that schema are denied.
+   - with an injected under-priced schema, the full actual is settled and counted **once** in `committed` (overrun classified separately, not added again), the breaker opens, and later admissions on that schema are denied.
 9. The NEM-019 turn order and Context Builder tests pass unchanged; every model path still declares an invariant with a proving test.
 10. Dark: flag off means no module and no route; architecture tests show no SDK, HTTP client, or credential access and no non-simulated provider in the router.
 11. All NEM-019 and E1 suites pass unchanged.
