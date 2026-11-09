@@ -1,12 +1,29 @@
 # DRAFT — P0 Product Owner Decisions Packet (Noetia+ / NoetiaX)
 
-**Status:** `DRAFT — AWAITING PRODUCT OWNER REVIEW` · **Revision 2 (2026-11-09):** realigned to the Product Owner strategy update. Decision preparation only. **No decision is made here.** No provider, model, budget, price, participant, corpus title, mission, environment change, or deployment is approved or selected.
+**Status:** `DRAFT — AWAITING PRODUCT OWNER REVIEW` · **Revision 3 (2026-11-09):** review corrections R-1…R-3 on top of Revision 2 (realignment to the Product Owner strategy update). Decision preparation only. **No decision is made here.** No provider, model, budget, price, participant, corpus title, mission, environment change, or deployment is approved or selected.
 **Builds on:** [Pilot-Readiness Assessment, Revision 3](../../architecture/three-tier-intelligence/10-pilot-readiness-assessment.md) (Draft PR #47) · [05 Open decisions](../../architecture/three-tier-intelligence/05-open-decisions.md) · [06 Roadmap](../../architecture/three-tier-intelligence/06-implementation-roadmap.md) · PO-025…028, PO-030 · PO-029 (draft) · ADR-005, ADR-006 · [NEM-019](../../engineering-missions/COMPLETED/NEM-019-tier-aware-intelligence-control-plane.md).
 
 > Existing PO records and ADRs are **not edited**. Any approved option would be recorded in the usual way (new PO record or amendment, register update).
 > **Disclosure:** prepared by an AI model from one of the providers compared in Part C (Anthropic). The comparison quotes only official provider documentation and recommends deciding on data-handling grounds.
 
 ---
+
+## Revision 3 summary (architecture review corrections R-1…R-3)
+
+- **R-1, environments:**
+  - Verified repository configuration is now separated from unverified live state (§A3.3).
+  - Binding rules added (§A3.4): reuse rather than duplicate; staging not isolated until NEM-017 is applied and S19 re-tested; destructive DB tests only in disposable local containers; no load tests on staging; a separate authorization for every staging deployment; confirm the `/api/health` exception.
+  - The inventory and reuse strategy are unchanged.
+- **R-2, open decisions:**
+  - The Class 2 column is now "Provisional recommendation (not approved)", with a "Must close before" mission column.
+  - TT-16, TT-17, TT-18, TT-20, and TT-25 now list their options neutrally.
+  - E5, E7, E9, and E10 implement the **approved** option rather than a presumed one.
+  - "Complete frontend" means the approved launch scope; mobile is not excluded by default.
+- **R-3, E1/E2:**
+  - E1 now starts with a reviewed, versioned **shared provider contract v1** (capabilities, usage, pricing; §A4.1). The ledger is built against it, and E2 implements the Gateway, simulator, and contract tests on the same schema.
+  - Ownership, acceptance, and the preserved NEM-019 invariants are documented. No mission was added.
+
+No PO record, ADR, or acceptance is recorded or changed. Documentation only.
 
 ## Revision 2 summary
 
@@ -55,7 +72,9 @@ The Product Owner's strategy update (2026-11-09) replaces "early internal real-A
 
 #### Class 2 detail — what each decision unlocks
 
-| ID | Question (short) | Recommended option *(PO decides)* | Needed before | Reversible |
+> **Every entry in the "Provisional recommendation" column is a proposal, not a requirement.** Nothing becomes part of the launch scope until the PO approves it. Each decision must be **closed before the mission in "Must close before" begins**; that mission's specification then implements the approved option, whatever it is. "Complete frontend" (E9) means complete implementation of the **approved launch scope**. Mobile, web search, semantic search, export formats, and billing shape are **not** excluded or fixed by this packet.
+
+| ID | Question (short) | Provisional recommendation *(not approved; PO decides)* | Must close before | Reversible |
 |---|---|---|---|---|
 | TT-03 | What "Noetia" includes; prerequisite wording without "Basic" | Plain wording that names the book subscription; no "Basic" | E9 (UI copy) | Yes |
 | TT-07 | NoetiaX depth (which DX capabilities; benchmark criteria) | Approve a minimal DX set for v1 plus benchmark criteria (judged at the gate) | E8 | Yes |
@@ -65,12 +84,12 @@ The Product Owner's strategy update (2026-11-09) replaces "early internal real-A
 | TT-13 | Quotation and reconstruction thresholds (F-2) | Approve the *policy shape* (per-book, per-turn, cross-session accounting); values configurable with conservative defaults, finalized with legal review | E6 | Yes |
 | TT-14 | Retention after cancel or downgrade; Brief after revocation | Read-only history; Brief tombstone with redaction (F-3) | E6, E7 | Partly |
 | TT-15 | Qualifying subscription states and linked members | Decide the commercial rule (owner, states, linked members) | E4 | Yes |
-| TT-16 (structure) | One Stripe subscription or two; trials; tier swap and proration | Decide the structure only; prices at the gate | E10 | Partly |
-| TT-17 | Brief export formats and sharing | In-app view + one export format (e.g. PDF or Markdown); no public sharing in v1 | E7 | Yes |
-| TT-18 | Expand at launch | Model knowledge only, labelled `broader`; no web | E6 | Yes |
+| TT-16 (structure) | One Stripe subscription or two; trials; tier swap and proration | **Open; options:** (a) one subscription with add-on items; (b) a separate premium subscription. Provisional: decide the structure before E10; prices at the gate. No structure is assumed by E1–E9 | E10 | Partly |
+| TT-17 | Brief export formats and sharing | **Open; options:** in-app only; Markdown; PDF; DOCX; link sharing. Provisional: in-app plus one format, no public sharing. E7 builds whichever formats are approved | E7 | Yes |
+| TT-18 | Expand at launch | **Open; options:** (a) model knowledge only, labelled `broader`; (b) with web search (adds cost, sources, and rights surface). Provisional: (a). If (b) is approved, web access also becomes a gate item (live provider tool) | E6 | Yes |
 | TT-19 | Other capabilities by tier; mode and product names | Assign per the capability matrix ([01](../../architecture/three-tier-intelligence/01-capability-matrix.md)) | E6, E9 | Yes |
-| TT-20 | Mobile parity and how premium is sold in apps | Web first at launch; mobile read-only or later (store billing is a separate risk) | E9 scope | Yes |
-| TT-25 | Semantic highlight search; tier | **Lexical at launch** (no embeddings, so no provider needed); semantic deferred to the gate | E5, E6 | Yes |
+| TT-20 | Mobile parity and how premium is sold in apps | **Open; options:** (a) web and mobile parity at launch; (b) web first, mobile later; (c) mobile read-only. Provisional: (b), because store billing is a separate risk. **E9 implements whatever launch scope is approved; mobile is not excluded by default.** If (a) is approved, E9 includes the React Native app and store-billing work becomes a dependency | E9 | Yes |
+| TT-25 | Semantic highlight search; tier | **Open; options:** (a) lexical at launch (no embeddings, so buildable without a provider); (b) semantic at launch (needs an embedding provider, so its validation becomes a gate item; pgvector exists on staging). Provisional: (a), with a vector-ready interface. E5 builds the approved option | E5, E6 | Yes |
 | TT-27 | Book AI permissions for saved-quotation text in Ask My Highlights | Treat saved text under the book's AI permissions; no highlight generation for ineligible books (F-1) | E6 (Ask My Highlights) | Yes |
 | TT-12 / TT-26 | Launch corpus; evidence standard; Named Verifier; jurisdictions | Candidates in C2 enter verification; designate the Named Verifier; engage legal review on C2.4 | Before the gate (no AI needed) | Yes |
 | TT-22 | Terms and Privacy for AI processing and provider disclosure | Draft during development; the provider name is filled in at the gate | Before launch | Yes |
@@ -108,7 +127,27 @@ Inspected 2026-11-09 from repository configuration (branches `main`, `nem-006a-s
 | Load, latency, and reader-impact tests | **Local VM only, at small scale.** Not on staging | Staging shares the production host; load there could degrade production |
 | Escucha Activa / sync regression | Local (staging has no audio) | Existing staging limitation |
 
-#### A3.3 Missing capabilities and the smallest changes *(proposals only; each needs its own authorization)*
+#### A3.3 Verified configuration versus unverified live state
+
+| Verified (repository configuration, read 2026-11-09) | **Unverified** (live operational state; needs operator confirmation) |
+|---|---|
+| Staging compose file, per-service limits, `*_staging` volumes, separate project and directory, Stripe test mode, basic-auth middleware, staging-only deploy workflow (branch `nem-006a-staging`) | Which commit staging runs now (session records mention `1295201`; Draft PR #27 plans against it) |
+| S19 DNS fall-through between production and staging, confirmed by **local reproduction**; fix drafted in NEM-017 (Draft PR #26) | Whether the live staging containers are still attached to the shared `proxy` network (NEM-017 is **not applied**) |
+| `cd-staging.yml` triggers only on a `staging` branch that does not exist | That staging's database, Redis, MinIO, and Meilisearch volumes are in fact separate on the host |
+| Production deploys and migrates on every push to `main` (`cd.yml`) | Whether `/api/health` without basic auth is an intended exception (observed: 200 unauthenticated; web root 401) |
+| Local VM limits and the disposable-container pattern (NEM-019) | Host resource headroom while staging and production run together |
+
+#### A3.4 Rules for using the existing environments *(binding on every proposed mission)*
+
+1. **Reuse, do not duplicate.** Use the existing staging stack, local VM, disposable containers, and CI. No new environment is proposed.
+2. **Staging is not considered safely isolated** until NEM-017 is applied **and** S19 is re-tested as resolved. Until then, nothing from this programme is deployed there.
+3. **Destructive database tests** (migration reverts, constraint and lock tests, account-deletion tests) run **only in disposable local containers**. Never on staging or any shared database.
+4. **Load and resource-intensive tests never run on staging** while it shares the production host.
+5. **Every staging deployment requires its own explicit authorization** naming the branch and the steps. Arming `cd-staging.yml` is a separate PO decision.
+6. **Confirm the `/api/health` authentication exception** (operator check) before staging is used.
+7. Production is never a test environment; any production change follows Assessment §7.
+
+#### A3.5 Missing capabilities and the smallest changes *(proposals only; each needs its own authorization)*
 
 1. **Apply NEM-017** (Draft PR #26): move staging api/web/storage to `proxy_staging`. **Prerequisite for any staging use by this programme.** Without it, staging containers could resolve production service names.
 2. **Confirm whether `/api/health` without basic auth is intentional** (operator check; documentation fix if so).
@@ -123,21 +162,34 @@ All missions: simulated providers only; no credentials; dark by default; "Produc
 
 | # | Mission (working title) | Scope | Needs (decisions) | Depends on | Test environment | Acceptance (summary) |
 |---|---|---|---|---|---|---|
-| **E1** | Provider-neutral cost accounting | Multi-dimension rate cards (token classes, TTL-specific cache writes, long-context tiers, batch and regional modifiers, non-token units); cost-aware reservation from the capability contract's worst case; **global micro-USD guard** (D14); per-attempt reservation (D15); usage normalization | D-1; B-2 | NEM-019 (#46) | Disposable DBs; CI | Caps hold under concurrent variable-cost turns and settlement failures; fixture rate cards for at least two published provider pricing structures; B-6 and F-12 tests still pass |
-| **E2** | Gateway capability contracts + simulator v2 | Capability contract (analysis with citations, structured output, streaming, cache hints, token counting, optional embeddings); contract test suite every adapter must pass; simulator emulating token classes, caching, long-context tiers, refusals, rate limits, timeouts; deterministic fixtures | D-1 | E1 | Local + CI | Contract suite green on the simulator; no provider SDK; router still refuses non-simulated providers |
+| **E1** | Shared provider contract v1 + provider-neutral cost accounting | **Phase 1, contract first:** the minimum shared schema (§A4.1). **Phase 2:** multi-dimension rate cards (token classes, TTL-specific cache writes, long-context tiers, batch and regional modifiers, non-token units); cost-aware reservation from the capability contract's worst case; **global micro-USD guard** (D14); per-attempt reservation (D15); usage normalization | D-1; B-2 | NEM-019 (#46) | Disposable DBs; CI | Contract v1 reviewed and frozen at E1 acceptance; the ledger consumes only contract types; caps hold under concurrent variable-cost turns and settlement failures; fixture rate cards for at least two published provider pricing structures; B-6 and F-12 tests still pass |
+| **E2** | Gateway, simulator v2, and contract tests on contract v1 | Gateway and router implementing contract v1 capabilities (analysis with citations, structured output, streaming, cache hints, token counting, optional embeddings); contract test suite every adapter must pass; simulator emulating token classes, caching, long-context tiers, refusals, rate limits, timeouts; deterministic fixtures | D-1 | E1 (contract v1) | Local + CI | Contract suite green on the simulator; simulator usage records settle through the E1 ledger end to end; contract changes only additive (v1.x) with E1 tests re-run; no provider SDK; router still refuses non-simulated providers |
 | **E3** | Rights and text adapters | `TextIdentityPort` (MinIO object hash), manifest-based `RightsVerificationAuthorityPort`, manifest tooling | TT-26 (format only) | NEM-019 | Disposable DBs | Unmanifested or stale rows denied; **no real attestation** until legal review completes |
 | **E4** | Entitlement adapters | `QualifyingPlanPort` (commercial rule); `OwnershipPort` if licensed titles are in scope (needs NEM-013) | TT-15 | NEM-019 | Disposable DBs | Rule as decided; no writes to plans or subscriptions |
-| **E5** | Retrieval foundation (provider-independent) | Chunking with anchors (X-3); **lexical retrieval** on existing PostgreSQL full-text search or Meilisearch; retrieval interface ready for a vector backend; full-book context path as an alternative strategy; context budgets | TT-25 (lexical at launch) | E2 | Disposable DBs (+ pgvector image if the vector-ready schema is exercised) | Retrieval only within the allowed set; anchors survive re-ingestion; reader p95 unchanged |
+| **E5** | Retrieval foundation (provider-independent) | Chunking with anchors (X-3); retrieval per the approved TT-25 option (lexical on existing PostgreSQL full-text search or Meilisearch, and/or a vector backend on pgvector with embeddings validated at the gate); full-book context path as an alternative strategy; context budgets | TT-25 (closed before E5) | E2 | Disposable DBs (+ pgvector image if the vector-ready schema is exercised) | Retrieval only within the allowed set; anchors survive re-ingestion; reader p95 unchanged |
 | **E6** | Research sessions, conversations, My Knowledge, Ask My Highlights | Conversation storage (additive migration); turns with citations and origin labels; session-scoped My Knowledge; Ask My Highlights with its invariant (F-1); reconstruction accounting (F-2); analytics exclusion (F-9) | TT-08, TT-11, TT-13, TT-14, TT-18, TT-19, TT-27 | E1, E2, E3, E5 | Disposable DBs; local dev stack | All ADR-006 invariants per model path; no highlight route to full text; deletion cascades |
-| **E7** | Research Brief | Schema, immutable versions, generated limitations, export (TT-17), private MinIO storage, revocation tombstone (F-3) | TT-14, TT-17 | E6 | Disposable DBs; local | Every finding traceable; no Brief without a session; export uses no AI |
+| **E7** | Research Brief | Schema, immutable versions, generated limitations, export in the **approved** TT-17 formats, private MinIO storage, revocation tombstone (F-3) | TT-14, TT-17 | E6 | Disposable DBs; local | Every finding traceable; no Brief without a session; export uses no AI |
 | **E8** | NoetiaX depth | Approved DX capabilities; per-book artifacts; background runs on the existing BullMQ worker; run ceilings; planner validation | TT-07 | E6 | Local; disposable | Planner scope limits; resume after restart; run ceilings; purge on revocation |
-| **E9** | Web frontend for Noetia+ and NoetiaX | Book selection (3/10), session management (lock, fork, read-only), research chat with citations linking into the reader (link only; reader untouched), My Knowledge, Ask My Highlights, Brief view and export, capacity indicator, at-limit UX, en/es i18n; mobile per TT-20 | TT-03, TT-10, TT-11, TT-19, TT-20 | E6, E7 (E8 for NoetiaX screens) | Local dev stack (Jest + Playwright) | Simulated end-to-end flows pass; reader suites unchanged with the flag on and off |
-| **E10** | Premium billing integration (Stripe **test** mode) | Product structure per TT-16; checkout; webhooks to entitlement; cascade rules; no token minting (F-2…F-6 regressions) | TT-16 (structure), TT-01, TT-15 | E4; M-C, M-D, NEM-013 prerequisites | Disposable DBs; staging (Stripe test) after NEM-017 | Premium invoices issue no tokens; ownership untouched on cancel; Stripe test-mode validation |
+| **E9** | Frontend for Noetia+ and NoetiaX (approved launch scope) | Book selection (3/10), session management (lock, fork, read-only), research chat with citations linking into the reader (link only; reader untouched), My Knowledge, Ask My Highlights, Brief view and export, capacity indicator, at-limit UX, en/es i18n. **Web and, if TT-20 approves it, mobile** (all four i18n files per the voice guide) | TT-03, TT-10, TT-11, TT-19, TT-20 | E6, E7 (E8 for NoetiaX screens) | Local dev stack (Jest + Playwright) | Simulated end-to-end flows pass; reader suites unchanged with the flag on and off |
+| **E10** | Premium billing integration (Stripe **test** mode) | Product structure per the **approved** TT-16 option; checkout; webhooks to entitlement; cascade rules; no token minting (F-2…F-6 regressions) | TT-16 (structure), TT-01, TT-15 | E4; M-C, M-D, NEM-013 prerequisites | Disposable DBs; staging (Stripe test) after NEM-017 | Premium invoices issue no tokens; ownership untouched on cancel; Stripe test-mode validation |
 | **E-T** | Staging integration (deployment rehearsal) | Apply NEM-017; deploy a named candidate branch to staging; forward-only migrations; simulated-AI and Playwright runs behind basic auth | NEM-017 and staging-deployment authorizations | E6–E9 (and E10 when ready) | **Staging** | Isolation verified; migrations rehearsed; no production change |
 | **E11** | Operational readiness | CI PostgreSQL job (F-10); Redis memory budget (F-7); ledger compensation runbook; Grafana panels for intelligence metrics; dark-deployment plan (F-6); migration-order check versus NEM-016 (D17) | GOV-001; F-6 plan | E1–E10 | CI; staging | Runbooks reviewed; dashboards render from simulated traffic |
 | **GATE** | Provider connection and launch validation | §A5 | Class 3 decisions | E1–E11 | Staging, then production by authorization | §A5 |
 
-Critical path: **E1 → E2 → (E3, E5) → E6 → (E7, E8) → E9 → E-T → E11 → GATE**. E4 and E10 run alongside once TT-15 and TT-16 are decided. Corpus verification and legal review (C2) and Terms drafting (TT-22) run in parallel and must finish before the GATE.
+#### A4.1 Shared provider contract (resolves the E1/E2 ordering)
+
+E1's ledger needs capability, usage, and pricing definitions that E2's Gateway also implements. To keep the two consistent without adding a mission:
+
+| Item | Decision (engineering, within scope) |
+|---|---|
+| **What** | `contract v1`, a versioned, provider-neutral schema with three parts. **Capability descriptor:** capability key, model-path id, context limit, `max_tokens` bound, supported features (citations, structured output, streaming, cache hints, token counting, embeddings). **Usage record:** per-class token counts (input, output, cache write by TTL, cache read, reasoning), non-token units, outcome, provider/model keys, idempotency key. **Pricing schema:** per-class unit prices, threshold tiers that apply to the whole request, modifiers (batch, region), non-token unit prices, version and effective date |
+| **Where** | One module under `services/api/src/knowledge/ai/contract/` (types plus JSON fixtures). Both the ledger and the Gateway import it; neither defines its own copies |
+| **Owner** | Written and frozen as v1 in **E1, phase 1** (reviewed by Product Architecture before the ledger work proceeds). **Owned thereafter by the Gateway (E2 and later).** Changes are additive (v1.x) and must re-run both suites; a breaking change needs a v2 and its own review |
+| **Sequencing** | E1 phase 1 (contract v1) → E1 phase 2 (cost-aware ledger against v1) → E2 (Gateway, simulator v2, contract tests on v1) |
+| **Acceptance** | E1: v1 reviewed; the ledger compiles and is tested only against v1 types and fixtures. E2: the contract suite passes on the simulator; simulator usage settles through the E1 ledger end to end; no schema copy exists |
+| **Invariants preserved** | NEM-019 global admission lock (B-6), reservation before any provider call, durable idempotent settlement and reconciliation (B-5), fail-closed admission (B-1), default-deny rights and the F-12 authority boundary, account-deletion cascades (B-2), dark registration, router refusal of non-simulated providers, **no live-provider access** |
+
+Critical path: **E1 (contract v1 → ledger) → E2 → (E3, E5) → E6 → (E7, E8) → E9 → E-T → E11 → GATE**. E4 and E10 run alongside once TT-15 and TT-16 are decided. Corpus verification and legal review (C2) and Terms drafting (TT-22) run in parallel and must finish before the GATE.
 
 ### A5. Provider-connection and launch-validation gate *(separately authorized)*
 
@@ -255,7 +307,7 @@ Workload: the Assessment §4.2 assumptions (median book 150K tokens; low / expec
 
 **Evaluation run** (50 questions × 2 books, batched, uncached worst case): Sonnet $15.75 · Sol $31.12 · Haiku $3.94 · Luna $1.56 · Opus $31.50 · Astra $155.62.
 
-### C1.3 Recommendation for the provider-connection gate (not for now)
+### C1.3 Provisional recommendation for the provider-connection gate (not approved; not for now)
 
 Under the 2026-11-09 strategy **no provider is acquired during development**. When the gate opens (§A5):
 1. **One provider for launch validation:** one data-processing review, one rate card, one spend-control surface. The Gateway's capability contract keeps the choice reversible.
