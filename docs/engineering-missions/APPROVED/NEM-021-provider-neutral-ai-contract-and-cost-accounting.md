@@ -1,16 +1,25 @@
 # NOETIA ENGINEERING MISSION — NEM-021 (E1)
 ## Provider-Neutral AI Contract and Cost Accounting
 
-**Status:** **IN PROGRESS — PHASE 1 COMPLETE (REVISION 3: CHECKPOINT CORRECTIONS F-5, F-6, F-7), AWAITING FINAL PRODUCT ARCHITECTURE CHECKPOINT REVIEW** (execution authorized 2026-11-09 for Phase 1 only; [Phase 1 report](../../reports/2026-11-09-NEM-021-phase-1-contract-v1-report.md)). Phase 2 is not started and not authorized. Specification: Revision 3, including corrections F-1…F-4. Approved by the Product Owner on **2026-11-09** ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)). Drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md).
+**Status:** **IN PROGRESS — PHASE 1 ACCEPTED; CONTRACT V1 FROZEN 2026-11-09** at baseline `697f8ea` (Product Architecture checkpoint PASSED on revision 3, F-1…F-7 resolved; [Phase 1 report §12](../../reports/2026-11-09-NEM-021-phase-1-contract-v1-report.md)). **Phase 2 is not started and not authorized** (requires a separate PO instruction). Specification: Revision 3, including corrections F-1…F-4. Approved by the Product Owner on **2026-11-09** ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)). Drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md).
 **Identifier:** `NEM-021`, reserved by the PO on 2026-11-09 ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)).
 **Mission type:** IMPLEMENTATION
-**Implementation authorization:** LIMITED to §5 **Phase 1** (items 1–6) — **active since 2026-11-09**. Phase 2 (items 7–15) is **not authorized** until Product Architecture reviews and freezes contract v1 and the PO authorizes continuation
+**Implementation authorization:** LIMITED to §5 **Phase 1** (items 1–6) — **active since 2026-11-09**. Phase 2 (items 7–15) is **not authorized**. Its first precondition (Product Architecture review and freeze of contract v1) was **met on 2026-11-09**. The second (an explicit PO instruction authorizing continuation) is **outstanding**
 **Schema changes:** ADDITIVE ONLY (new migrations ≥ 073), applied to disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED
 **Production deployment:** NOT AUTHORIZED (staging also NOT AUTHORIZED; merge to `main` NOT AUTHORIZED)
 **Product Owner approval:** **GRANTED 2026-11-09** (specification only; [PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md))
 
 > **APPROVED ≠ EXECUTE.** Execution requires a separate PO instruction naming this mission.
+
+> **Product Architecture acceptance and contract-v1 freeze (2026-11-09).** The independent Product Architecture review of Phase 1, **revision 3**, **PASSED**. Findings F-1…F-7 are resolved or preserved as required. Shared provider-neutral contract v1 is **frozen** at:
+> - **Baseline commit:** `697f8ea947bbb486028d71a8cc5d9931ac9e7ce8` (branch `feat/nem-021-provider-neutral-contract`, Draft PR #50; the head returned for, and accepted at, the revision 3 review). Its contract code equals implementation commit `794da19`; the baseline commit itself changed documentation only.
+> - **Frozen trees** (verifiable with `git rev-parse <commit>:<path>`): `services/api/src/knowledge/ai/contract` = `634266826c934e3d615a7342a04a5e7458c6a84d`; `services/api/tests/unit/knowledge/ai/contract` = `4d01b88fbf027d59a8bd73a158102425a3bb1a6f`.
+> - **Version:** `CONTRACT_VERSION = '1.0.0'`, `SCHEMA_VERSION = 1`.
+>
+> **Change control after the freeze:** any change to the frozen contract module, its fixtures, or its golden vectors requires **explicit Product Architecture review** before it is merged into a dependent branch. Additive, backward-compatible changes are versioned **v1.x**, keep every existing fixture and golden vector valid, and re-run the NEM-021 and NEM-022 suites. An incompatible change requires `schemaVersion: 2` and its own review. Phase 2 and NEM-022 consume contract v1 as frozen and may not redefine it (§5, `version.ts`).
+>
+> **Not authorized by this acceptance:** Phase 2, NEM-022, merge, deployment (staging or production), migrations, infrastructure or CI/CD changes, provider connections, credentials, or AI costs. Mission completion still requires Phase 2, the final review (§19), and PO acceptance.
 
 > **Execution authorization (2026-11-09):** *"I authorize execution of NEM-021 according to its approved specification, using the existing development branch and disposable local test environments. Stop for Product Architecture review after Phase 1 contract v1, before Phase 2 ledger implementation. Do not execute NEM-022, merge, deploy, connect AI providers, or incur AI costs."* Branch: `feat/nem-021-provider-neutral-contract`, stacked on PR #49.
 
@@ -61,7 +70,7 @@ Only under `services/api`:
 5. **Unit-weight schema** (ADR-005 internal units): versioned per-class weights mapping usage to allowance units, independent of prices.
 6. **Deterministic fixtures:** at least two pricing fixtures modelled on **different published pricing structures** (one with lifetime-specific cache writes and no long-context tier; one with whole-request long-context repricing), each marked as a fixture, plus usage fixtures covering every class and outcome.
 
-**Checkpoint:** Product Architecture reviews contract v1 (types, fixtures, functions, version policy) and freezes it as `v1` before Phase 2 starts.
+**Checkpoint:** Product Architecture reviews contract v1 (types, fixtures, functions, version policy) and freezes it as `v1` before Phase 2 starts. **PASSED 2026-11-09 — contract v1 frozen at `697f8ea`** (see the freeze record above). Phase 2 builds on this baseline.
 
 **Phase 2 — Cost-aware ledger:**
 7. **Additive migrations (≥ 073)** (NEM-019's `ai_usage_events.outcome` CHECK is **not** altered; new nullable columns `contractOutcome`, `errorCategory`, and `usageCompleteness` carry the §9.3 model, and the legacy column receives the mapped value):

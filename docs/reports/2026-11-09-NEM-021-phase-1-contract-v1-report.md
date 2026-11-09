@@ -2,7 +2,7 @@
 
 **Mission:** NEM-021 — Provider-Neutral AI Contract and Cost Accounting (E1), approved specification Revision 3 (PO-032)
 **Authorization:** Product Owner execution instruction (2026-11-09), **Phase 1 only**. Stop for the Product Architecture checkpoint before Phase 2.
-**Status:** **PHASE 1 COMPLETE, REVISION 3 (checkpoint corrections F-5 and F-6, §10; final boundary correction F-7, §11) — AWAITING FINAL PRODUCT ARCHITECTURE CHECKPOINT REVIEW.** Contract v1 is **not frozen**. Phase 2 (ledger) is **not started and not authorized**.
+**Status:** **PHASE 1 ACCEPTED — CONTRACT V1 FROZEN 2026-11-09 at `697f8ea`** (Product Architecture checkpoint PASSED on revision 3; corrections F-5/F-6 §10, F-7 §11; freeze record §12). Phase 2 (ledger) is **not started and not authorized**.
 **Branch:** `feat/nem-021-provider-neutral-contract`, stacked on `docs/e1-e2-mission-drafts` (PR #49) → #48 → … → #46 (NEM-019 code) → … → #34. **Not merged; not deployed.**
 
 ---
@@ -129,7 +129,9 @@ Product Architecture is asked to review contract v1 (types, fixtures, functions,
 
 **Revision 2:** returned for independent checkpoint re-review with corrections F-5 and F-6 (§10). Contract v1 is **not frozen** by this revision.
 
-**Revision 3:** F-5 accepted at re-review; the remaining F-6 issue (F-7) is corrected (§11). Returned for final checkpoint review. Contract v1 remains **unfrozen**.
+**Revision 3:** F-5 accepted at re-review; the remaining F-6 issue (F-7) is corrected (§11). Returned for final checkpoint review.
+
+**Outcome (2026-11-09):** checkpoint **PASSED**; contract v1 **frozen** at `697f8ea` (§12). Phase 2 still requires a PO instruction.
 
 ---
 
@@ -275,3 +277,46 @@ Tests:       56 passed, 56 total
 - ESLint flagged a `ContractError` import left unused in `unit-weights.ts`. It was removed.
 
 **Status:** returned to Product Architecture for **final checkpoint review**. **Contract v1 is not frozen. Phase 2 and NEM-022 are not started.**
+
+---
+
+## 12. Product Architecture acceptance and contract-v1 freeze (2026-11-09)
+
+**Decision.** The independent Product Architecture review of NEM-021 Phase 1, revision 3, **PASSED**. Findings F-1 through F-7 are resolved or preserved as required. Contract v1 is approved for architectural freeze at the reviewed revision 3 implementation. Recorded under the PO-relayed instruction *"NEM-021 Phase 1 Contract-v1 Freeze"* (documentation and governance updates only).
+
+### 12.1 Freeze baseline
+
+| Item | Value |
+|---|---|
+| Baseline commit | `697f8ea947bbb486028d71a8cc5d9931ac9e7ce8` |
+| Branch / PR | `feat/nem-021-provider-neutral-contract`, Draft PR #50 (stacked on #49) |
+| What was reviewed | Revision 3: the PR head returned for the final checkpoint review (§11) |
+| Implementation commit | `794da19`: identical contract code and tests (`697f8ea` changed documentation only; `git diff 794da19 697f8ea -- services` is empty) |
+| Contract source tree | `services/api/src/knowledge/ai/contract` = `634266826c934e3d615a7342a04a5e7458c6a84d` |
+| Contract test tree | `services/api/tests/unit/knowledge/ai/contract` = `4d01b88fbf027d59a8bd73a158102425a3bb1a6f` |
+| Version | `CONTRACT_VERSION = '1.0.0'`, `SCHEMA_VERSION = 1` |
+| Verified results at baseline | §11.4: contract 208/208 · api unit 1390/1390 · NEM-019 integration 56/56 · tsc 0 · eslint 0 errors |
+
+Anyone can verify the freeze with `git rev-parse <commit>:<path>` against the two tree hashes. A match means the frozen contract is unchanged, whatever commits came later.
+
+### 12.2 Change control after the freeze
+
+- Any change to the frozen contract (the `contract/` module, its fixtures, or its golden vectors) requires **explicit Product Architecture review** before it lands on a dependent branch.
+- **Additive, backward-compatible** changes are versioned **v1.x** (`CONTRACT_VERSION` minor bump). They must keep every existing fixture and golden vector valid and re-run the NEM-021 and NEM-022 suites.
+- **Incompatible** changes require `schemaVersion: 2` and their own review and approval.
+- Phase 2 and NEM-022 **consume** contract v1 as frozen. They may not redefine its schemas or implement pricing elsewhere; the architecture test enforces this.
+- This matches the policy already declared in `version.ts`. No code was changed to record the freeze.
+
+### 12.3 Phase 2 dependency (preserved)
+
+Phase 2 (§5 items 7–15: cost-aware ledger, additive migrations ≥ 073) depends on this frozen contract and builds on baseline `697f8ea`. Its first precondition, the checkpoint and freeze, is **met**. Its second, an **explicit Product Owner instruction authorizing Phase 2**, is **outstanding**. **Phase 2 remains unauthorized and not started.** NEM-022 remains unauthorized and executes only after NEM-021 is completed and accepted.
+
+### 12.4 Changes made to record the freeze (documentation only)
+
+| File | Change |
+|---|---|
+| `docs/engineering-missions/APPROVED/NEM-021-…md` | Status line; implementation-authorization line; freeze record (baseline, trees, change control, not-authorized list); §5 checkpoint marked PASSED |
+| `docs/engineering-missions/README.md` | NEM-021 register row: Phase 1 accepted, v1 frozen at `697f8ea`, Phase 2 not authorized |
+| `docs/reports/2026-11-09-NEM-021-phase-1-contract-v1-report.md` | Status line, §9 outcome, this §12 |
+
+**Not changed:** application code, tests, fixtures, migrations, CI/CD, Docker, infrastructure. Nothing merged or deployed. No provider connection, credential, or AI cost. The mission file stays in `APPROVED/` while the mission is in progress, as before. It moves to `COMPLETED/` only after Phase 2, the final review, and PO acceptance.
