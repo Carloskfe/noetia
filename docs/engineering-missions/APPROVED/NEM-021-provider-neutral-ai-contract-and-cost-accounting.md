@@ -1,16 +1,18 @@
 # NOETIA ENGINEERING MISSION — NEM-021 (E1)
 ## Provider-Neutral AI Contract and Cost Accounting
 
-**Status:** **APPROVED — NOT AUTHORIZED FOR EXECUTION** (Revision 3, including corrections F-1…F-4). Approved by the Product Owner on **2026-11-09** ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)). Drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md).
+**Status:** **IN PROGRESS — PHASE 1 ONLY** (execution authorized by the Product Owner on 2026-11-09; stop at the Phase 1 checkpoint before any Phase 2 work). Specification: Revision 3, including corrections F-1…F-4. Approved by the Product Owner on **2026-11-09** ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)). Drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md).
 **Identifier:** `NEM-021`, reserved by the PO on 2026-11-09 ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)).
 **Mission type:** IMPLEMENTATION
-**Implementation authorization:** LIMITED to §5 — **not active**: execution requires a separate, explicit Product Owner instruction naming NEM-021
+**Implementation authorization:** LIMITED to §5 **Phase 1** (items 1–6) — **active since 2026-11-09**. Phase 2 (items 7–15) is **not authorized** until Product Architecture reviews and freezes contract v1 and the PO authorizes continuation
 **Schema changes:** ADDITIVE ONLY (new migrations ≥ 073), applied to disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED
 **Production deployment:** NOT AUTHORIZED (staging also NOT AUTHORIZED; merge to `main` NOT AUTHORIZED)
 **Product Owner approval:** **GRANTED 2026-11-09** (specification only; [PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md))
 
 > **APPROVED ≠ EXECUTE.** Execution requires a separate PO instruction naming this mission.
+
+> **Execution authorization (2026-11-09):** *"I authorize execution of NEM-021 according to its approved specification, using the existing development branch and disposable local test environments. Stop for Product Architecture review after Phase 1 contract v1, before Phase 2 ledger implementation. Do not execute NEM-022, merge, deploy, connect AI providers, or incur AI costs."* Branch: `feat/nem-021-provider-neutral-contract`, stacked on PR #49.
 
 > **Product Owner approval (2026-11-09).** *Product Owner Approval of E1/E2 Specifications* ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)): this specification (Revision 3) is **approved** and identifier `NEM-021` reserved. Moved from `DRAFT/` to `APPROVED/`. Scope and acceptance criteria are unchanged by the approval. **Binding sequencing:**
 > 1. Phase 1 (shared provider contract v1) requires its Product Architecture checkpoint review and freeze before any Phase 2 ledger implementation.
