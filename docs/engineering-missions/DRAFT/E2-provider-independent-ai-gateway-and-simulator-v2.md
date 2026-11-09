@@ -91,7 +91,7 @@ Only under `services/api/src/knowledge/ai/` (plus tests):
 9. **End-to-end settlement:**
    - negotiation → token count → E1 `worstCaseCost` reservation → simulated call → normalized usage → E1 settlement;
    - covers the success, retry, refusal, timeout, abort, and partial-stream paths;
-   - the global allowance and per-user units hold under concurrency.
+   - E1's admission invariant (global micro-USD and per-user units) holds at every admission under concurrency, with overruns handled per E1 §9.1.
 10. **Turn-stub integration:** NEM-019's `TurnService` uses the new Gateway without changing the turn order or the Context Builder invariant. The model-path registry requires a declared invariant and a proving test for every path (B-3).
 11. **Dark-by-default and security tests:**
     - flag off: the module is not loaded and no route exists;
