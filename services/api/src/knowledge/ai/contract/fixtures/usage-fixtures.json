@@ -1,0 +1,290 @@
+[
+  {
+    "contract": "noetia.ai.usage",
+    "schemaVersion": 1,
+    "providerKey": "fixture-a",
+    "modelKey": "fixture-a-mid",
+    "startedAt": "2026-01-01T00:00:00Z",
+    "endedAt": "2026-01-01T00:00:05Z",
+    "attemptKey": "a-completed",
+    "tokens": {
+      "inputUncached": 10000,
+      "cacheRead": 50000,
+      "cacheWrite": {
+        "5m": 2000,
+        "1h": 1000
+      },
+      "output": 1500
+    },
+    "nonTokenUnits": {
+      "tool_call": 3
+    },
+    "outcome": "completed",
+    "error": null,
+    "usageCompleteness": "complete",
+    "zeroUsageEvidence": "none"
+  },
+  {
+    "contract": "noetia.ai.usage",
+    "schemaVersion": 1,
+    "providerKey": "fixture-a",
+    "modelKey": "fixture-a-mid",
+    "startedAt": "2026-01-01T00:00:00Z",
+    "endedAt": "2026-01-01T00:00:05Z",
+    "attemptKey": "a-malformed",
+    "tokens": {
+      "inputUncached": 4000,
+      "cacheRead": 0,
+      "cacheWrite": {},
+      "output": 900
+    },
+    "nonTokenUnits": {},
+    "outcome": "completed",
+    "error": "malformed_output",
+    "usageCompleteness": "complete",
+    "zeroUsageEvidence": "none"
+  },
+  {
+    "contract": "noetia.ai.usage",
+    "schemaVersion": 1,
+    "providerKey": "fixture-a",
+    "modelKey": "fixture-a-mid",
+    "startedAt": "2026-01-01T00:00:00Z",
+    "endedAt": "2026-01-01T00:00:05Z",
+    "attemptKey": "a-refusal-complete",
+    "tokens": {
+      "inputUncached": 3000,
+      "cacheRead": 0,
+      "cacheWrite": {},
+      "output": 40
+    },
+    "nonTokenUnits": {},
+    "outcome": "refused",
+    "error": "refusal",
+    "usageCompleteness": "complete",
+    "zeroUsageEvidence": "none"
+  },
+  {
+    "contract": "noetia.ai.usage",
+    "schemaVersion": 1,
+    "providerKey": "fixture-a",
+    "modelKey": "fixture-a-mid",
+    "startedAt": "2026-01-01T00:00:00Z",
+    "endedAt": "2026-01-01T00:00:05Z",
+    "attemptKey": "a-refusal-partial",
+    "tokens": {
+      "inputUncached": 3000,
+      "cacheRead": 0,
+      "cacheWrite": {},
+      "output": 0
+    },
+    "nonTokenUnits": {},
+    "outcome": "refused",
+    "error": "refusal",
+    "usageCompleteness": "partial",
+    "zeroUsageEvidence": "none"
+  },
+  {
+    "contract": "noetia.ai.usage",
+    "schemaVersion": 1,
+    "providerKey": "fixture-a",
+    "modelKey": "fixture-a-mid",
+    "startedAt": "2026-01-01T00:00:00Z",
+    "endedAt": "2026-01-01T00:00:05Z",
+    "attemptKey": "a-invalid-evidenced",
+    "tokens": {
+      "inputUncached": 0,
+      "cacheRead": 0,
+      "cacheWrite": {},
+      "output": 0
+    },
+    "nonTokenUnits": {},
+    "outcome": "rejected",
+    "error": "invalid_request",
+    "usageCompleteness": "zero_confirmed",
+    "zeroUsageEvidence": "provider_reported_zero"
+  },
+  {
+    "contract": "noetia.ai.usage",
+    "schemaVersion": 1,
+    "providerKey": "fixture-a",
+    "modelKey": "fixture-a-mid",
+    "startedAt": "2026-01-01T00:00:00Z",
+    "endedAt": "2026-01-01T00:00:05Z",
+    "attemptKey": "a-invalid-unevidenced",
+    "tokens": {
+      "inputUncached": 0,
+      "cacheRead": 0,
+      "cacheWrite": {},
+      "output": 0
+    },
+    "nonTokenUnits": {},
+    "outcome": "rejected",
+    "error": "invalid_request",
+    "usageCompleteness": "unknown",
+    "zeroUsageEvidence": "none"
+  },
+  {
+    "contract": "noetia.ai.usage",
+    "schemaVersion": 1,
+    "providerKey": "fixture-a",
+    "modelKey": "fixture-a-mid",
+    "startedAt": "2026-01-01T00:00:00Z",
+    "endedAt": "2026-01-01T00:00:05Z",
+    "attemptKey": "a-context-too-large",
+    "tokens": {
+      "inputUncached": 0,
+      "cacheRead": 0,
+      "cacheWrite": {},
+      "output": 0
+    },
+    "nonTokenUnits": {},
+    "outcome": "rejected",
+    "error": "context_too_large",
+    "usageCompleteness": "unknown",
+    "zeroUsageEvidence": "none"
+  },
+  {
+    "contract": "noetia.ai.usage",
+    "schemaVersion": 1,
+    "providerKey": "fixture-b",
+    "modelKey": "fixture-b-mid",
+    "startedAt": "2026-01-01T00:00:00Z",
+    "endedAt": "2026-01-01T00:00:05Z",
+    "attemptKey": "b-rate-limited-documented",
+    "tokens": {
+      "inputUncached": 0,
+      "cacheRead": 0,
+      "cacheWrite": {},
+      "output": 0
+    },
+    "nonTokenUnits": {},
+    "outcome": "rejected",
+    "error": "rate_limited",
+    "usageCompleteness": "zero_confirmed",
+    "zeroUsageEvidence": "documented_no_charge"
+  },
+  {
+    "contract": "noetia.ai.usage",
+    "schemaVersion": 1,
+    "providerKey": "fixture-a",
+    "modelKey": "fixture-a-mid",
+    "startedAt": "2026-01-01T00:00:00Z",
+    "endedAt": "2026-01-01T00:00:05Z",
+    "attemptKey": "a-rate-limited-unevidenced",
+    "tokens": {
+      "inputUncached": 0,
+      "cacheRead": 0,
+      "cacheWrite": {},
+      "output": 0
+    },
+    "nonTokenUnits": {},
+    "outcome": "rejected",
+    "error": "rate_limited",
+    "usageCompleteness": "unknown",
+    "zeroUsageEvidence": "none"
+  },
+  {
+    "contract": "noetia.ai.usage",
+    "schemaVersion": 1,
+    "providerKey": "fixture-a",
+    "modelKey": "fixture-a-mid",
+    "startedAt": "2026-01-01T00:00:00Z",
+    "endedAt": "2026-01-01T00:00:05Z",
+    "attemptKey": "a-provider-unavailable",
+    "tokens": {
+      "inputUncached": 0,
+      "cacheRead": 0,
+      "cacheWrite": {},
+      "output": 0
+    },
+    "nonTokenUnits": {},
+    "outcome": "failed",
+    "error": "provider_unavailable",
+    "usageCompleteness": "unknown",
+    "zeroUsageEvidence": "none"
+  },
+  {
+    "contract": "noetia.ai.usage",
+    "schemaVersion": 1,
+    "providerKey": "fixture-a",
+    "modelKey": "fixture-a-mid",
+    "startedAt": "2026-01-01T00:00:00Z",
+    "endedAt": "2026-01-01T00:00:05Z",
+    "attemptKey": "a-timeout",
+    "tokens": {
+      "inputUncached": 0,
+      "cacheRead": 0,
+      "cacheWrite": {},
+      "output": 0
+    },
+    "nonTokenUnits": {},
+    "outcome": "timed_out",
+    "error": "timeout",
+    "usageCompleteness": "unknown",
+    "zeroUsageEvidence": "none"
+  },
+  {
+    "contract": "noetia.ai.usage",
+    "schemaVersion": 1,
+    "providerKey": "fixture-a",
+    "modelKey": "fixture-a-mid",
+    "startedAt": "2026-01-01T00:00:00Z",
+    "endedAt": "2026-01-01T00:00:05Z",
+    "attemptKey": "a-client-abort",
+    "tokens": {
+      "inputUncached": 8000,
+      "cacheRead": 0,
+      "cacheWrite": {},
+      "output": 120
+    },
+    "nonTokenUnits": {},
+    "outcome": "aborted",
+    "error": "client_abort",
+    "usageCompleteness": "partial",
+    "zeroUsageEvidence": "none"
+  },
+  {
+    "contract": "noetia.ai.usage",
+    "schemaVersion": 1,
+    "providerKey": "fixture-a",
+    "modelKey": "fixture-a-mid",
+    "startedAt": "2026-01-01T00:00:00Z",
+    "endedAt": "2026-01-01T00:00:05Z",
+    "attemptKey": "a-internal",
+    "tokens": {
+      "inputUncached": 0,
+      "cacheRead": 0,
+      "cacheWrite": {},
+      "output": 0
+    },
+    "nonTokenUnits": {},
+    "outcome": "failed",
+    "error": "internal",
+    "usageCompleteness": "unknown",
+    "zeroUsageEvidence": "none"
+  },
+  {
+    "contract": "noetia.ai.usage",
+    "schemaVersion": 1,
+    "providerKey": "fixture-b",
+    "modelKey": "fixture-b-mid",
+    "startedAt": "2026-01-01T00:00:00Z",
+    "endedAt": "2026-01-01T00:00:05Z",
+    "attemptKey": "b-completed-tier",
+    "tokens": {
+      "inputUncached": 150000,
+      "cacheRead": 40000,
+      "cacheWrite": {
+        "30m": 20000
+      },
+      "output": 2000,
+      "reasoning": 6000
+    },
+    "nonTokenUnits": {},
+    "outcome": "completed",
+    "error": null,
+    "usageCompleteness": "complete",
+    "zeroUsageEvidence": "none"
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "contract": "noetia.ai.pricing",
+  "schemaVersion": 1,
+  "id": "fixture-pricing-a-v1",
+  "version": 1,
+  "providerKey": "fixture-a",
+  "modelKey": "fixture-a-mid",
+  "currency": "micro-usd-per-million",
+  "effectiveFrom": "2026-01-01",
+  "verifiedAt": null,
+  "sourceNote": "TEST FIXTURE. Structure modelled on a published pricing page with lifetime-specific cache writes and no long-context tier. Values are invented and are not prices.",
+  "isTestFixture": true,
+  "base": {
+    "inputUncached": 3000000,
+    "cacheRead": 300000,
+    "cacheWrite": { "5m": 3750000, "1h": 6000000 },
+    "output": 15000000,
+    "nonTokenUnits": { "tool_call": 10000000000 }
+  },
+  "tiers": [],
+  "modifiers": { "batch": 5000, "region_eu": 11000 }
+}
