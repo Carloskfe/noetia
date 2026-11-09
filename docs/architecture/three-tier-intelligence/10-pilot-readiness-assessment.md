@@ -1,12 +1,27 @@
 # 10 — Noetia+ / NoetiaX Pilot-Readiness Assessment
 
-> **DRAFT — assessment only. Revision 2 (2026-11-09).** Not a decision, not a mission, not an authorization. It approves no price, budget value, token rule, provider, model, pilot participant, deployment, or mission. Every dollar figure and every value marked *(candidate)* is a proposal for the Product Owner. Provider facts are **provisional** until checked against the sources in §4.1. Prepared for independent Product Architecture review.
+> **DRAFT — assessment only. Revision 3 (2026-11-09).** Not a decision, not a mission, not an authorization. It approves no price, budget value, token rule, provider, model, pilot participant, deployment, or mission. Every dollar figure and every value marked *(candidate)* is a proposal for the Product Owner. Provider facts are **provisional** until checked against the sources in §4.1. Prepared for independent Product Architecture review.
 
 **Inputs (not restated):** PO-025…028, PO-030 (decided) · PO-029 (draft) · ADR-001…006 · [04 Entitlements and budgets](04-entitlements-and-budgets.md) · [05 Open decisions](05-open-decisions.md) · [06 Roadmap T2–T9](06-implementation-roadmap.md) · [07 Rights requirements](07-rights-verification-requirements.md) · [09 NEM-019 technical note](09-nem-019-control-plane-technical-note.md) · [NEM-019 report §0.1](../../reports/2026-11-09-NEM-019-implementation-report.md#01-product-owner-acceptance-2026-11-09) · [NEM-003 cost model](../../noetia-plus/07-cost-and-usage-model.md).
 
 Tier definitions (Noetia / Noetia+ / NoetiaX) and the **3-book and 10-book** session limits (PO-027) are unchanged throughout. Sequencing NoetiaX later in a pilot does not redefine it.
 
 ---
+
+## Revision 3 summary (review corrections P-6…P-8)
+
+- **P-6:** every monthly scenario was recomputed from §4.2–§4.4 with the script in Appendix A.
+  - High full-context Sonnet is **$133.80** (was ~$113: the earlier figure used 3 cache writes and 12 warm turns instead of `W` = 4 and `T − W` = 11).
+  - The same error affected High full-context Opus: **$247.80** (was ~$205).
+  - Also corrected: Low full-context Sonnet **$0.96** (was ~$1.05) and Low retrieval Sonnet **$0.33** (was ~$0.4). Both had used 3 K instead of the scenario's 1.5 K output.
+  - Monthly figures are now given to the cent, stating `B` and `R`.
+- **P-7:** context-size sensitivity is now stated by full-book context `C`.
+  - 60 K of context (one short book) costs **$0.61** per session.
+  - The former row labelled "60 K, n = 2" meant 120 K of context, whose $0.98 was arithmetically correct but ambiguously labelled.
+- **Additional:** the internal spending target is **$103** (was ≈ $105). All per-turn and other sensitivity entries reproduce unchanged.
+- **P-8:** the ≈ $190 maximum exposure is now stated as **conditional** on both correct implementation of Mechanism 2 and the assumed behaviour of the provider's evaluation-workspace limit. No provider limit is described as a hard guarantee.
+
+The conclusions are unchanged: full-book context is a quality benchmark well above the PO-001 guideline; no price, allowance, model, or provider is chosen.
 
 ## Revision 2 summary (architecture review corrections P-1…P-5)
 
@@ -171,15 +186,17 @@ Monthly per user:
 
 (Token counts × $/M ÷ 10⁶.)
 
-**Per user per month:**
+**Per user per month** (all rows use the median `B` = 150 K; retrieval at `R` = 20 K, with 40 K shown for High; Haiku retrieval uses the ≤ 100 K prompt tier):
 
 | Scenario | Full · Sonnet | Full · Opus | Retrieval · Sonnet | Retrieval · Haiku |
 |---|---|---|---|---|
-| Low (S = 2, T = 3, n = 1, m = 0, O = 1.5 K) | ~$1.05 | ~$1.8 | ~$0.4 | < $0.05 |
-| **Expected** (S = 6, T = 8, n = 2, m = 1, O = 3 K) | **~$12.6** | ~$23 | **~$3.4** | ~$0.2 |
-| High (S = 20, T = 15, n = 3, m = 3, O = 8 K) | ~$113 | ~$205 | ~$36–48 | ~$2 |
+| Low (S = 2, T = 3, n = 1, m = 0, O = 1.5 K) | $0.96 | $1.80 | $0.33 | $0.02 |
+| **Expected** (S = 6, T = 8, n = 2, m = 1, O = 3 K) | **$12.60** | $23.04 | **$3.36** | $0.17 |
+| High (S = 20, T = 15, n = 3, m = 3, O = 8 K) | **$133.80** | **$247.80** | $36.00–48.00 | $1.80–2.40 |
 
-Worked expected session, full · Sonnet: `2·(300 K·2.5e-6 + 3 K·10e-6) + 6·(300 K·0.2e-6 + 3 K·10e-6) = 2·0.78 + 6·0.09 = $2.10`, × 6 sessions ≈ $12.6.
+Worked expected session, full · Sonnet: `2·(300 K·2.5e-6 + 3 K·10e-6) + 6·(300 K·0.2e-6 + 3 K·10e-6) = 2·0.78 + 6·0.09 = $2.10`, × 6 sessions = $12.60.
+Worked high session, full · Sonnet: `W = 4`, `T − W = 11`: `4·(450 K·2.5e-6 + 8 K·10e-6) + 11·(450 K·0.2e-6 + 8 K·10e-6) = 4·1.205 + 11·0.17 = $6.69`, × 20 sessions = $133.80.
+Every entry in §4.4–§4.5 is reproduced by the script in Appendix A.
 
 ### 4.5 Sensitivity (expected session; Sonnet 5.5 under PS-1)
 
@@ -190,7 +207,7 @@ Worked expected session, full · Sonnet: `2·(300 K·2.5e-6 + 3 K·10e-6) + 6·(
 | Output `O` | 1.5 K / **3 K** / 8 K | $1.98 / **$2.10** / $2.50 | $0.44 / **$0.56** / $0.96 |
 | Retrieval context `R` | **20 K** / 40 K | n/a | **$0.56** / $0.88 |
 | Long-context surcharge (hypothetical: input above 200 K at 2×; **not in PS-1; verify**) | ×1 / ×2 | **$2.10** / ~$3.96 | unaffected below threshold |
-| Book size `B` | 60 K / **150 K** / 300 K (n = 2) | $0.98 / **$2.10** / $3.96 | unaffected |
+| Full-book context `C` | 60 K (one short book) / 120 K (two short books) / **300 K** (two median) / 600 K (two long books) | $0.61 / $0.98 / **$2.10** / $3.96 | unaffected |
 
 **Readings:**
 - Full-book cost is dominated by cache writes (cold misses) and by context size, not by output.
@@ -255,15 +272,15 @@ Workspace spend alerts and limits in the provider console, and a dedicated works
 
 | Figure | Meaning | Internal pilot *(candidate)* | External pilot *(candidate)* |
 |---|---|---|---|
-| **Spending target** | Expected spend, from §4.4 | ~$63 (5 users × ~$12.6, full-book benchmark) + ≤ $40 evaluation ≈ **$105** | ~$100–400, depending on the strategy measured in B |
+| **Spending target** | Expected spend, from §4.4 | $63 (5 users × $12.60, full-book benchmark) + ≤ $40 evaluation ≈ **$103** | ~$100–400, depending on the strategy measured in B |
 | **Ledger global allowance** (Mechanism 2, D14) | Primary ceiling; admission stops at it | **$150** | **$400** |
 | **Per-user allowance** (units; mapped by the rate card) | Fair use per participant | ≈ $25-equivalent | ≈ $15-equivalent |
 | **Provider alert** | Early warning | $120 | $320 |
 | **Provider limit** | Backstop above the ledger, so that the ledger binds first | $200 | $500 |
-| **Maximum financial exposure** | See below | **≈ $190** = $150 (pilot ledger) + $40 (evaluation workspace limit), with Mechanism 2 and conditions 1–4 met. Otherwise up to the provider limits ($200 + $40) plus any overshoot during enforcement lag | ≈ $400; otherwise $500 plus lag |
-| **Evaluation runs** | Separate key and workspace (D16); batched; not seen by the ledger | ≤ $40, enforced only by that workspace's own provider limit | — |
+| **Maximum financial exposure** | See below | **≈ $190 — conditional, not guaranteed.** It is $150 (pilot ledger) + $40 (evaluation workspace) and holds only if **both** (a) Mechanism 2 is implemented correctly and its conditions 1–4 hold, **and** (b) the provider's separate evaluation-workspace limit stops spend at $40 as assumed. Neither is verified today. If (a) fails, pilot exposure is bounded only by the provider limit; if either provider limit lags or behaves as an alert rather than a hard stop, exposure can exceed these figures by whatever is spent during the lag | ≈ $400, under the same two conditions |
+| **Evaluation runs** | Separate key and workspace (D16); batched; not seen by the ledger | ≤ $40 *intended*, bounded only by that workspace's provider limit, whose enforcement is **unverified** (§5.3) | — |
 
-Revision 1 listed "$150 allowance" and "$200 backstop" without distinguishing them. They are different layers: the $150 is the ledger's primary ceiling for pilot traffic, and the $200 is an independent backstop deliberately set above it. Evaluation traffic sits outside the ledger by design and is bounded only by its own workspace limit. **Maximum exposure equals ledger ceiling plus evaluation limit only when Mechanism 2 exists and its conditions hold.** Without Mechanism 2, no internal ceiling exists, which is why M1 precedes any real call.
+Revision 1 listed "$150 allowance" and "$200 backstop" without distinguishing them. They are different layers: the $150 is the ledger's primary ceiling for pilot traffic, and the $200 is an independent backstop deliberately set above it. Evaluation traffic sits outside the ledger by design and is bounded only by its own workspace limit. **No figure in this table is a hard guarantee.** The ledger ceiling becomes an internal guarantee only once Mechanism 2 is implemented and verified. Provider limits remain an external control whose enforcement semantics are unverified (§4.1, §5.3). Without Mechanism 2, no internal ceiling exists, which is why M1 precedes any real call.
 
 ---
 
@@ -456,11 +473,86 @@ Every mission below would carry "Production deployment: NOT AUTHORIZED; merge to
 
 ---
 
+## Appendix A — Reproducible cost calculation
+
+Run with `python3 pilot_costs.py`. It uses the provisional PS-1 prices (§4.1) and the assumptions in §4.2, and reproduces every entry in §4.4 and §4.5 and the §5.4 spending target. Haiku 5.5 cache write and read multipliers are **assumed** (1.25× and 0.1× of input). The long-context row doubles all input classes as a **hypothetical**.
+
+```python
+# Reproduces every cost entry in 10-pilot-readiness-assessment.md §4.4–§4.5 (PS-1, provisional prices).
+M = 1e-6
+PS1 = {  # $ per token: input, output, cache write (5-min), cache read
+    "sonnet": dict(i=2*M, o=10*M, w=2.5*M, r=0.2*M),
+    "opus":   dict(i=4*M, o=20*M, w=5*M,   r=0.2*M),
+    "haiku_long":  dict(i=0.5*M, o=2.5*M, w=0.625*M, r=0.05*M),   # > 100K prompt tier; write/read multipliers assumed
+    "haiku_short": dict(i=0.1*M, o=0.5*M, w=0.125*M, r=0.01*M),   # <= 100K prompt tier
+}
+def turn_cold(p, C, O): return C*p["w"] + O*p["o"]
+def turn_warm(p, C, O): return C*p["r"] + O*p["o"]
+def worst(p, C, Omax):  return C*max(p["i"], p["w"]) + Omax*p["o"]
+def full(p, C, T, O, W): return W*turn_cold(p, C, O) + (T-W)*turn_warm(p, C, O)
+def nocache(p, C, T, O): return T*(C*p["i"] + O*p["o"])
+def retr(p, R, T, O):    return T*(R*p["i"] + O*p["o"])
+B = 150_000  # median book; all monthly rows use median B (book size varies only in §4.5)
+r = lambda x: f"{x:,.3f}"
+print("§4.4 per turn")
+for name, p, C in [("full1 sonnet", PS1["sonnet"], B), ("full3 sonnet", PS1["sonnet"], 3*B),
+                   ("full3 opus", PS1["opus"], 3*B), ("full3 haiku", PS1["haiku_long"], 3*B)]:
+    print(f"  {name}: cold {r(turn_cold(p,C,3000))} warm {r(turn_warm(p,C,3000))} worst(8K) {r(worst(p,C,8000))}")
+for name, p in [("retr sonnet", PS1["sonnet"]), ("retr haiku", PS1["haiku_short"])]:
+    print(f"  {name}: turn {r(20_000*p['i']+3000*p['o'])} worst(40K,8K) {r(40_000*p['i']+8000*p['o'])}")
+print("§4.4 monthly (B=150K)")
+scen = {"low": dict(S=2, T=3, n=1, m=0, O=1500), "expected": dict(S=6, T=8, n=2, m=1, O=3000),
+        "high": dict(S=20, T=15, n=3, m=3, O=8000)}
+for k, s in scen.items():
+    C, W = s["n"]*B, 1+s["m"]
+    fs = full(PS1["sonnet"], C, s["T"], s["O"], W); fo = full(PS1["opus"], C, s["T"], s["O"], W)
+    rs = [retr(PS1["sonnet"], R, s["T"], s["O"]) for R in (20_000, 40_000)]
+    rh = [retr(PS1["haiku_short"], R, s["T"], s["O"]) for R in (20_000, 40_000)]
+    print(f"  {k}: session full-sonnet {r(fs)} | month full-sonnet {r(s['S']*fs)} full-opus {r(s['S']*fo)} "
+          f"retr-sonnet {r(s['S']*rs[0])}-{r(s['S']*rs[1])} retr-haiku {r(s['S']*rh[0])}-{r(s['S']*rh[1])}")
+print("§4.5 sensitivity (expected session, sonnet)")
+p = PS1["sonnet"]; C, T, O = 2*B, 8, 3000
+print("  W=1,2,4,8:", [r(full(p, C, T, O, W)) for W in (1, 2, 4, 8)], "nocache:", r(nocache(p, C, T, O)))
+print("  O=1.5K,3K,8K full:", [r(full(p, C, T, x, 2)) for x in (1500, 3000, 8000)],
+      "retr:", [r(retr(p, 20_000, T, x)) for x in (1500, 3000, 8000)])
+print("  R=20K,40K retr:", [r(retr(p, R, T, O)) for R in (20_000, 40_000)])
+p2 = {k: (v*2 if k in ("i", "w", "r") else v) for k, v in p.items()}  # hypothetical: all input classes x2
+print("  long-context x2 full:", r(full(p2, C, T, O, 2)))
+print("  context C=60K,120K,300K,600K full:", [r(full(p, c, T, O, 2)) for c in (60_000, 120_000, 300_000, 600_000)])
+print("§5.4 target: 5 users x expected =", r(5*6*full(p, C, T, O, 2)), "+ eval 40")
+```
+
+Output at revision 3:
+
+```
+§4.4 per turn
+  full1 sonnet: cold 0.405 warm 0.060 worst(8K) 0.455
+  full3 sonnet: cold 1.155 warm 0.120 worst(8K) 1.205
+  full3 opus: cold 2.310 warm 0.150 worst(8K) 2.410
+  full3 haiku: cold 0.289 warm 0.030 worst(8K) 0.301
+  retr sonnet: turn 0.070 worst(40K,8K) 0.160
+  retr haiku: turn 0.004 worst(40K,8K) 0.008
+§4.4 monthly (B=150K)
+  low: session full-sonnet 0.480 | month full-sonnet 0.960 full-opus 1.800 retr-sonnet 0.330-0.570 retr-haiku 0.017-0.028
+  expected: session full-sonnet 2.100 | month full-sonnet 12.600 full-opus 23.040 retr-sonnet 3.360-5.280 retr-haiku 0.168-0.264
+  high: session full-sonnet 6.690 | month full-sonnet 133.800 full-opus 247.800 retr-sonnet 36.000-48.000 retr-haiku 1.800-2.400
+§4.5 sensitivity (expected session, sonnet)
+  W=1,2,4,8: ['1.410', '2.100', '3.480', '6.240'] nocache: 5.040
+  O=1.5K,3K,8K full: ['1.980', '2.100', '2.500'] retr: ['0.440', '0.560', '0.960']
+  R=20K,40K retr: ['0.560', '0.880']
+  long-context x2 full: 3.960
+  context C=60K,120K,300K,600K full: ['0.612', '0.984', '2.100', '3.960']
+§5.4 target: 5 users x expected = 63.000 + eval 40
+```
+
+---
+
 ## Revision history
 
 | Rev | Date | Change |
 |---|---|---|
 | 1 | 2026-11-09 | Initial DRAFT assessment |
 | 2 | 2026-11-09 | Product Architecture review corrections P-1…P-5 (summary at top). Scope unchanged: assessment only; no new PO decision, ADR, or mission |
+| 3 | 2026-11-09 | Review corrections P-6…P-8: every cost entry recomputed by script (Appendix A). High full-context Sonnet $113 → **$133.80**; also corrected High full-context Opus $205 → $247.80, Low full-context Sonnet $1.05 → $0.96, Low retrieval Sonnet $0.4 → $0.33, and the spending target $105 → $103. Context-size sensitivity restated by `C` (60 K = $0.61; the former "60 K, n = 2" row = 120 K = $0.98). Maximum exposure explicitly conditional on internal enforcement **and** provider limit behaviour; no unverified provider limit is described as a guarantee |
 
 *Documentation only. No application code, migration, infrastructure, CI/CD, Stripe, subscription, or production setting was changed. No AI provider was called, and no AI charge was incurred.*
