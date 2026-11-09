@@ -1,5 +1,5 @@
 import { IntelligenceDenied } from '../../../../src/knowledge/common/intelligence-denied.error';
-import { BudgetLedgerService, NO_PROVIDER } from '../../../../src/knowledge/metering/budget-ledger.service';
+import { BudgetLedgerService, GLOBAL_ADMISSION_LOCK, NO_PROVIDER } from '../../../../src/knowledge/metering/budget-ledger.service';
 import { RateCardService } from '../../../../src/knowledge/metering/rate-card.service';
 import { FakeDb, mockMetrics, TEST_CONFIG, USER_A } from '../support/fixtures';
 
@@ -16,12 +16,14 @@ function setup(opts: {
   overall?: number;
   consumed?: number;
   inserted?: boolean;
+  existing?: boolean;
   cache?: { isExhausted: jest.Mock; markExhausted: jest.Mock; clear: jest.Mock } | null;
   config?: Partial<typeof TEST_CONFIG>;
 } = {}) {
   const db = new FakeDb();
   db.on(/FROM ai_budget_policies/, () => (opts.policy === null ? [] : [opts.policy ?? POLICY_ROW]));
   db.on(/pg_advisory_xact_lock/, () => [{}]);
+  db.on(/^SELECT 1 FROM ai_budget_ledger WHERE "idempotencyKey" = \$1 AND "entryType" = 'reservation'$/, () => (opts.existing ? [{}] : []));
   db.on(/MIN\(r\."createdAt"\)/, () => [opts.scope ?? { units: '0', oldestAge: 0 }]);
   db.on(/^SELECT COALESCE\(SUM\(r\.units\), 0\)::bigint AS units FROM ai_budget_ledger r WHERE/, () => [{ units: String(opts.overall ?? 0) }]);
   db.on(/AS consumed/, () => [{ consumed: String(opts.consumed ?? 0) }]);
@@ -51,10 +53,31 @@ describe('BudgetLedgerService — admission (ADR-005 B-1)', () => {
     expect(metrics.budgetReservedInc).toHaveBeenCalled();
   });
 
-  it('serializes each user+capability scope with an advisory transaction lock', async () => {
+  it('B-6: takes the GLOBAL admission lock first, then the user+capability lock (fixed order)', async () => {
     const { svc, db } = setup();
     await svc.reserve(REQ);
-    expect(db.ran(/pg_advisory_xact_lock/)[0].params).toEqual([`${USER_A}:research_session`]);
+    expect(db.ran(/pg_advisory_xact_lock/).map((c) => c.params)).toEqual([[GLOBAL_ADMISSION_LOCK], [`${USER_A}:research_session`]]);
+    const order = db.calls.map((c) => c.sql);
+    const firstLock = order.findIndex((q) => /pg_advisory_xact_lock/.test(q));
+    const overall = order.findIndex((q) => /^SELECT COALESCE\(SUM\(r\.units\), 0\)::bigint AS units FROM ai_budget_ledger r WHERE/.test(q));
+    const insert = order.findIndex((q) => /'reservation', \$7/.test(q));
+    expect(firstLock).toBeLessThan(overall);
+    expect(overall).toBeLessThan(insert);
+  });
+
+  it('B-6: exact global capacity is admitted; one more unit than capacity is rejected', async () => {
+    // overall unresolved 999,990 + 10 reserved == bound 1,000,000 → admitted
+    expect(await reason(setup({ overall: 999_990 }).svc.reserve(REQ))).toBe('allowed');
+    // 999,991 + 10 > 1,000,000 → rejected before any insert
+    const over = setup({ overall: 999_991 });
+    expect(await reason(over.svc.reserve(REQ))).toBe('unresolved_reservations');
+    expect(over.db.ran(/'reservation', \$7/)).toHaveLength(0);
+  });
+
+  it('a replayed key is a duplicate before any budget check (deterministic reason)', async () => {
+    const { svc, db } = setup({ existing: true, consumed: 1_000_000 });
+    expect(await reason(svc.reserve(REQ))).toBe('duplicate_turn');
+    expect(db.ran(/AS consumed/)).toHaveLength(0);
   });
 
   it('works without an admission cache bound', async () => {

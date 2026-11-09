@@ -60,6 +60,9 @@ export interface ReconcileSummary {
   held: number;
 }
 
+/** Advisory-lock key serializing every budget admission (B-6). Namespaced to avoid collisions. */
+export const GLOBAL_ADMISSION_LOCK = 'intelligence:budget:global-admission:v1';
+
 /** No provider was called for this key: usage is known to be zero. */
 export const NO_PROVIDER = 'none';
 
@@ -138,7 +141,21 @@ export class BudgetLedgerService {
     if (!policy) throw new IntelligenceDenied('budget_unavailable');
 
     const outcome = await this.db.transaction(async (m) => {
+      // B-6: the overall unresolved bound is shared by ALL users, so admission is
+      // serialized by one global transaction-scoped advisory lock, taken FIRST.
+      // The per-scope lock follows in a fixed order (global → scope), so no
+      // deadlock is possible. Both are released at commit, after the insert is
+      // visible, so the next admitter's checks see it (READ COMMITTED).
+      await m.query(`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, [GLOBAL_ADMISSION_LOCK]);
       await m.query(`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, [`${req.userId}:${req.capability}`]);
+
+      // A replayed key is reported as a duplicate before any budget check, so the
+      // denial reason is deterministic. The unique index remains the backstop.
+      const existing = await m.query(
+        `SELECT 1 FROM ai_budget_ledger WHERE "idempotencyKey" = $1 AND "entryType" = 'reservation'`,
+        [req.idempotencyKey],
+      );
+      if (existing.length > 0) return 'duplicate_turn' as const;
 
       const [scope] = await m.query(
         `SELECT COALESCE(SUM(r.units), 0)::bigint AS units,
@@ -153,7 +170,8 @@ export class BudgetLedgerService {
       const [overall] = await m.query(
         `SELECT COALESCE(SUM(r.units), 0)::bigint AS units FROM ai_budget_ledger r WHERE ${UNRESOLVED}`,
       );
-      if (Number(overall.units) > bound) return 'unresolved_reservations' as const;
+      // The new reservation must not take the overall total past the bound (exact capacity is admitted).
+      if (Number(overall.units) + policy.reserveUnitsPerTurn > bound) return 'unresolved_reservations' as const;
 
       const consumed = await this.consumedUnits(m, req.userId, req.capability, policy.periodDays);
       if (consumed + policy.reserveUnitsPerTurn > policy.allowanceUnits) return 'budget_exhausted' as const;

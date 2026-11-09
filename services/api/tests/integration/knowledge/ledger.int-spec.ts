@@ -169,6 +169,50 @@ describe('NEM-019 budget ledger integrity on real PostgreSQL (AC-15, 15a, 15c, 1
     });
   });
 
+  describe('B-6: global unresolved bound under concurrency from distinct users', () => {
+    /** Unresolved units across ALL users right now (other suites may leave held reservations). */
+    const globalUnresolved = async () =>
+      Number((await ds.query(
+        `SELECT COALESCE(SUM(r.units), 0)::bigint AS units FROM ai_budget_ledger r
+          WHERE r."entryType" = 'reservation' AND NOT EXISTS (
+            SELECT 1 FROM ai_budget_ledger s WHERE s."idempotencyKey" = r."idempotencyKey" AND s."entryType" IN ('settlement','release'))`,
+      ))[0].units);
+
+    it('20 distinct users racing for capacity 5 → exactly 5 admitted; total lands exactly on the bound, never over', async () => {
+      await budgetPolicy(ds, 'noetia_plus', CAP, { allowanceUnits: 1000, reserveUnitsPerTurn: 10 });
+      const users = await Promise.all(Array.from({ length: 20 }, () => readyUser(ds, w)));
+      const base = await globalUnresolved();
+      const bounded = wire(ds, { config: { overallUnresolvedUnitsBound: base + 50 } });
+      const results = await Promise.all(users.map((u) => denial(bounded.ledger.reserve(reserveReq(u)))));
+      expect(results.filter((r) => r === 'allowed')).toHaveLength(5);
+      expect(results.filter((r) => r !== 'allowed').every((r) => r === 'unresolved_reservations')).toBe(true);
+      expect(await globalUnresolved()).toBe(base + 50);
+    });
+
+    it('exact capacity is admitted; one unit over is rejected (sequential boundary)', async () => {
+      await budgetPolicy(ds, 'noetia_plus', CAP, { allowanceUnits: 1000, reserveUnitsPerTurn: 10 });
+      const [u1, u2] = [await readyUser(ds, w), await readyUser(ds, w)];
+      const base = await globalUnresolved();
+      const exact = wire(ds, { config: { overallUnresolvedUnitsBound: base + 10 } });
+      expect(await denial(exact.ledger.reserve(reserveReq(u1)))).toBe('allowed');   // total == bound
+      expect(await denial(exact.ledger.reserve(reserveReq(u2)))).toBe('unresolved_reservations'); // would exceed
+      expect(await globalUnresolved()).toBe(base + 10);
+      const short = wire(ds, { config: { overallUnresolvedUnitsBound: base + 10 + 9 } });
+      expect(await denial(short.ledger.reserve(reserveReq(u2)))).toBe('unresolved_reservations'); // 9 free < 10 needed
+    });
+
+    it('per-user scope limits, idempotency, and settlement still hold under the global lock', async () => {
+      await budgetPolicy(ds, 'noetia_plus', CAP, { allowanceUnits: 20, reserveUnitsPerTurn: 10 });
+      const u = await readyUser(ds, w);
+      const key = `b6-${randomUUID()}`;
+      const results = await Promise.all([denial(w.ledger.reserve(reserveReq(u, key))), denial(w.ledger.reserve(reserveReq(u, key))), denial(w.ledger.reserve(reserveReq(u)))]);
+      expect(results.sort()).toEqual(['allowed', 'allowed', 'duplicate_turn']);
+      expect(await denial(w.ledger.reserve(reserveReq(u)))).toBe('budget_exhausted');
+      expect(await w.ledger.settle(key, 3, null)).toBe('settled');
+      expect(await w.ledger.settle(key, 3, null)).toBe('already_resolved');
+    });
+  });
+
   describe('admission fails closed (AC-15c)', () => {
     it('unresolved reservations above the scope bound deny new admissions in that scope only', async () => {
       await budgetPolicy(ds, 'noetia_plus', CAP, { allowanceUnits: 1000, maxUnresolvedUnits: 15 });
