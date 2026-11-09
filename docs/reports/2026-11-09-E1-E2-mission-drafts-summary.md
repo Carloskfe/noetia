@@ -1,6 +1,8 @@
 # E1 / E2 Mission Drafts — Dependency, Acceptance, and Risk Summary
 
 **Status:** DRAFT documentation for independent Product Architecture review · **Date:** 2026-11-09
+**Approved (2026-11-09):** both specifications approved and identifiers reserved by the PO ([PO-032](../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)). **Execution is not authorized.** NEM-021's contract v1 checkpoint precedes ledger work, and NEM-021 must be accepted before NEM-022 executes.
+
 **Revision 3 (2026-11-09):** F-4. `committed = settled (full actual) + held (unresolved reserved exposure) + compensated (separate adjustments only)`. An overrun is an audit classification inside *settled*, never an extra charge. Golden test: reserved $1.00, actual $1.40 → committed $1.40 (not $1.80). `zero_confirmed` requires authoritative no-charge evidence; an error category alone never releases a reservation.
 
 **Revision 2 (2026-11-09):** architecture review corrections:
@@ -13,8 +15,8 @@ E1 and E2 specifications and this summary are updated; sequencing is unchanged.
 **Authority:** [PO-031](../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md) (D-1): planning baseline accepted; **drafting only**. Nothing here executes, merges, deploys, reserves identifiers, or acquires a provider.
 
 **Documents:**
-- [E1 — Provider-Neutral AI Contract and Cost Accounting](../engineering-missions/DRAFT/E1-provider-neutral-ai-contract-and-cost-accounting.md) (proposed `NEM-021`)
-- [E2 — Provider-Independent AI Gateway and Simulator v2](../engineering-missions/DRAFT/E2-provider-independent-ai-gateway-and-simulator-v2.md) (proposed `NEM-022`)
+- [E1 — Provider-Neutral AI Contract and Cost Accounting](../engineering-missions/APPROVED/NEM-021-provider-neutral-ai-contract-and-cost-accounting.md) (**`NEM-021`, approved and reserved 2026-11-09**)
+- [E2 — Provider-Independent AI Gateway and Simulator v2](../engineering-missions/APPROVED/NEM-022-provider-independent-ai-gateway-and-simulator-v2.md) (**`NEM-022`, approved and reserved 2026-11-09**)
 
 ## 1. Sequencing (P0 packet §A4.1)
 

@@ -1,16 +1,22 @@
-# NOETIA ENGINEERING MISSION — E1 (proposed identifier NEM-021)
+# NOETIA ENGINEERING MISSION — NEM-021 (E1)
 ## Provider-Neutral AI Contract and Cost Accounting
 
-**Status:** DRAFT — drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md) (drafting only). **Not approved. Not authorized for execution.**
-**Proposed identifier:** `NEM-021`, verified unused on every remote branch and PR title on 2026-11-09. **Not reserved:** reservation is a PO act.
+**Status:** **APPROVED — NOT AUTHORIZED FOR EXECUTION** (Revision 3, including corrections F-1…F-4). Approved by the Product Owner on **2026-11-09** ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)). Drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md).
+**Identifier:** `NEM-021`, reserved by the PO on 2026-11-09 ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)).
 **Mission type:** IMPLEMENTATION
-**Implementation authorization:** LIMITED to §5 — *proposed*; becomes active only after PO approval **and** a separate explicit execution instruction naming this mission
+**Implementation authorization:** LIMITED to §5 — **not active**: execution requires a separate, explicit Product Owner instruction naming NEM-021
 **Schema changes:** ADDITIVE ONLY (new migrations ≥ 073), applied to disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED
 **Production deployment:** NOT AUTHORIZED (staging also NOT AUTHORIZED; merge to `main` NOT AUTHORIZED)
-**Product Owner approval:** REQUIRED
+**Product Owner approval:** **GRANTED 2026-11-09** (specification only; [PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md))
 
 > **APPROVED ≠ EXECUTE.** Execution requires a separate PO instruction naming this mission.
+
+> **Product Owner approval (2026-11-09).** *Product Owner Approval of E1/E2 Specifications* ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)): this specification (Revision 3) is **approved** and identifier `NEM-021` reserved. Moved from `DRAFT/` to `APPROVED/`. Scope and acceptance criteria are unchanged by the approval. **Binding sequencing:**
+> 1. Phase 1 (shared provider contract v1) requires its Product Architecture checkpoint review and freeze before any Phase 2 ledger implementation.
+> 2. NEM-021 must be completed and accepted before NEM-022 executes.
+>
+> Not authorized: execution, merge, deployment, provider acquisition.
 
 > **Revision 3 (2026-11-09):** review correction F-4: each monetary obligation is counted exactly once (§9.1); overrun is an audit classification, not an extra charge; `zero_confirmed` requires authoritative no-charge evidence (§9.3).
 > **Revision 2 (2026-11-09):** review corrections F-1 (global allowance invariant and overruns, §9.1), F-2 (deterministic monetary arithmetic, §9.2), F-3 (one shared outcome/error model, §9.3). Acceptance criteria and tests updated to match. Mission structure and contract-first sequencing unchanged.

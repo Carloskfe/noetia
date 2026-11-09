@@ -96,6 +96,13 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Drafting** of the E1 and E2 mission specifications authorized. **No execution, merge, deployment, identifier reservation, provider acquisition, or AI spending** is authorized.
 - The packet's provisional recommendations remain open; no earlier PO record or ADR changes.
 
+### PO-032 — Approval of NEM-021 (E1) and NEM-022 (E2) specifications — decided 2026-11-09
+→ **[PO-032](../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)**
+
+- E1 and E2 specifications (PR #49 Revision 3, including F-1…F-4) **approved**; identifiers **NEM-021** and **NEM-022** reserved.
+- **Not authorized:** execution, merge, deployment, provider acquisition, paid AI.
+- Sequencing: NEM-021's contract v1 needs a Product Architecture checkpoint before ledger work; NEM-021 must be completed and accepted before NEM-022 executes.
+
 ### Still open in the three-tier package
 TT-01 purchased-token expiry · TT-12 verified AI-eligible launch corpus and rights · NoetiaX depth and evaluation criteria (TT-07) · AI budget values and resets (TT-09, TT-11) · premium pricing and Stripe architecture (TT-16) · quotation and anti-reconstruction thresholds (TT-13) · retention and export (TT-14) · legal disclosures and provider data handling (TT-22). **PO-025** (three-tier structure) was **decided on 2026-11-08** with TT-01 kept open; draft **PO-029** (eligible corpus) remains **not decided**. See [`05-open-decisions.md`](../architecture/three-tier-intelligence/05-open-decisions.md).
 

@@ -1,14 +1,16 @@
-# NOETIA ENGINEERING MISSION — E2 (proposed identifier NEM-022)
+# NOETIA ENGINEERING MISSION — NEM-022 (E2)
 ## Provider-Independent AI Gateway and Simulator v2
 
-**Status:** DRAFT — drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md) (drafting only). **Not approved. Not authorized for execution.**
-**Proposed identifier:** `NEM-022`, verified unused on 2026-11-09. **Not reserved.**
+**Status:** **APPROVED — NOT AUTHORIZED FOR EXECUTION** (Revision 3). Approved by the Product Owner on **2026-11-09** ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)). Drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md).
+**Identifier:** `NEM-022`, reserved by the PO on 2026-11-09 ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)).
 **Mission type:** IMPLEMENTATION
-**Implementation authorization:** LIMITED to §5 — *proposed*; active only after PO approval **and** a separate explicit execution instruction
+**Implementation authorization:** LIMITED to §5 — **not active**: execution requires a separate, explicit Product Owner instruction naming NEM-022, and only **after NEM-021 is completed and accepted**
 **Schema changes:** NOT AUTHORIZED (E2 needs none; if a schema need appears it is a stop condition)
 **Infrastructure changes:** NOT AUTHORIZED
 **Production deployment:** NOT AUTHORIZED (staging also NOT AUTHORIZED; merge to `main` NOT AUTHORIZED)
-**Product Owner approval:** REQUIRED
+**Product Owner approval:** **GRANTED 2026-11-09** (specification only; [PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md))
+
+> **Product Owner approval (2026-11-09)** ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)): this specification (Revision 3) is **approved** and identifier `NEM-022` reserved. Moved from `DRAFT/` to `APPROVED/`; scope unchanged. **Binding sequencing:** NEM-022 executes only after [NEM-021](NEM-021-provider-neutral-ai-contract-and-cost-accounting.md) is completed and accepted, consuming its frozen contract v1. Not authorized: execution, merge, deployment, provider acquisition.
 
 > **No live-provider connection of any kind is permitted in this mission:** no SDK, credential, endpoint, or network call. The router refuses every non-simulated provider.
 

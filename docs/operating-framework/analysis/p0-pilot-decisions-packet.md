@@ -4,6 +4,7 @@
 **Builds on:** [Pilot-Readiness Assessment, Revision 3](../../architecture/three-tier-intelligence/10-pilot-readiness-assessment.md) (Draft PR #47) · [05 Open decisions](../../architecture/three-tier-intelligence/05-open-decisions.md) · [06 Roadmap](../../architecture/three-tier-intelligence/06-implementation-roadmap.md) · PO-025…028, PO-030 · PO-029 (draft) · ADR-005, ADR-006 · [NEM-019](../../engineering-missions/COMPLETED/NEM-019-tier-aware-intelligence-control-plane.md).
 
 > **D-1 decided (2026-11-09) → [PO-031](../decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md):** Revision 3 is the accepted development planning baseline; drafting of E1/E2 is authorized; execution, merge, deployment, and provider acquisition are not. All other recommendations here remain provisional.
+> **E1/E2 specifications approved (2026-11-09) → [PO-032](../decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md):** NEM-021 and NEM-022 reserved; execution not authorized.
 > Existing PO records and ADRs are **not edited**. Any approved option would be recorded in the usual way (new PO record or amendment, register update).
 > **Disclosure:** prepared by an AI model from one of the providers compared in Part C (Anthropic). The comparison quotes only official provider documentation and recommends deciding on data-handling grounds.
 
