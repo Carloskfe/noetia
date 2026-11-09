@@ -552,6 +552,8 @@ Rule: replace `src/` with `tests/unit/`, suffix `.spec` (TS) or prefix `test_` (
 | `mobile`    | `npm run test`                   | `npm run test -- --coverage`               | 80%                |
 | `image-gen` | `pytest`                         | `pytest --cov=. --cov-report=term-missing` | 80%                |
 
+> **Local dev VM has 7.2 GiB RAM. Exceeding it kills the terminal.** On this machine, always pass `--maxWorkers=2` to Jest (`npm test -- --maxWorkers=2`; `--runInBand` for single specs). Run only one heavy job at a time (tests / tsc / build / docker build), and at most one subagent. Measured limits and rules are in [`docs/operations/dev-vm-resources.md`](docs/operations/dev-vm-resources.md).
+
 ### Before marking any task complete, verify
 
 - [ ] A test file exists at the correct mirrored path under `tests/unit/`
@@ -621,6 +623,7 @@ All docs live in `docs/`. Engineering-relevant docs:
 | [grafana-monitoring.md](docs/grafana-monitoring.md) | Monitoring, Tailscale access, password reset |
 | [incident-response.md](docs/incident-response.md) | Playbooks — Traefik 502, container unhealthy, DB, MinIO, SSL |
 | [secrets-rotation.md](docs/secrets-rotation.md) | Which secrets need rotation and how |
+| [operations/dev-vm-resources.md](docs/operations/dev-vm-resources.md) | Local dev VM RAM/CPU budget, systemd-oomd kill behaviour, safe Jest/build limits |
 | [operations/offsite-backups.md](docs/operations/offsite-backups.md) | Encrypted offsite backups (age + restricted SSH, daily systemd timer + post-reboot startup catch-up; operator unlocks SSH key after each VM reboot) — architecture, daily procedure, troubleshooting, restore, known gaps |
 | [business/](docs/business/) | Business plans, PM docs, technical architecture (EN + ES) |
 | [store-listings/](docs/store-listings/) | App Store privacy labels, Google Play data safety |
