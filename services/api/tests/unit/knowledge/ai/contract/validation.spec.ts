@@ -1,16 +1,16 @@
 import {
-  assertCapabilityDescriptor, assertNormalizedUsage, assertUnitWeightSchema, CapabilityDescriptor, conservativeInputTokens,
+  assertCapabilityDescriptor, assertNormalizedUsage, assertUnitWeightSchema, conservativeInputTokens,
   declaresNoCharge, validateCapabilityDescriptor, validateNormalizedUsage, validateUnitWeightSchema,
 } from '../../../../../src/knowledge/ai/contract';
-import { FIXTURE_DESCRIPTORS, FIXTURE_UNIT_WEIGHTS, FIXTURE_USAGE } from '../../../../../src/knowledge/ai/contract/fixtures';
+import { FIXTURE_DESCRIPTORS, FIXTURE_USAGE, RAW_FIXTURE_DESCRIPTORS, RAW_FIXTURE_UNIT_WEIGHTS } from '../../../../../src/knowledge/ai/contract/fixtures';
 
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 
 describe('fixtures are valid contract-v1 artifacts', () => {
   it('descriptors, usage, and unit weights all validate', () => {
-    for (const d of FIXTURE_DESCRIPTORS) expect(validateCapabilityDescriptor(d)).toEqual({ ok: true, value: d });
+    for (const d of RAW_FIXTURE_DESCRIPTORS) expect(validateCapabilityDescriptor(d)).toEqual({ ok: true, value: d });
     for (const u of FIXTURE_USAGE) expect(validateNormalizedUsage(u)).toMatchObject({ ok: true });
-    expect(validateUnitWeightSchema(FIXTURE_UNIT_WEIGHTS).ok).toBe(true);
+    expect(validateUnitWeightSchema(RAW_FIXTURE_UNIT_WEIGHTS).ok).toBe(true);
   });
 
   it('usage fixtures cover every outcome row with a usage record and every token class', () => {
@@ -38,15 +38,18 @@ describe('capability descriptor validation', () => {
     ['no-charge for an unknown category', (d: any) => { d.noChargeErrorClasses = [{ error: 'oops', documentationRef: 'x' }]; }],
     ['no-charge without a reference', (d: any) => { d.noChargeErrorClasses = [{ error: 'rate_limited', documentationRef: '' }]; }],
     ['unknown field', (d: any) => { d.apiKey = 'secret'; }],
+    ['missing non-token unit declaration (F-5)', (d: any) => { delete d.nonTokenUnits; }],
+    ['invalid non-token unit key', (d: any) => { d.nonTokenUnits = ['Tool Call']; }],
+    ['duplicate non-token unit', (d: any) => { d.nonTokenUnits = ['tool_call', 'tool_call']; }],
   ])('rejects %s', (_l, mutate) => {
-    const d = clone(FIXTURE_DESCRIPTORS[1]);
+    const d = clone(RAW_FIXTURE_DESCRIPTORS[1]);
     mutate(d);
     expect(validateCapabilityDescriptor(d).ok).toBe(false);
     expect(() => assertCapabilityDescriptor(d)).toThrow(expect.objectContaining({ code: 'invalid_descriptor' }));
   });
 
   it('conservative token estimate rounds up and rejects invalid counts', () => {
-    const [a, b] = FIXTURE_DESCRIPTORS as CapabilityDescriptor[];
+    const [a, b] = FIXTURE_DESCRIPTORS;
     expect(conservativeInputTokens(a, 12_345)).toBe(12_345);
     expect(conservativeInputTokens(b, 1)).toBe(2);           // 1 × 1.1 = 1.1 → 2
     expect(conservativeInputTokens(b, 10)).toBe(11);
@@ -90,7 +93,7 @@ describe('unit-weight schema validation', () => {
     ['tiers are not allowed', (w: any) => { w.tiers = []; }],
     ['bad version', (w: any) => { w.version = 0; }],
   ])('rejects %s', (_l, mutate) => {
-    const w = clone(FIXTURE_UNIT_WEIGHTS) as any;
+    const w = clone(RAW_FIXTURE_UNIT_WEIGHTS) as any;
     mutate(w);
     expect(validateUnitWeightSchema(w).ok).toBe(false);
     expect(() => assertUnitWeightSchema(w)).toThrow(expect.objectContaining({ code: 'invalid_schema' }));

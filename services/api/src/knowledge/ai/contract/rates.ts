@@ -1,4 +1,4 @@
-import { CapabilityDescriptor } from './capability';
+import { ValidatedCapabilityDescriptor } from './capability';
 import { ContractError } from './contract-error';
 import { assertCount, assertRate } from './money';
 import { TokenCounts } from './usage';
@@ -34,8 +34,11 @@ export interface AttemptBounds {
   inputTokens: number;
   maxOutputTokens: number;
   cacheIntent: CacheIntent;
-  /** Upper bound per non-token unit the attempt may consume. */
-  nonTokenUnitBounds?: Record<string, number>;
+  /**
+   * Explicit upper bound for EVERY non-token unit the descriptor declares (F-5); 0 disables that
+   * operation for the attempt. Missing, extra, or undeclared keys fail closed.
+   */
+  nonTokenUnitBounds: Record<string, number>;
 }
 
 const RATE_KEYS = ['inputUncached', 'cacheRead', 'cacheWrite', 'output', 'reasoning', 'nonTokenUnits'] as const;
@@ -106,7 +109,7 @@ export function exactUsageSum(table: RateTable, tokens: TokenCounts, units: Reco
  * - the output bound at the higher of output and reasoning rates, plus a separate reasoning bound if declared;
  * - every declared non-token unit bound.
  */
-export function exactWorstCaseSum(table: RateTable, d: CapabilityDescriptor, b: AttemptBounds): bigint {
+export function exactWorstCaseSum(table: RateTable, d: ValidatedCapabilityDescriptor, b: AttemptBounds): bigint {
   const input = assertCount(b.inputTokens, 'inputTokens');
   const maxOut = assertCount(b.maxOutputTokens, 'maxOutputTokens');
   if (input > big(d.maxContextTokens)) throw new ContractError('context_too_large', 'input exceeds the descriptor context limit');
@@ -129,7 +132,15 @@ export function exactWorstCaseSum(table: RateTable, d: CapabilityDescriptor, b: 
   } else {
     sum += maxOut * big(table.output) + big(d.reasoning.maxReasoningTokens) * big(reasoningRate);
   }
-  for (const [key, n] of Object.entries(b.nonTokenUnitBounds ?? {})) {
+  // F-5: every declared non-token operation must carry an explicit bound; nothing billable is omitted.
+  const bounds = b.nonTokenUnitBounds;
+  if (bounds === null || typeof bounds !== 'object' || Array.isArray(bounds)) throw new ContractError('missing_unit_bound', 'nonTokenUnitBounds is required (use {} only when the descriptor declares no units)');
+  for (const key of d.nonTokenUnits) {
+    // Own property only: an inherited key (e.g. "constructor") is not an explicit bound.
+    if (!Object.prototype.hasOwnProperty.call(bounds, key)) throw new ContractError('missing_unit_bound', `no bound declared for non-token unit "${key}"`);
+  }
+  for (const [key, n] of Object.entries(bounds)) {
+    if (!d.nonTokenUnits.includes(key)) throw new ContractError('unit_declaration_mismatch', `bound for "${key}", which the descriptor does not declare`);
     const rate = (table.nonTokenUnits ?? {})[key];
     if (rate === undefined) throw new ContractError('unpriced_unit', `no rate for non-token unit "${key}"`);
     sum += assertCount(n, `nonTokenUnitBounds.${key}`) * big(rate);

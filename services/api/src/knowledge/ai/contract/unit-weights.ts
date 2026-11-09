@@ -1,4 +1,5 @@
-import { CapabilityDescriptor } from './capability';
+import { ValidatedCapabilityDescriptor } from './capability';
+import { requireValidated, sealValidated, Validated } from './validated';
 import { ContractError } from './contract-error';
 import { fromPicoSum, MAX_COUNT, roundCeiling, roundHalfUp } from './money';
 import { AttemptBounds, checkRateTable, exactUsageSum, exactWorstCaseSum, RateTable } from './rates';
@@ -21,6 +22,8 @@ export interface UnitWeightSchema {
   weights: RateTable;
 }
 
+export type ValidatedUnitWeightSchema = Validated<UnitWeightSchema>;
+
 const TOP_KEYS = ['contract', 'schemaVersion', 'id', 'version', 'effectiveFrom', 'isTestFixture', 'weights'] as const;
 
 export function validateUnitWeightSchema(v: unknown): ValidationResult<UnitWeightSchema> {
@@ -37,19 +40,23 @@ export function validateUnitWeightSchema(v: unknown): ValidationResult<UnitWeigh
   return c.result(v);
 }
 
-export function assertUnitWeightSchema(v: unknown): UnitWeightSchema {
+/** The validation boundary for unit weights (F-6): validate once, return a sealed, frozen copy. */
+export function assertUnitWeightSchema(v: unknown): ValidatedUnitWeightSchema {
   const r = validateUnitWeightSchema(v);
   if (!r.ok) throw new ContractError('invalid_schema', r.errors.join('; '));
-  return r.value;
+  return sealValidated(r.value, 'unit-weight schema');
 }
 
 /** Allowance units consumed by settled usage (half up, once). */
-export function unitsForUsage(usage: NormalizedUsage, schema: UnitWeightSchema): bigint {
+export function unitsForUsage(usage: NormalizedUsage, schema: ValidatedUnitWeightSchema): bigint {
+  requireValidated(schema, 'unit-weight schema');
   const u = assertNormalizedUsage(usage);
-  return roundHalfUp(fromPicoSum(exactUsageSum(schema.weights, u.tokens, u.nonTokenUnits)));
+  return roundHalfUp(fromPicoSum(exactUsageSum(schema.weights as RateTable, u.tokens, u.nonTokenUnits)));
 }
 
 /** Allowance units to reserve for an attempt (ceiling, once). */
-export function worstCaseUnits(descriptor: CapabilityDescriptor, schema: UnitWeightSchema, bounds: AttemptBounds): bigint {
-  return roundCeiling(fromPicoSum(exactWorstCaseSum(schema.weights, descriptor, bounds)));
+export function worstCaseUnits(descriptor: ValidatedCapabilityDescriptor, schema: ValidatedUnitWeightSchema, bounds: AttemptBounds): bigint {
+  requireValidated(descriptor, 'capability descriptor');
+  requireValidated(schema, 'unit-weight schema');
+  return roundCeiling(fromPicoSum(exactWorstCaseSum(schema.weights as RateTable, descriptor, bounds)));
 }

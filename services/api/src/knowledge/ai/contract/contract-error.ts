@@ -11,7 +11,10 @@ export type ContractErrorCode =
   | 'unknown_modifier'
   | 'unpriced_unit'
   | 'overflow'
-  | 'invalid_outcome_combination';
+  | 'invalid_outcome_combination'
+  | 'missing_unit_bound'
+  | 'unit_declaration_mismatch'
+  | 'unvalidated_config';
 
 export class ContractError extends Error {
   constructor(readonly code: ContractErrorCode, detail: string) {

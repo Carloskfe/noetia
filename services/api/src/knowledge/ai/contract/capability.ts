@@ -1,7 +1,8 @@
 import { ContractError } from './contract-error';
 import { MAX_COUNT, MAX_MODIFIER_BPS } from './money';
 import { ERROR_CATEGORIES, ErrorCategory, NoChargeDeclaration } from './outcomes';
-import { Checker, LIFETIME_PATTERN, ValidationResult } from './validation';
+import { Checker, KEY_PATTERN, LIFETIME_PATTERN, ValidationResult } from './validation';
+import { requireValidated, sealValidated, Validated } from './validated';
 import { SCHEMA_VERSION } from './version';
 
 /** What a provider model can do, as declared by its adapter (or the simulator). */
@@ -37,10 +38,18 @@ export interface CapabilityDescriptor {
   reasoning: { mode: 'within_output' } | { mode: 'separate_bound'; maxReasoningTokens: number };
   /** Error classes the provider documents as never billed (F-4 evidence `documented_no_charge`). */
   noChargeErrorClasses: NoChargeDeclaration[];
+  /**
+   * Every potentially billable non-token operation this model can consume (F-5), e.g. `["tool_call"]`.
+   * An empty array is the validated declaration that no non-token operation is available.
+   * Each declared unit needs an explicit bound in every attempt's worst case (0 disables it).
+   */
+  nonTokenUnits: string[];
 }
 
+export type ValidatedCapabilityDescriptor = Validated<CapabilityDescriptor>;
+
 const TOP_KEYS = ['contract', 'schemaVersion', 'providerKey', 'modelKey', 'simulated', 'capabilities', 'modelPaths',
-  'maxContextTokens', 'maxOutputTokens', 'features', 'tokenCountingMethod', 'reasoning', 'noChargeErrorClasses'] as const;
+  'maxContextTokens', 'maxOutputTokens', 'features', 'tokenCountingMethod', 'reasoning', 'noChargeErrorClasses', 'nonTokenUnits'] as const;
 
 export function validateCapabilityDescriptor(v: unknown): ValidationResult<CapabilityDescriptor> {
   const c = new Checker();
@@ -103,20 +112,29 @@ export function validateCapabilityDescriptor(v: unknown): ValidationResult<Capab
     c.oneOf(d.error, ERROR_CATEGORIES, `${p}.error`);
     c.string(d.documentationRef, `${p}.documentationRef`);
   });
+  if (!Array.isArray(v.nonTokenUnits)) c.fail('descriptor.nonTokenUnits', 'must be an array (empty = no non-token operations)');
+  else {
+    v.nonTokenUnits.forEach((k, i) => {
+      if (typeof k !== 'string' || !KEY_PATTERN.test(k)) c.fail(`descriptor.nonTokenUnits[${i}]`, 'invalid unit key');
+    });
+    if (new Set(v.nonTokenUnits).size !== v.nonTokenUnits.length) c.fail('descriptor.nonTokenUnits', 'duplicate unit');
+  }
   return c.result(v);
 }
 
-export function assertCapabilityDescriptor(v: unknown): CapabilityDescriptor {
+/** The validation boundary for descriptors (F-6): validate once, return a sealed, frozen copy. */
+export function assertCapabilityDescriptor(v: unknown): ValidatedCapabilityDescriptor {
   const r = validateCapabilityDescriptor(v);
   if (!r.ok) throw new ContractError('invalid_descriptor', r.errors.join('; '));
-  return r.value;
+  return sealValidated(r.value, 'capability descriptor');
 }
 
 /**
  * Input tokens to reserve for: exact counts as given; estimated counts multiplied by the
  * descriptor's conservative factor and rounded up.
  */
-export function conservativeInputTokens(d: CapabilityDescriptor, counted: number): number {
+export function conservativeInputTokens(d: ValidatedCapabilityDescriptor, counted: number): number {
+  requireValidated(d, 'capability descriptor');
   if (!Number.isSafeInteger(counted) || counted < 0) throw new ContractError('invalid_request', 'counted tokens must be a non-negative safe integer');
   if (d.tokenCountingMethod.mode === 'exact') return counted;
   const factor = BigInt(d.tokenCountingMethod.conservativeFactorBps);
@@ -125,6 +143,7 @@ export function conservativeInputTokens(d: CapabilityDescriptor, counted: number
   return Number(scaled);
 }
 
-export function declaresNoCharge(d: CapabilityDescriptor, error: ErrorCategory): boolean {
+export function declaresNoCharge(d: ValidatedCapabilityDescriptor, error: ErrorCategory): boolean {
+  requireValidated(d, 'capability descriptor');
   return d.noChargeErrorClasses.some((x) => x.error === error);
 }

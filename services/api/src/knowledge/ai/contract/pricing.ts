@@ -1,4 +1,5 @@
-import { CapabilityDescriptor } from './capability';
+import { ValidatedCapabilityDescriptor } from './capability';
+import { requireValidated, sealValidated, Validated } from './validated';
 import { ContractError } from './contract-error';
 import {
   applyFactorBps, ExactAmount, fromPicoSum, MAX_COUNT, MAX_MODIFIER_BPS, roundCeiling, roundHalfUp,
@@ -35,6 +36,8 @@ export interface PricingSchema {
   /** Integer factor basis points by key (10,000 = ×1.0), e.g. `{ "batch": 5000, "region_us": 11000 }`. */
   modifiers: Record<string, number>;
 }
+
+export type ValidatedPricingSchema = Validated<PricingSchema>;
 
 export interface PriceResult {
   /** Rounded amount: ceiling for worst case, half up for settlement. */
@@ -91,20 +94,26 @@ export function validatePricingSchema(v: unknown): ValidationResult<PricingSchem
   return c.result(v);
 }
 
-export function assertPricingSchema(v: unknown): PricingSchema {
+/** The validation boundary for pricing (F-6): validate once, return a sealed, frozen copy. */
+export function assertPricingSchema(v: unknown): ValidatedPricingSchema {
   const r = validatePricingSchema(v);
   if (!r.ok) throw new ContractError('invalid_schema', r.errors.join('; '));
-  return r.value;
+  return sealValidated(r.value, 'pricing schema');
+}
+
+/** Units the schema prices in any table (all tables carry the same keys after validation). */
+function pricedUnits(schema: ValidatedPricingSchema): string[] {
+  return Object.keys(schema.base.nonTokenUnits ?? {}).sort();
 }
 
 /** Index of the tier for a total input count (strictly greater than the threshold); −1 = base. */
-export function selectTier(schema: PricingSchema, totalInput: bigint): number {
+export function selectTier(schema: ValidatedPricingSchema, totalInput: bigint): number {
   let index = -1;
   schema.tiers.forEach((t, i) => { if (totalInput > BigInt(t.aboveInputTokens)) index = i; });
   return index;
 }
 
-const tableFor = (schema: PricingSchema, i: number) => (i < 0 ? schema.base : schema.tiers[i].rates);
+const tableFor = (schema: ValidatedPricingSchema, i: number) => (i < 0 ? schema.base : schema.tiers[i].rates) as RateTable;
 
 /** Canonical modifier order: batch, then region*, then the rest by key (§9.2). Exact math makes it order-independent. */
 export function canonicalModifierOrder(keys: readonly string[]): string[] {
@@ -112,7 +121,7 @@ export function canonicalModifierOrder(keys: readonly string[]): string[] {
   return [...keys].sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : a > b ? 1 : 0));
 }
 
-function applyModifiers(schema: PricingSchema, amount: ExactAmount, keys: readonly string[]): ExactAmount {
+function applyModifiers(schema: ValidatedPricingSchema, amount: ExactAmount, keys: readonly string[]): ExactAmount {
   if (new Set(keys).size !== keys.length) throw new ContractError('unknown_modifier', 'duplicate modifier');
   let out = amount;
   for (const k of canonicalModifierOrder(keys)) {
@@ -123,14 +132,15 @@ function applyModifiers(schema: PricingSchema, amount: ExactAmount, keys: readon
   return out;
 }
 
-function assertSameModel(schema: PricingSchema, providerKey: string, modelKey: string) {
+function assertSameModel(schema: ValidatedPricingSchema, providerKey: string, modelKey: string) {
   if (schema.providerKey !== providerKey || schema.modelKey !== modelKey) {
     throw new ContractError('schema_mismatch', `pricing schema ${schema.id} does not cover ${providerKey}/${modelKey}`);
   }
 }
 
 /** Settlement price of normalized usage: exact, rounded half up once (§9.2). */
-export function priceUsage(usage: NormalizedUsage, schema: PricingSchema, modifiers: readonly string[] = []): PriceResult {
+export function priceUsage(usage: NormalizedUsage, schema: ValidatedPricingSchema, modifiers: readonly string[] = []): PriceResult {
+  requireValidated(schema, 'pricing schema');
   const u = assertNormalizedUsage(usage);
   assertSameModel(schema, u.providerKey, u.modelKey);
   const tierIndex = selectTier(schema, totalInputTokens(u.tokens));
@@ -140,9 +150,15 @@ export function priceUsage(usage: NormalizedUsage, schema: PricingSchema, modifi
 
 /** Reservation price: the worst case within the declared bounds, rounded up once (§9.2). */
 export function worstCaseCost(
-  descriptor: CapabilityDescriptor, schema: PricingSchema, bounds: AttemptBounds, modifiers: readonly string[] = [],
+  descriptor: ValidatedCapabilityDescriptor, schema: ValidatedPricingSchema, bounds: AttemptBounds, modifiers: readonly string[] = [],
 ): PriceResult {
+  requireValidated(descriptor, 'capability descriptor');
+  requireValidated(schema, 'pricing schema');
   assertSameModel(schema, descriptor.providerKey, descriptor.modelKey);
+  // F-5: the schema must price exactly the non-token units the descriptor declares.
+  if (pricedUnits(schema).join() !== [...descriptor.nonTokenUnits].sort().join()) {
+    throw new ContractError('unit_declaration_mismatch', `${schema.id} prices [${pricedUnits(schema)}] but the descriptor declares [${descriptor.nonTokenUnits}]`);
+  }
   const tierIndex = selectTier(schema, BigInt(bounds.inputTokens));
   const exact = applyModifiers(schema, fromPicoSum(exactWorstCaseSum(tableFor(schema, tierIndex), descriptor, bounds)), modifiers);
   return { microUsd: roundCeiling(exact), exact, tierIndex };

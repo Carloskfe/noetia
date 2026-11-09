@@ -15,7 +15,8 @@
     },
     "tokenCountingMethod": { "mode": "exact" },
     "reasoning": { "mode": "within_output" },
-    "noChargeErrorClasses": []
+    "noChargeErrorClasses": [],
+    "nonTokenUnits": ["tool_call"]
   },
   {
     "contract": "noetia.ai.capability",
@@ -35,6 +36,7 @@
     "reasoning": { "mode": "separate_bound", "maxReasoningTokens": 16000 },
     "noChargeErrorClasses": [
       { "error": "rate_limited", "documentationRef": "TEST FIXTURE: the modelled provider documents that rate-limited requests are not billed" }
-    ]
+    ],
+    "nonTokenUnits": []
   }
 ]

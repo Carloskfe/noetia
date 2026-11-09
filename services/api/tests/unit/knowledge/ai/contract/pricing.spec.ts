@@ -1,16 +1,16 @@
 import {
-  assertPricingSchema, canonicalModifierOrder, ContractError, MAX_RATE, NormalizedUsage, PricingSchema, priceUsage,
+  assertPricingSchema, canonicalModifierOrder, ContractError, MAX_RATE, NormalizedUsage, priceUsage,
   selectTier, validatePricingSchema, worstCaseCost,
 } from '../../../../../src/knowledge/ai/contract';
 import {
-  FIXTURE_DESCRIPTORS, FIXTURE_PRICING_A, FIXTURE_PRICING_B, FIXTURE_USAGE,
+  FIXTURE_DESCRIPTORS, FIXTURE_PRICING_A, FIXTURE_PRICING_B, FIXTURE_USAGE, RAW_FIXTURE_PRICING_A, RAW_FIXTURE_PRICING_B,
 } from '../../../../../src/knowledge/ai/contract/fixtures';
 
 const usage = (key: string) => FIXTURE_USAGE.find((u) => u.attemptKey === key)!;
 const [DESC_A] = FIXTURE_DESCRIPTORS;
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 
-function completed(over: Partial<NormalizedUsage['tokens']>, schema: PricingSchema, units: Record<string, number> = {}): NormalizedUsage {
+function completed(over: Partial<NormalizedUsage['tokens']>, schema: { providerKey: string; modelKey: string }, units: Record<string, number> = {}): NormalizedUsage {
   return {
     contract: 'noetia.ai.usage', schemaVersion: 1, providerKey: schema.providerKey, modelKey: schema.modelKey,
     attemptKey: 'golden', startedAt: '2026-01-01T00:00:00Z', endedAt: '2026-01-01T00:00:01Z',
@@ -54,9 +54,9 @@ describe('priceUsage — golden vectors (hand-computed)', () => {
   });
 
   it('fractional prices: 1 token at $0.01/M reserves 1 µUSD (ceiling) and settles 0 (half up)', () => {
-    const tiny: PricingSchema = { ...clone(FIXTURE_PRICING_A), base: { inputUncached: 10_000, cacheRead: 0, cacheWrite: { '5m': 10_000, '1h': 10_000 }, output: 0, nonTokenUnits: { tool_call: 0 } } };
+    const tiny = assertPricingSchema({ ...clone(RAW_FIXTURE_PRICING_A), base: { inputUncached: 10_000, cacheRead: 0, cacheWrite: { '5m': 10_000, '1h': 10_000 }, output: 0, nonTokenUnits: { tool_call: 0 } } });
     expect(priceUsage(completed({ inputUncached: 1 }, tiny), tiny).microUsd).toBe(0n);
-    expect(worstCaseCost(DESC_A, tiny, { inputTokens: 1, maxOutputTokens: 0, cacheIntent: { mode: 'none' } }).microUsd).toBe(1n);
+    expect(worstCaseCost(DESC_A, tiny, { inputTokens: 1, maxOutputTokens: 0, cacheIntent: { mode: 'none' }, nonTokenUnitBounds: { tool_call: 0 } }).microUsd).toBe(1n);
     // half-up boundary: 50 tokens = 0.5 µUSD → 1; 49 tokens = 0.49 µUSD → 0
     expect(priceUsage(completed({ inputUncached: 50 }, tiny), tiny).microUsd).toBe(1n);
     expect(priceUsage(completed({ inputUncached: 49 }, tiny), tiny).microUsd).toBe(0n);
@@ -74,13 +74,13 @@ describe('priceUsage — golden vectors (hand-computed)', () => {
 
 describe('priceUsage / worstCaseCost — fail closed on invalid input', () => {
   it('overflow beyond the bigint column is denied', () => {
-    const huge: PricingSchema = { ...clone(FIXTURE_PRICING_A), base: { ...clone(FIXTURE_PRICING_A.base), output: MAX_RATE } };
+    const huge = assertPricingSchema({ ...clone(RAW_FIXTURE_PRICING_A), base: { ...clone(RAW_FIXTURE_PRICING_A.base), output: MAX_RATE } });
     expect(() => priceUsage(completed({ output: Number.MAX_SAFE_INTEGER }, huge), huge)).toThrow(expect.objectContaining({ code: 'overflow' }));
   });
 
   it('rejects a schema for another provider or model', () => {
     expect(() => priceUsage(usage('a-completed'), FIXTURE_PRICING_B)).toThrow(expect.objectContaining({ code: 'schema_mismatch' }));
-    expect(() => worstCaseCost(DESC_A, FIXTURE_PRICING_B, { inputTokens: 1, maxOutputTokens: 1, cacheIntent: { mode: 'none' } }))
+    expect(() => worstCaseCost(DESC_A, FIXTURE_PRICING_B, { inputTokens: 1, maxOutputTokens: 1, cacheIntent: { mode: 'none' }, nonTokenUnitBounds: { tool_call: 0 } }))
       .toThrow(expect.objectContaining({ code: 'schema_mismatch' }));
   });
 
@@ -99,8 +99,8 @@ describe('priceUsage / worstCaseCost — fail closed on invalid input', () => {
 
 describe('pricing schema validation', () => {
   it('accepts both fixtures', () => {
-    expect(validatePricingSchema(FIXTURE_PRICING_A).ok).toBe(true);
-    expect(validatePricingSchema(FIXTURE_PRICING_B).ok).toBe(true);
+    expect(validatePricingSchema(RAW_FIXTURE_PRICING_A).ok).toBe(true);
+    expect(validatePricingSchema(RAW_FIXTURE_PRICING_B).ok).toBe(true);
   });
 
   it.each([
@@ -117,7 +117,7 @@ describe('pricing schema validation', () => {
     ['missing source note', (s: any) => { s.sourceNote = ''; }],
     ['bad date', (s: any) => { s.effectiveFrom = 'yesterday'; }],
   ])('rejects %s', (_label, mutate) => {
-    const s = clone(FIXTURE_PRICING_B);
+    const s = clone(RAW_FIXTURE_PRICING_B);
     mutate(s);
     expect(validatePricingSchema(s).ok).toBe(false);
     expect(() => assertPricingSchema(s)).toThrow(expect.objectContaining({ code: 'invalid_schema' }));

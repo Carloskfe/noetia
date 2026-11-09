@@ -12,3 +12,5 @@ export * from './rates';
 export * from './pricing';
 export * from './unit-weights';
 export type { ValidationResult } from './validation';
+export { isValidated, requireValidated } from './validated';
+export type { Validated } from './validated';
