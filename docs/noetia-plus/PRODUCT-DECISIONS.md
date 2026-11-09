@@ -89,6 +89,13 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - NEM-003 preserved as historical architecture. The paused NEM-006 plan is **formally superseded**, its record preserved ([governance record](../architecture/three-tier-intelligence/08-architecture-governance-record.md)).
 - ADR-005 and ADR-006 prepared, and **accepted on 2026-11-08** (revision 3) after independent Product Architecture review. NEM-019 reconciled, and **approved by the PO on 2026-11-08** (revision 4); **not authorized for execution**.
 
+### PO-031 — Development planning baseline and E1/E2 drafting (D-1) — decided 2026-11-09
+→ **[PO-031](../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md)**
+
+- [P0 packet](../operating-framework/analysis/p0-pilot-decisions-packet.md) Revision 3 accepted as the **development planning baseline**: complete the product on simulated providers, with provider acquisition at a separately authorized launch-readiness gate.
+- **Drafting** of the E1 and E2 mission specifications authorized. **No execution, merge, deployment, identifier reservation, provider acquisition, or AI spending** is authorized.
+- The packet's provisional recommendations remain open; no earlier PO record or ADR changes.
+
 ### Still open in the three-tier package
 TT-01 purchased-token expiry · TT-12 verified AI-eligible launch corpus and rights · NoetiaX depth and evaluation criteria (TT-07) · AI budget values and resets (TT-09, TT-11) · premium pricing and Stripe architecture (TT-16) · quotation and anti-reconstruction thresholds (TT-13) · retention and export (TT-14) · legal disclosures and provider data handling (TT-22). **PO-025** (three-tier structure) was **decided on 2026-11-08** with TT-01 kept open; draft **PO-029** (eligible corpus) remains **not decided**. See [`05-open-decisions.md`](../architecture/three-tier-intelligence/05-open-decisions.md).
 
