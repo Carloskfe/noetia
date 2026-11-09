@@ -1,44 +1,208 @@
-# DRAFT — P0 Product Owner Decisions Packet (Noetia+ / NoetiaX pilot)
+# DRAFT — P0 Product Owner Decisions Packet (Noetia+ / NoetiaX)
 
-**Status:** `DRAFT — AWAITING PRODUCT OWNER REVIEW`. Decision preparation only. **No decision is made here.** No provider, model, budget, price, participant, corpus title, mission, or deployment is approved or selected.
-**Date:** 2026-11-09 · **Builds on:** [Pilot-Readiness Assessment, Revision 3](../../architecture/three-tier-intelligence/10-pilot-readiness-assessment.md) (Draft PR #47) · [05 Open decisions](../../architecture/three-tier-intelligence/05-open-decisions.md) · PO-025…028, PO-030 · PO-029 (draft) · ADR-005, ADR-006 · [NEM-019](../../engineering-missions/COMPLETED/NEM-019-tier-aware-intelligence-control-plane.md).
+**Status:** `DRAFT — AWAITING PRODUCT OWNER REVIEW` · **Revision 2 (2026-11-09):** realigned to the Product Owner strategy update. Decision preparation only. **No decision is made here.** No provider, model, budget, price, participant, corpus title, mission, environment change, or deployment is approved or selected.
+**Builds on:** [Pilot-Readiness Assessment, Revision 3](../../architecture/three-tier-intelligence/10-pilot-readiness-assessment.md) (Draft PR #47) · [05 Open decisions](../../architecture/three-tier-intelligence/05-open-decisions.md) · [06 Roadmap](../../architecture/three-tier-intelligence/06-implementation-roadmap.md) · PO-025…028, PO-030 · PO-029 (draft) · ADR-005, ADR-006 · [NEM-019](../../engineering-missions/COMPLETED/NEM-019-tier-aware-intelligence-control-plane.md).
 
-> Existing PO records and ADRs are **not edited**. Each recommended option, once approved, would be recorded in the usual way (new PO record or amendment, PO register update), not by changing this packet.
-
-> **Disclosure:** this packet was prepared by an AI model from one of the providers it compares (Anthropic). The comparison uses only figures quoted from each provider's official documentation (§3), and it recommends deciding the provider on data-handling grounds rather than on price.
-
----
-
-## 1. Executive summary
-
-- **Immediate PO attention: 1 decision** (G0-1): confirm the pilot direction and allow mission M1 to be drafted for approval. **No open TT item blocks M1.** M1 (the ledger cost model, dark, disposable databases only) implements a design already recorded in [04 §4](../../architecture/three-tier-intelligence/04-entitlements-and-budgets.md#4-resource-budgets): per-user allowances in units plus a global micro-USD guard.
-- **Before any real AI provider is connected (Gate 1): 4 decisions.** Provider and data handling (PO-005); pilot spending figures and limit behaviour (TT-09 pilot scope, TT-11); pilot corpus and verifier (TT-12, TT-26). Plus staging authorizations, which are not TT items.
-- **Before internal pilot operation (Gate 2): 5 decisions.** Participants and access (TT-23, TT-15 subset); internal consent (TT-22 internal scope); research depth and Expand (TT-08, TT-18); exit thresholds.
-- **Everything else is deferrable** to the external pilot or commercial launch (§2).
-- **Economics, using prices verified on 2026-11-09:**
-  - a 4-person internal cohort at expected usage costs about **$46/month** (Anthropic Sonnet 5.5) or about **$89/month** (OpenAI gpt-6.1-sol) on the full-book benchmark;
-  - a 50-question evaluation run costs **$1.56–$31.50** per model;
-  - the providers differ by tens of dollars at pilot scale, so **the provider should be chosen on data handling (PO-005), not price**.
-- **Corpus:** 10 candidate titles (5 ES, 5 EN) plus 2 alternates, all already in the catalogue, all original-language, all by authors who died before 1926. **None is verified**: each needs edition identification, a text hash, and legal review.
+> Existing PO records and ADRs are **not edited**. Any approved option would be recorded in the usual way (new PO record or amendment, register update).
+> **Disclosure:** prepared by an AI model from one of the providers compared in Part C (Anthropic). The comparison quotes only official provider documentation and recommends deciding on data-handling grounds.
 
 ---
 
-## 2. Decision gates
+## Revision 2 summary
 
-| Gate | Must be decided before | Decisions | Count |
-|---|---|---|---|
-| **G0** | The first pilot engineering mission (M1, ledger cost model) | G0-1 pilot direction | **1** |
-| **G1** | Connecting a real AI provider (M4, staging, evaluation run) | PO-005; TT-09 (pilot scope) + TT-11; TT-12 + TT-26 | 4 (+ staging authorizations) |
-| **G2** | Internal pilot operation (M6) | TT-23 + TT-15 (pilot subset); TT-22 (internal consent); TT-08; TT-18; exit thresholds | 5 |
-| **G3** | External pilot or commercial launch | TT-13, TT-14, TT-10 (public UI), TT-16, TT-01, TT-07, TT-17, TT-20, TT-25, TT-27, B-2 retention, GOV-001 adoption, production deployment (F-6) | deferrable |
+The Product Owner's strategy update (2026-11-09) replaces "early internal real-AI pilot" with: **complete the product (backend, frontend, infrastructure, provider-independent integration readiness) on simulated providers, and acquire no paid AI service before a separately authorized launch-readiness gate.**
 
-M2 (rights adapters) and M3 (entitlement adapter) can be built dark before G1 and G2. They need the G1 and G2 decisions only for the *values* they enforce (corpus manifest entries, qualifying states), not for their code.
+**What changed:**
+- **Removed from the critical path:** the internal real-AI pilot (Assessment Option B), early provider selection, credentials, spending authorization, and live evaluation runs.
+- **Added:**
+  - decision classes aligned to the new strategy (§A2);
+  - a mandatory **reuse assessment of the existing test environments** (§A3);
+  - a dependency-aware sequence that completes backend and frontend before provider acquisition (§A4);
+  - a **provider-connection and launch-validation gate** (§A5);
+  - the list of **launch blockers that simulated tests cannot clear** (§A6).
+- **Kept as reference for the gate:** the verified provider comparison and economics (Part C1) and the candidate corpus (Part C2). The corpus and rights work needs no AI and now runs *during* development.
+- **Superseded:** Revision 1's G0–G3 pilot gates, cohort, consent, and pilot spending figures. Assessment §1, §2, §9, and §11 are marked superseded by a note in that document. No PO decision changed.
 
 ---
 
-## 3. Provider comparison (PO-005; TT-09; TT-11)
+## Part A — Strategy realignment
 
-### 3.1 Verified facts (official documentation, read 2026-11-09)
+### A1. Principles carried into every mission
+
+1. **Provider independence:** all model access goes through the Gateway and explicit capability contracts. Provider-specific code exists only as an adapter behind the contract, written at the gate.
+2. **Simulated and deterministic first:** a simulated provider, deterministic fixtures, and a contract test suite that any future adapter must pass.
+3. **Preserved guarantees:** default-deny rights (F-12), entitlement (PO-026), budgets (B-1, B-5, B-6), account deletion (B-2), isolation, and dark-by-default registration. No mission weakens them.
+4. **Provider-neutral cost accounting:** rate cards and usage records model token classes (input, output, cache write per TTL, cache read, reasoning or thinking), long-context tiers, batch and regional modifiers, and non-token pricing (per request, per character, per image), so that any provider can be configured without code changes.
+5. **Existing infrastructure first:** PostgreSQL (with pgvector on staging), Redis, MinIO, Meilisearch, BullMQ worker, Grafana/Prometheus, Playwright and Jest already exist. No new service or paid dependency is proposed.
+6. **Simulated tests are not validation.** Passing them proves wiring, contracts, limits, and safety controls, not answer quality, real cost, or real latency (§A6).
+7. **No mission implies a merge to `main` or a production deployment** (Assessment §7). Every mission carries "Production deployment: NOT AUTHORIZED; merge to `main`: NOT AUTHORIZED" unless an authorization says otherwise.
+
+### A2. Decision classes
+
+| Class | Meaning | Decisions |
+|---|---|---|
+| **1. Before development** | Needed before the first mission can be drafted | **D-1** (single decision; below) |
+| **2. During development (just in time)** | Each needed before the mission that implements it (§A4 column "Needs"); can be decided in sequence | TT-03 · TT-07 · TT-08 · TT-10 · TT-11 (behaviour) · TT-13 (policy shape; values configurable) · TT-14 · TT-15 · TT-16 (billing *structure*) · TT-17 · TT-18 · TT-19 · TT-20 · TT-25 · TT-27 · TT-12 + TT-26 (corpus, verifier, legal review) · TT-22 (Terms/Privacy drafting) · TT-01 (before billing work) · B-2 retention · GOV-001 adoption · stack merge and dark-deployment plan (F-6) · staging isolation (NEM-017) |
+| **3. Deferred to the provider-connection gate** | Need a real provider or real measurements | PO-005 provider and DPA · credentials · spending authorization and budget **values** (allowances, provider limits; TT-09 COGS targets calibrated from measurement) · model routing · semantic embeddings if TT-25 chooses them · TT-16 price **values** (after measured cost) · TT-23 (only if a pre-launch beta is wanted) |
+| **4. Launch blockers needing real AI** | Cannot be validated with simulated providers | §A6 |
+
+**D-1 (before development):** *Confirm the strategy translation in this packet (complete product on simulated providers; provider gate later; the engineering sequence in §A4), and authorize drafting the first two mission specifications (E1, E2) for separate approval.*
+- Options: (a) confirm; (b) revise the sequence; (c) pause.
+- **Recommended: (a).**
+- No spend, no legal surface; E1 and E2 are dark and test-only.
+- Reversible.
+- What follows approval: drafting only, not execution.
+
+#### Class 2 detail — what each decision unlocks
+
+| ID | Question (short) | Recommended option *(PO decides)* | Needed before | Reversible |
+|---|---|---|---|---|
+| TT-03 | What "Noetia" includes; prerequisite wording without "Basic" | Plain wording that names the book subscription; no "Basic" | E9 (UI copy) | Yes |
+| TT-07 | NoetiaX depth (which DX capabilities; benchmark criteria) | Approve a minimal DX set for v1 plus benchmark criteria (judged at the gate) | E8 | Yes |
+| TT-08 | Noetia+ depth on agreements and contradictions | Passage-level comparison, labelled | E6 | Yes |
+| TT-10 | What users see about capacity | Plain "monthly capacity" indicator, no tokens or model names | E9 | Yes |
+| TT-11 | Behaviour at the limit | Hard stop with a plain message; upgrade prompt if eligible; no add-on credits (values at the gate) | E6, E9 | Yes |
+| TT-13 | Quotation and reconstruction thresholds (F-2) | Approve the *policy shape* (per-book, per-turn, cross-session accounting); values configurable with conservative defaults, finalized with legal review | E6 | Yes |
+| TT-14 | Retention after cancel or downgrade; Brief after revocation | Read-only history; Brief tombstone with redaction (F-3) | E6, E7 | Partly |
+| TT-15 | Qualifying subscription states and linked members | Decide the commercial rule (owner, states, linked members) | E4 | Yes |
+| TT-16 (structure) | One Stripe subscription or two; trials; tier swap and proration | Decide the structure only; prices at the gate | E10 | Partly |
+| TT-17 | Brief export formats and sharing | In-app view + one export format (e.g. PDF or Markdown); no public sharing in v1 | E7 | Yes |
+| TT-18 | Expand at launch | Model knowledge only, labelled `broader`; no web | E6 | Yes |
+| TT-19 | Other capabilities by tier; mode and product names | Assign per the capability matrix ([01](../../architecture/three-tier-intelligence/01-capability-matrix.md)) | E6, E9 | Yes |
+| TT-20 | Mobile parity and how premium is sold in apps | Web first at launch; mobile read-only or later (store billing is a separate risk) | E9 scope | Yes |
+| TT-25 | Semantic highlight search; tier | **Lexical at launch** (no embeddings, so no provider needed); semantic deferred to the gate | E5, E6 | Yes |
+| TT-27 | Book AI permissions for saved-quotation text in Ask My Highlights | Treat saved text under the book's AI permissions; no highlight generation for ineligible books (F-1) | E6 (Ask My Highlights) | Yes |
+| TT-12 / TT-26 | Launch corpus; evidence standard; Named Verifier; jurisdictions | Candidates in C2 enter verification; designate the Named Verifier; engage legal review on C2.4 | Before the gate (no AI needed) | Yes |
+| TT-22 | Terms and Privacy for AI processing and provider disclosure | Draft during development; the provider name is filled in at the gate | Before launch | Yes |
+| TT-01 | Purchased-token expiry conflict | Resolve as a commercial invariant | E10 | Partly |
+| B-2 | Anonymized cost records after deletion | Keep `CASCADE` (current) unless finance requires anonymized retention | E1 | Yes |
+| F-6 / GOV-001 | Merge the stack and deploy the dark schema to production during development, or only at launch | Adopt GOV-001; plan one early, authorized **dark** production deployment to shrink the launch-day risk | Mid-development | Partly |
+| NEM-017 | Staging network isolation | Authorize applying NEM-017 before any staging deployment of the stack | First staging use (E-T) | Yes |
+
+### A3. Existing test environments — mandatory reuse assessment
+
+Inspected 2026-11-09 from repository configuration (branches `main`, `nem-006a-staging`, PR #26/#27), session records, and one unauthenticated HTTPS request. **No environment was created, modified, or logged into.** Live host details marked *(unverified)* need operator confirmation.
+
+#### A3.1 Inventory
+
+| Environment | Configuration (verified in repo) | Services | Database / storage | Resource limits | Deployment workflow | Isolation from production |
+|---|---|---|---|---|---|---|
+| **Staging** — `staging.noetia.app` (NEM-006A) | `docker-compose.staging.yml`, `.env.staging.example`, `cd-staging.yml`, `docs/staging/*` on branch `nem-006a-staging` (**not on `main`**) | api, web, image-gen, worker, db, cache, storage, search. No monitoring stack | **PostgreSQL 16 + pgvector** (`noetia_staging` DB), Redis, MinIO, Meilisearch, each on its own `*_staging` volume. Seeded with 84 public-domain titles; **no audio, placeholder sync maps** | CPU/memory caps per service (api 0.75 CPU / 384 MB; db 0.75 / 512 MB; total ≈ 2 GB) on the **production host** | Manual (`docker compose -p noetia_staging … up -d --build` in `/opt/noetia-staging`). `cd-staging.yml` triggers on a `staging` branch that **does not exist** (auto-deploy deliberately not armed) | Separate compose project, directory, volumes, secrets, Stripe **test** mode, Traefik basic auth. **But:** it shares the external `proxy` network with production, and the S19 DNS fall-through was **confirmed by local reproduction**. Fix = NEM-017 (Draft PR #26), **not applied**. **Isolation is therefore not verified.** Observed: web root returns 401 (auth), but **`/api/health` returns 200 unauthenticated** (likely an intended health exception; to confirm) |
+| **Local development VM** | `docker-compose.yml` (dev; read-only source mounts) | Full stack + Prometheus, node-exporter, cAdvisor, Grafana, nginx proxy | PostgreSQL 16 (**no pgvector**), Redis, MinIO, Meilisearch on local volumes. Development data only | 6 vCPU, 7.2 GiB RAM (~4.5 GiB free at idle); `systemd-oomd` kills the session above 50% pressure. Rules: `jest --maxWorkers=2`, one heavy job at a time (branch `docs/dev-vm-resource-limits`, unmerged) | `docker compose up` locally | Fully separate machine; no production credentials required |
+| **Disposable local containers** (pattern proven in NEM-019) | `docker run --rm` PostgreSQL 16 / Redis 7, ports bound to 127.0.0.1; `jest.integration.config.js` refuses non-local or non-`_test` databases | PostgreSQL, Redis (≈ 60 MB together) | Throwaway; full migration chain 000–072 applies cleanly | Within the VM budget | Started and removed per test run | Complete |
+| **GitHub CI** (`ci.yml`) | Lint, typecheck, build, unit tests with coverage (TS + Python) | GitHub runners | **No PostgreSQL or Redis service** (F-10) | GitHub-hosted | On PRs and pushes | Complete; no production access |
+| **Production** | `docker-compose.server.yml`, `cd.yml` | — | — | — | Every push to `main` deploys and migrates | **Never a test environment** |
+
+#### A3.2 What runs where
+
+| Test type | Where | Why |
+|---|---|---|
+| Unit tests (api, web, worker, mobile, image-gen) | Local VM (capped workers) + CI | Already in place |
+| Real-PostgreSQL integration (locks, ledger, migrations up/down, account deletion) | **Disposable local containers** | Destructive by design (reverts migrations); never on shared databases |
+| Contract tests for the Gateway (simulated provider; fixture rate cards modelled on several providers' published structures) | Local VM + CI (pure unit level) | No network, no credentials |
+| Full-stack simulated-AI end-to-end (module flag on, simulated provider) | **Local dev stack** first; then **staging** after NEM-017 and an explicit staging deployment authorization | Staging validates the deployment path and pgvector-backed features in a production-like topology |
+| Frontend unit / component tests | Local + CI (Jest) | Already in place |
+| Browser end-to-end (Playwright, `test:e2e`) | Local dev stack; staging behind basic auth for manual and automated browser checks | Playwright already a dependency |
+| Migration forward-only rehearsal on a production-like database | **Staging**, by authorization (forward only; non-destructive) | Never revert migrations on staging; reverts belong to disposable DBs |
+| pgvector / retrieval index tests | Disposable `pgvector/pgvector:pg16` container locally (an image, not a service) or staging | Local dev DB lacks pgvector |
+| Load, latency, and reader-impact tests | **Local VM only, at small scale.** Not on staging | Staging shares the production host; load there could degrade production |
+| Escucha Activa / sync regression | Local (staging has no audio) | Existing staging limitation |
+
+#### A3.3 Missing capabilities and the smallest changes *(proposals only; each needs its own authorization)*
+
+1. **Apply NEM-017** (Draft PR #26): move staging api/web/storage to `proxy_staging`. **Prerequisite for any staging use by this programme.** Without it, staging containers could resolve production service names.
+2. **Confirm whether `/api/health` without basic auth is intentional** (operator check; documentation fix if so).
+3. **Staging deploys a named branch manually**, per the predeploy plan (Draft PR #27). Do not arm `cd-staging.yml` until the PO accepts staging.
+4. **CI PostgreSQL job (F-10):** one CI job with a PostgreSQL service to run the integration suites. A CI mission; until then, local disposable runs with raw output in reports.
+5. **Local pgvector:** use the `pgvector/pgvector:pg16` image for disposable tests when retrieval work needs it. No dev-stack change required.
+6. **Local resource rules:** keep the documented limits (merge branch `docs/dev-vm-resource-limits` when convenient); stop the monitoring containers during heavy test runs if memory is short.
+
+### A4. Dependency-aware engineering sequence *(proposals; none created, approved, or executed)*
+
+All missions: simulated providers only; no credentials; dark by default; "Production deployment: NOT AUTHORIZED; merge to `main`: NOT AUTHORIZED".
+
+| # | Mission (working title) | Scope | Needs (decisions) | Depends on | Test environment | Acceptance (summary) |
+|---|---|---|---|---|---|---|
+| **E1** | Provider-neutral cost accounting | Multi-dimension rate cards (token classes, TTL-specific cache writes, long-context tiers, batch and regional modifiers, non-token units); cost-aware reservation from the capability contract's worst case; **global micro-USD guard** (D14); per-attempt reservation (D15); usage normalization | D-1; B-2 | NEM-019 (#46) | Disposable DBs; CI | Caps hold under concurrent variable-cost turns and settlement failures; fixture rate cards for at least two published provider pricing structures; B-6 and F-12 tests still pass |
+| **E2** | Gateway capability contracts + simulator v2 | Capability contract (analysis with citations, structured output, streaming, cache hints, token counting, optional embeddings); contract test suite every adapter must pass; simulator emulating token classes, caching, long-context tiers, refusals, rate limits, timeouts; deterministic fixtures | D-1 | E1 | Local + CI | Contract suite green on the simulator; no provider SDK; router still refuses non-simulated providers |
+| **E3** | Rights and text adapters | `TextIdentityPort` (MinIO object hash), manifest-based `RightsVerificationAuthorityPort`, manifest tooling | TT-26 (format only) | NEM-019 | Disposable DBs | Unmanifested or stale rows denied; **no real attestation** until legal review completes |
+| **E4** | Entitlement adapters | `QualifyingPlanPort` (commercial rule); `OwnershipPort` if licensed titles are in scope (needs NEM-013) | TT-15 | NEM-019 | Disposable DBs | Rule as decided; no writes to plans or subscriptions |
+| **E5** | Retrieval foundation (provider-independent) | Chunking with anchors (X-3); **lexical retrieval** on existing PostgreSQL full-text search or Meilisearch; retrieval interface ready for a vector backend; full-book context path as an alternative strategy; context budgets | TT-25 (lexical at launch) | E2 | Disposable DBs (+ pgvector image if the vector-ready schema is exercised) | Retrieval only within the allowed set; anchors survive re-ingestion; reader p95 unchanged |
+| **E6** | Research sessions, conversations, My Knowledge, Ask My Highlights | Conversation storage (additive migration); turns with citations and origin labels; session-scoped My Knowledge; Ask My Highlights with its invariant (F-1); reconstruction accounting (F-2); analytics exclusion (F-9) | TT-08, TT-11, TT-13, TT-14, TT-18, TT-19, TT-27 | E1, E2, E3, E5 | Disposable DBs; local dev stack | All ADR-006 invariants per model path; no highlight route to full text; deletion cascades |
+| **E7** | Research Brief | Schema, immutable versions, generated limitations, export (TT-17), private MinIO storage, revocation tombstone (F-3) | TT-14, TT-17 | E6 | Disposable DBs; local | Every finding traceable; no Brief without a session; export uses no AI |
+| **E8** | NoetiaX depth | Approved DX capabilities; per-book artifacts; background runs on the existing BullMQ worker; run ceilings; planner validation | TT-07 | E6 | Local; disposable | Planner scope limits; resume after restart; run ceilings; purge on revocation |
+| **E9** | Web frontend for Noetia+ and NoetiaX | Book selection (3/10), session management (lock, fork, read-only), research chat with citations linking into the reader (link only; reader untouched), My Knowledge, Ask My Highlights, Brief view and export, capacity indicator, at-limit UX, en/es i18n; mobile per TT-20 | TT-03, TT-10, TT-11, TT-19, TT-20 | E6, E7 (E8 for NoetiaX screens) | Local dev stack (Jest + Playwright) | Simulated end-to-end flows pass; reader suites unchanged with the flag on and off |
+| **E10** | Premium billing integration (Stripe **test** mode) | Product structure per TT-16; checkout; webhooks to entitlement; cascade rules; no token minting (F-2…F-6 regressions) | TT-16 (structure), TT-01, TT-15 | E4; M-C, M-D, NEM-013 prerequisites | Disposable DBs; staging (Stripe test) after NEM-017 | Premium invoices issue no tokens; ownership untouched on cancel; Stripe test-mode validation |
+| **E-T** | Staging integration (deployment rehearsal) | Apply NEM-017; deploy a named candidate branch to staging; forward-only migrations; simulated-AI and Playwright runs behind basic auth | NEM-017 and staging-deployment authorizations | E6–E9 (and E10 when ready) | **Staging** | Isolation verified; migrations rehearsed; no production change |
+| **E11** | Operational readiness | CI PostgreSQL job (F-10); Redis memory budget (F-7); ledger compensation runbook; Grafana panels for intelligence metrics; dark-deployment plan (F-6); migration-order check versus NEM-016 (D17) | GOV-001; F-6 plan | E1–E10 | CI; staging | Runbooks reviewed; dashboards render from simulated traffic |
+| **GATE** | Provider connection and launch validation | §A5 | Class 3 decisions | E1–E11 | Staging, then production by authorization | §A5 |
+
+Critical path: **E1 → E2 → (E3, E5) → E6 → (E7, E8) → E9 → E-T → E11 → GATE**. E4 and E10 run alongside once TT-15 and TT-16 are decided. Corpus verification and legal review (C2) and Terms drafting (TT-22) run in parallel and must finish before the GATE.
+
+### A5. Provider-connection and launch-validation gate *(separately authorized)*
+
+**Entry criteria:**
+- E1–E11 accepted;
+- staging isolated (NEM-017);
+- corpus manifest entries approved by the Named Verifier after legal review;
+- Terms and Privacy drafted;
+- PO-005 decided;
+- spending authorization granted (re-verified prices, Part C1).
+
+**Steps:**
+1. Provider account, DPA, region, and a **dedicated workspace and key** per environment (pilot traffic, evaluation).
+2. Implement **only** the provider adapter against the E2 contract; the contract suite must pass.
+3. Load a rate card from **re-verified** prices; set ledger allowances and provider alerts and limits (conditional exposure as in C1.4).
+4. Run the evaluation set (staff-written, PO-approved) on staging.
+5. Run a short internal validation with qualifying subscribers (PO-026).
+6. Measure everything in §A6.
+7. Decide launch values (TT-09 targets, TT-11 values, TT-16 prices).
+8. Authorize production deployment and enabling separately (F-6).
+
+**Exit criteria (thresholds for PO approval; from Rev 1 §6):**
+- citation accuracy ≥ 95%;
+- grounding ≥ 90%;
+- zero scope violations and zero cross-user or household leakage;
+- cost per session within ±30% of the calibrated model;
+- warm-turn p50 and cold full-book p95 latency within the approved bounds;
+- reader p95 unchanged;
+- ledger versus invoice within 2%;
+- provider spend-limit behaviour observed as documented.
+
+### A6. Launch blockers that cannot be validated without real AI
+
+Simulated tests validate wiring, contracts, limits, isolation, rights gating, and failure handling. They **do not** validate:
+1. answer quality, grounding, and citation accuracy on a real model, in Spanish and English;
+2. real token consumption, cache hit rates, and cost per session, and therefore the budget values (TT-09, TT-11) and prices (TT-16);
+3. latency (time to first token, cold full-book turns) and reader impact under real long requests;
+4. provider refusal and safety behaviour, error modes, and rate limits;
+5. fidelity of provider usage reporting (ledger versus invoice) and spend-limit enforcement timing;
+6. prompt-injection resilience against instructions embedded in book text;
+7. real-model reconstruction and quotation behaviour against the F-2 thresholds;
+8. the NoetiaX depth benchmark (TT-07): "deep" must be demonstrated, not assumed;
+9. semantic retrieval quality, if embeddings are chosen;
+10. the provider's contractual data handling (DPA, retention, region).
+
+---
+
+## Part B — Superseded by Revision 2
+
+The Revision 1 material below no longer drives the plan:
+- G0–G3 pilot gates;
+- the 4-person internal pilot cohort and its pilot-only entitlement subset;
+- internal pilot consent;
+- pilot exit thresholds as an operation gate;
+- the "M1–M6" pilot sequence.
+
+The **thresholds** carry over to the launch gate (§A5), and the **PO-026 position** carries over unchanged: no exception, and every user holds a qualifying subscription. The PR history keeps Revision 1 (commit `1dd6f75`).
+
+---
+
+## Part C — Reference material for the gate and the parallel rights workstream
+
+## C1. Provider comparison (PO-005) — reference for the provider-connection gate
+
+### C1.1 Verified facts (official documentation, read 2026-11-09)
 
 Two providers were examined. **Google (Gemini) and others were not evaluated** in this packet; PO-005 may require it. Prices are USD per million tokens. No page showed a "last updated" date, so re-verify before any spending authorization.
 
@@ -68,7 +232,7 @@ Two providers were examined. **Google (Gemini) and others were not evaluated** i
 
 **Correction to Assessment PS-1:** the verified Sonnet 5.5 cache-read price is **$0.10**, not the $0.20 assumed in PR #47 §4.1. PR #47 is not edited here. Its Sonnet full-context figures are slightly high: expected user $11.52 here versus $12.60 there.
 
-### 3.2 Pilot economics under comparable workloads
+### C1.2 Economics under comparable workloads (for the gate)
 
 Workload: the Assessment §4.2 assumptions (median book 150K tokens; low / expected / high = 2 / 6 / 20 sessions of 3 / 8 / 15 turns over 1 / 2 / 3 books, with 1 / 2 / 4 cache writes and 1.5K / 3K / 8K output). Same formulas as Assessment §4.3. Reproducible with the script in Appendix A.
 
@@ -91,35 +255,35 @@ Workload: the Assessment §4.2 assumptions (median book 150K tokens; low / expec
 
 **Evaluation run** (50 questions × 2 books, batched, uncached worst case): Sonnet $15.75 · Sol $31.12 · Haiku $3.94 · Luna $1.56 · Opus $31.50 · Astra $155.62.
 
-### 3.3 Recommended approach (for the PO to decide)
+### C1.3 Recommendation for the provider-connection gate (not for now)
 
-**Lowest cost that still tests quality meaningfully:**
-1. **One provider for the pilot:** one data-processing review, one rate card, one spend-control surface.
-2. **Live participant traffic on that provider's mid-tier model** with full-book context (≤ 3 books), because answer quality is what the pilot must judge.
-3. **The small-tier model measured on the evaluation set only**, plus a lightweight retrieval arm (see Q5), to quantify the quality gap cheaply.
-4. **No high tier** (Opus or Astra) in live traffic. Optionally, one evaluation pass as a quality ceiling ($31.50–$155.62).
+Under the 2026-11-09 strategy **no provider is acquired during development**. When the gate opens (§A5):
+1. **One provider for launch validation:** one data-processing review, one rate card, one spend-control surface. The Gateway's capability contract keeps the choice reversible.
+2. **Choose on PO-005 criteria first** (retention, zero-retention path, region, contract), then on the verified economics above.
+3. **Mid-tier model for quality validation; small-tier model measured on the evaluation set** to calibrate routing. High tier only as an optional quality-ceiling pass.
+4. **Re-verify every figure in C1.1 on the day of authorization.** The figures above are a 2026-11-09 snapshot.
 
-At pilot scale both providers are affordable (≤ ~$90/month live for 4 people). **Choose the provider on PO-005 criteria:** retention defaults, the zero-retention path, region, contract terms, and spend-limit behaviour.
+### C1.4 Candidate spending figures for the launch-validation run *(PO candidates; conditional; not for development)*
 
-### 3.4 Proposed pilot spending figures *(PO candidates; conditional)*
+These replace the former internal-pilot figures. They apply only once the gate in §A5 is authorized. The structure carries over (ledger allowance, provider alert and hard limit, separate evaluation workspace, conditional maximum exposure); the amounts are re-proposed at the gate from measured token counts.
 
 | Figure | Candidate | Basis |
 |---|---|---|
-| Internal spending target | **~$106** (Anthropic) or **~$149** (OpenAI) for the first month | 4 users × expected ($46.08 / $89.28) + evaluation ≤ $60 (mid + small arms, with reruns) |
-| Ledger global allowance (live traffic; needs M1, D14) | **$150** | ~1.7–3.3× expected live spend |
+| Validation-run spending target (illustrative, 4 internal testers) | **~$106** (Anthropic) or **~$149** (OpenAI) for the first month | 4 users × expected ($46.08 / $89.28) + evaluation ≤ $60 (mid + small arms, with reruns) |
+| Ledger global allowance (validation traffic; needs E1, D14) | **$150** | ~1.7–3.3× expected live spend |
 | Per-user allowance (units; set from the rate card) | **≈ $40-equivalent / month** | Covers expected usage (≈ $11.5–22) with headroom; truncates the high tail ($124–236) |
-| Provider: pilot workspace alert / hard limit | **$100 / $200** | Hard limit set above the ledger so the ledger binds first |
+| Provider: validation workspace alert / hard limit | **$100 / $200** | Hard limit set above the ledger so the ledger binds first |
 | Provider: evaluation workspace hard limit | **$60** | Separate key (D16); not seen by the ledger |
 | Behaviour at the limit (TT-11) | **Hard stop with a plain message** | Pilot only; reversible |
-| Maximum financial exposure | **≈ $210 — conditional** | $150 + $60 **only if** M1 is implemented correctly **and** both provider limits stop traffic as their documentation states. Enforcement timing is unverified; overshoot during any lag is not bounded by Noetia |
+| Maximum financial exposure | **≈ $210 — conditional** | $150 + $60 **only if** E1 is implemented correctly **and** both provider limits stop traffic as their documentation states. Enforcement timing is unverified; overshoot during any lag is not bounded by Noetia |
 
 Note: an Anthropic workspace limit cannot be set on the **default** workspace, and both providers apply organization-tier caps above any workspace limit.
 
 ---
 
-## 4. Candidate pilot corpus (TT-12; TT-26)
+## C2. Candidate launch corpus (TT-12; TT-26) — workstream that needs no AI
 
-### 4.1 Candidates *(none verified; none eligible in any environment)*
+### C2.1 Candidates *(none verified; none eligible in any environment)*
 
 Selection rule (Assessment §8.2): original-language works only; author died before 1926; first published before 1930. All titles are already in the catalogue (`services/api/src/ingestion/catalogue.ts`), so the stored text exists. **The catalogue chose editions for audio-sync fit, not for rights** (07 §1).
 
@@ -153,22 +317,22 @@ Selection rule (Assessment §8.2): original-language works only; author died bef
 
 The terms quoted in screening come from a secondary source ([Wikipedia list](https://en.wikipedia.org/wiki/List_of_copyright_duration_by_country), partly read from a summary). **They are not legal sources.**
 
-### 4.2 Likely public domain versus verified rights to the exact digital text
+### C2.2 Likely public domain versus verified rights to the exact digital text
 
 "Likely public domain" concerns the **work**. Eligibility requires an attested record for the **exact stored text** (`textHash`), its edition, and any added material (07 §3; F-12). A title can be public domain while a given digital edition is not usable as-is. That happens when the edition includes modern notes, a modern introduction, or contributor annotations, or when the licence requires header retention.
 
-### 4.3 Minimum verification workflow and roles
+### C2.3 Minimum verification workflow and roles
 
 | Step | Who | Output |
 |---|---|---|
-| 1. Screen title (rule in §4.1) | Engineering / Product Architecture | Candidate row with dates and sources |
+| 1. Screen title (rule in §C2.1) | Engineering / Product Architecture | Candidate row with dates and sources |
 | 2. Identify the edition behind the stored text; list added material | Engineering, reading the stored object and its source page (read-only) | Edition note, added-material list |
-| 3. Compute `textHash` of the stored object | Engineering (staging, read-only; M2 adapter) | Hash |
+| 3. Compute `textHash` of the stored object | Engineering (read-only; E3 adapter, on staging after NEM-017 or a local copy) | Hash |
 | 4. Legal review for the target jurisdictions (US, ES, MX, CO, AR, CL, PE, EU/UK) | **Specialist legal reviewer** (external counsel or equivalent) | Written opinion per title or per rule |
 | 5. Approve the manifest entry by pull request | **Named Verifier**: a person the PO designates (TT-26), accountable for the record, not necessarily a lawyer, acting on step 4 | Reviewed manifest entry (two-key with the database row; F-12) |
 | 6. Review date | Named Verifier | Annual, or on any text change (a new hash reverts the book to `unknown`) |
 
-### 4.4 Legal questions for specialist review
+### C2.4 Legal questions for specialist review
 
 1. **Mexico life + 100:** confirm that it does not revive works already public domain (the secondary source suggests it does not).
 2. **Moral rights:** Spain and many Latin American laws keep attribution and integrity rights perpetually. Does AI summarization or excerpting of public-domain works raise integrity concerns, and what attribution is required?
@@ -179,117 +343,31 @@ The terms quoted in screening come from a secondary source ([Wikipedia list](htt
 
 ---
 
-## 5. Participants and access (TT-15; TT-23)
 
-- **Recommended cohort:** **4 internal participants**: the PO plus 3 staff, mixing ES and EN readers. That is enough to cover both languages and fiction plus non-fiction, small enough to keep spend and support trivial.
-- **Preserve PO-026:** each participant holds their **own active qualifying book subscription** (Individual, Duo, or Family), bought through the normal flow. The company may fund staff subscriptions without any rule change. **No pilot exception is recommended**; TT-23 would be answered "no exception".
-- **Minimal pilot entitlement policy** (no change to commercial subscription rules):
-  - `QualifyingPlanPort` pilot subset answers `qualifying` only for the **subscription owner** with status **`active`**. `trialing`, `canceling`, `past_due`, and linked members all stay `unknown` (TT-15 stays open for commercial use).
-  - A Noetia+ **grant** with reason `pilot-internal` for each named participant.
-  - The capability flag is enabled, with grants as the only path in.
-  - Grants never bypass the prerequisite (PO-026).
+## Outstanding verification requirements
 
----
+- Operator confirmation of staging's live state: deployed commit, network attachments, the `/api/health` authentication exception, and database separation.
+- NEM-017 applied and isolation re-tested before any staging use.
+- Re-verification of provider prices and terms at the gate (Part C1 is a 2026-11-09 snapshot).
+- Real token counts of candidate titles (stored objects) before gate figures are set.
+- Edition identification and legal review for the corpus (C2.3, C2.4).
+- Migration-order check against NEM-016's 068 before any deployment.
 
-## 6. Product validation (TT-08; TT-22; TT-18; thresholds)
+## Unresolved questions
 
-**Minimum research capabilities to test user value:**
-- a research session with 1–3 selected books;
-- Q&A grounded in those books with **passage citations**;
-- **passage-level comparison across the selected books**, labelled as such (TT-08 option (a), standard class);
-- This Book / My Knowledge scoped to the session;
-- **Expand limited to the model's own knowledge**, labelled `broader`, with no web search (TT-18 option (a));
-- no Briefs, no Ask My Highlights, no NoetiaX depth.
-
-**Candidate exit thresholds** (for PO approval; measured on a 50-question evaluation set across the corpus, ES and EN, written by staff and approved by the PO, graded against a rubric by two human reviewers):
-
-| Measure | Candidate threshold |
-|---|---|
-| Citation accuracy (the cited passage exists in a selected book and supports the claim) | ≥ 95% |
-| Grounding (claims supported by the cited or selected text) | ≥ 90% |
-| Scope violations / cross-user or household leakage | 0 / 0 |
-| Cost per session versus model | within ±30% after 20 sessions |
-| Latency, warm turn p50 / cold full-book turn p95 | ≤ 10 s / ≤ 60 s *(unmeasured; to be calibrated in the evaluation run)* |
-| Reader p95 latency during pilot | unchanged (±5%) |
-| Ledger versus provider invoice | ≤ 2% after the provider's reporting delay |
-
-**Internal participant consent (TT-22, internal scope):** a short written notice signed by each participant. It states:
-- what is sent to the provider: public-domain book text, their questions, the answers;
-- that highlights and notes are not used;
-- the provider's retention and training position (§3.1);
-- the right to stop at any time, and deletion on request.
-
-Public Terms and Privacy updates are deferred to the external pilot (G3).
-
-**Provider data-handling requirements (PO-005):**
-- no training on submitted data;
-- retention no longer than the provider default, with zero retention requested if available;
-- a dedicated workspace and project per environment;
-- documented spend-limit behaviour;
-- region acceptable to the PO.
-
----
-
-## 7. Decision matrix
-
-| ID | Question | Options | Recommended | Trade-offs (cost · legal · technical · product) | Depends on | Reversible | Authorization that would follow |
-|---|---|---|---|---|---|---|---|
-| **G0-1** | Proceed with the assessed direction (internal-first, Noetia+ only, full-book as benchmark) and allow M1 to be drafted? | (a) Yes. (b) Revise direction. (c) Pause | **(a)** | No spend; no legal surface; M1 is dark and test-only · delays nothing else | Assessment rev 3 | Yes | Drafting of the M1 mission specification for separate PO approval (not execution) |
-| **PO-005** | Which provider and data-handling terms for the pilot? | (a) Anthropic. (b) OpenAI. (c) Evaluate a third provider first | **Decide on data handling**; economics differ only by tens of dollars at pilot scale. Both meet the minimum (no training on API data; hard spend limits documented) | Cost: mid-tier full-book about 2× apart (§3.2); small tier reversed · Legal: retention defaults differ (none by default vs up to 30 days) · Technical: caching TTL and minimums differ | None | Yes (Gateway is provider-agnostic) | Provider account, a dedicated pilot workspace and an evaluation workspace, a key in staging only, within M4 |
-| **TT-09 / TT-11 (pilot scope)** | Pilot spending figures and behaviour at the limit | Figures in §3.4 · (a) hard stop. (b) soft warning | **§3.4 figures; (a) hard stop** | Higher figures mean less friction, more exposure · conditional exposure ≈ $210 | M1 implemented | Yes | Configuration values for M1, M4, and M6. TT-09's commercial COGS target stays open |
-| **TT-12 / TT-26** | Pilot corpus and verification standard | Candidate list §4.1 (all or a subset) · named verifier · legal reviewer | **Approve the candidates for verification (not as verified)**; designate a Named Verifier; engage a legal reviewer on §4.4 | Legal review cost and time · narrower corpus is cheaper to verify | None | Yes | Steps 2–3 of §4.3 (read-only, staging) and legal review. Manifest entries only after review |
-| **Staging** | Fix staging isolation and authorize staging deployment | (a) Authorize NEM-017 then staging deployment of the stack. (b) Defer | **(a)** when M1–M4 are ready | Infrastructure change; no production impact | NEM-017 (Draft PR #26) | Yes | Separate infrastructure and staging-deployment authorizations naming staging only |
-| **TT-23** | May a participant without a book plan use a grant? | (a) No exception: participants hold a qualifying subscription. (b) Exception for pilot staff | **(a)** | (a) costs a few subscriptions, no rule change · (b) needs a recorded exception to PO-026 | None | Yes | M3 implements the pilot subset only |
-| **TT-15 (pilot subset)** | Which states qualify in the pilot? | (a) Owner + `active` only. (b) Also `trialing` / `canceling`. (c) Include linked members | **(a)** | Most conservative; commercial TT-15 stays open | None | Yes | M3 adapter values |
-| **TT-22 (internal)** | Internal consent instead of public Terms for the internal pilot? | (a) Written internal notice (§6). (b) Update public Terms now | **(a)** | Faster; external pilot still needs (b) | PO-005 | Yes | Use of the notice for the 4 participants |
-| **TT-08** | Noetia+ depth on agreements and contradictions | (a) Passage-level comparison, labelled. (b) Deeper synthesis | **(a)** | Cheaper, easier to evaluate · (b) belongs to the NoetiaX discussion | — | Yes | M5 UI scope and evaluation rubric |
-| **TT-18** | Expand in the pilot | (a) Model knowledge only, labelled `broader`. (b) Web search | **(a)** | No web cost or new rights surface | — | Yes | Gateway prompt scope in M4 |
-| **Thresholds** | Exit criteria | §6 table | **§6 table** | Stricter thresholds mean longer tuning | Evaluation set | Yes | Acceptance criteria for M4 and M6 |
-
-**Deferred (G3), not for decision now:** TT-13, TT-14, TT-10 (public), TT-16, TT-01, TT-07, TT-17, TT-20, TT-25, TT-27, B-2 retention, GOV-001 adoption, production deployment (F-6).
-
----
-
-## 8. Recommended sequence
-
-1. **G0-1** (PO), then M1 drafted for approval. In parallel, prepare the G1 decisions.
-2. **G1** decisions. M2 and M3 can be drafted and built dark meanwhile. Legal review starts (§4.3 step 4).
-3. NEM-017 and the staging authorization, then M4 (real Gateway plus evaluation run on staging, under §3.4 limits).
-4. **G2** decisions, M5 (UI), then M6 (internal pilot operation and report).
-5. External pilot gates (G3), each separately.
-
-No step authorizes a merge to `main` or a production deployment (Assessment §7).
-
----
-
-## 9. Outstanding verification requirements
-
-- Re-verify both providers' prices, long-context rules, cache-write prices above thresholds, and spend-limit timing on the day spending is authorized.
-- Confirm provider data-processing terms (DPA, region, zero-retention eligibility) for PO-005.
-- Measure real token counts for each candidate title (stored objects) before finalizing figures; the economics assume a 150K median.
-- Identify editions and added material for each candidate; resolve the Frankenstein (1818/1831) and Dorian Gray (1890/1891) text questions.
-- Obtain legal review on §4.4.
-- Verify migration order with NEM-016 and staging isolation before any deployment (Assessment §7).
-
----
-
-## 10. Unresolved questions
-
-1. Should a third provider (e.g. Google) be evaluated before PO-005?
-2. Who is the Named Verifier, and is external counsel available for §4.4?
-3. Is staging acceptable for the internal pilot's data, or must it live in production?
-4. Who writes the 50 evaluation questions?
-5. **Retrieval arm:** the Assessment proposes measuring the full-book versus retrieval quality gap, but no mission in M1–M6 builds retrieval. Should M4 include a minimal in-process lexical retrieval arm for the evaluation only (no new infrastructure)? Or is the gap measured later (T3)? *This is a dependency gap discovered by this packet.*
-6. Should company-funded staff subscriptions be used for the cohort?
-
----
+1. Is a third provider (e.g. Google) to be evaluated at the gate?
+2. Who is the Named Verifier, and when can legal review start?
+3. Should the dark schema reach production early (one authorized dark deployment) or only at launch?
+4. Is mobile in scope for launch (TT-20)?
+5. Should licensed (author) titles be in the launch corpus? If so, `OwnershipPort` needs NEM-013, which pulls in more work.
+6. Can staging be used once NEM-017 is applied, or does the PO prefer a separate staging host later? (The current recommendation is to reuse the existing staging.)
 
 ## Appendix A — Reproducible cost calculation
 
-`python3 p0_costs.py` reproduces every figure in §3.2 and the cohort totals in §3.4. Prices as in §3.1. Values marked ASSUMED are not on the providers' pages.
+`python3 p0_costs.py` reproduces every figure in §C1.2 and the illustrative totals in §C1.4. Prices as in §C1.1. Values marked ASSUMED are not on the providers' pages.
 
 ```python
-# P0 packet economics. Prices verified 2026-11-09 from official provider pages (see packet §3), except where marked ASSUMED.
+# P0 packet economics. Prices verified 2026-11-09 from official provider pages (see packet §C1.1), except where marked ASSUMED.
 # Workload assumptions = Pilot-Readiness Assessment rev 3 §4.2 (median book B = 150K tokens).
 M = 1e-6
 def tiers(short, long=None, threshold=None):
