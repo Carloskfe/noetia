@@ -67,3 +67,23 @@ The scenarios are:
 
 - **Not the literal production image.** The production image's `npm install --omit=dev` cannot include `@nestjs/testing`, which the port overrides need. The harness instead runs the same compiled code on the same base image (`node:20-alpine`) under the same cap.
 - **Shared host.** The development VM is not idle: other project containers run alongside, so absolute numbers carry run-to-run variance.
+
+## PO-044: root-cause diagnostics (test only; opt-in)
+
+| File or flag | Purpose |
+|---|---|
+| `q11-diagnostics.ts` | Loaded by the harness only when `Q11_DIAG=1`. Records component timers, `pg` round trips by SQL category, event-loop delay, utilization and stall timestamps, cgroup `cpu.stat` throttling, GC entries, and on-demand CPU profiles from the built-in inspector. Also runs an isolated S2 micro-benchmark (`/diag/bench`) and diagnostic ablations (`/diag/mode?m=none\|nohash\|s2free\|s2worker\|bytescan`) |
+| `Q11_DOCKER_STATS` (client) | `sync` is the Checkpoint E behaviour: it blocks the client about 1 s per sample and **produces the N-3 outliers**. `async` does not block. `off` is the default for diagnostic runs |
+| `Q11_DIAG=1` / `Q11_PROF=1` (client) | Reset and snapshot the diagnostics around each measurement, and/or CPU-profile it (writes `/prof/*.cpuprofile` when a writable `/prof` is mounted) |
+| `Q11_WORKER_NICE` (server) | Nice value the `s2worker` proxy thread sets for itself |
+
+Every ablation except `none` is **diagnostic only**. `nohash` and `s2free` deliberately bypass the accepted per-request re-read and re-verify contract (NEM-023 AC-11/P-2) to measure how much interference they account for. `s2worker` is a synthetic proxy, not an implementation. `bytescan` keeps per-request reads and SHA-256 and replaces only the full decode. The results are in `docs/reports/2026-11-10-NEM-024-q11-root-cause-investigation.md`.
+
+Example: one W per container, with a writable profile directory.
+
+```bash
+docker run [--cpuset-cpus=N] --cpus=1 --memory=512m --memory-swap=512m --network host -v <out>:/app/out:ro -v <prof>:/prof … \
+  -e Q11_DIAG=1 node:20-alpine node [--max-semi-space-size=32] out/tests/perf/q11-harness.js
+curl 'http://127.0.0.1:4101/diag/mode?m=bytescan'
+Q11_DOCKER_STATS=off Q11_DIAG=1 node <out>/tests/perf/q11-client.js 10 x10,p3x3 out.json <container>
+```

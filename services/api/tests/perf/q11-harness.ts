@@ -30,6 +30,7 @@ import { SessionsService } from '../../src/knowledge/sessions/sessions.service';
 import { CostConfigService } from '../../src/knowledge/metering/cost-config.service';
 import { CostLedgerService } from '../../src/knowledge/metering/cost-ledger.service';
 import { ensureCostFixtures, budgetPolicy, enableFlag, grant } from '../integration/knowledge/support/it-env';
+import { installDiagnostics } from './q11-diagnostics';
 
 const env = process.env;
 if (env.NEM019_DISPOSABLE_DB !== '1' || !['127.0.0.1', 'localhost'].includes(env.DB_HOST ?? '') || !/_test$/.test(env.DB_NAME ?? '')) {
@@ -86,10 +87,13 @@ async function main() {
     ledger.reserveOrThrow = async (r: unknown) => { try { return await orig(r); } catch (e) { process.stdout.write(`Q11_DEBUG reserve: ${(e as Error).constructor.name} ${(e as Error).message}\n`); throw e; } };
   }
   // ── Fixtures (setup only; not timed) ────────────────────────────────────────────────────────────────────────────
-  const perf: { id: string; textHash: string }[] = await ds.query(
-    `SELECT b.id, r."textHash" FROM books b JOIN book_ai_rights r ON r."bookId" = b.id WHERE b."textFileKey" LIKE 'texts/nem023-perf-%' ORDER BY b."textFileKey" LIMIT 10`);
+  const perf: { id: string; textHash: string; textFileKey: string }[] = await ds.query(
+    `SELECT b.id, r."textHash", b."textFileKey" FROM books b JOIN book_ai_rights r ON r."bookId" = b.id WHERE b."textFileKey" LIKE 'texts/nem023-perf-%' ORDER BY b."textFileKey" LIMIT 10`);
   if (perf.length < 10) throw new Error(`need the 10 NEM-023 perf books (found ${perf.length}); run retrieval-performance with NEM023_PERF_KEEP=1`);
   for (const b of perf) hashes.set(b.id, b.textHash);
+  // PO-044 diagnostics (opt-in; instrumentation of this test process only). Installed before any measured traffic.
+  const diag = env.Q11_DIAG === '1' ? installDiagnostics(ref) : null;
+  if (diag) for (const b of perf) diag.keyOf.set(b.id, b.textFileKey);
   await enableFlag(ds);
   await ensureCostFixtures(ref.get(CostConfigService, { strict: false }), ds);
   for (const tier of ['noetia_plus', 'noetia_x']) await budgetPolicy(ds, tier, 'research_session', { allowanceUnits: 1_000_000_000, maxUnresolvedUnits: 1_000_000_000 });
@@ -137,6 +141,7 @@ async function main() {
   // ── Load generation ─────────────────────────────────────────────────────────────────────────────────────────────
   let running = false;
   let active: Promise<void>[] = [];
+  let loadStartedAt = 0;
   const stats = { turnsOk: 0, turnsFailed: 0, guardRejected: 0, turnMs: { 3: [] as number[], 10: [] as number[] }, errors: {} as Record<string, number> };
   const loop = async (books: number, idx: number) => {
     const tier = books > 3 ? 'noetia_x' : 'noetia_plus';
@@ -175,7 +180,7 @@ async function main() {
   sampler.unref();
 
   const summary = () => ({
-    W, running, ...stats,
+    W, running, ...stats, loadSeconds: loadStartedAt ? (Date.now() - loadStartedAt) / 1000 : null,
     turnMs: { 3: { n: stats.turnMs[3].length, p50: pct(stats.turnMs[3], 50), p95: pct(stats.turnMs[3], 95) }, 10: { n: stats.turnMs[10].length, p50: pct(stats.turnMs[10], 50), p95: pct(stats.turnMs[10], 95) } },
     eventLoopDelayMs: { p50: eld.percentile(50) / 1e6, p99: eld.percentile(99) / 1e6, max: eld.max / 1e6 },
     rssMb: { max: Math.max(0, ...samples.rssMb), last: samples.rssMb[samples.rssMb.length - 1] ?? null },
@@ -190,14 +195,19 @@ async function main() {
   createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://x');
     const send = (code: number, body: unknown) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)); };
+    if (diag && url.pathname.startsWith('/diag/')) {
+      try { const out = await diag.handle(url.pathname, url.searchParams); if (out !== undefined) return send(200, out); }
+      catch (e) { return send(500, { error: (e as Error).message }); }
+    }
     if (url.pathname === '/ready') return send(200, { readerBookId: reader.id, readerToken, W });
-    if (url.pathname === '/reset') { reset(); return send(200, { ok: true }); }
+    if (url.pathname === '/reset') { reset(); if (running) loadStartedAt = Date.now(); return send(200, { ok: true }); }
     if (url.pathname === '/stats') return send(200, summary());
     if (url.pathname === '/stop') { running = false; await Promise.all(active); active = []; return send(200, summary()); }
     if (url.pathname === '/load') {
       const sc = SCENARIOS[url.searchParams.get('scenario') ?? ''];
       if (!sc) return send(400, { error: 'unknown scenario' });
       running = true;
+      loadStartedAt = Date.now();
       active = sc.loops.map((l, i) => loop(l.books, i));
       return send(200, { started: sc });
     }

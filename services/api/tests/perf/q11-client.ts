@@ -5,7 +5,7 @@
  *
  * Usage: node q11-client.js <W> <scenario,...> <out.json> [container-name]
  */
-import { execFileSync } from 'child_process';
+import { execFile, execFileSync } from 'child_process';
 import { writeFileSync } from 'fs';
 import { Agent, request } from 'http';
 
@@ -14,6 +14,16 @@ const BASE = process.env.HARNESS_URL ?? 'http://127.0.0.1:4100';
 const CONTROL = process.env.CONTROL_URL ?? 'http://127.0.0.1:4101';
 const N = Number(process.env.Q11_N ?? 1000);
 const agent = new Agent({ keepAlive: true, maxSockets: 1 });
+/** PO-044: `sync` = Checkpoint E behaviour (execFileSync, blocks this client's event loop while `docker stats` runs);
+ * `async` = non-blocking execFile; `off` = no container sampling (server-side diagnostics cover CPU/memory). */
+const DOCKER_STATS = (process.env.Q11_DOCKER_STATS ?? 'sync') as 'sync' | 'async' | 'off';
+const DIAG = process.env.Q11_DIAG === '1';
+const PROF = process.env.Q11_PROF === '1';
+const OUTLIER_MS = Number(process.env.Q11_OUTLIER_MS ?? 200);
+/** Client-side event-loop stalls (≥ 30 ms) with wall-clock timestamps — proves or rules out client-induced outliers. */
+const clientStalls: { t: number; ms: number }[] = [];
+let expectedTick = Date.now() + 10;
+setInterval(() => { const now = Date.now(); if (now - expectedTick >= 30) clientStalls.push({ t: expectedTick, ms: now - expectedTick }); expectedTick = now + 10; }, 10).unref();
 const pct = (xs: number[], p: number) => { const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.ceil((p / 100) * s.length) - 1)]; };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -43,6 +53,16 @@ function getOnce(url: string, headers: Record<string, string> = {}, method = 'GE
 }
 const control = async (path: string, method = 'POST') => JSON.parse((await get(`${CONTROL}${path}`, {}, method)).body);
 
+function parseStats(out: string): { cpu: number; memMb: number } {
+  const [cpu, mem] = out.trim().split(';');
+  const m = /([\d.]+)\s*(MiB|GiB|KiB)/.exec(mem)!;
+  return { cpu: Number(cpu.replace('%', '')), memMb: Number(m[1]) * (m[2] === 'GiB' ? 1024 : m[2] === 'KiB' ? 1 / 1024 : 1) };
+}
+async function sampleStats(): Promise<{ cpu: number; memMb: number } | null> {
+  if (!container || DOCKER_STATS === 'off') return null;
+  if (DOCKER_STATS === 'sync') return dockerStats();
+  return new Promise((resolve) => execFile('docker', ['stats', '--no-stream', '--format', '{{.CPUPerc}};{{.MemUsage}}', container], { encoding: 'utf8' }, (e, out) => resolve(e ? null : parseStats(out))));
+}
 function dockerStats(): { cpu: number; memMb: number } | null {
   if (!container) return null;
   try {
@@ -66,21 +86,32 @@ async function measure(label: string, ready: { readerBookId: string; readerToken
   const result: Record<string, unknown> = {};
   const docker: { cpu: number; memMb: number }[] = [];
   let sampling = true;
-  const sampler = (async () => { while (sampling) { const s = dockerStats(); if (s) docker.push(s); await sleep(2000); } })();
+  const sampler = (async () => { while (sampling) { const s = await sampleStats(); if (s) docker.push(s); await sleep(2000); } })();
+  const outliers: { endpoint: string; t: number; ms: number }[] = [];
+  const stallsBefore = clientStalls.length;
+  const t0Wall = Date.now();
+  if (DIAG) await control('/diag/reset');
+  if (PROF) await control('/diag/prof/start');
   for (const [name, url, headers] of endpoints) {
     for (let i = 0; i < 20; i++) await get(url, headers); // warm-up
     const lat: number[] = [];
     const statuses: Record<number, number> = {};
     for (let i = 0; i < N; i++) {
+      const tStart = Date.now();
       const r = await get(url, headers);
       lat.push(r.ms);
+      if (r.ms >= OUTLIER_MS) outliers.push({ endpoint: name, t: tStart, ms: Math.round(r.ms * 10) / 10 });
       statuses[r.status] = (statuses[r.status] ?? 0) + 1;
     }
     result[name] = { n: lat.length, p50: pct(lat, 50), p95: pct(lat, 95), p99: pct(lat, 99), max: Math.max(...lat), statuses };
   }
   sampling = false;
   await sampler;
-  return { label, endpoints: result, docker: docker.length ? { cpuMax: Math.max(...docker.map((d) => d.cpu)), cpuAvg: docker.reduce((a, d) => a + d.cpu, 0) / docker.length, memMaxMb: Math.max(...docker.map((d) => d.memMb)), samples: docker.length } : null };
+  const profile = PROF ? await control(`/diag/prof/stop?file=prof-W${W}-${label}.cpuprofile`) : undefined;
+  const diag = DIAG ? await control('/diag/snapshot', 'GET') : undefined;
+  const events = DIAG ? await control('/diag/events', 'GET') : undefined;
+  const stalls = clientStalls.slice(stallsBefore);
+  return { label, wallSeconds: (Date.now() - t0Wall) / 1000, dockerStatsMode: DOCKER_STATS, outliers, clientStalls: stalls, diag, profile, serverEvents: events, endpoints: result, docker: docker.length ? { cpuMax: Math.max(...docker.map((d) => d.cpu)), cpuAvg: docker.reduce((a, d) => a + d.cpu, 0) / docker.length, memMaxMb: Math.max(...docker.map((d) => d.memMb)), samples: docker.length } : null };
 }
 
 async function main() {
