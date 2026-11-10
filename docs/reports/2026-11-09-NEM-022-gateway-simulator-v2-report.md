@@ -1,8 +1,8 @@
 # NEM-022 — Completion Report: Provider-Independent AI Gateway and Simulator v2
 
-**Status:** **REVIEW FINDINGS F-1 AND F-2 ADDRESSED — RETURNED FOR PRODUCT ARCHITECTURE RE-REVIEW.** Response and evidence in **§18** (revision 3). §5 items 1–12 are implemented. Every acceptance criterion (§11, AC-1 to AC-11) is proven by tests run in this session, including a fresh disposable PostgreSQL run. **NEM-022 is not accepted**: that needs the independent Product Architecture review (§19) and a separate Product Owner decision.
+**Status:** **RE-REVIEW FINDING F-3 ADDRESSED — RETURNED FOR PRODUCT ARCHITECTURE RE-REVIEW.** F-1/F-2 response in §18 (revision 3); F-3 response in **§19** (revision 4). §5 items 1–12 are implemented. Every acceptance criterion (§11, AC-1 to AC-11) is proven by tests run in this session, including a fresh disposable PostgreSQL run. **NEM-022 is not accepted**: that needs the independent Product Architecture review (§19) and a separate Product Owner decision.
 **Delivery state:** Not merged · Not deployed · **Draft PR #51** (stacked on NEM-021 PR #50).
-**Revision:** 3 (2026-11-09). §18 answers the Product Architecture review of PR #51. **Current results (code HEAD `3c49755`):** unit 1,683/1,683 (NEM-022 162) · contract 212/212 · integration 110/110 (NEM-019 56, NEM-021 37, NEM-022 17) · tsc 0 · eslint 0 errors. Sections 1–17 are the revision 2 record; where §18 changes a statement, §18 wins. Revision 1 was the pre-execution BLOCKED report (history in §14).
+**Revision:** 4 (2026-11-09). §18 answers the first Product Architecture review (F-1, F-2) and §19 the re-review (F-3). **Current results (code HEAD `58ec673`):** unit 1,687/1,687 (NEM-022 166) · contract 212/212 · integration 111/111 (NEM-019 56, NEM-021 37, NEM-022 18) · tsc 0 · eslint 0 errors. Sections 1–17 are the revision 2 record; where §18 changes a statement, §18 wins. Revision 1 was the pre-execution BLOCKED report (history in §14).
 
 ---
 
@@ -395,4 +395,107 @@ Tests:       110 passed, 110 total
 ### 18.5 Status
 
 F-1 and F-2 are fixed and proven, and the R-4 limitation is resolved by F-1. R-1 to R-3 are unchanged and remain for review. **Returned for independent Product Architecture re-review. NEM-022 is not accepted.** Not merged, not deployed; no other mission started.
+
+---
+
+## 19. Revision 4 — response to the Product Architecture re-review: F-3 (2026-11-09)
+
+**Finding F-3 (HIGH): settlement happened after consumer-visible stream yields.** **Confirmed and fixed** in commit **`58ec673`**. Frozen contract v1, migrations, protected systems, CI/CD, and other application code are unchanged.
+
+### 19.1 Confirmation (deterministic, before the fix)
+
+The F-1 fix released validated `delta` and `segment` events *before* `costLedger.settleAttempt(usage)`. An async generator suspends at each `yield`, so a consumer that stops reading (or calls `return()`) after the first delta never resumes it, and the settlement code never runs.
+
+Regression tests written first and run on the unchanged code (`3c49755`):
+
+```
+✕ a consumer that stops after the first delta cannot prevent settlement of a completed attempt
+    Expected number of calls: 1   Received number of calls: 0          (settleAttempt)
+✕ full consumption: settled exactly once, and before the first delta or segment reached the consumer
+✕ ledger failure at settlement: attempted before the first delta, the attempt is held, and an early close changes nothing
+✓ scope violation: settled exactly once, nothing released (F-1 preserved)
+Tests: 3 failed, 1 passed
+```
+
+On real PostgreSQL, with the pre-fix Gateway restored temporarily (file restored by a shell `trap`, restore verified), the early-close attempt was left as `['reservation']` with no settlement row:
+
+```
+✕ review F-3: a consumer that closes the stream after the first delta still leaves the attempt settled in the ledger
+    - "settlement"     (received ['reservation'] only)
+```
+
+### 19.2 Fix
+
+In `runAttempt`, the order after the provider read loop is now:
+1. normalize the usage (unchanged);
+2. validate citations, origins, and tool scope over the whole attempt (unchanged; F-1);
+3. **settle** through `costLedger.settleAttempt` (a ledger failure → `ledger_error`, attempt held; unchanged handling);
+4. only then release the buffered, validated deltas and `segment` events (unchanged F-1 rule).
+
+Nothing else changed:
+- **F-1:** the release decision and content are identical.
+- **F-2:** the ownership check is still before reservation.
+- **Normalization:** the §9.3 mapping and evidence discipline are untouched.
+- **Idempotency:** one settlement per attempt key, enforced by the cost ledger.
+- **Retries:** the decision happens after the attempt returns, on the same fields.
+- **Ledger failure:** an attempt that cannot be settled stays held, and the validated answer is still returned, as before.
+
+A consumer that closes the stream early can now only skip *later* events (the rest of the text, later attempts, the terminal event). It can no longer leave a completed attempt unresolved.
+
+Between attempts, the next reservation happens only after the consumer pulls past the `usage` and `retry` events. An early close there simply means no next reservation, so nothing is left unresolved.
+
+### 19.3 Tests
+
+**Unit** (`ai-gateway.service.spec.ts`, describe *"review F-3"*, 4 tests):
+
+| Case | Asserts |
+|---|---|
+| Early close after the first delta | `settleAttempt` called exactly once with the completed usage; no release |
+| Full consumption | Settled exactly once, and settlement had already happened when the consumer saw every `delta` and `segment` |
+| Scope violation | Settled once, nothing released |
+| Ledger failure | Settlement attempted before the first delta; an early close changes nothing; full consumption reports `ledger_error` and `held`, and the validated answer is still returned |
+
+**Architecture guard:** `this.costLedger.settleAttempt(usage)` precedes the only `yield { type: 'delta'`.
+
+**Integration** (real PostgreSQL): a consumer that closes after the first delta leaves `['reservation', 'settlement']` and held = 0.
+
+**Test-harness hygiene (found while verifying):** the provider-contract harness raced each call against a 2-second deadline timer it never cleared. That kept Jest workers alive ("A worker process has failed to exit gracefully"). The timer is now cleared, and the warning is gone. It was test code only.
+
+**Honest note:** during verification, one gateway-and-simulator run reported `1 failed, 165 passed`, and the failing test's name was not captured. It did not reproduce in 19 further runs (16 normal, 3 under CPU contention), nor in the final full regression. The most likely candidates are the wall-clock-bounded tests (abort grace and timeout tests in the tens of milliseconds) under load, possibly together with the leaked timer fixed above. If it recurs, those bounds should be widened.
+
+### 19.4 Results (this session)
+
+Unit runs are at code HEAD `58ec673`. The integration run used the same Gateway code; the only later change is the unit-test harness timer.
+
+```
+# API unit regression (final, at 58ec673)
+Test Suites: 112 passed, 112 total
+Tests:       1687 passed, 1687 total              (+4 F-3 unit tests; no worker-exit warning)
+# NEM-022 unit (gateway + simulator)  Tests: 166 passed, 166 total   (19 consecutive clean runs after the fix)
+# NEM-021 contract                    Tests: 212 passed, 212 total
+# Coverage: ai-gateway.service.ts 95.36 stmts / 92.85 branches / 88.46 funcs / 100 lines; knowledge total 98.37 / 94.38 / 96.72 / 99.62
+
+# Integration — fresh disposable PostgreSQL 16 + Redis 7 (containers removed afterwards)
+ledger 24 · sessions 25 · a-schema-migrations 6 · account-deletion 1   (NEM-019: 56)
+cost-ledger 34 · cost-migration 3                                     (NEM-021: 37)
+gateway-e2e 18                                                        (NEM-022: 18)
+Test Suites: 7 passed, 7 total
+Tests:       111 passed, 111 total
+    ✓ review F-3: a consumer that closes the stream after the first delta still leaves the attempt settled in the ledger
+
+# TypeScript: build 0 · test 0      ESLint: 0 errors (225 warnings, no-explicit-any, test files)
+```
+
+**Changed files (`58ec673`):**
+- `src/knowledge/ai/gateway/ai-gateway.service.ts`: settlement moved before the release step.
+- `tests/unit/knowledge/ai/gateway/ai-gateway.service.spec.ts`: 4 tests.
+- `tests/unit/knowledge/ai/gateway/gateway-architecture.spec.ts`: guard.
+- `tests/unit/knowledge/ai/gateway/support/provider-contract.ts`: deadline timer cleared.
+- `tests/integration/knowledge/gateway-e2e.int-spec.ts`: 1 test.
+
+**Not executed:** CI (it does not run on this PR; see the CI baseline investigation), staging, production, any provider.
+
+### 19.5 Status
+
+F-3 is fixed and proven at unit and PostgreSQL level, with F-1 and F-2 preserved. **Returned for independent Product Architecture re-review. NEM-022 is not accepted.** Not merged, not deployed.
 
