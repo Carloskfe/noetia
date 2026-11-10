@@ -96,19 +96,26 @@ describe('NEM-021 contract v1 architecture', () => {
       expect(destructive.test('ALTER TABLE ai_budget_ledger ADD COLUMN "reservedMicroUsd" bigint')).toBe(false);
     });
 
-    it('contract integration is limited to the ledger/metering layer', () => {
+    /*
+     * NEM-022 D-1 (Product Architecture approved, 2026-11-09): the two Phase-2-only guards ("contract integration
+     * is limited to the ledger/metering layer" and "Gateway, router, and turn execution remain outside Phase 2")
+     * are replaced by the NEM-022 boundaries below. Every other D-2 protection in this block is unchanged.
+     */
+    it('contract integration is limited to the ledger/metering layer and the Gateway layer (knowledge/ai)', () => {
       const users = walk(KNOWLEDGE).filter((f) => !f.startsWith(CONTRACT) && imports(f).some((i) => /ai\/contract|\.\/contract|\.\.\/contract/.test(i)));
-      expect(users.filter((f) => !f.startsWith(join(KNOWLEDGE, 'metering') + '/')).map(rel)).toEqual([]);
+      const allowed = (f: string) => f.startsWith(join(KNOWLEDGE, 'metering') + '/') || f.startsWith(join(KNOWLEDGE, 'ai') + '/');
+      expect(users.filter((f) => !allowed(f)).map(rel)).toEqual([]);
+      expect(users.some((f) => f.startsWith(join(KNOWLEDGE, 'ai', 'gateway') + '/'))).toBe(true); // the Gateway is on contract v1
     });
 
-    it('Gateway, router, and turn execution remain outside Phase 2 (unchanged; no contract or cost-ledger imports)', () => {
-      const pinned = ['ai/model-gateway.service.ts', 'ai/model-router.service.ts', 'ai/model-provider.ts', 'ai/model-paths.ts',
-        'ai/simulated-provider.service.ts', 'sessions/turn.service.ts'].map((f) => join(KNOWLEDGE, f));
-      expect(digest(pinned)).toBe('d35dca78fa19d341673922c1eca521f274ddad25fadfd86ff3fd70b25130a283');
-      const outside = walk(KNOWLEDGE).filter((f) => !f.startsWith(CONTRACT)
-        && (f.startsWith(join(KNOWLEDGE, 'ai') + '/') || f.startsWith(join(KNOWLEDGE, 'sessions') + '/')));
-      const offenders = outside.filter((f) => imports(f).some((i) => /contract|cost-ledger|cost-config|cost-reconciliation/.test(i))).map(rel);
+    it('sessions/* never imports the contract, the cost ledger, or pricing directly; turns reach them only through the Gateway', () => {
+      const sessions = walk(join(KNOWLEDGE, 'sessions'));
+      const offenders = sessions.filter((f) => imports(f).some((i) => /contract|cost-ledger|cost-config|cost-reconciliation|rate-card|budget-ledger/.test(i))).map(rel);
       expect(offenders).toEqual([]);
+      // One accounting path per turn (D-2): the turn service uses the Gateway v2, not the legacy Gateway or ledger.
+      const turn = readFileSync(join(KNOWLEDGE, 'sessions/turn.service.ts'), 'utf8');
+      expect(imports(join(KNOWLEDGE, 'sessions/turn.service.ts'))).toContain('../ai/gateway/ai-gateway.service');
+      expect(turn).not.toMatch(/model-gateway\.service|ModelGatewayService/);
     });
 
     it('no duplicate pricing calculation: outside the contract, no money primitive or per-million/bps arithmetic', () => {

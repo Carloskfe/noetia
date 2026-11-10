@@ -4,6 +4,10 @@ import { BudgetLedgerService } from '../../../src/knowledge/metering/budget-ledg
 import { RedisAdmissionCache } from '../../../src/knowledge/metering/admission-cache';
 import { turnIdempotencyKey } from '../../../src/knowledge/sessions/turn.service';
 import { budgetPolicy, denial, eligibleBook, enableFlag, openDataSource, readyUser, redisCache, wire } from './support/it-env';
+import { failNextQuery as failNextCostQuery } from './support/cost-env';
+
+/** NEM-022 D-2: a turn's ledger rows live under its attempt keys (`<turnKey>:a<n>`); attempt 1 is reserved at step 3. */
+const attempt1 = (userId: string, sessionId: string, clientKey: string) => `${turnIdempotencyKey(userId, sessionId, clientKey)}:a1`;
 
 const CAP = 'research_session';
 
@@ -274,6 +278,9 @@ describe('NEM-019 budget ledger integrity on real PostgreSQL (AC-15, 15a, 15c, 1
     });
   });
 
+  // NEM-022 D-2 (Option A, PO-approved 2026-11-09): turns reserve and settle per attempt through the Gateway v2 and the
+  // NEM-021 cost ledger. Each assertion keeps its NEM-019 intent; rows are read by attempt key, the settlement outage
+  // targets the cost ledger's settlement statement, and reconciliation is the cost ledger's.
   describe('full turns through the turn order (AC-15c, 15d)', () => {
     it('provider failure / abort / timeout with unknown usage leave the reservation held; the lock stands', async () => {
       await budgetPolicy(ds, 'noetia_plus', CAP);
@@ -283,7 +290,7 @@ describe('NEM-019 budget ledger integrity on real PostgreSQL (AC-15, 15a, 15c, 1
       w.sim.enqueue({ kind: 'failure', units: null }, { kind: 'abort' }, { kind: 'hang' });
       for (const k of ['fail-unknown-1', 'abort-unknown-1', 'timeout-unknown-1']) {
         expect(await denial(w.turns.run(u, s.id, k))).toBe('turn_failed');
-        expect((await ledgerRows(ds, turnIdempotencyKey(u, s.id, k))).map((r: any) => r.entryType)).toEqual(['reservation']);
+        expect((await ledgerRows(ds, attempt1(u, s.id, k))).map((r: any) => r.entryType)).toEqual(['reservation']);
       }
       expect((await w.sessions.get(u, s.id)).locked).toBe(true);
       expect((await unresolvedFor(ds, u)).n).toBe(3);
@@ -294,13 +301,13 @@ describe('NEM-019 budget ledger integrity on real PostgreSQL (AC-15, 15a, 15c, 1
       const u = await readyUser(ds, w);
       const b = await eligibleBook(ds, w);
       const s = await w.sessions.create(u, [b]);
-      failNextQuery(w, /"costMicroUsd", "rateCardId"\)\s+SELECT/);
+      failNextCostQuery(w, /'settlement', \$2, \$3/);
       const r = await w.turns.run(u, s.id, 'settle-outage-1');
       expect(r.settlement).toBe('held');
-      const key = turnIdempotencyKey(u, s.id, 'settle-outage-1');
+      const key = attempt1(u, s.id, 'settle-outage-1');
       expect((await ledgerRows(ds, key)).map((x: any) => x.entryType)).toEqual(['reservation']);
-      await w.ledger.reconcile();
-      await w.ledger.reconcile();
+      await w.costLedger.reconcileAttempts();
+      await w.costLedger.reconcileAttempts();
       expect((await ledgerRows(ds, key)).map((x: any) => x.entryType)).toEqual(['reservation', 'settlement']);
     });
 
@@ -316,7 +323,8 @@ describe('NEM-019 budget ledger integrity on real PostgreSQL (AC-15, 15a, 15c, 1
     });
 
     it('budget rejection never locks the set', async () => {
-      await budgetPolicy(ds, 'noetia_plus', CAP, { allowanceUnits: 5, reserveUnitsPerTurn: 10 });
+      // Per-attempt units are the worst case from the fixture unit weights (> 1 unit for any turn), not reserveUnitsPerTurn.
+      await budgetPolicy(ds, 'noetia_plus', CAP, { allowanceUnits: 1, reserveUnitsPerTurn: 10 });
       const u = await readyUser(ds, w);
       const b = await eligibleBook(ds, w);
       const s = await w.sessions.create(u, [b]);
@@ -341,7 +349,7 @@ describe('NEM-019 budget ledger integrity on real PostgreSQL (AC-15, 15a, 15c, 1
       expect(await denial(w.turns.run(u, s.id, 'lock-fail-01'))).toBe('turn_failed');
       tx.mockRestore();
       expect(spy).not.toHaveBeenCalled();
-      expect((await ledgerRows(ds, turnIdempotencyKey(u, s.id, 'lock-fail-01'))).map((x: any) => x.entryType)).toEqual(['reservation', 'release']);
+      expect((await ledgerRows(ds, attempt1(u, s.id, 'lock-fail-01'))).map((x: any) => x.entryType)).toEqual(['reservation', 'release']);
       expect((await w.sessions.get(u, s.id)).locked).toBe(false);
     });
   });
