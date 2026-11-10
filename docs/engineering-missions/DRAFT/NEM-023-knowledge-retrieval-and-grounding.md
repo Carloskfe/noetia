@@ -1,9 +1,10 @@
-# NOETIA ENGINEERING MISSION — NEM-023 (E5) — *proposed identifier, pending PO reservation*
+# NOETIA ENGINEERING MISSION — NEM-023 (E5)
 ## Knowledge Retrieval and Grounding (Stage 1: lexical, provider-independent)
 
-**Status:** DRAFT — REVISION 4 — **not executable** (governance README: a DRAFT mission is never executed)
+**Status:** DRAFT — **FINAL SPECIFICATION (revision 5)**, for Product Architecture review, then PO approval of the specification. **Not executable** (governance README: a DRAFT mission is never executed)
+**Identifier:** `NEM-023`, reserved by the PO on 2026-11-10 ([PO-033](../../operating-framework/decisions/product-owner/PO-033-e5-knowledge-retrieval-decisions-and-nem-023-reservation.md))
 **Mission type:** IMPLEMENTATION (proposed)
-**Implementation authorization:** NONE (requires PO approval of this specification, decisions D-1 to D-9, **and** a separate execution instruction)
+**Implementation authorization:** NONE (requires PO approval of this specification **and** a separate execution instruction naming NEM-023; product decisions D-1, D-4, D-6, D-7, D-9 are already decided in PO-033)
 **Schema changes:** ADDITIVE ONLY (proposed: one table **without verbatim text** (S2), three text-search configurations, and the `unaccent` contrib extension if D-5 is approved), on disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED (none needed: no image change, no new service, no background job)
 **Production deployment:** NOT AUTHORIZED (staging and merge to `main` also NOT AUTHORIZED)
@@ -18,6 +19,12 @@
 > 5. scope, retention, and limits (§9.4);
 > 6. invariants (§8, §11);
 > 7. PO decisions (§16).
+>
+> **Revision 5 — final specification** (2026-11-10, PO *"NEM-023 Product Owner Approval and Mission Finalization"*):
+> - Product decisions D-1, D-4, D-6, D-7, D-9 recorded as **DECIDED** ([PO-033](../../operating-framework/decisions/product-owner/PO-033-e5-knowledge-retrieval-decisions-and-nem-023-reservation.md)); identifier NEM-023 reserved.
+> - D-7 made concrete: at most one previous set, a hard 30-day maximum, removed sooner (§9.4); revocation blocks retrieval immediately, plus active-index purge.
+> - Compatibility of `retrieval_indexing` verified: no NEM-019 or contract-v1 change, no exception required (§9.7).
+> - Production-indexing prerequisites made explicit (§14).
 >
 > **Revision 4** (2026-11-10, PO direction *"E5 Product Owner Direction and Final Rights Review"*):
 > - **D-4: S2 selected in principle, subject to rights verification.** Original text stays in MinIO; PostgreSQL holds ids, offsets, hashes, metadata, and `tsvector`; S1 is out of scope.
@@ -56,7 +63,8 @@ Provide **dark, unwired** retrieval components that, given an allowed set alread
 - **Code:** NEM-022 accepted (Gateway v2), NEM-021 (ledger), NEM-019 (rights, Context Builder). Built on the NEM-022 branch stack, not `main`.
 - **E3:** E5 adds or reuses the single `computeTextHash` function. **Binding the real `TextIdentityPort` adapter in the module is E3's step**, not E5's (§9.1).
 - **E6:** consumes `QueryContextSource` (§9.2).
-- **Rights blockers (decision packet §3, RB-1 to RB-7)** gate **production indexing**, not fixture implementation: PO-029 undecided, TT-26 open, no verified records, `retrieval_indexing` vocabulary adoption, author opt-in and D6, legal treatment of the `tsvector` derivative for licensed titles, offsite backup retention.
+- **PO decisions:** [PO-033](../../operating-framework/decisions/product-owner/PO-033-e5-knowledge-retrieval-decisions-and-nem-023-reservation.md).
+- **Rights blockers (decision packet §3, RB-1 to RB-3 and RB-5 to RB-7; RB-4 resolved by PO-033)** gate **production indexing**, not fixture implementation: PO-029 undecided, TT-26 open, no verified records, `retrieval_indexing` vocabulary adoption, author opt-in and D6, legal treatment of the `tsvector` derivative for licensed titles, offsite backup retention.
 - **Not required:** pgvector, an embedding provider, staging, CI changes, any paid service.
 - **Test environment:** the existing disposable `postgres:16-alpine` + Redis harness; VM limits (`--maxWorkers=2`, one heavy job at a time).
 
@@ -175,7 +183,8 @@ Reader, Escucha Activa, **`sync_maps`** (read-only input), ownership, `user_book
 | Item | Default (D-6, D-7, D-8) | Enforcement |
 |---|---|---|
 | **Indexing scope** | Published, has stored text, and **passes the book-level `IndexingPermission` (§9.6)**; there is no user-level check at indexing time | Indexer check; otherwise skipped (metric `skipped_scope`) |
-| **Retention** | Current and previous set per book; previous kept up to 30 days; `prune` and `purge` commands; book delete cascades | Commands; at most 2 sets per book |
+| **Retention (D-7, decided)** | The **current set and at most one previous set** per book. The previous set is removed **as soon as it is unnecessary**: by default at the first `prune` after the current set is complete **and** a configurable in-flight window (`previousSetGraceHours`, default 24) has elapsed. It is **never kept beyond 30 days** (a hard cap; not configurable). Book delete cascades | The indexer refuses to create a third set (old sets are pruned first); `prune` deletes previous sets past the window and **unconditionally past 30 days**; tests assert both bounds |
+| **Revocation (D-7, decided)** | **Blocks retrieval immediately**: once the record is no longer `verified` with `retrieval_indexing` for the current hash, the query-time `IndexingPermission` re-check (and user-level eligibility) fail, so no passage is returned, **even before purge**. Revocation **requires purging the active index**: `purge <bookId>` removes every set (current and previous) | Tests: retrieval returns nothing right after revocation with chunks still present; after `purge`, zero rows remain for the book; the runbook gives the operator steps |
 | Chunk size / overlap | ≈ 1,500 characters / 10% | Configuration |
 | Chunks per book | ≤ 2,000 | Over → skipped, metric |
 | Total index size | ≤ 250 MB (table + indexes) | Indexer checks `pg_total_relation_size`; refuses above budget |
@@ -209,6 +218,27 @@ Reader, Escucha Activa, **`sync_maps`** (read-only input), ownership, `user_book
 - **At query time:** `QueryContextSource` also re-checks `IndexingPermission` for each allowed book (cached per request). A book that no longer passes is excluded (`index_not_permitted`) and flagged for `purge`.
 - Index permission never makes a book usable, and ownership never makes a book indexable.
 - **NEM-019 code and bindings are unchanged.**
+
+### 9.7 Compatibility of `retrieval_indexing` (verified 2026-11-10; no exception required)
+
+| Protected item | Finding | Effect of introducing `retrieval_indexing` |
+|---|---|---|
+| NEM-019 `isWellFormedRecord` | Validates operations by **form only** (`^[a-z][a-z0-9_]*$`, `rights.service.ts:113`); no fixed list | `retrieval_indexing` is well formed; no record becomes malformed |
+| NEM-019 `book_ai_rights.permittedOperations` | `text[] NOT NULL DEFAULT '{}'`; **no value constraint** (migration 071) | Stored as data; **no migration** |
+| NEM-019 `RightsService.eligibility` | Tests only `permittedOperations.includes(operation)` for the requested operation | `research_analysis` decisions are unchanged with or without `retrieval_indexing` |
+| NEM-019 module and tests | Fixtures grant only `research_analysis`; port bindings pinned by the architecture test | Unchanged; E5 fixtures add their own records |
+| NEM-021 frozen contract v1 | Contains no rights operations (only capability keys and non-token units such as `tool_call`) | Untouched |
+| NEM-022 Gateway | Consumes sealed contexts only | Untouched |
+
+**Combined behaviour** (both permissions independent; most restrictive wins):
+
+| Rights record grants | Query-time eligible? | Indexable? | Result |
+|---|---|---|---|
+| `research_analysis` only | Yes (if user-level checks pass) | No | No chunks; book reported `unindexed` (fail closed) |
+| `retrieval_indexing` only | No | Yes | Chunks may exist but are never returned |
+| Both | Yes | Yes | Retrievable |
+
+If implementation finds that any of these facts no longer holds (for example, a later change adds an operation allowlist), it is a **stop condition**, and the change needs separate PO approval as an exception.
 
 ## 10. Security / privacy / copyright
 
@@ -259,7 +289,18 @@ The §5.9 counters, no content labels, no dashboards while dark. The completion 
 
 ## 14. Deployment / rollout
 
-None. Branch and Draft PR only. Any production indexing would be a later, separately authorized operation (after E3 binding, rights attestation, merge, and a snapshot).
+None. Branch and Draft PR only. **Production indexing remains blocked** until **all** of these hold; each needs its own authorization:
+
+| Prerequisite | Source |
+|---|---|
+| PO-029 (eligible corpus) decided | RB-1 |
+| TT-26 legal evidence standard, jurisdictions, Named Verifier (`LEGAL REVIEW REQUIRED`) | RB-2 |
+| E3 completed: production `TextIdentityPort` and verification-authority adapters bound | RB-3 |
+| Verified, attested `book_ai_rights` records granting `retrieval_indexing` for exact text versions | RB-3, D-6 |
+| For author or publisher titles: opt-in terms, UI, and contract language (D6) | RB-5 |
+| Legal position on storing the `tsvector` derivative for licensed titles | RB-6 |
+| Offsite backup retention policy, so a purge eventually reaches offsite copies (or an explicit PO acceptance of indefinite retention) | RB-7 |
+| Merge, deployment, `unaccent` enablement under the ADR-004 infrastructure-safety steps, and a server snapshot | Governance |
 
 ## 15. Documentation deliverables
 
@@ -269,20 +310,20 @@ Technical-note section (architecture, schema, hash mechanism, full-text configur
 
 | ID | Decision | Recommended default | If declined |
 |---|---|---|---|
-| D-1 | TT-25 | Lexical at launch, vector-ready interface | Semantic now needs an image change and an embedding provider |
+| D-1 | TT-25 | **DECIDED (PO-033):** PostgreSQL lexical at launch, technology-neutral interface; semantic later | — |
 | D-2 | E5/E6 boundary | E5 dark components; E6 wires turns | E5 needs authority for NEM-019 changes |
 | D-3 | Text-hash mechanism | SHA-256 of MinIO bytes; shared function; E3 binds | E5 binds (NEM-019 test exception) |
-| D-4 | Chunk text storage | **S2 — selected in principle by the PO, subject to rights verification** (RB-6, RB-7 for licensed titles) | — |
+| D-4 | Chunk text storage | **DECIDED (PO-033): S2.** Text in MinIO; PostgreSQL stores ids, offsets, hashes, metadata, `tsvector`; no verbatim text | — |
 | D-5 | `unaccent` extension | Yes | Accent-sensitive matching |
-| D-6 | Indexing scope and permission | Book-level `IndexingPermission` with an explicit `retrieval_indexing` grant; default deny | Reuse `research_analysis` (no separate grant to store an index), or index all published books (derived content stored for uncleared books) |
-| D-7 | Retention | Current + previous, 30 days; purge on revocation | More storage and exposure |
+| D-6 | Indexing scope and permission | **DECIDED (PO-033):** explicit, verified, book-level `retrieval_indexing` for the exact text version; ownership never grants it; default deny | — |
+| D-7 | Retention | **DECIDED (PO-033):** current + at most one previous set; previous ≤ 30 days and removed sooner; revocation blocks retrieval immediately and requires active-index purge; backup retention remains a production blocker | — |
 | D-8 | Limits and defaults | §9.4 | Other values |
-| D-9 | Identifier | **NEM-023 proposed**; PO reserves | — |
+| D-9 | Identifier | **DECIDED (PO-033): NEM-023 reserved** | — |
 
-**Who decides (decision packet §5):**
-- **PO approval:** D-1, D-6 (with RB-4), D-7, D-9; D-4 is recorded.
-- **Product Architecture with the mission:** D-2, D-3, D-5.
-- **Engineering configuration:** D-8.
+**Status of decisions:**
+- **PO decided (PO-033):** D-1, D-4, D-6 (RB-4 resolved: `retrieval_indexing` adopted), D-7, D-9.
+- **Product Architecture, with the specification review:** D-2, D-3, D-5.
+- **Engineering configuration (PA-reviewed):** D-8, including `previousSetGraceHours`.
 
 ## 17. Stop conditions
 
@@ -291,6 +332,7 @@ Technical-note section (architecture, schema, hash mechanism, full-text configur
 - A NEM-019, NEM-021, or NEM-022 test must change to pass.
 - Authorization cannot be expressed as SQL predicates.
 - Book-level index permission cannot be established without a user identity or without changing NEM-019 code or bindings.
+- Any §9.7 compatibility fact no longer holds (for example, an operation allowlist), so that introducing `retrieval_indexing` would change accepted NEM-019 behaviour. Present the exception for PO approval.
 - `unaccent`, the generated column, or index use cannot be verified on the disposable database (escalate; do not improvise).
 - A product or legal value (D-4) would need to be assumed.
 
