@@ -127,6 +127,14 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Checkpoint A only** authorized; B–E, merge, deployment, production providers or indexing, and infrastructure are not.
 - Pre-execution check: **blocked** (B-1 protected NEM-023 test; B-2 specification gap).
 
+### PO-042 / PO-043 — NEM-024 Checkpoint D accepted; Checkpoint E authorized — decided 2026-11-10
+→ **[PO-042](../operating-framework/decisions/product-owner/PO-042-nem-024-checkpoint-d-formal-acceptance.md)** · **[PO-043](../operating-framework/decisions/product-owner/PO-043-nem-024-checkpoint-e-authorization.md)**
+
+- **Checkpoint D accepted** for development progression, including F-D1 (privacy), F-D2 (idempotency), and F-D3 (cancellation).
+- **Limitations preserved:** tab-only recovery; 15-minute storage expiry; older unknown turn after a newer question and reload; web coverage below its gate.
+- **Checkpoint E authorized:** final verification and performance qualification only (regression, builds, Q-11 W=10→6→3, coverage, safety, exception register).
+- **Not authorized:** merge, deployment, activation, paid providers, infrastructure, contract changes.
+
 ### PO-040 / PO-041 — NEM-024 Checkpoint C accepted; Checkpoint D authorized — decided 2026-11-10
 → **[PO-040](../operating-framework/decisions/product-owner/PO-040-nem-024-checkpoint-c-formal-acceptance.md)** · **[PO-041](../operating-framework/decisions/product-owner/PO-041-nem-024-checkpoint-d-authorization.md)**
 
