@@ -127,6 +127,13 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Checkpoint A only** authorized; B–E, merge, deployment, production providers or indexing, and infrastructure are not.
 - Pre-execution check: **blocked** (B-1 protected NEM-023 test; B-2 specification gap).
 
+### PO-044 — NEM-024 Q-11 root-cause investigation (diagnostic only) — decided 2026-11-10
+→ **[PO-044](../operating-framework/decisions/product-owner/PO-044-nem-024-q11-root-cause-investigation-authorization.md)**
+
+- **Diagnostic investigation only:** the causes of the Q-11 reader degradation, E-1 retrieval p95, and the N-3 one-second outliers.
+- **Checkpoint E stays NOT QUALIFIED — Q-11 BLOCKING.**
+- **Not authorized:** remedies, production code, contract changes, worker threads, infrastructure, concurrency or target changes, merge, deploy, activation.
+
 ### PO-042 / PO-043 — NEM-024 Checkpoint D accepted; Checkpoint E authorized — decided 2026-11-10
 → **[PO-042](../operating-framework/decisions/product-owner/PO-042-nem-024-checkpoint-d-formal-acceptance.md)** · **[PO-043](../operating-framework/decisions/product-owner/PO-043-nem-024-checkpoint-e-authorization.md)**
 
