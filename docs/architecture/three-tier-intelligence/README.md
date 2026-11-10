@@ -22,6 +22,10 @@
 | — | Governance record: NEM-003 and NEM-006 | [08-architecture-governance-record.md](08-architecture-governance-record.md) |
 | — | NEM-019 control plane technical note (implementation accepted 2026-11-09; dark; not merged or deployed) | [09-nem-019-control-plane-technical-note.md](09-nem-019-control-plane-technical-note.md) |
 | — | **DRAFT** Noetia+ / NoetiaX pilot-readiness assessment (assessment only; no authorization) | [10-pilot-readiness-assessment.md](10-pilot-readiness-assessment.md) |
+| — | **DRAFT** E6 discovery — turn lifecycle and component boundaries | [11-e6-turn-lifecycle-and-boundaries.md](11-e6-turn-lifecycle-and-boundaries.md) |
+| — | **DRAFT** E6 discovery — interface and dependency inventory | [12-e6-interface-and-dependency-inventory.md](12-e6-interface-and-dependency-inventory.md) |
+| — | **DRAFT** E6 discovery — security, rights, and failure modes | [13-e6-security-rights-and-failure-modes.md](13-e6-security-rights-and-failure-modes.md) |
+| — | **DRAFT** E6 discovery — minimal web/mobile UX proposal | [14-e6-minimal-ux-proposal.md](14-e6-minimal-ux-proposal.md) |
 | — | **DRAFT** P0 Product Owner decisions packet, Rev 2: complete product on simulated providers; provider gate at launch readiness (decision preparation only) | [p0-pilot-decisions-packet.md](../../operating-framework/analysis/p0-pilot-decisions-packet.md) |
 | — | Mission report | [2026-11-06 report](../../reports/2026-11-06-SA-002-three-tier-architecture-reconciliation.md) |
 
