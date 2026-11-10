@@ -1,0 +1,1021 @@
+{
+ "q11": {
+  "W10": {
+   "W": 10,
+   "harnessW": 10,
+   "n": 1000,
+   "at": "2026-11-10T20:15:24.836Z",
+   "socketRetries": 0,
+   "runs": [
+    {
+     "label": "idle",
+     "endpoints": {
+      "GET /books": {
+       "n": 1000,
+       "p50": 3.137854,
+       "p95": 6.582231,
+       "p99": 14.293671,
+       "max": 1057.109386,
+       "statuses": {
+        "200": 1000
+       }
+      },
+      "GET /books/:id": {
+       "n": 1000,
+       "p50": 5.218494,
+       "p95": 10.401184,
+       "p99": 16.55499,
+       "max": 1064.811366,
+       "statuses": {
+        "200": 1000
+       }
+      },
+      "GET /books/:id/sync-map": {
+       "n": 1000,
+       "p50": 20.40373,
+       "p95": 54.22612,
+       "p99": 1055.465188,
+       "max": 1078.684888,
+       "statuses": {
+        "200": 1000
+       }
+      }
+     },
+     "docker": {
+      "cpuMax": 1.25,
+      "cpuAvg": 0.8666666666666667,
+      "memMaxMb": 76.41,
+      "samples": 18
+     },
+     "server": {
+      "W": 10,
+      "running": false,
+      "turnsOk": 0,
+      "turnsFailed": 0,
+      "guardRejected": 0,
+      "turnMs": {
+       "3": {
+        "n": 0,
+        "p50": null,
+        "p95": null
+       },
+       "10": {
+        "n": 0,
+        "p50": null,
+        "p95": null
+       }
+      },
+      "errors": {},
+      "eventLoopDelayMs": {
+       "p50": 10.911743,
+       "p99": 38.666239,
+       "max": 85.590015
+      },
+      "rssMb": {
+       "max": 126.3125,
+       "last": 123.16015625
+      },
+      "heapMb": {
+       "max": 58.70668029785156
+      },
+      "pg": {
+       "maxConnections": 2,
+       "maxActive": 2
+      }
+     }
+    },
+    {
+     "label": "x10",
+     "endpoints": {
+      "GET /books": {
+       "n": 1000,
+       "p50": 3.337933,
+       "p95": 9.945376,
+       "p99": 115.980951,
+       "max": 1118.653622,
+       "statuses": {
+        "200": 1000
+       }
+      },
+      "GET /books/:id": {
+       "n": 1000,
+       "p50": 5.349932,
+       "p95": 18.259971,
+       "p99": 199.750801,
+       "max": 1149.391822,
+       "statuses": {
+        "200": 1000
+       }
+      },
+      "GET /books/:id/sync-map": {
+       "n": 1000,
+       "p50": 22.600923,
+       "p95": 209.206319,
+       "p99": 1067.253374,
+       "max": 1209.088919,
+       "statuses": {
+        "200": 1000
+       }
+      }
+     },
+     "docker": {
+      "cpuMax": 90.19,
+      "cpuAvg": 68.80862068965517,
+      "memMaxMb": 122.4,
+      "samples": 29
+     },
+     "server": {
+      "W": 10,
+      "running": false,
+      "turnsOk": 192,
+      "turnsFailed": 0,
+      "guardRejected": 0,
+      "turnMs": {
+       "3": {
+        "n": 0,
+        "p50": null,
+        "p95": null
+       },
+       "10": {
+        "n": 192,
+        "p50": 450.331293,
+        "p95": 755.463146
+       }
+      },
+      "errors": {},
+      "eventLoopDelayMs": {
+       "p50": 10.977279,
+       "p99": 142.737407,
+       "max": 273.154047
+      },
+      "rssMb": {
+       "max": 169.47265625,
+       "last": 153.0390625
+      },
+      "heapMb": {
+       "max": 70.40518951416016
+      },
+      "pg": {
+       "maxConnections": 4,
+       "maxActive": 3
+      }
+     }
+    },
+    {
+     "label": "p3x3",
+     "endpoints": {
+      "GET /books": {
+       "n": 1000,
+       "p50": 4.626258,
+       "p95": 78.103065,
+       "p99": 242.003105,
+       "max": 1194.507189,
+       "statuses": {
+        "200": 1000
+       }
+      },
+      "GET /books/:id": {
+       "n": 1000,
+       "p50": 7.450556,
+       "p95": 122.842313,
+       "p99": 1056.937568,
+       "max": 1276.563229,
+       "statuses": {
+        "200": 1000
+       }
+      },
+      "GET /books/:id/sync-map": {
+       "n": 1000,
+       "p50": 28.835505,
+       "p95": 220.297962,
+       "p99": 1127.455975,
+       "max": 1253.252508,
+       "statuses": {
+        "200": 1000
+       }
+      }
+     },
+     "docker": {
+      "cpuMax": 116.2,
+      "cpuAvg": 104.60408163265305,
+      "memMaxMb": 112.3,
+      "samples": 49
+     },
+     "server": {
+      "W": 10,
+      "running": false,
+      "turnsOk": 896,
+      "turnsFailed": 0,
+      "guardRejected": 0,
+      "turnMs": {
+       "3": {
+        "n": 896,
+        "p50": 512.30643,
+        "p95": 761.270202
+       },
+       "10": {
+        "n": 0,
+        "p50": null,
+        "p95": null
+       }
+      },
+      "errors": {},
+      "eventLoopDelayMs": {
+       "p50": 11.821055,
+       "p99": 130.088959,
+       "max": 220.856319
+      },
+      "rssMb": {
+       "max": 167.08203125,
+       "last": 153.75390625
+      },
+      "heapMb": {
+       "max": 77.62516021728516
+      },
+      "pg": {
+       "maxConnections": 7,
+       "maxActive": 4
+      }
+     }
+    }
+   ]
+  },
+  "W6": {
+   "W": 6,
+   "harnessW": 6,
+   "n": 1000,
+   "at": "2026-11-10T20:18:28.864Z",
+   "socketRetries": 0,
+   "runs": [
+    {
+     "label": "idle",
+     "endpoints": {
+      "GET /books": {
+       "n": 1000,
+       "p50": 3.213336,
+       "p95": 7.104801,
+       "p99": 13.521296,
+       "max": 1068.110269,
+       "statuses": {
+        "200": 1000
+       }
+      },
+      "GET /books/:id": {
+       "n": 1000,
+       "p50": 4.948384,
+       "p95": 10.634035,
+       "p99": 16.598342,
+       "max": 1057.391048,
+       "statuses": {
+        "200": 1000
+       }
+      },
+      "GET /books/:id/sync-map": {
+       "n": 1000,
+       "p50": 20.384194,
+       "p95": 53.14804,
+       "p99": 1054.347804,
+       "max": 1091.135361,
+       "statuses": {
+        "200": 1000
+       }
+      }
+     },
+     "docker": {
+      "cpuMax": 2.01,
+      "cpuAvg": 1.026111111111111,
+      "memMaxMb": 75.7,
+      "samples": 18
+     },
+     "server": {
+      "W": 6,
+      "running": false,
+      "turnsOk": 0,
+      "turnsFailed": 0,
+      "guardRejected": 0,
+      "turnMs": {
+       "3": {
+        "n": 0,
+        "p50": null,
+        "p95": null
+       },
+       "10": {
+        "n": 0,
+        "p50": null,
+        "p95": null
+       }
+      },
+      "errors": {},
+      "eventLoopDelayMs": {
+       "p50": 10.993663,
+       "p99": 41.451519,
+       "max": 81.330175
+      },
+      "rssMb": {
+       "max": 126.97265625,
+       "last": 122.71875
+      },
+      "heapMb": {
+       "max": 59.214439392089844
+      },
+      "pg": {
+       "maxConnections": 2,
+       "maxActive": 2
+      }
+     }
+    },
+    {
+     "label": "p3x2",
+     "endpoints": {
+      "GET /books": {
+       "n": 1000,
+       "p50": 4.220789,
+       "p95": 55.612075,
+       "p99": 120.802333,
+       "max": 1118.544607,
+       "statuses": {
+        "200": 1000
+       }
+      },
+      "GET /books/:id": {
+       "n": 1000,
+       "p50": 6.52834,
+       "p95": 88.684277,
+       "p99": 188.98286,
+       "max": 1254.050086,
+       "statuses": {
+        "200": 1000
+       }
+      },
+      "GET /books/:id/sync-map": {
+       "n": 1000,
+       "p50": 25.727764,
+       "p95": 172.954894,
+       "p99": 1093.628413,
+       "max": 1232.992128,
+       "statuses": {
+        "200": 1000
+       }
+      }
+     },
+     "docker": {
+      "cpuMax": 110.53,
+      "cpuAvg": 97.90594594594596,
+      "memMaxMb": 102.4,
+      "samples": 37
+     },
+     "server": {
+      "W": 6,
+      "running": false,
+      "turnsOk": 599,
+      "turnsFailed": 0,
+      "guardRejected": 0,
+      "turnMs": {
+       "3": {
+        "n": 599,
+        "p50": 379.770045,
+        "p95": 572.14438
+       },
+       "10": {
+        "n": 0,
+        "p50": null,
+        "p95": null
+       }
+      },
+      "errors": {},
+      "eventLoopDelayMs": {
+       "p50": 11.247615,
+       "p99": 106.758143,
+       "max": 180.355071
+      },
+      "rssMb": {
+       "max": 149.80859375,
+       "last": 131.9921875
+      },
+      "heapMb": {
+       "max": 71.96720123291016
+      },
+      "pg": {
+       "maxConnections": 5,
+       "maxActive": 3
+      }
+     }
+    },
+    {
+     "label": "probe10",
+     "probe": {
+      "outcome": "refused",
+      "code": "budget_unavailable",
+      "detail": {
+       "status": "pending",
+       "retryAfterSeconds": 1,
+       "guard": "exceeds_limit"
+      }
+     }
+    }
+   ]
+  },
+  "W3": {
+   "W": 3,
+   "harnessW": 3,
+   "n": 1000,
+   "at": "2026-11-10T20:20:59.891Z",
+   "socketRetries": 0,
+   "runs": [
+    {
+     "label": "idle",
+     "endpoints": {
+      "GET /books": {
+       "n": 1000,
+       "p50": 3.159162,
+       "p95": 6.93006,
+       "p99": 15.898563,
+       "max": 1062.118261,
+       "statuses": {
+        "200": 1000
+       }
+      },
+      "GET /books/:id": {
+       "n": 1000,
+       "p50": 5.023458,
+       "p95": 10.788234,
+       "p99": 16.326379,
+       "max": 1057.126935,
+       "statuses": {
+        "200": 1000
+       }
+      },
+      "GET /books/:id/sync-map": {
+       "n": 1000,
+       "p50": 20.912864,
+       "p95": 55.26114,
+       "p99": 1051.193451,
+       "max": 1109.825406,
+       "statuses": {
+        "200": 1000
+       }
+      }
+     },
+     "docker": {
+      "cpuMax": 1.64,
+      "cpuAvg": 0.9822222222222224,
+      "memMaxMb": 75.22,
+      "samples": 18
+     },
+     "server": {
+      "W": 3,
+      "running": false,
+      "turnsOk": 0,
+      "turnsFailed": 0,
+      "guardRejected": 0,
+      "turnMs": {
+       "3": {
+        "n": 0,
+        "p50": null,
+        "p95": null
+       },
+       "10": {
+        "n": 0,
+        "p50": null,
+        "p95": null
+       }
+      },
+      "errors": {},
+      "eventLoopDelayMs": {
+       "p50": 10.944511,
+       "p99": 43.778047,
+       "max": 87.687167
+      },
+      "rssMb": {
+       "max": 125.3046875,
+       "last": 121.58984375
+      },
+      "heapMb": {
+       "max": 59.292869567871094
+      },
+      "pg": {
+       "maxConnections": 2,
+       "maxActive": 2
+      }
+     }
+    },
+    {
+     "label": "p3x1",
+     "endpoints": {
+      "GET /books": {
+       "n": 1000,
+       "p50": 3.44,
+       "p95": 12.248007,
+       "p99": 72.75473,
+       "max": 1130.909939,
+       "statuses": {
+        "200": 1000
+       }
+      },
+      "GET /books/:id": {
+       "n": 1000,
+       "p50": 5.464165,
+       "p95": 42.351816,
+       "p99": 116.550303,
+       "max": 1123.280306,
+       "statuses": {
+        "200": 1000
+       }
+      },
+      "GET /books/:id/sync-map": {
+       "n": 1000,
+       "p50": 23.207541,
+       "p95": 124.753804,
+       "p99": 1068.618722,
+       "max": 1189.378652,
+       "statuses": {
+        "200": 1000
+       }
+      }
+     },
+     "docker": {
+      "cpuMax": 83.22,
+      "cpuAvg": 71.54384615384615,
+      "memMaxMb": 97.11,
+      "samples": 26
+     },
+     "server": {
+      "W": 3,
+      "running": false,
+      "turnsOk": 332,
+      "turnsFailed": 0,
+      "guardRejected": 0,
+      "turnMs": {
+       "3": {
+        "n": 332,
+        "p50": 240.736971,
+        "p95": 418.97837
+       },
+       "10": {
+        "n": 0,
+        "p50": null,
+        "p95": null
+       }
+      },
+      "errors": {},
+      "eventLoopDelayMs": {
+       "p50": 11.075583,
+       "p99": 83.034111,
+       "max": 140.115967
+      },
+      "rssMb": {
+       "max": 145.12109375,
+       "last": 138.3984375
+      },
+      "heapMb": {
+       "max": 65.27809143066406
+      },
+      "pg": {
+       "maxConnections": 5,
+       "maxActive": 3
+      }
+     }
+    },
+    {
+     "label": "probe10",
+     "probe": {
+      "outcome": "refused",
+      "code": "budget_unavailable",
+      "detail": {
+       "status": "pending",
+       "retryAfterSeconds": 1,
+       "guard": "exceeds_limit"
+      }
+     }
+    }
+   ]
+  }
+ },
+ "retrieval_nem023_fixture": {
+  "store": "disposable local MinIO via StorageService",
+  "books": 10,
+  "codePointsPerBook": 2000000,
+  "chunks": 17780,
+  "chunksPerBook": 1778,
+  "indexBytes": {
+   "total": 66682880,
+   "heap": 7282688,
+   "indexes": 16433152,
+   "toast": 43048960,
+   "budget": 262144000
+  },
+  "indexingMsPerBook": {
+   "min": 1185.214841,
+   "median": 1425.779712,
+   "max": 1573.85505,
+   "total": 13929.638971
+  },
+  "retrievalMs": {
+   "n": 100,
+   "p50": 367.877366,
+   "p95": 842.474183,
+   "max": 962.769502,
+   "avgPassages": 7.2
+  },
+  "perQuery": [
+   {
+    "matches": 0,
+    "p50": 12
+   },
+   {
+    "matches": 42,
+    "p50": 406
+   },
+   {
+    "matches": 415,
+    "p50": 133
+   },
+   {
+    "matches": 590,
+    "p50": 197
+   },
+   {
+    "matches": 629,
+    "p50": 160
+   },
+   {
+    "matches": 1145,
+    "p50": 442
+   },
+   {
+    "matches": 2322,
+    "p50": 655
+   },
+   {
+    "matches": 3399,
+    "p50": 412
+   },
+   {
+    "matches": 4224,
+    "p50": 839
+   },
+   {
+    "matches": 9855,
+    "p50": 582
+   }
+  ],
+  "totalChunks": 17780,
+  "selectiveQueries": {
+   "count": 5,
+   "maxP50": 406
+  },
+  "perObjectMs": {
+   "fetchMedian": 8.91537,
+   "hashAndDecodeMedian": 9.151351
+  },
+  "sqlOnlyMs": {
+   "p50": 2.190119,
+   "max": 27.648961
+  },
+  "ginUsed": true
+ },
+ "sse_idle": [
+  {
+   "label": "nginx60-normal",
+   "silent": false,
+   "viaProxy": {
+    "status": 200,
+    "ended": "terminal",
+    "totalMs": 275,
+    "frames": [
+     {
+      "t": 36,
+      "event": "http-200 buffering=null type=text/event-stream; charset=utf-8"
+     },
+     {
+      "t": 36,
+      "event": "stage",
+      "data": {
+       "stage": "checking"
+      }
+     },
+     {
+      "t": 51,
+      "event": "stage",
+      "data": {
+       "stage": "searching"
+      }
+     },
+     {
+      "t": 254,
+      "event": "stage",
+      "data": {
+       "stage": "composing"
+      }
+     },
+     {
+      "t": 275,
+      "event": "delta",
+      "data": {
+       "segment": 0,
+       "text": "Simulated analysis c0be30da."
+      }
+     },
+     {
+      "t": 275,
+      "event": "segment",
+      "data": {
+       "segment": 0,
+       "origin": "library",
+       "bookId": "a1cf9e66-28a9-40a3-a7f6-065dead3e352",
+       "citations": [
+        {
+         "ref": "chunk:c670c97e-a2af-4e82-bdd6-c026caced9c7",
+         "kind": "chunk",
+         "bookId": "a1cf9e66-28a9-40a3-a7f6-065dead3e352",
+         "anchor": "sha256:527305872237ebfaa8bf55c7f21f6c3f011469ca22611ec3c1f690b826323f1b:1293627-1295112",
+         "excerpt": "ve noti satino. Caguetr\u00ed lel\u00f3sa vedu\u00f1a fosa\u00f1a vetr\u00edno tr\u00edxele cenlesa duramo. Guetr\u00edti nolele caraca mocano catr\u00ed fol\u00f3mo sa\u00f1a sanogue duno pinole.\n\nRamo xepisa cenxemo dusa lejuve lesa gueguesa vepisa ducano canobas cenz\u00fadu dul\u00f3. Til\u00f3ti nogue\u00f1a cajuca vesadu \u00f1anoti nocasa fonogue juju caxeti. Fojuca xetr\u00edca xegueno \u00f1apimo pitr\u00eddu xedu radugue l\u00f3\u00f1amo moxele jubasle cadumo z\u00fabasve \u00f1avepi \u00f1axeno save cati pirasa tr\u00edcamo fo duxele fo\u00f1aca. Basz\u00fasa guecenno pipimo letr\u00edsa caz\u00fati l\u00f3dusa veveca cano z\u00fapipi \u00f1a. Ranoti guemoti vez\u00fa \u00f1a\u00f1asa fosave \u00f1alepi bas\u00f1amo pitr\u00edtr\u00ed fovemo dunove velebas mojuti caguemo salemo bassabas calebas cencenmo. Monopi foveti juguemo dul\u00f3pi guebas saxepi \u00f1al\u00f3ve foca\u00f1a dugue\u00f1a basbasmo vemoca satr\u00edti canoti fomomo l\u00f3fo jusapi. Mo\u00f1api lez\u00fal\u00f3 l\u00f3tisa fomo\u00f1a z\u00fanopi \u00f1a vegueti tile lemo cacenno jusaca junole rague xe pivepi cenmove dugueve lebas\u00f1a \u00f1anopi fomobas. Duti xecale juleno timo casa bassano leti cenmo timo l\u00f3gue pigue z\u00farabas \u00f1al\u00f3mo tr\u00edcenbas \u00f1ajuca calegue \u00f1ano\u00f1a lel\u00f3ti ramo centimo. Cafomo jutr\u00ed\u00f1a calemo nomo jusano casasa bas jugueve. Z\u00faguele l\u00f3z\u00famo tr\u00edfobas \u00f1asa cenz\u00fati cale tr\u00ed basfotr\u00ed. Basradu ramo xe vecen dule rasave lesaca pisa l\u00f3ramo vexe foca xeca tr\u00edvepi guexepi lesamo tr\u00edguesa fopi pive lepimo xebas\u00f1a ramo. Cenrale momo l\u00f3cague \u00f1a guez\u00fale norave guetr\u00edti pino \u00f1amo judule duve sano \u00f1asa \u00f1ague saveve l\u00f3z\u00fa\u00f1a z\u00fa piguedu xelesa. Tigue sabasmo l\u00f3gueve cencasa z\u00facale mobasti sasa duti juduve fodumo vetile vemomo lesa l\u00f3 cavedu lemoti.",
+         "sourceState": "available"
+        }
+       ]
+      }
+     },
+     {
+      "t": 275,
+      "event": "delta",
+      "data": {
+       "segment": 1,
+       "text": "Simulated analysis da4987ab."
+      }
+     },
+     {
+      "t": 275,
+      "event": "segment",
+      "data": {
+       "segment": 1,
+       "origin": "library",
+       "bookId": "19afbcaf-8982-476e-848d-74ba54da86b0",
+       "citations": [
+        {
+         "ref": "chunk:2e06d28b-9cfd-4bcc-8ed1-4d3ad181809d",
+         "kind": "chunk",
+         "bookId": "19afbcaf-8982-476e-848d-74ba54da86b0",
+         "anchor": "sha256:3fe242800b6bfe3338b658ad9df3cf87b3458dc236e2239713b0ea17bfa70678:285434-286882",
+         "excerpt": "jucasa cenvedu cacensa xeno tive basjutr\u00ed. Titi rapiti basve cenz\u00fa fofole caduca l\u00f3cenca du l\u00f3baspi ducenmo piduti tisa xebasca ducati jutigue tr\u00edti.\n\nCennol\u00f3 noti foz\u00famo cenmo pi xefoca pi l\u00f3cal\u00f3 tiguemo z\u00favegue duxesa basz\u00fati lefol\u00f3 radu bastr\u00edti cenl\u00f3sa leletr\u00ed cenjuti. Lelele caduca pilegue caz\u00fasa xenomo radumo bas\u00f1aca guetr\u00eddu z\u00faguesa lesapi. Leraca guenodu fo\u00f1ano focamo mojuti cenbaspi tr\u00edl\u00f3no ralele xeju salele cenl\u00f3sa mofodu fojubas. Xeveti baslele centiti gue le\u00f1amo z\u00faca cati racaca tijul\u00f3 raz\u00fale z\u00fa tr\u00edsa z\u00fajusa ratr\u00edpi moramo jujudu jumole vele. Mo\u00f1ano l\u00f3timo z\u00favemo tiral\u00f3 calesa dutino mocati nopile l\u00f3tr\u00edmo guefosa dudul\u00f3 tibasle xepica raral\u00f3 vexesa cennodu z\u00fa\u00f1aca ramo ticenti sanoca. \u00d1acenve titr\u00edmo pidumo xeno tr\u00edtimo ve ve le\u00f1a monodu notive piz\u00faca xel\u00f3mo z\u00fati cenbasmo z\u00fa\u00f1a\u00f1a momomo ve foleve l\u00f3sati. Fotr\u00edve jumogue dutimo xetimo fotipi novedu levepi cagueca tr\u00edlele racale vemo tisaca capitr\u00ed rague timol\u00f3 l\u00f3z\u00fapi sabas ravetr\u00ed gue. Dufodu pino gue\u00f1ale nosaca \u00f1afo\u00f1a lepipi picamo caxeti jusasa guesa\u00f1a. Basxesa basti dul\u00f3 lemo samosa saleti xemodu l\u00f3basmo tigue. \u00d1aguel\u00f3 bastigue cenl\u00f3ve leleve guebasno \u00f1ajul\u00f3 xecale fosamo vemo cenpitr\u00ed censasa mofotr\u00ed tititr\u00ed ramo fobas l\u00f3 vele cacenpi. Camole dupimo cennobas ramo cen\u00f1al\u00f3 z\u00fabasti veleno lepile rague bassano \u00f1a nopino xecati verati lemo xesano. Saca cenrasa z\u00faz\u00fano tirale xebasdu xesa z\u00fapino xecenti basbas nobasgue vesa juju\u00f1a rajuti guenoca \u00f1anopi moveca cale ve.",
+         "sourceState": "available"
+        }
+       ]
+      }
+     },
+     {
+      "t": 275,
+      "event": "delta",
+      "data": {
+       "segment": 2,
+       "text": "Simulated synthesis 75d5c34d."
+      }
+     },
+     {
+      "t": 275,
+      "event": "segment",
+      "data": {
+       "segment": 2,
+       "origin": "synthesis",
+       "citations": []
+      }
+     },
+     {
+      "t": 275,
+      "event": "terminal",
+      "data": {
+       "outcome": "completed",
+       "statusCode": 200
+      }
+     }
+    ]
+   },
+   "replay": {
+    "ended": "terminal",
+    "terminal": {
+     "outcome": "completed",
+     "statusCode": 200
+    },
+    "stages": 1
+   }
+  },
+  {
+   "label": "nginx60-silent8s",
+   "silent": true,
+   "viaProxy": {
+    "status": 200,
+    "ended": "terminal",
+    "totalMs": 8281,
+    "frames": [
+     {
+      "t": 17,
+      "event": "http-200 buffering=null type=text/event-stream; charset=utf-8"
+     },
+     {
+      "t": 17,
+      "event": "stage",
+      "data": {
+       "stage": "checking"
+      }
+     },
+     {
+      "t": 27,
+      "event": "stage",
+      "data": {
+       "stage": "searching"
+      }
+     },
+     {
+      "t": 257,
+      "event": "stage",
+      "data": {
+       "stage": "composing"
+      }
+     },
+     {
+      "t": 8281,
+      "event": "terminal",
+      "data": {
+       "outcome": "failed",
+       "statusCode": 502
+      }
+     }
+    ]
+   },
+   "replay": {
+    "ended": "terminal",
+    "terminal": {
+     "outcome": "failed",
+     "statusCode": 502
+    },
+    "stages": 1
+   }
+  },
+  {
+   "label": "nginx5-normal",
+   "silent": false,
+   "viaProxy": {
+    "status": 200,
+    "ended": "terminal",
+    "totalMs": 308,
+    "frames": [
+     {
+      "t": 19,
+      "event": "http-200 buffering=null type=text/event-stream; charset=utf-8"
+     },
+     {
+      "t": 19,
+      "event": "stage",
+      "data": {
+       "stage": "checking"
+      }
+     },
+     {
+      "t": 29,
+      "event": "stage",
+      "data": {
+       "stage": "searching"
+      }
+     },
+     {
+      "t": 272,
+      "event": "stage",
+      "data": {
+       "stage": "composing"
+      }
+     },
+     {
+      "t": 308,
+      "event": "delta",
+      "data": {
+       "segment": 0,
+       "text": "Simulated analysis c0be30da."
+      }
+     },
+     {
+      "t": 308,
+      "event": "segment",
+      "data": {
+       "segment": 0,
+       "origin": "library",
+       "bookId": "a1cf9e66-28a9-40a3-a7f6-065dead3e352",
+       "citations": [
+        {
+         "ref": "chunk:c670c97e-a2af-4e82-bdd6-c026caced9c7",
+         "kind": "chunk",
+         "bookId": "a1cf9e66-28a9-40a3-a7f6-065dead3e352",
+         "anchor": "sha256:527305872237ebfaa8bf55c7f21f6c3f011469ca22611ec3c1f690b826323f1b:1293627-1295112",
+         "excerpt": "ve noti satino. Caguetr\u00ed lel\u00f3sa vedu\u00f1a fosa\u00f1a vetr\u00edno tr\u00edxele cenlesa duramo. Guetr\u00edti nolele caraca mocano catr\u00ed fol\u00f3mo sa\u00f1a sanogue duno pinole.\n\nRamo xepisa cenxemo dusa lejuve lesa gueguesa vepisa ducano canobas cenz\u00fadu dul\u00f3. Til\u00f3ti nogue\u00f1a cajuca vesadu \u00f1anoti nocasa fonogue juju caxeti. Fojuca xetr\u00edca xegueno \u00f1apimo pitr\u00eddu xedu radugue l\u00f3\u00f1amo moxele jubasle cadumo z\u00fabasve \u00f1avepi \u00f1axeno save cati pirasa tr\u00edcamo fo duxele fo\u00f1aca. Basz\u00fasa guecenno pipimo letr\u00edsa caz\u00fati l\u00f3dusa veveca cano z\u00fapipi \u00f1a. Ranoti guemoti vez\u00fa \u00f1a\u00f1asa fosave \u00f1alepi bas\u00f1amo pitr\u00edtr\u00ed fovemo dunove velebas mojuti caguemo salemo bassabas calebas cencenmo. Monopi foveti juguemo dul\u00f3pi guebas saxepi \u00f1al\u00f3ve foca\u00f1a dugue\u00f1a basbasmo vemoca satr\u00edti canoti fomomo l\u00f3fo jusapi. Mo\u00f1api lez\u00fal\u00f3 l\u00f3tisa fomo\u00f1a z\u00fanopi \u00f1a vegueti tile lemo cacenno jusaca junole rague xe pivepi cenmove dugueve lebas\u00f1a \u00f1anopi fomobas. Duti xecale juleno timo casa bassano leti cenmo timo l\u00f3gue pigue z\u00farabas \u00f1al\u00f3mo tr\u00edcenbas \u00f1ajuca calegue \u00f1ano\u00f1a lel\u00f3ti ramo centimo. Cafomo jutr\u00ed\u00f1a calemo nomo jusano casasa bas jugueve. Z\u00faguele l\u00f3z\u00famo tr\u00edfobas \u00f1asa cenz\u00fati cale tr\u00ed basfotr\u00ed. Basradu ramo xe vecen dule rasave lesaca pisa l\u00f3ramo vexe foca xeca tr\u00edvepi guexepi lesamo tr\u00edguesa fopi pive lepimo xebas\u00f1a ramo. Cenrale momo l\u00f3cague \u00f1a guez\u00fale norave guetr\u00edti pino \u00f1amo judule duve sano \u00f1asa \u00f1ague saveve l\u00f3z\u00fa\u00f1a z\u00fa piguedu xelesa. Tigue sabasmo l\u00f3gueve cencasa z\u00facale mobasti sasa duti juduve fodumo vetile vemomo lesa l\u00f3 cavedu lemoti.",
+         "sourceState": "available"
+        }
+       ]
+      }
+     },
+     {
+      "t": 308,
+      "event": "delta",
+      "data": {
+       "segment": 1,
+       "text": "Simulated analysis da4987ab."
+      }
+     },
+     {
+      "t": 308,
+      "event": "segment",
+      "data": {
+       "segment": 1,
+       "origin": "library",
+       "bookId": "19afbcaf-8982-476e-848d-74ba54da86b0",
+       "citations": [
+        {
+         "ref": "chunk:2e06d28b-9cfd-4bcc-8ed1-4d3ad181809d",
+         "kind": "chunk",
+         "bookId": "19afbcaf-8982-476e-848d-74ba54da86b0",
+         "anchor": "sha256:3fe242800b6bfe3338b658ad9df3cf87b3458dc236e2239713b0ea17bfa70678:285434-286882",
+         "excerpt": "jucasa cenvedu cacensa xeno tive basjutr\u00ed. Titi rapiti basve cenz\u00fa fofole caduca l\u00f3cenca du l\u00f3baspi ducenmo piduti tisa xebasca ducati jutigue tr\u00edti.\n\nCennol\u00f3 noti foz\u00famo cenmo pi xefoca pi l\u00f3cal\u00f3 tiguemo z\u00favegue duxesa basz\u00fati lefol\u00f3 radu bastr\u00edti cenl\u00f3sa leletr\u00ed cenjuti. Lelele caduca pilegue caz\u00fasa xenomo radumo bas\u00f1aca guetr\u00eddu z\u00faguesa lesapi. Leraca guenodu fo\u00f1ano focamo mojuti cenbaspi tr\u00edl\u00f3no ralele xeju salele cenl\u00f3sa mofodu fojubas. Xeveti baslele centiti gue le\u00f1amo z\u00faca cati racaca tijul\u00f3 raz\u00fale z\u00fa tr\u00edsa z\u00fajusa ratr\u00edpi moramo jujudu jumole vele. Mo\u00f1ano l\u00f3timo z\u00favemo tiral\u00f3 calesa dutino mocati nopile l\u00f3tr\u00edmo guefosa dudul\u00f3 tibasle xepica raral\u00f3 vexesa cennodu z\u00fa\u00f1aca ramo ticenti sanoca. \u00d1acenve titr\u00edmo pidumo xeno tr\u00edtimo ve ve le\u00f1a monodu notive piz\u00faca xel\u00f3mo z\u00fati cenbasmo z\u00fa\u00f1a\u00f1a momomo ve foleve l\u00f3sati. Fotr\u00edve jumogue dutimo xetimo fotipi novedu levepi cagueca tr\u00edlele racale vemo tisaca capitr\u00ed rague timol\u00f3 l\u00f3z\u00fapi sabas ravetr\u00ed gue. Dufodu pino gue\u00f1ale nosaca \u00f1afo\u00f1a lepipi picamo caxeti jusasa guesa\u00f1a. Basxesa basti dul\u00f3 lemo samosa saleti xemodu l\u00f3basmo tigue. \u00d1aguel\u00f3 bastigue cenl\u00f3ve leleve guebasno \u00f1ajul\u00f3 xecale fosamo vemo cenpitr\u00ed censasa mofotr\u00ed tititr\u00ed ramo fobas l\u00f3 vele cacenpi. Camole dupimo cennobas ramo cen\u00f1al\u00f3 z\u00fabasti veleno lepile rague bassano \u00f1a nopino xecati verati lemo xesano. Saca cenrasa z\u00faz\u00fano tirale xebasdu xesa z\u00fapino xecenti basbas nobasgue vesa juju\u00f1a rajuti guenoca \u00f1anopi moveca cale ve.",
+         "sourceState": "available"
+        }
+       ]
+      }
+     },
+     {
+      "t": 308,
+      "event": "delta",
+      "data": {
+       "segment": 2,
+       "text": "Simulated synthesis 75d5c34d."
+      }
+     },
+     {
+      "t": 308,
+      "event": "segment",
+      "data": {
+       "segment": 2,
+       "origin": "synthesis",
+       "citations": []
+      }
+     },
+     {
+      "t": 308,
+      "event": "terminal",
+      "data": {
+       "outcome": "completed",
+       "statusCode": 200
+      }
+     }
+    ]
+   },
+   "replay": {
+    "ended": "terminal",
+    "terminal": {
+     "outcome": "completed",
+     "statusCode": 200
+    },
+    "stages": 1
+   }
+  },
+  {
+   "label": "nginx5-silent8s",
+   "silent": true,
+   "viaProxy": {
+    "status": 200,
+    "ended": "error: terminated",
+    "totalMs": 5007,
+    "frames": [
+     {
+      "t": 13,
+      "event": "http-200 buffering=null type=text/event-stream; charset=utf-8"
+     },
+     {
+      "t": 14,
+      "event": "stage",
+      "data": {
+       "stage": "checking"
+      }
+     },
+     {
+      "t": 24,
+      "event": "stage",
+      "data": {
+       "stage": "searching"
+      }
+     },
+     {
+      "t": 254,
+      "event": "stage",
+      "data": {
+       "stage": "composing"
+      }
+     }
+    ]
+   },
+   "replay": {
+    "ended": "terminal",
+    "terminal": {
+     "outcome": "failed",
+     "statusCode": 502
+    },
+    "stages": 1
+   }
+  }
+ ]
+}
