@@ -1,6 +1,6 @@
 # E6 — Turn Orchestration and User Experience: Architecture Discovery Report
 
-**Status:** DRAFT **revision 2** — **documentation-only discovery**. Revised after the PA review of PR #54 (`e73c277`, *"direction supported — revisions required"*); responses in **§11**. PO authorization: *"E6 Turn Orchestration Discovery — documentation-only"* (2026-11-10). **Authorizes no implementation.**
+**Status:** DRAFT **revision 2** — **documentation-only discovery** (finalized into NEM-024, see the final update in §11). Revised after the PA review of PR #54 (`e73c277`, *"direction supported — revisions required"*); responses in **§11**. PO authorization: *"E6 Turn Orchestration Discovery — documentation-only"* (2026-11-10). **Authorizes no implementation.**
 **Branch:** `docs/e6-turn-orchestration-discovery`, from the NEM-023 accepted head `6c4b08e` (ancestry: NEM-023 → E5 docs → NEM-022 → NEM-021 → NEM-019; the P0 packet branch is also an ancestor). **Nothing in this stack is merged into `main`.**
 **Delivery state:** Draft documentation PR only · no code, tests, migrations, or infrastructure changed · no production data accessed · no provider used.
 
@@ -13,7 +13,7 @@
 | 3 | [12 — interface and dependency inventory](../architecture/three-tier-intelligence/12-e6-interface-and-dependency-inventory.md) |
 | 4 | [13 — security, rights, and failure modes](../architecture/three-tier-intelligence/13-e6-security-rights-and-failure-modes.md) |
 | 5 | [14 — minimal web/mobile UX proposal](../architecture/three-tier-intelligence/14-e6-minimal-ux-proposal.md) |
-| 6 | [DRAFT mission — E6 research-turn orchestration](../engineering-missions/DRAFT/E6-turn-orchestration-and-user-experience.md) |
+| 6 | [DRAFT mission — E6 research-turn orchestration](../engineering-missions/DRAFT/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md) |
 | 7 | [PO decision packet](2026-11-10-E6-product-owner-decision-packet.md) |
 
 ---
@@ -265,10 +265,16 @@ Documentation only. No application code, tests, migrations, CI/CD, or infrastruc
 
 The PO recorded NEM-022's acceptance at `f6a5cb7` after PA re-review (NEM-022 report §20). R-1's remaining decision is therefore **resolved**. NEM-023's wording was reconciled without changing its status. **No E6 decision and no E6 mission approval follows from this update.**
 
+### Update 2026-11-10 — NEM-024 finalization (PO-034)
+
+- The PO approved all E6 decisions in **PO-034** (documentation and final PA sign-off only).
+- The mission is finalized as **`DRAFT/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md`** (proposed, review-ready, not executable). It adds the bilingual interface requirement and PostgreSQL fence semantics under lock waits (`statement_timestamp()`; tests LW-1 to LW-6).
+- **Implementation remains unauthorized.**
+
 ### Update 2026-11-10 — PA finding F-6 (of `4e2c041`)
 
 - `interrupted` is **terminal**, and no terminal state ever changes.
-- Recovery is fenced by a database-time `fenceAt`: owner and cancel writes require `now() < fenceAt`, and finalization requires `now() >= fenceAt`.
+- Recovery is fenced by a database-time `fenceAt`: owner and cancel writes require `statement_timestamp() < fenceAt`, and finalization requires `statement_timestamp() >= fenceAt`.
 - Lazy finalization runs in every read.
 - One provisional turn per session (partial unique index).
 - Twelve deterministic race tests (R1–R12).

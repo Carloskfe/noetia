@@ -1,23 +1,16 @@
-# E6 — Product Architecture Final Review Package (pre-approval) — revision 3
+# NEM-024 (E6) — Product Architecture Final Review Package — revision 4 (for final sign-off)
 
-**Status:** DRAFT — prepared under PO *"E6 Final Mission Review Preparation"* (2026-11-10). **Revision 3** answers F-6 (PA review of `4e2c041`): `interrupted` is **terminal**, and recovery is **fenced** by database time (§7). **Revision 2** answered F-1 to F-5 (review of `ccb3acc`; §9). Documentation only. **Authorizes no implementation and approves no decision.**
+**Status:** DRAFT — prepared under PO *"E6 Final Mission Review Preparation"* (2026-11-10). **Revision 4** (2026-11-10): the PO approved all decisions in **PO-034** (documentation and final PA sign-off only), and the mission is finalized as **NEM-024**. PostgreSQL fence semantics under lock waits are added (§7.6). **Revision 3** answered F-6 (PA review of `4e2c041`): `interrupted` is **terminal**, and recovery is **fenced** by database time (§7). **Revision 2** answered F-1 to F-5 (review of `ccb3acc`; §9). Documentation only. **Authorizes no implementation and approves no decision.**
 **Review target:** branch `docs/e6-turn-orchestration-discovery` (Draft PR #54).
 
-**Decision state:**
-
-| State | Items |
-|---|---|
-| **Approved** | **D-1(a)**: backend plus one minimal web Q&A interface (PO, 2026-11-10) |
-| **Proposed baselines** (PO-indicated, **not approved**) | D-2(C), D-4(a), D-6(a), D-7(a), D-9(a) |
-| **Open for PA judgement** (this package) | D-3, D-8, D-10, D-11, cancellation consistency, revocation during an active turn, recovery |
-| **Open for PO** | D-5 (identifier) |
+**Decision state:** **all decisions approved by the PO (PO-034, 2026-11-10)**: D-1(a), D-2(C), D-3, D-4(a), D-5 (NEM-024), D-6(a), D-7(a), D-8(a), D-9(a), D-10(a), D-11 (W = 10 candidate; reader p95 delta ≤ 50 ms), plus the final eligibility check, terminal fenced recovery, one provisional turn per session, and cancellation behaviour. **Implementation is not authorized.** Remaining for the PA: Q-4, Q-5, Q-7, Q-9, Q-10, Q-12 (§10). Q-11 goes to the PO only if triggered.
 
 **Carried:**
 - NEM-022: **ACCEPTED** at `f6a5cb7` (report §20); open global branch coverage 77.49%; intermittent-test monitoring note.
 - NEM-023: accepted with **open exceptions E-1** (retrieval p95 594 ms vs 150 ms) and **E-2** (global branch coverage 78.75% vs 80%). Neither is waived.
 
 **Companions:**
-- [DRAFT mission rev 4](../engineering-missions/DRAFT/E6-turn-orchestration-and-user-experience.md)
+- [DRAFT mission rev 4](../engineering-missions/DRAFT/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md)
 - [decision packet rev 4](2026-11-10-E6-product-owner-decision-packet.md)
 - [discovery report](2026-11-10-E6-turn-orchestration-discovery-report.md)
 - [11](../architecture/three-tier-intelligence/11-e6-turn-lifecycle-and-boundaries.md)–[14](../architecture/three-tier-intelligence/14-e6-minimal-ux-proposal.md)
@@ -76,7 +69,7 @@ Verified against source on this branch. **Design rule:** every amendment is **ad
 
 | Question | Specification |
 |---|---|
-| Record creation | `INSERT … status = 'accepted', attemptToken, fenceAt = now() + T_max + grace` inside the existing step-4 lock transaction (database time) |
+| Record creation | `INSERT … status = 'accepted', attemptToken, fenceAt = statement_timestamp() + T_max + grace` inside the existing step-4 lock transaction (database time) |
 | Durable completion | When the conditional completion `UPDATE` (§7) commits. This happens after the Gateway terminal event, by which time usage is settled or held in the ledger (NEM-022 F-3). Settlement (charge, ledger authority) and completion (conversation record) are separate facts |
 | Persistence fails after settlement (D-8 a, proposed) | One bounded retry. Then the server **attempts** to return the answer with `unrecorded: true` (a response marker, **not** a state). The charge stands; E6 never compensates. The row stays `accepted` until its fence passes, then becomes `interrupted` (terminal). Before the fence, replay → `409 {status: accepted}`; after it, replay → `interrupted`. Metric `intelligence_turn_unrecorded_total` |
 | **What D-8 (a) does and does not guarantee** | It **does not guarantee** that the user sees the answer they were charged for. Delivery of the `unrecorded` response is **best effort**: if the HTTP response or SSE terminal event is lost (network failure, tab closed, app backgrounded, proxy timeout), the answer is **lost**. It exists only in that response, and replay never reproduces it (`409 accepted` before the fence, `interrupted` after it). The user is then **charged for an answer never seen**. D-8 (a) only avoids **withholding** an answer the server still holds. *Alternative D-8 (b):* return an error and discard the answer, which is a certain unseen charge |
@@ -190,11 +183,11 @@ The lease of revision 2 is removed (no renewal timers).
 
 | Element | Specification |
 |---|---|
-| Columns (in the new `ai_turns`, additive) | `attemptToken uuid` (random per request) and `fenceAt timestamptz` = `now() + T_max + grace`, set **by the database** at insert in the step-4 lock transaction |
+| Columns (in the new `ai_turns`, additive) | `attemptToken uuid` (random per request) and `fenceAt timestamptz` = `statement_timestamp() + T_max + grace`, set **by the database** at insert in the step-4 lock transaction |
 | T_max | `providerTimeoutMs × maxProviderAttempts + Σ allowed retry delays + completion-write budget`, computed at insert from the active configuration (Q-12) |
 | Owner self-bound | The owning request starts a monotonic timer of **T_max** at insert. When it fires, the request aborts its provider call through the existing `AbortSignal` and stops attempting transitions. `grace` (proposed 30 s) separates the owner's last possible write from the fence |
-| **Fencing predicate** | Every owner or cancel transition includes `AND now() < fenceAt` (database clock). After the fence, **no** owner write can commit, even from a frozen-then-resumed process |
-| Finalization | `UPDATE ai_turns SET status = 'interrupted' WHERE id = ANY($ids) AND status = 'accepted' AND now() >= fenceAt`. Run by (a) the `@Interval` sweep (e.g. 60 s), **and** (b) **lazily**, inside every replay, history, single-turn, and cancel read, before responding. No reader ever sees `accepted` after the fence, or `interrupted` before it. **Never touches the ledger** |
+| **Fencing predicate** | Every owner or cancel transition includes `AND statement_timestamp() < fenceAt` (database clock). After the fence, **no** owner write can commit, even from a frozen-then-resumed process |
+| Finalization | `UPDATE ai_turns SET status = 'interrupted' WHERE id = ANY($ids) AND status = 'accepted' AND statement_timestamp() >= fenceAt`. Run by (a) the `@Interval` sweep (e.g. 60 s), **and** (b) **lazily**, inside every replay, history, single-turn, and cancel read, before responding. No reader ever sees `accepted` after the fence, or `interrupted` before it. **Never touches the ledger** |
 | One in-flight turn per session | **Partial unique index** `UNIQUE (sessionId) WHERE status = 'accepted'` on `ai_turns`. A second turn with a **different** key while one is provisional fails at the step-4 insert → step-4 failure → the existing `releaseOrHold` releases the reservation (**no charge**) → `409 duplicate_turn {status: 'accepted', turnId}` (the existing code; Q-4). A preflight `SELECT` gives the same answer earlier; the index is the guarantee |
 | Owner outcome when a transition is fenced (0 rows) | The owner returns **the row's current terminal status** (re-read) and **releases no answer text**. For example, a completion fenced out after `interrupted` → the client receives `interrupted`, never the answer. The charge, if any, stands per the ledger. This rare residual (the owner overran T_max + grace, e.g. a frozen process) is counted by `intelligence_turn_fenced_total` and disclosed |
 | Persistence failure (DB error, not fence) | Covered by §2: `unrecorded: true` answer delivery (best effort). The row is later finalized `interrupted`; history shows "not saved", **consistent** with the response's explicit "not saved to your history" label. This is the only case where the answer was shown, and it was explicitly labelled unsaved |
@@ -206,13 +199,13 @@ States: **`accepted`** (provisional) · **`completed`**, **`failed`**, **`cancel
 | # | From | To | Actor | Condition (all in one statement) | On 0 rows |
 |---|---|---|---|---|---|
 | T0 | — | `accepted` | Owner (step-4 lock transaction) | INSERT; UNIQUE (`sessionId`, `keyHash`); partial UNIQUE (`sessionId`) WHERE `accepted` | Step-4 failure: release, no charge, `409 duplicate_turn` |
-| T1 | `accepted` | `completed` | Owner | `status = 'accepted' AND attemptToken = $owner AND now() < fenceAt` | Re-read; return that terminal status; **no text released** |
-| T2 | `accepted` | `failed` | Owner (provider/validation failure, final eligibility check, timeout at T_max) | `status = 'accepted' AND attemptToken = $owner AND now() < fenceAt` | Re-read; return that status |
-| T3 | `accepted` | `cancelled` | Explicit cancel (authenticated, same user) | `status = 'accepted' AND now() < fenceAt` | Lazy-finalize, then return the current status (idempotent) |
-| T4 | `accepted` | `interrupted` | Sweep or any lazy reader | `status = 'accepted' AND now() >= fenceAt` | No-op (already terminal) |
+| T1 | `accepted` | `completed` | Owner | `status = 'accepted' AND attemptToken = $owner AND statement_timestamp() < fenceAt` | Re-read; return that terminal status; **no text released** |
+| T2 | `accepted` | `failed` | Owner (provider/validation failure, final eligibility check, timeout at T_max) | `status = 'accepted' AND attemptToken = $owner AND statement_timestamp() < fenceAt` | Re-read; return that status |
+| T3 | `accepted` | `cancelled` | Explicit cancel (authenticated, same user) | `status = 'accepted' AND statement_timestamp() < fenceAt` | Lazy-finalize, then return the current status (idempotent) |
+| T4 | `accepted` | `interrupted` | Sweep or any lazy reader | `status = 'accepted' AND statement_timestamp() >= fenceAt` | No-op (already terminal) |
 | — | any terminal | any | anyone | **Never** (no statement matches a terminal status) | — |
 
-**Exclusivity:** T1/T2/T3 require `now() < fenceAt`; T4 requires `now() >= fenceAt`. For any single database instant exactly one family is possible, and PostgreSQL row locking orders T1/T2/T3 among themselves, so **at most one terminal transition ever succeeds per row**.
+**Exclusivity:** T1/T2/T3 require `statement_timestamp() < fenceAt`; T4 requires `statement_timestamp() >= fenceAt`. For any single database instant exactly one family is possible, and PostgreSQL row locking orders T1/T2/T3 among themselves, so **at most one terminal transition ever succeeds per row**.
 
 ### 7.3 Replay, cancel, and completion around the fence
 
@@ -252,6 +245,21 @@ States: **`accepted`** (provisional) · **`completed`**, **`failed`**, **`cancel
 | R11 | Account deletion during flight | Every T1–T4 affects 0 rows; nothing is resurrected |
 | R12 | **Monotonicity property test:** seeded interleavings (≥ 200) of {T1, T2, T3, T4, read} with the fence in the past or future | Once any read observes a terminal status, every later read returns the same status; at most one terminal transition succeeds per row |
 
+### 7.6 PostgreSQL time semantics under concurrent transactions and lock waits
+
+- **Clock:** all fence predicates and `fenceAt` use **`statement_timestamp()`**. `now()` is the transaction-start time and would be stale inside a longer transaction.
+- **Isolation:** each transition is its own single-statement transaction.
+- **Lock waits:** a blocked statement keeps its statement-start timestamp. On lock release, READ COMMITTED re-evaluates the `WHERE` clause against the latest row version, so `status = 'accepted'` blocks any second terminal transition.
+- **Decision instant:** the statement start. An owner write that started before the fence may commit just after it, and that is still a single final outcome (T4 either blocks behind it or finds the row terminal).
+- **Bound:** the knowledge `statement_timeout` (5 s) bounds lock waits; grace (30 s) exceeds it.
+- **Lock-wait tests LW-1 to LW-6** (mission §9.2 item 7a) add to R1–R12:
+  - pre-fence T1 blocked past the fence;
+  - T4 blocked behind T1;
+  - T4 first, then a late T1;
+  - T3 vs T1 under lock contention;
+  - the `now()` transaction-start trap, plus an architecture test that every transition uses `statement_timestamp()` as its own statement;
+  - a lazy reader blocked behind a writer.
+
 ## 8. Implementation sequence — independently reviewable checkpoints
 
 Each checkpoint ends with tests green and a PA review before the next starts.
@@ -273,7 +281,7 @@ Each checkpoint ends with tests green and a PA review before the next starts.
 | F-3 | Revocation between step 2 and invoke was accepted as a residual | **Final eligibility check** after the lock commit and immediately before invoke. User-level rights and book-level index permission are checked separately and fresh. On failure: `gateway.release` (held if not writable), `failed`, `book_ineligible`, lock stands. Gateway and ledger are unchanged | §6; mission §9.4; doc 13 |
 | F-4 | W=10 was presented as the value | W=10 is a **candidate**. Acceptance is reader p95 delta ≤ 50 ms under sustained load vs idle on the production image; reduce 10 → 6 → 3 and retest; W < 10 is escalated as a product conflict | §4; mission §9.5; packet D-11 |
 | F-5 | An age-only sweep could interrupt a live turn | *Revised for F-6:* finalization only after a database-time **fence** after which the owner cannot commit; seven race tests, now replaced by R1–R12 | §7; mission §9.2 items 7–8 |
-| **F-6** | `interrupted → completed` contradicted a terminal state clients may already have seen | **`interrupted` is terminal; no terminal state ever changes.** The lease is replaced by `fenceAt` (DB time). All owner and cancel writes are fenced (`now() < fenceAt`); finalization requires `now() >= fenceAt`, so the two are mutually exclusive. Lazy finalization in every read means no client sees `accepted` after the fence or `interrupted` before it. A fenced owner releases no text. A partial unique index allows one provisional turn per session (no unintended duplicate paid turns). Twelve deterministic race tests (§7.5). No new table or service | §7; mission §9.2–§9.3; packet; docs 13, 14 |
+| **F-6** | `interrupted → completed` contradicted a terminal state clients may already have seen | **`interrupted` is terminal; no terminal state ever changes.** The lease is replaced by `fenceAt` (DB time). All owner and cancel writes are fenced (`statement_timestamp() < fenceAt`); finalization requires `statement_timestamp() >= fenceAt`, so the two are mutually exclusive. Lazy finalization in every read means no client sees `accepted` after the fence or `interrupted` before it. A fenced owner releases no text. A partial unique index allows one provisional turn per session (no unintended duplicate paid turns). Twelve deterministic race tests (§7.5). No new table or service | §7; mission §9.2–§9.3; packet; docs 13, 14 |
 
 ## 10. Remaining questions for PA judgement
 
@@ -281,17 +289,17 @@ Each checkpoint ends with tests green and a PA review before the next starts.
 |---|---|---|
 | ~~Q-1~~ | ~~Probe location~~ | **Closed by F-1:** `GET /knowledge/sessions/capabilities` in `SessionsController` |
 | ~~Q-2~~ | ~~Accept the revocation residual~~ | **Superseded by F-3** (final eligibility check) |
-| ~~Q-3~~ | ~~Reader threshold~~ | **Proposed by the PA (F-4):** ≤ 50 ms p95 delta. Confirmation that this criterion is final |
+| ~~Q-3~~ | ~~Reader threshold~~ | **Closed: approved by the PO (PO-034 D-11):** ≤ 50 ms p95 delta |
 | Q-4 | New `DenialReason` codes vs reusing existing codes + a status payload | Reuse (`duplicate_turn`, `turn_failed`, `book_ineligible` + payload) |
 | Q-5 | History re-materialization shares W with turns? | Share |
-| Q-6 | D-8 (a) best-effort `unrecorded` delivery vs (b) withhold | (a), with the §2 residual disclosed |
+| ~~Q-6~~ | ~~D-8 policy~~ | **Closed: D-8(a) approved (PO-034)** |
 | Q-7 | Lock after a cancel or final-check failure between lock and invoke: keep vs roll back | Keep (the lock transaction committed) |
-| Q-8 | D-10 (a) hide excerpts / (b) keep / (c) hide the answer, before TT-14 | (a) |
+| ~~Q-8~~ | ~~D-10 policy~~ | **Closed: D-10(a) approved (PO-034)** |
 | Q-9 | Context budget default (6,000 passage tokens) for the simulator phase | Accept as engineering configuration |
 | Q-10 | Entry point: URL-only vs one book-page button | URL-only for the dark build |
 | **Q-11** *(new)* | If the reader test passes only at W < 10, how should 10-book (NoetiaX) turns be handled? Options: (a) escalate to the PO (product conflict with PO-027) and leave NoetiaX turns unadmitted in the dark build; (b) allow a single over-weight turn only when nothing else is in flight (likely breaks the 50 ms criterion); (c) separate approval of an out-of-scope remedy | (a). Not decided by engineering |
 | **Q-12** | Fence parameters: T_max derived from the configuration (provider timeout × attempts + retry delays + completion-write budget) and `grace` = 30 s; sweep every 60 s | Accept as engineering configuration; verified by R1–R12. With today's defaults (30 s provider timeout, 1 attempt), crash finalization takes ≈ 60–75 s |
 | ~~Q-13~~ | ~~`interrupted → completed` overwrite~~ | **Closed by F-6:** `interrupted` is terminal; no overwrite |
-| **Q-14** *(new)* | One provisional turn per session (partial unique index), so a user cannot run two concurrent questions in one session | Accept: it prevents duplicate paid turns from double submits; parallel questions use separate sessions |
+| ~~Q-14~~ | ~~One provisional turn per session~~ | **Closed: approved by the PO (PO-034)** |
 
 **STOP for independent Product Architecture re-review.** No implementation, merge, or deployment.

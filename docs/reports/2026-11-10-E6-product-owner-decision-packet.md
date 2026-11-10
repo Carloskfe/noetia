@@ -1,6 +1,6 @@
-# E6 — Product Owner Decision Packet (Turn Orchestration) — revision 5
+# E6 / NEM-024 — Product Owner Decision Packet (Turn Orchestration) — revision 6 (DECIDED)
 
-**Status:** DRAFT — for PO / PA decision. **Revision 5 (PA F-6 of `4e2c041`): `interrupted` is terminal; recovery fenced by database time; one provisional turn per session. Revision 4 (PA review F-1…F-5 of `ccb3acc`): D-8 best-effort wording, D-9 consistency, D-11 candidate W and 50 ms acceptance. Revision 3 (2026-11-10): D-1(a) APPROVED by the PO**; P-0 satisfied. Final PA questions: [PA final review package](2026-11-10-E6-pa-final-review-package.md). Prepared under PO *"E6 Turn Orchestration Discovery — documentation-only"* (2026-11-10). Revised after the PA review of PR #54 (`e73c277`). **No decision below is taken by this document.**
+**Status:** **DECIDED — all decisions approved by the PO on 2026-11-10 in [PO-034](../operating-framework/decisions/product-owner/PO-034-e6-research-turn-decisions-and-nem-024-assignment.md), for documentation and final independent PA sign-off only. Implementation NOT authorized.** Mission: [NEM-024](../engineering-missions/DRAFT/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md) (proposed, review-ready). *Earlier revisions (1–5) are preserved below as the decision history.*
 
 **Evidence:**
 - [discovery report](2026-11-10-E6-turn-orchestration-discovery-report.md) (§11: revision responses)
@@ -8,7 +8,7 @@
 - [12 inventory](../architecture/three-tier-intelligence/12-e6-interface-and-dependency-inventory.md)
 - [13 security](../architecture/three-tier-intelligence/13-e6-security-rights-and-failure-modes.md)
 - [14 UX](../architecture/three-tier-intelligence/14-e6-minimal-ux-proposal.md)
-- [DRAFT mission rev 2](../engineering-missions/DRAFT/E6-turn-orchestration-and-user-experience.md)
+- [DRAFT mission rev 2](../engineering-missions/DRAFT/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md)
 
 Only decisions **genuinely required before implementation** are in §1. Launch-time items are in §3.
 
@@ -43,15 +43,31 @@ Only decisions **genuinely required before implementation** are in §1. Launch-t
 - (i) the PA re-review outcome of NEM-022 (`f6a5cb7`) **and** a PO acceptance record in the repository; or
 - (ii) an explicit PO authorization for E6 to build on the unaccepted NEM-022 head, acknowledging that E6 inherits any later NEM-022 corrections.
 
-## Decision state (revision 3, 2026-11-10)
+## Decision state (revision 6, 2026-11-10 — PO-034)
 
-| State | Decisions |
+| ID | Approved decision (PO-034) |
 |---|---|
-| **Approved (PO, 2026-11-10)** | **D-1(a)**: backend plus one minimal web Q&A interface. E9 keeps all broader UX (mission §5.1) |
-| **Proposed baselines** (named by the PO; **not approved**; the mission is written on them) | D-2(C) book passages only · D-4(a) stateless model context with persistent conversation history · D-6(a) web first · D-7(a) simulator and fixture-based dark development · D-9(a) disconnect does not cancel a turn |
-| **Open: PA judgement** | D-3 (precise amendments, review package §1) · D-8 (§2) · D-10 (§3) · D-11 (§4) · cancellation consistency (§5) · revocation during an active turn, including the final eligibility check (§6) · fenced, terminal-safe recovery state machine (§7) · Q-4 to Q-12 and Q-14 (§10; Q-1 to Q-3 and Q-13 closed or superseded) |
-| **Open: PO** | D-5 identifier (NEM-024 verified unused) |
+| D-1(a) | Backend plus one minimal web Q&A interface (E9 keeps broader UX) |
+| D-2(C) | Eligible book passages only |
+| D-3 | The six additive interface amendments, subject to accepted-contract protection (review package §1) |
+| D-4(a) | Stateless model context with persisted display history |
+| D-5 | NEM-024 assigned (verified unused) |
+| D-6(a) | Web-first implementation |
+| D-7(a) | Fixture simulator, dark development |
+| D-8(a) | Best-effort `unrecorded` delivery, with its documented residual risk (record failed **and** response lost → an unseen charge) |
+| D-9(a) | A client disconnect does not cancel; explicit authenticated cancellation does |
+| D-10(a) | Hide revoked historical excerpts; retain generated answer text pending TT-14 |
+| D-11 | W = 10 is a performance-test **candidate, not a guaranteed production capacity**; reader p95 delta ≤ 50 ms under sustained permitted load on the production API image capped at 1 vCPU / 512 MB |
+| Also accepted | Final eligibility check · terminal database-fenced recovery · one provisional turn per session · the specified cancellation behaviour |
 
+**Still open (non-blocking for finalization):**
+- PA engineering questions Q-4, Q-5, Q-7, Q-9, Q-10, Q-12 (review package §10);
+- Q-11 (PO, only if the reader test passes only at W < 10);
+- launch-time items (§3).
+
+---
+
+*Decision history (revisions 1–5) follows; statuses in the table below are as of revision 5 and are superseded by the table above.*
 
 ## 1. Decisions required before implementation
 

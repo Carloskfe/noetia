@@ -1,23 +1,23 @@
-# NOETIA ENGINEERING MISSION — NEM-0XX (proposed NEM-024) (E6)
-## Research-Turn Orchestration and Minimal Web Q&A Interface (dark, simulated provider only) — revision 5
+# NOETIA ENGINEERING MISSION — NEM-024
+## Research-Turn Orchestration and Minimal Bilingual Web Q&A (dark, simulated provider only)
 
-**Status:** DRAFT — **never executable** (`DRAFT/`). It becomes executable only after:
-1. prerequisite P-0 (NEM-022 status) — **satisfied 2026-11-10** (§3);
-2. the PO decides the [decision packet](../../reports/2026-11-10-E6-product-owner-decision-packet.md);
-3. the PA reviews this specification;
-4. the PO approves it and gives an explicit execution instruction naming the mission.
-
-**Identifier:** pending (D-5). NEM-024 verified unused on 2026-11-10; not reserved.
-**Mission type:** IMPLEMENTATION (proposed)
-**Implementation authorization:** NONE
-**Schema changes:** ADDITIVE ONLY (proposed): one table, `ai_turns`; disposable test databases only
+**Status:** **PROPOSED — REVIEW-READY (2026-11-10).** All E6 decisions are approved by the PO in [PO-034](../../operating-framework/decisions/product-owner/PO-034-e6-research-turn-decisions-and-nem-024-assignment.md), **for documentation and final independent Product Architecture sign-off only**. Awaiting final PA sign-off. **Not executable; implementation NOT authorized.** The file stays in `DRAFT/` (the NEM-023 precedent) and moves to `APPROVED/` only after the PA sign-off and PO approval of the specification. Execution then still requires an explicit PO instruction naming NEM-024.
+**Identifier:** `NEM-024`, assigned by the PO on 2026-11-10 (PO-034 D-5). Verified unused on all remote branches, PR titles, and the register.
+**Mission type:** IMPLEMENTATION
+**Implementation authorization:** NONE (pending PA sign-off, PO specification approval, and an explicit execution instruction)
+**Schema changes:** ADDITIVE ONLY: one table, `ai_turns` (with a partial unique index); disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED (none needed)
-**Production deployment:** NOT AUTHORIZED (staging and merge to `main` also not authorized)
-**Product Owner approval:** REQUIRED
+**Production deployment:** NOT AUTHORIZED (staging and merge to `main` also not authorized). Provider usage **simulated only**; every production integration **disabled**
+**Product Owner approval:** decisions approved (PO-034); specification approval pending the final PA sign-off
+
+> **Finalization (PO *"NEM-024 Formal Mission Finalization"*, 2026-11-10):**
+> - The specification is renamed from the E6 DRAFT to NEM-024 (`git mv`, history preserved).
+> - Every decision marked **[D-x]** below is now **approved** (PO-034). The text written on the "recommended" or "proposed baseline" options is the approved text.
+> - Added: the explicit bilingual (en/es) interface requirement (§5.2) and PostgreSQL time-fence semantics under concurrent transactions and lock waits (§9.2 item 7a).
 
 > **Revision 5** (PA review of `4e2c041`, finding **F-6**):
 > - `interrupted` is **terminal**, and **no terminal state ever changes**.
-> - The lease is replaced by a database-time **fence** (`fenceAt`): owner and cancel writes require `now() < fenceAt`, and finalization requires `now() >= fenceAt`.
+> - The lease is replaced by a database-time **fence** (`fenceAt`): owner and cancel writes require `statement_timestamp() < fenceAt`, and finalization requires `statement_timestamp() >= fenceAt`.
 > - Lazy finalization in every read.
 > - One provisional turn per session (partial unique index).
 > - Deterministic race tests R1–R12 (§9.2 item 7; [review package §7](../../reports/2026-11-10-E6-pa-final-review-package.md#7-recovery--fenced-terminal-safe-state-machine-f-5-revised-for-f-6)).
@@ -31,7 +31,7 @@
 >
 > **Revision 3** (PO *"E6 Final Mission Review Preparation"*, 2026-11-10):
 > - **D-1(a) APPROVED** by the PO: backend plus **one minimal web Q&A interface**. The web interface is now an explicit requirement (§5 item 13, §5.1, AC 14, checkpoint D), and the E6/E9 separation is explicit (§5.1).
-> - **Proposed baselines (not approved):** D-2(C) book passages only, D-4(a) stateless model context with persistent history, D-6(a) web first, D-7(a) simulator and fixture-based dark development, D-9(a) disconnect does not cancel. The mission is written on these baselines; each still needs its decision.
+> - *(Revision 3 wording, superseded by PO-034: D-2(C), D-4(a), D-6(a), D-7(a), D-9(a) were proposed baselines; all are now approved.)*
 > - The precise D-3 amendments, D-8, D-10, D-11, cancellation consistency, revocation during a turn, and the checkpoint plan are in the [PA final review package](../../reports/2026-11-10-E6-pa-final-review-package.md).
 >
 > **Revision 2** (PA review of PR #54 at `e73c277`, *"direction supported — revisions required"*):
@@ -89,7 +89,7 @@ All of this is dark, with default deny everywhere in the real module.
 
 **Other dependencies:**
 - Code: the NEM-019/021/022/023 branch stack (not `main`).
-- Decisions: **D-1(a) approved**. Baselines D-2(C), D-4(a), D-6(a), D-7(a), D-9(a) proposed, not approved. Open: D-3, D-5, D-8, D-10, D-11 (packet §1).
+- Decisions: **all approved (PO-034, 2026-11-10)**: D-1(a), D-2(C), D-3 (six additive amendments), D-4(a), D-5 (NEM-024), D-6(a), D-7(a), D-8(a), D-9(a), D-10(a), D-11 (W = 10 candidate; reader p95 delta ≤ 50 ms). Also approved: the final eligibility check, terminal fenced recovery, one provisional turn per session, cancellation behaviour.
 - Not required: E3/E4 production adapters (fixture ports, D-7); paid providers; staging; CI changes.
 - Test environment: local disposable PostgreSQL 16 / Redis / MinIO-compatible fixture; VM limits (`--maxWorkers=2`); for §9.5, the locally built production API image under `--cpus=1 --memory=512m`.
 
@@ -104,7 +104,7 @@ ADR-003, ADR-005, ADR-006 · PO-026, PO-027, PO-028, PO-033 · NEM-019 technical
 3. **User knowledge: not in this mission (D-2 C).**
    - Highlights and notes are neither read nor sent. `fragments` is untouched. NEM-019 AC-10/17 and AC-16/17 are unchanged.
    - Adding them later is a separate, explicitly authorized step (§6, [13 §3.5](../../architecture/three-tier-intelligence/13-e6-security-rights-and-failure-modes.md#35-adding-user-knowledge-later-without-weakening-isolation)).
-   - **[D-2 A]** would instead add one named, test-asserted read route; the scope is otherwise unchanged.
+   - *(D-2 A/B, a named read route, was not selected; it remains a possible later, separately authorized step.)*
 4. **Context budget:** passages ≤ the configured budget (E5 default 6,000 tokens), applied before `prepare`.
 5. **Turn record:** additive migration `ai_turns`:
    - **Identity:** `id`, `sessionId` (FK `ai_conversations` ON DELETE CASCADE), `turnIndex`, `keyHash` (UNIQUE with `sessionId`).
@@ -129,7 +129,7 @@ ADR-003, ADR-005, ADR-006 · PO-026, PO-027, PO-028, PO-033 · NEM-019 technical
     - **Turn states:** content-free stage states while the turn runs (no token-by-token text); explicit cancel, plus same-key recovery after a reload or disconnect; read-only and fork notices.
     - **Answers:** origin labels in text; a citation dialog with the verified excerpt or `sourceState`, plus an "Open book" link (link only; reader untouched).
     - **Errors:** each `code` mapped to en/es copy.
-    - **Platform:** shown only when the capability probe allows it. Web only (D-6 a baseline). No new UI framework or service; reuses `apiFetch`, Tailwind, and the i18n providers.
+    - **Platform:** shown only when the capability probe allows it. Web only (D-6 a, approved). No new UI framework or service; reuses `apiFetch`, Tailwind, and the i18n providers.
 14. Tests, technical-note section, migration entry, completion report.
 
 ### 5.1 E6 minimal interface vs E9 broader UX (boundary)
@@ -147,6 +147,23 @@ ADR-003, ADR-005, ADR-006 · PO-026, PO-027, PO-028, PO-033 · NEM-019 technical
 | Reader deep links to exact positions | ❌ (link to the book only) | Later, with an approved `sync_maps` path |
 
 E6 ships no navigation entry in the global app chrome unless the PA allows the minimal book-page entry. The screen is reachable by URL for a session created through the API, and is hidden when the capability probe denies.
+
+### 5.2 Bilingual interface requirement (English / Spanish)
+
+- **Every** user-visible string of the E6 web interface exists in **both** `services/web/lib/i18n/en.ts` and `services/web/lib/i18n/es.ts`, under one web-only namespace (proposed `research`; web-only per the CLAUDE.md voice guide, so mobile files are not touched). This covers:
+  - labels and stage texts ("Comprobando tus libros…", "Buscando pasajes…", "Redactando respuesta…");
+  - origin labels and disclosures;
+  - citation `sourceState` texts;
+  - every error `code` mapping;
+  - cancel, interrupted, unrecorded, read-only/fork, budget-exhausted, and "another question in progress" messages;
+  - accessibility names and live-region announcements.
+- **No hard-coded copy** in components. The language follows the existing `LanguageProvider` / `useTranslation()` (synced with the API).
+- **Voice guide:**
+  - "tú" form; sentence case;
+  - unicode `…` for loading states;
+  - no `¡`/`!` or "Error:" in errors;
+  - canonical terms ("Fragmento", "Biblioteca", "Escucha Activa"; no model or provider names; no "token" wording for AI capacity, since `BOOK TOKEN ≠ AI USAGE`).
+- Server denial messages stay English-only (`IntelligenceDenied`); the client **always** maps `code` to the en/es copy and never displays the server message.
 
 ## 6. Out of scope
 
@@ -204,10 +221,10 @@ Retrieval failure **before** reservation → `turn_failed`, with no lock, no cha
 **No terminal state ever changes.** No transition leaves a terminal state.
 
 **Lifecycle:**
-1. **Record creation:** the row is inserted with `status = 'accepted'`, a fresh `attemptToken`, and `fenceAt = now() + T_max + grace` (database time) **inside the existing step-4 lock transaction** (with the lock and `turnCount` update). Preflight failures and step-4 failures (attempt released by the existing `releaseOrHold`) create **no** row.
-2. **When a turn is durably completed:** when the single conditional `UPDATE … SET status = 'completed', segments = …, completedAt = now() WHERE id = $1 AND attemptToken = $2 AND status = 'accepted' AND now() < fenceAt` **commits** (transition T1, item 7). This happens after the Gateway's terminal event. By NEM-022 F-3, the attempt's usage is already settled, or held, in the NEM-021 ledger before any consumer-visible event. **Settlement and completion are separate facts:** the ledger is the only authority for charges, and `ai_turns` is only the conversation record.
+1. **Record creation:** the row is inserted with `status = 'accepted'`, a fresh `attemptToken`, and `fenceAt = statement_timestamp() + T_max + grace` (database time) **inside the existing step-4 lock transaction** (with the lock and `turnCount` update). Preflight failures and step-4 failures (attempt released by the existing `releaseOrHold`) create **no** row.
+2. **When a turn is durably completed:** when the single conditional `UPDATE … SET status = 'completed', segments = …, completedAt = now() WHERE id = $1 AND attemptToken = $2 AND status = 'accepted' AND statement_timestamp() < fenceAt` **commits** (transition T1, item 7). This happens after the Gateway's terminal event. By NEM-022 F-3, the attempt's usage is already settled, or held, in the NEM-021 ledger before any consumer-visible event. **Settlement and completion are separate facts:** the ledger is the only authority for charges, and `ai_turns` is only the conversation record.
 3. **Order of response vs completion:** the server attempts the completion write **before** sending the terminal response or event, with one bounded retry.
-4. **Persistence fails after settlement (D-8 a, proposed):**
+4. **Persistence fails after settlement (D-8 a, approved; residual risk documented):**
    - the charge stands (ledger authority; E6 never compensates);
    - the server **attempts** to return the answer with `status: 'unrecorded'`. **Delivery is best effort:**
      - if the response or SSE terminal event is lost (network failure, tab closed, app backgrounded, proxy timeout), the answer is lost, because it exists only in that response;
@@ -237,7 +254,7 @@ Retrieval failure **before** reservation → `turn_failed`, with no lock, no cha
    - **Client retries** with the same key never cause a new reservation or provider call (table above). A new question needs a new key, which is a new charge by design.
 7. **Recovery (fenced, terminal-safe; F-5 revised for F-6).** Full specification and tests: review package §7.
    - **Fence:**
-     - `fenceAt = now() + T_max + grace` is set by the database at insert;
+     - `fenceAt = statement_timestamp() + T_max + grace` is set by the database at insert;
      - `T_max = providerTimeoutMs × maxProviderAttempts + Σ allowed retry delays + completion-write budget`;
      - `grace` is proposed at 30 s (Q-12).
    - **Owner self-bound:** a monotonic timer of T_max started at insert. When it fires, the owner aborts the provider call (existing `AbortSignal`) and records T2 `failed` (timeout) if still before the fence.
@@ -246,15 +263,34 @@ Retrieval failure **before** reservation → `turn_failed`, with no lock, no cha
      | # | From → To | Actor | Condition | On 0 rows |
      |---|---|---|---|---|
      | T0 | — → `accepted` | Owner, step-4 transaction | INSERT; UNIQUE (`sessionId`, `keyHash`); partial UNIQUE (`sessionId`) WHERE `accepted` | Step-4 failure: release, no charge, `409 duplicate_turn` |
-     | T1 | `accepted` → `completed` | Owner | `attemptToken = owner AND now() < fenceAt` | Re-read; return that terminal status; **release no text** |
-     | T2 | `accepted` → `failed` | Owner | `attemptToken = owner AND now() < fenceAt` | Re-read; return that status |
-     | T3 | `accepted` → `cancelled` | Explicit cancel | `now() < fenceAt` | Lazy-finalize; return the current status |
-     | T4 | `accepted` → `interrupted` | Sweep or any lazy reader | `now() >= fenceAt` | No-op |
+     | T1 | `accepted` → `completed` | Owner | `attemptToken = owner AND statement_timestamp() < fenceAt` | Re-read; return that terminal status; **release no text** |
+     | T2 | `accepted` → `failed` | Owner | `attemptToken = owner AND statement_timestamp() < fenceAt` | Re-read; return that status |
+     | T3 | `accepted` → `cancelled` | Explicit cancel | `statement_timestamp() < fenceAt` | Lazy-finalize; return the current status |
+     | T4 | `accepted` → `interrupted` | Sweep or any lazy reader | `statement_timestamp() >= fenceAt` | No-op |
    - **Exclusivity:** T1–T3 and T4 have disjoint time predicates, and row locking orders T1–T3, so **at most one terminal transition per row**.
    - **Lazy finalization:** every replay, history, single-turn, and cancel request runs T4 for the rows it reads before responding, and the sweep (`@Interval`) does the same for unread rows. **No client ever sees `accepted` after the fence or `interrupted` before it.**
    - **A fenced owner** (a late completion after T4) returns `interrupted` and **releases no answer text**; the charge, if any, stands per the ledger; metric `intelligence_turn_fenced_total`; disclosed residual.
    - **Crash:** the row stays provisional until the fence (≈ 60–75 s with today's defaults), then becomes `interrupted`.
    - **Ledger:** never touched by recovery; held attempts resolve through NEM-021 reconciliation.
+7a. **PostgreSQL time-fence semantics under concurrency (must be tested):**
+   - **Clock function:** every transition (T1–T4) and `fenceAt` itself use **`statement_timestamp()`**, never `now()`. `now()` is the **transaction start** time, so a transition run inside a longer transaction would be judged against a stale instant.
+   - **One transition per transaction:** each transition is a **single-statement transaction**, never wrapped with other statements.
+   - **Lock waits (READ COMMITTED):**
+     - a transition blocked on a row lock keeps its statement-start timestamp;
+     - after the lock is released, PostgreSQL re-evaluates the `WHERE` clause against the **new row version**, so the `status = 'accepted'` predicate prevents any second terminal transition;
+     - **decision instant = statement start**, so an owner write that started before the fence and waited on a lock may commit shortly after the fence. That is still a single, final outcome, and no reader can have observed `interrupted` (T4 would have blocked behind it or found the row terminal).
+   - **Bound on lock waits:** all transitions are short single statements under the knowledge `statement_timeout` (5 s). `grace` (30 s) ≫ the statement timeout.
+   - **Required lock-wait tests (real PostgreSQL, two or three connections; blocking via `SELECT … FOR UPDATE` held in a separate transaction; the fence placed ~2 s ahead):**
+
+     | # | Scenario | Expected |
+     |---|---|---|
+     | LW-1 | T1 starts **before** the fence, blocks on a held row lock until **after** the fence, then the lock is released | T1 commits `completed` (decision instant before the fence); a subsequent T4 affects 0 rows; no reader saw `interrupted` |
+     | LW-2 | T1 holds the row (in progress) across the fence; T4 starts after the fence and blocks | After T1 commits, T4 re-checks and affects 0 rows; the reader returns `completed` |
+     | LW-3 | T4 commits first after the fence; a T1 that started after the fence was blocked | T1 affects 0 rows (both the fence and the status predicate fail); the owner returns `interrupted`, no text |
+     | LW-4 | T3 (cancel) and T1 both start before the fence and contend for the row lock (both orders) | Exactly one terminal state; the loser affects 0 rows and reports the winner |
+     | LW-5 | **Transaction-start trap:** the same predicate evaluated with `now()` inside an explicit transaction opened before the fence | Demonstrates the stale instant (documentation test); an **architecture test** asserts every transition SQL uses `statement_timestamp()` and runs as its own statement |
+     | LW-6 | A lazy reader's T4 blocked behind an in-flight T1/T3 | Waits, then returns the terminal status set by the winner; never `accepted` after the fence once the reader responds |
+
 8. **Account and session deletion:**
    - `ai_turns` cascades from `ai_conversations`, which cascades from `users` (ADR-005 B-2); the existing `deleteAccount` path is unchanged.
    - Every in-flight conditional update (T1–T4) after deletion affects 0 rows and is a no-op, so nothing is resurrected (tested).
@@ -271,7 +307,7 @@ Retrieval failure **before** reservation → `turn_failed`, with no lock, no cha
 | During a provider attempt | Explicit cancel | `AbortSignal` → Gateway `client_abort`; no text released (F-1) | **Held** at the reserved amount until NEM-021 reconciliation settles it from evidence | Stands | T3 `accepted → cancelled` (fenced) |
 | After the fence | Explicit cancel | Lazy T4, then return `interrupted` | As per the ledger | Stands | `interrupted` |
 | After settlement (terminal reached) | Explicit cancel | No effect; completion proceeds | As settled | Stands | `completed` (viewable by replay or history) |
-| Any time, including preflight | **Client disconnect or stream close** (network loss, tab close, app background) | **Never a cancellation** (D-9 a, proposed baseline): the turn continues to completion and is persisted, so a same-key replay returns it | As normal | — | As normal |
+| Any time, including preflight | **Client disconnect or stream close** (network loss, tab close, app background) | **Never a cancellation** (D-9 a, approved): the turn continues to completion and is persisted, so a same-key replay returns it | As normal | — | As normal |
 
 - Explicit cancel is `POST …/turns/cancel {idempotencyKey}`. It signals the in-flight request through an **in-process** registry (`Map<serverKey, AbortController>`).
 - With more than one API instance this would need a shared channel. That is a known limitation and is not built now (single instance; no new infrastructure).
@@ -375,7 +411,7 @@ Each ends green and PA-reviewed before the next starts.
 
 Excerpts only; no verbatim book text stored in `ai_turns`; no full-text export.
 
-## 11. Acceptance criteria (proposed)
+## 11. Acceptance criteria
 
 1. **Turn order and lock unchanged:** every NEM-019/NEM-022 turn test passes unchanged. Retrieval failures occur before reservation (no lock, no charge, no record).
 2. **Grounding:** `library` segments cite only chunk refs retrieved for this turn from eligible selected books. Answer-time excerpts equal `codePointSlice(source, charStart, charEnd)` under the current hash.
@@ -403,7 +439,11 @@ Excerpts only; no verbatim book text stored in `ai_turns`; no full-text export.
     - **Simulated end to end:** one Playwright flow on the local simulated stack (ask → stages → answer with citations → open the excerpt → cancel → reload recovery).
     - **Unit coverage:** Jest component tests for each state in [14 §3](../../architecture/three-tier-intelligence/14-e6-minimal-ux-proposal.md#3-states).
     - **Accessibility:** a `role="log"` region with polite announcements without partial text; the dialog focus trap; labels not colour-only.
-    - **i18n:** en/es parity (the web i18n test).
+    - **i18n (§5.2):**
+      - the existing web parity test (`tests/unit/lib/i18n.spec.ts`) passes with the new namespace;
+      - a component test renders each state in **both** `en` and `es` and asserts translated text (no key leaks, no hard-coded strings);
+      - every error `code` has an en and an es entry (table-driven test);
+      - the Playwright flow runs once per locale.
     - **Visibility:** hidden when the probe denies.
     - **E9 boundary:** no E9-scope screen is introduced (§5.1). Reader suites are unchanged.
 15. **Regression:** all NEM-019/021/022/023 suites pass unchanged (except D-3-authorized amendments, each in its own commit, verified green first).
@@ -434,9 +474,12 @@ None. Branch + Draft PR only. Launch prerequisites (separate authorizations): E3
 
 Technical-note §14 (E6), migration entry, runbook notes (replay, cancellation, recovery, guard), completion report with raw outputs, latency and reader-impact tables.
 
-## 16. Open decisions
+## 16. Decisions and remaining questions
 
-**D-1(a) approved (2026-11-10).** All others are open (baselines proposed; packet §1; PA questions Q-4 to Q-12 and Q-14 in the review package (Q-1 to Q-3 and Q-13 closed or superseded)). Launch-time items (packet §3) are not required for this mission.
+**All mission decisions are approved** (PO-034). Remaining items, none of which blocks finalization:
+- **PA engineering questions** (review package §10): Q-4 (reuse denial codes), Q-5 (history shares W), Q-7 (keep the lock after a cancel or final-check failure), Q-9 (passage budget), Q-10 (URL-only entry), Q-12 (fence parameters).
+- **Q-11** (PO, only if triggered): handling of 10-book turns if the reader test passes only at W < 10.
+- Launch-time items (packet §3) are not required for this mission.
 
 ## 17. Stop conditions
 
