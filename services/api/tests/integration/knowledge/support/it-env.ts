@@ -5,14 +5,18 @@ import { DataSource } from 'typeorm';
 import { KnowledgeConfig } from '../../../../src/knowledge/common/knowledge-config';
 import { KnowledgeDbService } from '../../../../src/knowledge/common/knowledge-db.service';
 import { KnowledgeMetricsService } from '../../../../src/knowledge/common/knowledge-metrics.service';
-import { ModelGatewayService } from '../../../../src/knowledge/ai/model-gateway.service';
-import { ModelRouterService } from '../../../../src/knowledge/ai/model-router.service';
-import { SimulatedProviderService } from '../../../../src/knowledge/ai/simulated-provider.service';
+import { RAW_FIXTURE_UNIT_WEIGHTS } from '../../../../src/knowledge/ai/contract/fixtures';
+import { AiGatewayService } from '../../../../src/knowledge/ai/gateway/ai-gateway.service';
+import { CapabilityRouterService } from '../../../../src/knowledge/ai/gateway/capability-router.service';
+import { RAW_SIMULATOR_PRICING, SIMULATOR_DESCRIPTORS } from '../../../../src/knowledge/ai/simulator/simulator-fixtures';
+import { SimStep, SimulatorV2Adapter } from '../../../../src/knowledge/ai/simulator/simulator-v2';
 import { ContextItem } from '../../../../src/knowledge/ai/verified-context';
 import { EntitlementService } from '../../../../src/knowledge/entitlement/entitlement.service';
 import { QualifyingPlanAnswer } from '../../../../src/knowledge/entitlement/qualifying-plan.port';
 import { AdmissionCachePort, RedisAdmissionCache } from '../../../../src/knowledge/metering/admission-cache';
 import { BudgetLedgerService } from '../../../../src/knowledge/metering/budget-ledger.service';
+import { CostConfigService } from '../../../../src/knowledge/metering/cost-config.service';
+import { CostLedgerService } from '../../../../src/knowledge/metering/cost-ledger.service';
 import { RateCardService } from '../../../../src/knowledge/metering/rate-card.service';
 import { OwnershipAnswer, RightsVerificationAuthorityPort } from '../../../../src/knowledge/rights/rights.ports';
 import { RightsService } from '../../../../src/knowledge/rights/rights.service';
@@ -125,6 +129,54 @@ export interface Fixtures {
   unattested: Set<string>;
 }
 
+/** NEM-019 legacy simulator scripts, still used by unchanged suites (e.g. account deletion). */
+export type LegacySimBehavior =
+  | { kind: 'success'; units?: number; toolCalls?: { name: string; bookId: string }[] }
+  | { kind: 'failure'; units: number | null }
+  | { kind: 'abort' }
+  | { kind: 'hang' }
+  | { kind: 'throw' };
+
+/**
+ * NEM-022 D-2 harness wiring: simulator v2 (the registered provider adapter, so `jest.spyOn(w.sim, 'invoke')` still
+ * counts provider calls) that also accepts the NEM-019 script vocabulary, mapped onto the shared outcome model:
+ * failure with unknown usage → provider_unavailable (held); failure with known usage → a refusal with complete
+ * usage (settled); abort → stream ends without a usage record (held); hang → timeout (held); throw → internal (held).
+ */
+export class HarnessSimulator extends SimulatorV2Adapter {
+  enqueue(...steps: (SimStep | LegacySimBehavior)[]) {
+    super.enqueue(...steps.map((b): SimStep => {
+      switch (b.kind) {
+        case 'success': return { kind: 'success', toolCalls: (b as { toolCalls?: { name: string; bookId: string }[] }).toolCalls };
+        case 'failure': return b.units === null ? { kind: 'unavailable' } : { kind: 'refusal', category: 'policy', completeness: 'complete' };
+        case 'abort': return { kind: 'partial_stream', deltas: 1, then: 'drop' };
+        case 'hang': return { kind: 'timeout' };
+        case 'throw': return { kind: 'internal' };
+        default: return b as SimStep;
+      }
+    }));
+  }
+}
+
+/** Fixture cost configuration for turns (idempotent): simulator pricing, unit weights, and a roomy global policy. */
+export async function ensureCostFixtures(costConfig: CostConfigService, ds: DataSource) {
+  if (!(await costConfig.activeGlobalPolicy())) {
+    const id = await costConfig.addGlobalPolicy({ periodDays: 30, allowanceMicroUsd: 1_000_000_000_000n, maxUnresolvedMicroUsd: 1_000_000_000_000n, isTestFixture: true });
+    await costConfig.activateGlobalPolicy(id);
+  }
+  if (!(await costConfig.activeUnitWeightSchema())) {
+    const [{ v }] = await ds.query(`SELECT COALESCE(MAX(version), 0) + 1 AS v FROM ai_unit_weight_schemas WHERE "schemaKey" = $1`, [RAW_FIXTURE_UNIT_WEIGHTS.id]);
+    await costConfig.activateUnitWeightSchema(await costConfig.addUnitWeightSchema({ ...JSON.parse(JSON.stringify(RAW_FIXTURE_UNIT_WEIGHTS)), version: Number(v) }));
+  }
+  for (const raw of RAW_SIMULATOR_PRICING) {
+    if ((await costConfig.activePricingSchema(raw.providerKey, raw.modelKey)).status === 'ok') continue;
+    const [{ v }] = await ds.query(`SELECT COALESCE(MAX(version), 0) + 1 AS v FROM ai_pricing_schemas WHERE provider = $1 AND "modelKey" = $2`, [raw.providerKey, raw.modelKey]);
+    const id = await costConfig.addPricingSchema({ ...JSON.parse(JSON.stringify(raw)), version: Number(v) });
+    const [{ open }] = await ds.query(`SELECT count(*)::int AS open FROM ai_overrun_breakers b JOIN ai_pricing_schemas s ON s.id = b."pricingSchemaId" WHERE b.state = 'open' AND s.provider = $1 AND s."modelKey" = $2`, [raw.providerKey, raw.modelKey]);
+    await costConfig.activatePricingSchema(id, open > 0 ? 'harness-fixture-replacement' : null);
+  }
+}
+
 /** Wire the real services against the disposable DB with simulated ports. */
 export function wire(
   ds: DataSource,
@@ -146,16 +198,19 @@ export function wire(
   const rateCards = new RateCardService(db);
   const ledger = new BudgetLedgerService(db, rateCards, metrics, config, opts.cache);
   const sessions = new SessionsService(db, entitlements, rights, metrics);
-  const sim = new SimulatedProviderService();
-  const gateway = new ModelGatewayService(new ModelRouterService([sim]), config);
-  const turns = new TurnService(db, sessions, rights, new ContextBuilderService(metrics), ledger, rateCards, gateway, metrics,
-    { candidates: async () => fx.context });
-  return { fx, db, entitlements, rights, ledger, sessions, turns, sim, rateCards };
+  // NEM-022 D-2: turns run through the Gateway v2 on the real NEM-021 cost ledger (one accounting path).
+  const costConfig = new CostConfigService(db);
+  const costLedger = new CostLedgerService(db, costConfig, ledger, metrics, config, opts.cache);
+  const sim = new HarnessSimulator(SIMULATOR_DESCRIPTORS[0]);
+  const gateway = new AiGatewayService(new CapabilityRouterService([sim]), costLedger, metrics, config);
+  const turns = new TurnService(db, sessions, rights, new ContextBuilderService(metrics), gateway, config, { candidates: async () => fx.context });
+  return { fx, db, entitlements, rights, ledger, sessions, turns, sim, rateCards, costConfig, costLedger, gateway };
 }
 
 /** A qualifying subscriber with a grant, an enabled flag, and a fixture budget. */
 export async function readyUser(ds: DataSource, w: ReturnType<typeof wire>, tier: 'noetia_plus' | 'noetia_x' = 'noetia_plus') {
   const userId = await createUser(ds);
+  await ensureCostFixtures(w.costConfig, ds); // NEM-022 D-2: turns need fixture pricing, weights, and a global policy
   w.fx.plan.set(userId, 'qualifying');
   await grant(ds, userId, tier);
   return userId;

@@ -2,10 +2,11 @@ import { Module } from '@nestjs/common';
 import { KNOWLEDGE_CONFIG, knowledgeConfigFromEnv } from './common/knowledge-config';
 import { KnowledgeDbService } from './common/knowledge-db.service';
 import { KnowledgeMetricsService } from './common/knowledge-metrics.service';
-import { ModelGatewayService } from './ai/model-gateway.service';
-import { MODEL_PROVIDERS } from './ai/model-provider';
-import { ModelRouterService } from './ai/model-router.service';
-import { SimulatedProviderService } from './ai/simulated-provider.service';
+import { AiGatewayService } from './ai/gateway/ai-gateway.service';
+import { CapabilityRouterService } from './ai/gateway/capability-router.service';
+import { PROVIDER_ADAPTERS } from './ai/gateway/gateway.types';
+import { SIMULATOR_DESCRIPTORS } from './ai/simulator/simulator-fixtures';
+import { SimulatorV2Adapter } from './ai/simulator/simulator-v2';
 import { CapabilityGuard } from './entitlement/capability.guard';
 import { EntitlementService } from './entitlement/entitlement.service';
 import { QUALIFYING_PLAN_PORT, UnboundQualifyingPlanPort } from './entitlement/qualifying-plan.port';
@@ -49,17 +50,17 @@ import { TurnService } from './sessions/turn.service';
     RateCardService,
     BudgetLedgerService,
     ReconciliationJobService,
-    // NEM-021 cost-aware ledger (dark): no controller; consumed by the Gateway only under NEM-022.
+    // NEM-021 cost-aware ledger (dark): no controller; consumed by the NEM-022 Gateway v2.
     CostConfigService,
     CostLedgerService,
     CostReconciliationJobService,
     SessionsService,
     ContextBuilderService,
     TurnService,
-    SimulatedProviderService,
-    ModelRouterService,
-    ModelGatewayService,
-    { provide: MODEL_PROVIDERS, useFactory: (sim: SimulatedProviderService) => [sim], inject: [SimulatedProviderService] },
+    // NEM-022 Gateway v2 (dark). Simulated adapters only; the router refuses anything else at registration.
+    { provide: PROVIDER_ADAPTERS, useFactory: () => SIMULATOR_DESCRIPTORS.map((d) => new SimulatorV2Adapter(d)) },
+    CapabilityRouterService,
+    AiGatewayService,
     { provide: QUALIFYING_PLAN_PORT, useClass: UnboundQualifyingPlanPort },
     { provide: OWNERSHIP_PORT, useClass: UnboundOwnershipPort },
     { provide: TEXT_IDENTITY_PORT, useClass: UnboundTextIdentityPort },

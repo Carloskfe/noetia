@@ -1,13 +1,12 @@
 import { createHash } from 'crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { IntelligenceDenied } from '../common/intelligence-denied.error';
+import { KNOWLEDGE_CONFIG, KnowledgeConfig } from '../common/knowledge-config';
 import { KnowledgeDbService } from '../common/knowledge-db.service';
-import { KnowledgeMetricsService } from '../common/knowledge-metrics.service';
-import { ModelGatewayService } from '../ai/model-gateway.service';
+import { AiGatewayService, PreparedCall } from '../ai/gateway/ai-gateway.service';
+import { GatewaySegment } from '../ai/gateway/gateway.types';
 import { AnswerSegment } from '../ai/model-provider';
 import { RESEARCH_OPERATION, RESEARCH_SESSION } from '../knowledge.types';
-import { BudgetLedgerService, NO_PROVIDER } from '../metering/budget-ledger.service';
-import { RateCardService } from '../metering/rate-card.service';
 import { RightsService } from '../rights/rights.service';
 import { ContextBuilderService } from './context-builder.service';
 import { CONTEXT_SOURCE_PORT, ContextSourcePort } from './context-source.port';
@@ -26,15 +25,28 @@ export function turnIdempotencyKey(userId: string, sessionId: string, clientKey:
   return 'turn:' + createHash('sha256').update(`${userId}:${sessionId}:${clientKey}`).digest('hex');
 }
 
+/** The instruction template bound to `research_session.turn`. */
+export const TURN_TEMPLATE_ID = 'research_session.turn.v1';
+
+/** Validated Gateway segments in the turn's response shape (a library passage carries its cited book). */
+function toAnswerSegment(s: GatewaySegment): AnswerSegment {
+  const bookId = s.origin === 'library' ? s.citations.find((c) => c.kind === 'chunk')?.bookId ?? undefined : undefined;
+  return bookId ? { origin: s.origin, text: s.text, bookId } : { origin: s.origin, text: s.text };
+}
+
 /**
  * Research-session turn stub (model path `research_session.turn`; declared
- * invariant `research_session_context`). Turn order (ADR-006, B-5):
+ * invariant `research_session_context`). Turn order (ADR-006, B-5), unchanged:
  *   1. entitlement → 2. book set, eligibility, Context Builder invariant →
- *   3. ledger reservation → 4. short FOR UPDATE transaction (first-turn lock) →
- *   5. provider call outside any transaction → 6. durable settlement.
- * Failure at 1–3: no lock, no charge. Failure at 4: reservation released (or
- * held for reconciliation if the release cannot be written); no provider call.
+ *   3. reservation (Gateway v2: negotiation, token count, attempt-1 reservation in the cost ledger) →
+ *   4. short FOR UPDATE transaction (first-turn lock) →
+ *   5. provider call outside any transaction → 6. durable settlement (per attempt, by the Gateway).
+ * Failure at 1–3: no lock, no charge. Failure at 4: the attempt is released (or held for reconciliation if the
+ * release cannot be written — the cost ledger writes no-provider evidence first); no provider call.
  * Failure at 5–6: the lock stands; settlement is never assumed.
+ *
+ * NEM-022 (D-2, Option A): one accounting path per turn — the Gateway v2 per-attempt reservation and settlement
+ * through the NEM-021 cost ledger. The turn never touches the legacy units-only ledger.
  */
 @Injectable()
 export class TurnService {
@@ -43,10 +55,8 @@ export class TurnService {
     private readonly sessions: SessionsService,
     private readonly rights: RightsService,
     private readonly contextBuilder: ContextBuilderService,
-    private readonly ledger: BudgetLedgerService,
-    private readonly rateCards: RateCardService,
-    private readonly gateway: ModelGatewayService,
-    private readonly metrics: KnowledgeMetricsService,
+    private readonly gateway: AiGatewayService,
+    @Inject(KNOWLEDGE_CONFIG) private readonly config: KnowledgeConfig,
     @Inject(CONTEXT_SOURCE_PORT) private readonly contextSource: ContextSourcePort,
   ) {}
 
@@ -77,9 +87,20 @@ export class TurnService {
     const candidates = await this.contextSource.candidates(userId, sessionId, allowed);
     const context = this.contextBuilder.build(userId, allowed, candidates);
 
-    // 3. Reserve budget in the ledger (fails closed; throws IntelligenceDenied).
+    // 3. Negotiate and reserve attempt 1 (fails closed; throws IntelligenceDenied before any lock).
     const key = turnIdempotencyKey(userId, sessionId, clientKey);
-    await this.ledger.reserve({ userId, tier: r.tier, capability: RESEARCH_SESSION, sessionId, idempotencyKey: key });
+    const prepared = await this.gateway.prepare({
+      pathId: ContextBuilderService.PATH,
+      context,
+      templateId: TURN_TEMPLATE_ID,
+      requiredCapabilities: [RESEARCH_SESSION],
+      output: { mode: 'text' },
+      maxOutputTokens: this.config.turnMaxOutputTokens ?? 1024,
+      cacheIntent: { mode: 'none' },
+      turnKey: key,
+      budget: { userId, tier: r.tier, capability: RESEARCH_SESSION, sessionId },
+      nonTokenUnitBounds: { tool_call: this.config.turnMaxToolCalls ?? 0 },
+    });
 
     // 4. Short lock transaction. No provider call inside it.
     let lockOutcome: 'ok' | 'read_only' | 'set_changed';
@@ -100,54 +121,33 @@ export class TurnService {
         return 'ok' as const;
       });
     } catch {
-      await this.releaseOrHold(userId, sessionId, key);
+      await this.releaseOrHold(prepared);
       throw new IntelligenceDenied('turn_failed');
     }
     if (lockOutcome !== 'ok') {
-      await this.releaseOrHold(userId, sessionId, key);
+      await this.releaseOrHold(prepared);
       throw new IntelligenceDenied(lockOutcome === 'read_only' ? 'session_read_only' : 'set_changed');
     }
 
-    // 5. Provider call, outside any transaction. The lock now stands.
-    const result = await this.gateway.invoke(ContextBuilderService.PATH, context);
+    // 5–6. Provider call outside any transaction (the lock now stands), then durable settlement per attempt:
+    // the Gateway settles each attempt from its normalized usage; unknown usage or a ledger outage stays held.
+    const result = await this.gateway.invoke(prepared);
 
-    // 6. Durable settlement — never assumed.
-    let settlement: TurnResult['settlement'] = 'held';
-    try {
-      await this.ledger.recordUsage({
-        userId, sessionId, capability: RESEARCH_SESSION, idempotencyKey: key,
-        provider: result.provider, modelKey: result.modelKey, outcome: result.outcome, unitsReported: result.unitsReported,
-      });
-      if (result.unitsReported !== null) {
-        const card = await this.rateCards.active(result.provider, result.modelKey);
-        await this.ledger.settle(key, result.unitsReported, card);
-        settlement = 'settled';
-      }
-    } catch {
-      settlement = 'held'; // reconciliation settles it later from durable records
-    }
-
-    if (result.scopeViolation) {
-      this.metrics.scopeViolationInc();
-      throw new IntelligenceDenied('scope_violation');
-    }
-    if (result.outcome !== 'success') throw new IntelligenceDenied('turn_failed');
-    return { sessionId, segments: result.segments, excludedBookIds: excluded, settlement };
+    if (result.scopeViolation) throw new IntelligenceDenied('scope_violation'); // metric counted by the Gateway
+    if (result.outcome !== 'completed' || result.error !== null) throw new IntelligenceDenied('turn_failed');
+    return { sessionId, segments: result.segments.map(toAnswerSegment), excludedBookIds: excluded, settlement: result.settlement };
   }
 
-  /** Step-4 failure: release idempotently; if that fails, leave durable evidence for reconciliation. */
-  private async releaseOrHold(userId: string, sessionId: string, key: string): Promise<void> {
+  /**
+   * Step-4 failure: release the never-sent attempt. The cost ledger writes no-provider evidence before the
+   * release row, so if the release cannot be written, reconciliation releases it later; if even the evidence
+   * cannot be written, the attempt stays held, is flagged on expiry, and is never released to zero automatically.
+   */
+  private async releaseOrHold(prepared: PreparedCall): Promise<void> {
     try {
-      await this.ledger.release(key);
+      await this.gateway.release(prepared);
     } catch {
-      try {
-        await this.ledger.recordUsage({
-          userId, sessionId, capability: RESEARCH_SESSION, idempotencyKey: key,
-          provider: NO_PROVIDER, modelKey: null, outcome: 'aborted', unitsReported: 0,
-        });
-      } catch {
-        // Held until reconciliation; it is flagged on expiry and never released to zero automatically.
-      }
+      // Held until reconciliation (see above).
     }
   }
 }

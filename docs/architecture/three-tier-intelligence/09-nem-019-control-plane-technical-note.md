@@ -182,3 +182,32 @@ docker rm -f nem019-test-pg nem019-test-redis
 **TypeORM gotcha.** On PostgreSQL, `query()` returns `[rows, rowCount]` for a bare `UPDATE … RETURNING`. To count updated rows, wrap the update in a CTE and `SELECT count(*)`.
 
 **Tests:** unit under `tests/unit/knowledge/metering/cost-*`, plus integration in `tests/integration/knowledge/cost-ledger.int-spec.ts` and `cost-migration.int-spec.ts` (same disposable-container commands as §10).
+
+## 12. NEM-022 — Gateway v2, simulator v2, and the provider contract suite (Draft PR, dark)
+
+**Gateway v2** (`src/knowledge/ai/gateway/`) is built on frozen contract v1. Every usage, outcome, error, and money type comes from the contract; nothing is redefined (architecture tests).
+
+| Step | Where | Rule |
+|---|---|---|
+| Template | `instruction-templates.ts` | Only a template registered for the request's model path; no free-form prompt anywhere. Instructions and context travel in **separate channels**; block delimiters inside context text are neutralized |
+| Negotiation | `capability-router.service.ts` | Simulated-only allowlist (refused at registration otherwise). First adapter serving the path, capabilities, features, output mode, cache lifetime, and output bound. None → `capability_unavailable`; counted input (conservative estimate) above `maxContextTokens` → `context_too_large`. Both before any reservation |
+| Reservation | `AiGatewayService.prepare` | Attempt 1 via `CostLedgerService.reserveAttempt` (E1 `worstCaseCost`, per-user units, global allowance). A bound for every declared non-token unit (default 0) |
+| Call | `stream` / `invoke` | Outside any transaction. Per-attempt `AbortController`: provider timeout, caller abort, then a short grace (`abortGraceMs`, default 100 ms) for the adapter's partial usage |
+| Normalization | `attempt-normalizer.ts` | Exactly one §9.3 row. Gateway conditions (timeout, client abort, adapter failure) win over adapter claims. `documented_no_charge` is honoured only for a class the adapter's descriptor declares; anything unevidenced is `unknown` (held) |
+| Settlement | `settleAttempt` per attempt | The ledger's `ledgerActionFor` decides settle / partial / hold / release. A ledger outage leaves the attempt held. **Settlement runs before any consumer-visible event of the attempt (review F-3)**, so a consumer that stops reading cannot leave a completed attempt unresolved |
+| Retries | `stream` | Only retryable rows (`rate_limited` after retry-after, `timeout`, `provider_unavailable`); never after a delta was emitted; bounded by `maxProviderAttempts` (default **1** = no retry) and `maxRetryDelayMs` (default 0). Each retry is a new reserved attempt (`<turnKey>:a<n>`) |
+| Output | `citation-policy.ts`, `structured-output.ts` | Citations must reference sealed refs of allowed books; anything else (or a tool call outside the set) is a scope violation, and the whole answer is dropped. `library` needs ≥ 1 chunk citation, `user_content` cites only the user's highlights and notes, `broader` cites nothing; otherwise relabelled `synthesis`. Structured output is validated against a JSON-Schema subset; invalid → `completed` + `malformed_output` (settled), and the object is withheld |
+
+Stream events, in order: per answered and validated attempt, each segment's `delta` chunks then its validated `segment` (origin and citations); `retry`; per-attempt `usage`; one `terminal`. **Fail closed (review F-1):** deltas are buffered for the whole attempt and released only after the adapter's final event and validation of all citations, origins, and tool calls. A violation or a non-answered outcome releases nothing, and structured output is never streamed. **Tradeoff:** incremental delivery is per attempt, not per provider token, because a citation or tool call can arrive until the final event. The Gateway also requires the sealed context's owner to equal the budget user before any reservation (review F-2). Metrics: `intelligence_gateway_outcome_total{outcome}`, `intelligence_gateway_retry_total`, `intelligence_capability_unavailable_total`.
+
+**Turns (D-2 Option A).** `TurnService` keeps the turn order: step 3 = `gateway.prepare` (attempt-1 reservation), a step-4 failure calls `gateway.release` (never sent), and steps 5–6 = `gateway.invoke` (call and per-attempt settlement). One accounting path per turn; the legacy units-only ledger is not used by turns. The legacy `ModelGatewayService`, router, and `SimulatedProviderService` files remain unchanged and unregistered, kept only for their NEM-019 unit test.
+
+**Simulator v2** (`src/knowledge/ai/simulator/`) has models `sim-standard` and `sim-long-context`, derived from the E1 fixtures (keys changed; counting flagged `estimated`). It is deterministic by seed, script, and clock. Token count = ceil(UTF-8 bytes / 4) + 16 framing tokens. The prompt prefix (instructions plus context blocks) is cached per lifetime: the first call writes, later calls read until expiry, and automatic writes apply on `sim-long-context`. Scripted steps: success (segments, structured, tool calls, explicit output or reasoning), refusal, reject (`invalid_request` / `context_too_large` / `rate_limited` with evidence `none` / `provider_reported_zero` / `documented_no_charge` and retry-after), unavailable, timeout, partial stream (hang or drop), malformed, citation error, internal.
+
+**Provider contract suite — procedure for a future adapter** (`tests/unit/knowledge/ai/gateway/support/provider-contract.ts`):
+1. Implement `ProviderAdapter`: a sealed descriptor (`assertCapabilityDescriptor`), `countTokens`, and `invoke(request, signal)` yielding `delta` / `citation` / `tool_call` and one `final` contract-v1 usage record; honour abort.
+2. Write an `AdapterFactory(scenario)` that primes the adapter for each of the 17 scenarios (a recorded transport fixture, never a live call) and returns the model's pricing schema.
+3. Call `runProviderContract('<name>', factory, { goldenVectors })` with hand-computed E1 golden vectors for that pricing. All scenarios must pass: every §9.3 row, evidence discipline, streaming termination, structured output, citations, cache accounting, abort, attempt-key echo, and pricing (golden vectors; reservation ≥ settlement).
+4. Run the integration variant (`gateway-e2e.int-spec.ts` pattern) through the E1 ledger.
+
+Registering a non-simulated adapter stays refused by the router until the launch-readiness gate.

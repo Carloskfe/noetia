@@ -11,6 +11,11 @@ export interface ContextItem {
   bookId: string | null;
   /** Owner of a highlight or note. */
   userId?: string;
+  /**
+   * NEM-022: the item's text, carried only as delimited context data (never as instructions).
+   * Invented fixture text only until a retrieval mission supplies real content; never logged.
+   */
+  text?: string;
 }
 
 /** Context that has passed a declared invariant. Only a Context Builder seals it. */

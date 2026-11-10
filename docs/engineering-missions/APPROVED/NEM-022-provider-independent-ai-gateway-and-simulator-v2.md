@@ -1,14 +1,35 @@
 # NOETIA ENGINEERING MISSION — NEM-022 (E2)
 ## Provider-Independent AI Gateway and Simulator v2
 
-**Status:** **APPROVED — NOT AUTHORIZED FOR EXECUTION** (Revision 3). Approved by the Product Owner on **2026-11-09** ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)). Drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md).
+**Status:** **COMPLETED — ACCEPTED (PO, 2026-11-10)** as a completed, disconnected development implementation at commit `f6a5cb7`, following independent Product Architecture re-review; F-1, F-2, F-3 accepted as resolved ([report §20](../../reports/2026-11-09-NEM-022-gateway-simulator-v2-report.md#20-product-architecture-re-review-outcome-and-product-owner-acceptance-2026-11-10)). **Open (not waived):** global API branch coverage 77.49% vs 80%. **Monitoring note:** intermittent test failure disclosed in report §19.3. Not merged, not deployed, not production-authorized; no paid AI.
+
+> *Previous status (2026-11-09, preserved):* **PA RE-REVIEW FINDING F-3 ADDRESSED — RETURNED FOR PRODUCT ARCHITECTURE RE-REVIEW (2026-11-09).** F-1 and F-2 fixed in `3c49755` (report §18); F-3 (settle before any consumer-visible event) fixed in `58ec673` ([report §19](../../reports/2026-11-09-NEM-022-gateway-simulator-v2-report.md)). Pre-execution blockers resolved by D-1 (Product Architecture) and D-2 Option A (PA recommendation + PO confirmation); §5 items 1–12 implemented on `feat/nem-022-gateway-simulator-v2` (code HEAD `1261832`, Draft PR #51) ([completion report](../../reports/2026-11-09-NEM-022-gateway-simulator-v2-report.md)). **Not accepted**; not merged; not deployed. Specification: Revision 3. Approved by the Product Owner on **2026-11-09** ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)). Drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md).
 **Identifier:** `NEM-022`, reserved by the PO on 2026-11-09 ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)).
 **Mission type:** IMPLEMENTATION
-**Implementation authorization:** LIMITED to §5 — **not active**: execution requires a separate, explicit Product Owner instruction naming NEM-022, and only **after NEM-021 is completed and accepted**
+**Implementation authorization:** LIMITED to §5 items 1–12 — **authorized and executed 2026-11-09**; awaiting review. No further implementation is authorized under this mission
 **Schema changes:** NOT AUTHORIZED (E2 needs none; if a schema need appears it is a stop condition)
 **Infrastructure changes:** NOT AUTHORIZED
 **Production deployment:** NOT AUTHORIZED (staging also NOT AUTHORIZED; merge to `main` NOT AUTHORIZED)
 **Product Owner approval:** **GRANTED 2026-11-09** (specification only; [PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md))
+
+> **Blocker resolution (2026-11-09).**
+> - **D-1 — APPROVED, Option A (Product Architecture):** replace only the two obsolete Phase-2 boundary guards in `contract-architecture.spec.ts` with NEM-022 guards (contract imports allowed in `metering/` and the Gateway layer; never directly in `sessions/*`). Every other frozen protection is kept; contract v1 source unchanged. New contract test tree `52aec852e9843e739aada63688b0d291f74e5458` (was `d8de089…`).
+> - **D-2 — Option A, recommended by Product Architecture and CONFIRMED by the Product Owner:** `TurnService` migrates to the Gateway v2 per-attempt reservation and settlement path. Only the minimum intent-preserving amendments to `turn.service.spec.ts`, the turn-related assertions in `ledger.int-spec.ts` and `sessions.int-spec.ts`, and the harness wiring in `it-env.ts` are allowed. No double reservation, and no second accounting path for a turn. `sessions.int-spec.ts` needed no change.
+> - **Commits:** `5e09f85` (approved test amendments, separate commit), `0c54468` (implementation), `1261832` (fix).
+> - **Results:** unit 1,673/1,673; contract 212/212; integration 108/108 (NEM-019 56/56, NEM-021 37/37, NEM-022 15/15); tsc 0; eslint 0 errors.
+> - **Status:** returned for Product Architecture review; **not accepted**.
+
+> **Execution authorization (2026-11-09):** PO instruction *"Product Owner Execution Authorization: NEM-022"*: *"The Product Owner authorizes execution of **NEM-022 — Provider-Independent AI Gateway and Simulator v2**, Revision 3, strictly within its approved scope."*
+> - Scope: §5 items 1–12 and the matching acceptance criteria, on frozen contract v1 and the accepted NEM-021 ledger.
+> - Not authorized: merge, deployment, schema or migration changes, infrastructure or CI/CD, real providers, SDKs, endpoints, or credentials, AI costs, protected systems, other missions, and changing NEM-019 or NEM-021 tests merely to make NEM-022 pass.
+> - *"If a prerequisite is missing or a stop condition applies, STOP and report it before writing implementation code."*
+> - Branch: `feat/nem-022-gateway-simulator-v2`, created from the accepted NEM-021 head `f946124`.
+>
+> **Pre-execution result (2026-11-09): BLOCKED** (history; resolved by D-1 and D-2 above).
+> - **B-1:** two guards in the frozen NEM-021 contract test tree (`d8de089`) allow contract imports only in `metering/` and pin the Gateway, router, simulator, and `turn.service.ts` by digest. NEM-022 must change and wire exactly those files. A probe made both guards fail → **D-1 (Product Architecture)**.
+> - **B-2:** turns reserve through the legacy per-turn ledger. §9 (per-attempt reservation before any provider call), §5.10 (`TurnService` uses the new Gateway), and AC-9/AC-11 (NEM-019 suites unchanged) cannot all hold → **D-2 (Product Architecture; PO if a NEM-019 test exception is chosen)**.
+>
+> No implementation code written. Options and recommendations: [report §11](../../reports/2026-11-09-NEM-022-gateway-simulator-v2-report.md).
 
 > **Product Owner approval (2026-11-09)** ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)): this specification (Revision 3) is **approved** and identifier `NEM-022` reserved. Moved from `DRAFT/` to `APPROVED/`; scope unchanged. **Binding sequencing:** NEM-022 executes only after [NEM-021](NEM-021-provider-neutral-ai-contract-and-cost-accounting.md) is completed and accepted, consuming its frozen contract v1. Not authorized: execution, merge, deployment, provider acquisition.
 
