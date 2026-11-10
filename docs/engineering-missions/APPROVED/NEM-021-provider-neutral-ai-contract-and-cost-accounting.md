@@ -1,10 +1,10 @@
 # NOETIA ENGINEERING MISSION — NEM-021 (E1)
 ## Provider-Neutral AI Contract and Cost Accounting
 
-**Status:** **BLOCKED — PHASE 2 PRE-EXECUTION CHECK FAILED (2026-11-09).** Phase 1 accepted; contract v1 frozen at baseline `697f8ea` ([Phase 1 report §12](../../reports/2026-11-09-NEM-021-phase-1-contract-v1-report.md)). Phase 2 is **authorized** (PO, 2026-11-09) but **not started**: two test preconditions conflict with the required migrations ≥ 073 and need decisions D-1 (PO) and D-2 (Product Architecture) ([Phase 2 report](../../reports/2026-11-09-NEM-021-phase-2-cost-aware-ledger-report.md)). Specification: Revision 3, including corrections F-1…F-4. Approved by the Product Owner on **2026-11-09** ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)). Drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md).
+**Status:** **PHASE 2 IMPLEMENTED AND VERIFIED — AWAITING PRODUCT ARCHITECTURE REVIEW (2026-11-09).** Phase 1 accepted; contract v1 frozen at baseline `697f8ea` ([Phase 1 report §12](../../reports/2026-11-09-NEM-021-phase-1-contract-v1-report.md)). Phase 2 (§5 items 7–15) is implemented on Draft PR #50 after decisions D-1 (PO) and D-2 (PA); all Phase 2 acceptance criteria are proven by tests run on a disposable database ([Phase 2 report, revision 2](../../reports/2026-11-09-NEM-021-phase-2-cost-aware-ledger-report.md)). **Not accepted**: the final review (§19) and PO acceptance are pending. Not merged, not deployed; NEM-022 not authorized. Specification: Revision 3, including corrections F-1…F-4. Approved by the Product Owner on **2026-11-09** ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)). Drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md).
 **Identifier:** `NEM-021`, reserved by the PO on 2026-11-09 ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)).
 **Mission type:** IMPLEMENTATION
-**Implementation authorization:** LIMITED to §5 **Phase 1** (items 1–6) — **active since 2026-11-09**. Phase 2 (items 7–15) is **authorized since 2026-11-09** (PO instruction below; freeze precondition met the same day). Execution is **BLOCKED** at the pre-execution check pending D-1 and D-2
+**Implementation authorization:** Phase 1 (items 1–6), **active since 2026-11-09** and completed (accepted). Phase 2 (items 7–15), **authorized since 2026-11-09** (PO instruction below), executed and **awaiting review**. D-1 and D-2 approved as narrow exceptions (record below)
 **Schema changes:** ADDITIVE ONLY (new migrations ≥ 073), applied to disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED
 **Production deployment:** NOT AUTHORIZED (staging also NOT AUTHORIZED; merge to `main` NOT AUTHORIZED)
@@ -21,13 +21,21 @@
 >
 > **Not authorized by this acceptance:** Phase 2, NEM-022, merge, deployment (staging or production), migrations, infrastructure or CI/CD changes, provider connections, credentials, or AI costs. Mission completion still requires Phase 2, the final review (§19), and PO acceptance.
 
+> **Phase 2 execution record (2026-11-09).**
+> - **D-1 (Product Owner):** intent-preserving amendment of NEM-019's migration integration test (`a-schema-migrations.int-spec.ts` AC-19), so later migrations are reverted first and 072…069 are reverted by name, with every original assertion kept.
+> - **D-2 (Product Architecture):** replacement of the obsolete Phase-1-only guard in `contract-architecture.spec.ts` with Phase 2 safeguards. Contract source unchanged. The approved updated contract **test** tree is `d8de089995b57b0e86298d9a2609f5dbee08c980`; the source tree stays `634266826c934e3d615a7342a04a5e7458c6a84d`.
+> - **Implementation:** commits `8da1626` (D-1, D-2), `70a47bd` (Phase 2 code; the session was interrupted by a usage limit), and `a006bde` (recovery fixes D-A and D-B, plus AC-11/AC-13 tests).
+> - **PO recovery instruction (2026-11-09):** recover and verify the existing work, complete only the missing authorized work, then STOP for Product Architecture review. D-1 and D-2 remain valid.
+> - **Result:** contract 212/212, api unit 1,511/1,511, integration 85/85 (NEM-019 56/56, Phase 2 29/29), tsc 0, eslint 0 errors.
+> - **Open for review:** R-1, a `budget-ledger.service.ts` change limiting legacy paths to rows where `attemptNumber IS NULL` ([report §9–§10](../../reports/2026-11-09-NEM-021-phase-2-cost-aware-ledger-report.md)).
+
 > **Phase 2 execution authorization (2026-11-09):** PO instruction *"NEM-021 Phase 2 Execution Authorization"*: *"The Product Owner explicitly authorizes execution of **NEM-021 Phase 2**, according to the approved specification. … This authorization covers only Phase 2 (§5, items 7–15) and the tests, documentation, and governance records required by NEM-021. Do not interpret this as authorization for NEM-022, merging, deployment, AI provider integration, or additional infrastructure."* Also excluded: CI/CD changes, staging or production, real prices or budget values, changes to frozen contract v1 without Product Architecture review, and modifying NEM-019 migrations or tests to make regressions pass. *"If any precondition fails, STOP and report the blocker."* Frozen baseline `697f8ea947bbb486028d71a8cc5d9931ac9e7ce8`; branch `feat/nem-021-provider-neutral-contract`; Draft PR #50.
 >
-> **Pre-execution result (2026-11-09): BLOCKED.**
+> **Pre-execution result (2026-11-09): BLOCKED** (history; resolved by D-1 and D-2 — see the execution record above).
 > - **B-1:** NEM-019's positional migration test (`a-schema-migrations.int-spec.ts` AC-19) fails with any migration ≥ 073. Verified with a temporary probe; specification §17 makes this a stop condition.
 > - **B-2:** the frozen contract test tree contains a Phase-1-only guard that fails as soon as migration 073 exists or ledger code imports the contract; changing it needs Product Architecture review.
 >
-> No Phase 2 code written. Options and recommendations: [Phase 2 report §11](../../reports/2026-11-09-NEM-021-phase-2-cost-aware-ledger-report.md).
+> At that point, no Phase 2 code had been written. Options and recommendations: [Phase 2 report, revision 1](../../reports/2026-11-09-NEM-021-phase-2-cost-aware-ledger-report.md).
 
 > **Execution authorization (2026-11-09):** *"I authorize execution of NEM-021 according to its approved specification, using the existing development branch and disposable local test environments. Stop for Product Architecture review after Phase 1 contract v1, before Phase 2 ledger implementation. Do not execute NEM-022, merge, deploy, connect AI providers, or incur AI costs."* Branch: `feat/nem-021-provider-neutral-contract`, stacked on PR #49.
 
