@@ -228,7 +228,6 @@ Mission: [NEM-023](../../engineering-missions/APPROVED/NEM-023-knowledge-retriev
 | `lexical-retrieval.service.ts` | `RetrievalPort` adapter: the allowed pairs are a SQL join; constant per-language configurations; `ts_rank_cd(tsv, q, 32)` then `bookId`, `chunkIndex`; S2 fetch with hash check; budget |
 | `query-context-source.service.ts` | E6 boundary: re-checks `IndexingPermission` per request (current hash via `TextIdentityPort`) and emits `chunk` `ContextItem`s |
 | `anchor-resolver.ts` | `chunk:<uuid>` → `textHash:charStart-charEnd`, only while the hash is current |
-| `verified-text-cache.ts` | Optional bounded LRU of hash-verified texts, keyed by (object key, hash). **Off by default** |
 | `storage-book-text.ts` | Runtime `BookTextPort` over the new `StorageService.getBytes` (byte-exact) |
 | `index-command.ts` | Operator command `index <bookId\|all>`, `prune`, `purge <bookId>` |
 | `retrieval-metrics.service.ts` | `intelligence_retrieval_total{outcome}`, `intelligence_retrieval_passages`, `intelligence_retrieval_excluded_total{reason}`, `intelligence_index_books_total{outcome}`; fixed labels only |
@@ -287,11 +286,10 @@ npx ts-node -r tsconfig-paths/register src/knowledge/retrieval/index-command.ts 
 | Chunks per book | ≤ 2,000 | Over → `skipped_limit` |
 | Index size | ≤ 250 MB | Checked before reading, and **after the insert inside the transaction** (over → rollback) |
 | Indexing | `statement_timeout` 60 s per book, one transaction | Transaction-local |
-| Retrieval | `statement_timeout` 2 s | Transaction-local |
+| Retrieval | `statement_timeout` 2 s **per SQL statement** (transaction-local) | Not an end-to-end bound: the S2 fetch, hash, decode, and slicing run after the transaction and are not covered; there is no request-level deadline (E6 turn path) |
 | Query / topK / budget | ≤ 500 code points / 1–20 / 1–8,000 tokens (defaults 8 / 6,000) | Validation (`RetrievalRequestInvalid`, field name only) |
 | Allowed books | ≤ 10, one text version per book | Validation |
 | Token estimate | `ceil(utf8 bytes / 3)` | More conservative than the simulator's 4 bytes per token |
-| Verified-text cache | 0 (off) | Configuration (PA decision) |
 
 ### 13.6 Behaviour notes and deviations
 
@@ -301,6 +299,8 @@ npx ts-node -r tsconfig-paths/register src/knowledge/retrieval/index-command.ts 
 - **D-D:** `StorageService.getBytes` was added outside `knowledge/`, because the hash is byte-exact and `getText` decodes.
 - **`websearch_to_tsquery` semantics:** bare terms are ANDed, `or` widens, and quotes require a phrase. A natural-language question with many terms matches only chunks containing all of them (tested). E6 may need to construct `or` queries.
 - **Cross-language:** a Spanish query over an English book matches only shared tokens (tested).
+- **No text cache:** every retrieval re-reads and re-verifies each result book's object. An optional cache was removed after PA review, because it weakened the per-request hash check for stale-hash callers.
+- **Latency:** p95 ≤ 150 ms is **not met** on the synthetic 10 × largest-book fixture (p95 ≈ 0.55–0.6 s); see report §13 and §17.
 
 ### 13.7 Stage 2 extension points
 

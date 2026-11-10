@@ -1,7 +1,7 @@
 # NOETIA ENGINEERING MISSION — NEM-023 (E5)
 ## Knowledge Retrieval and Grounding (Stage 1: lexical, provider-independent)
 
-**Status:** **APPROVED — IMPLEMENTATION COMPLETE, AWAITING PRODUCT ARCHITECTURE REVIEW (2026-11-10).** Executed under Amendment 1 (B-1, B-2, B-3 Option A). Checkpoints A–C done; retrieval p95 target not met (decision P-1/P-2) ([report](../../reports/2026-11-10-NEM-023-knowledge-retrieval-report.md)). Not merged, not deployed.
+**Status:** **APPROVED — IMPLEMENTATION COMPLETE, AWAITING PRODUCT ARCHITECTURE REVIEW (2026-11-10).** Executed under Amendment 1 (B-1, B-2, B-3 Option A). Checkpoints A–C done; PA follow-up applied (cache removed); acceptance exception: retrieval p95 ≤ 150 ms not met ([report](../../reports/2026-11-10-NEM-023-knowledge-retrieval-report.md)). Not merged, not deployed.
 **Identifier:** `NEM-023`, reserved by the PO on 2026-11-10 ([PO-033](../../operating-framework/decisions/product-owner/PO-033-e5-knowledge-retrieval-decisions-and-nem-023-reservation.md))
 **Mission type:** IMPLEMENTATION (proposed)
 **Implementation authorization:** **GRANTED 2026-11-10** (PO *"EXECUTE NEM-023"*, reviewed specification `54ad768`): checkpoints A–C within the exact scope and stop conditions, **as amended by Amendment 1** (B-1, B-2) and the B-3 test exception
