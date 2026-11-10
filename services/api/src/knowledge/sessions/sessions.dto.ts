@@ -1,4 +1,4 @@
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsOptional, IsString, IsUUID, Matches } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
 
 /**
  * Request bodies accept ONLY book ids and a client idempotency key. Any
@@ -31,4 +31,12 @@ export class TurnDto {
   @IsString()
   @Matches(/^[A-Za-z0-9_-]{8,64}$/)
   idempotencyKey: string;
+
+  /**
+   * NEM-024 (D-3 A1): the research question. Required on the HTTP route. Transport bound only; the service applies
+   * NFC normalization, trimming, and the 1–500 code-point rule (matching E5).
+   */
+  @IsString()
+  @MaxLength(4000)
+  question: string;
 }

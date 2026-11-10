@@ -31,6 +31,17 @@ import { CONTEXT_SOURCE_PORT, EmptyContextSource } from './sessions/context-sour
 import { SessionsController } from './sessions/sessions.controller';
 import { SessionsService } from './sessions/sessions.service';
 import { TurnService } from './sessions/turn.service';
+import { TurnRecordStore } from './sessions/turn-record.store';
+import { AnchorResolver } from './retrieval/anchor-resolver';
+import { IndexingPermission } from './retrieval/indexing-permission';
+import { LexicalRetrievalService } from './retrieval/lexical-retrieval.service';
+import { QueryContextSource } from './retrieval/query-context-source.service';
+import { RetrievalMetricsService } from './retrieval/retrieval-metrics.service';
+import { DEFAULT_RETRIEVAL_CONFIG } from './retrieval/retrieval.types';
+import { StorageBookText } from './retrieval/storage-book-text';
+import { StorageModule } from '../storage/storage.module';
+import { StorageService } from '../storage/storage.service';
+import { RightsVerificationAuthorityPort, TextIdentityPort } from './rights/rights.ports';
 
 /**
  * NEM-019 dark intelligence control plane. Registered ONLY when
@@ -39,6 +50,7 @@ import { TurnService } from './sessions/turn.service';
  * no production adapters every request denies. Simulated provider only.
  */
 @Module({
+  imports: [StorageModule],
   controllers: [SessionsController],
   providers: [
     { provide: KNOWLEDGE_CONFIG, useFactory: () => knowledgeConfigFromEnv(process.env) },
@@ -57,6 +69,27 @@ import { TurnService } from './sessions/turn.service';
     SessionsService,
     ContextBuilderService,
     TurnService,
+    // NEM-024 Checkpoint A (D-3 A6): E5 retrieval behind the turn, on the SAME unbound rights/text-identity ports
+    // (default deny in the real module). The offline indexer is not registered.
+    TurnRecordStore,
+    RetrievalMetricsService,
+    { provide: StorageBookText, useFactory: (s: StorageService) => new StorageBookText(s), inject: [StorageService] },
+    {
+      provide: IndexingPermission,
+      useFactory: (db: KnowledgeDbService, ti: TextIdentityPort, a: RightsVerificationAuthorityPort) => new IndexingPermission(db, ti, a),
+      inject: [KnowledgeDbService, TEXT_IDENTITY_PORT, RIGHTS_VERIFICATION_AUTHORITY_PORT],
+    },
+    {
+      provide: LexicalRetrievalService,
+      useFactory: (db: KnowledgeDbService, t: StorageBookText, m: RetrievalMetricsService) => new LexicalRetrievalService(db, t, m, DEFAULT_RETRIEVAL_CONFIG),
+      inject: [KnowledgeDbService, StorageBookText, RetrievalMetricsService],
+    },
+    {
+      provide: QueryContextSource,
+      useFactory: (p: IndexingPermission, r: LexicalRetrievalService, m: RetrievalMetricsService) => new QueryContextSource(p, r, m, DEFAULT_RETRIEVAL_CONFIG),
+      inject: [IndexingPermission, LexicalRetrievalService, RetrievalMetricsService],
+    },
+    { provide: AnchorResolver, useFactory: (db: KnowledgeDbService, ti: TextIdentityPort) => new AnchorResolver(db, ti), inject: [KnowledgeDbService, TEXT_IDENTITY_PORT] },
     // NEM-022 Gateway v2 (dark). Simulated adapters only; the router refuses anything else at registration.
     { provide: PROVIDER_ADAPTERS, useFactory: () => SIMULATOR_DESCRIPTORS.map((d) => new SimulatorV2Adapter(d)) },
     CapabilityRouterService,

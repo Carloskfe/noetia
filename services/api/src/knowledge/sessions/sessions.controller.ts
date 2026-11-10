@@ -58,6 +58,6 @@ export class SessionsController {
   @HttpCode(200)
   @DeclareCapability(RESEARCH_SESSION, 'use')
   turn(@Req() req: AuthedRequest, @Param('id', ParseUUIDPipe) id: string, @Body() dto: TurnDto) {
-    return this.turns.run(req.user.id, id, dto.idempotencyKey);
+    return this.turns.run(req.user.id, id, dto.idempotencyKey, dto.question);
   }
 }

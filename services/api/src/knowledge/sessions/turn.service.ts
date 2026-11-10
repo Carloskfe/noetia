@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { IntelligenceDenied } from '../common/intelligence-denied.error';
 import { KNOWLEDGE_CONFIG, KnowledgeConfig } from '../common/knowledge-config';
 import { KnowledgeDbService } from '../common/knowledge-db.service';
@@ -11,6 +11,12 @@ import { RightsService } from '../rights/rights.service';
 import { ContextBuilderService } from './context-builder.service';
 import { CONTEXT_SOURCE_PORT, ContextSourcePort } from './context-source.port';
 import { bookSetHash, SessionsService } from './sessions.service';
+import { DenialReason } from '../knowledge.types';
+import { AnchorResolver } from '../retrieval/anchor-resolver';
+import { IndexingPermission } from '../retrieval/indexing-permission';
+import { QueryContextResult, QueryContextSource } from '../retrieval/query-context-source.service';
+import { isUniqueViolation, ReservationRelease, StoredSegment, TurnRecordStore, TurnRow } from './turn-record.store';
+import { TurnStatusDenied, TurnStatusDetail } from './turn-status.error';
 
 export interface TurnResult {
   sessionId: string;
@@ -18,7 +24,49 @@ export interface TurnResult {
   /** Books in the locked set excluded from this turn (disclosed, ADR-006). */
   excludedBookIds: string[];
   settlement: 'settled' | 'held';
+  /** NEM-024 (additive; present only on the question path). */
+  turnId?: string;
+  status?: 'completed';
+  /** Per segment index: the segment's citations (refs + anchors; excerpt from this turn's verified passages). */
+  citations?: TurnCitation[][];
+  exclusions?: TurnExclusions;
+  /** D-8(a): the answer could not be recorded; best-effort delivery, not replayable. */
+  unrecorded?: true;
+  /** True when this result is a same-key replay of a recorded turn. */
+  replayed?: true;
 }
+
+export interface TurnCitation {
+  ref: string;
+  kind: string;
+  bookId: string | null;
+  anchor: string | null;
+  /** Verified passage text from this turn's context; null on replay (re-materialization is Checkpoint B). */
+  excerpt: string | null;
+  sourceState: 'available' | 'position_unavailable' | 'deferred';
+}
+
+export interface TurnExclusions {
+  ineligible: string[];
+  unindexed: string[];
+  stale: string[];
+  unavailable: string[];
+  indexNotPermitted: string[];
+}
+
+/** NEM-024: question normalization (NFC + trim) and validation (1–500 code points), matching E5. */
+export function normalizeTurnQuestion(raw: unknown): string {
+  if (typeof raw !== 'string') throw new IntelligenceDenied('invalid_request');
+  const q = raw.normalize('NFC').trim();
+  const n = [...q].length;
+  if (n < 1 || n > 500) throw new IntelligenceDenied('invalid_request');
+  return q;
+}
+
+const DENIAL_CODES = new Set<string>([
+  'turn_failed', 'session_read_only', 'set_changed', 'duplicate_turn', 'book_ineligible', 'scope_violation', 'no_eligible_books',
+]);
+const asDenial = (r: string | null | undefined): DenialReason => (r && DENIAL_CODES.has(r) ? (r as DenialReason) : 'turn_failed');
 
 /** Server-side idempotency key, namespaced so clients cannot collide across users. */
 export function turnIdempotencyKey(userId: string, sessionId: string, clientKey: string): string {
@@ -58,9 +106,19 @@ export class TurnService {
     private readonly gateway: AiGatewayService,
     @Inject(KNOWLEDGE_CONFIG) private readonly config: KnowledgeConfig,
     @Inject(CONTEXT_SOURCE_PORT) private readonly contextSource: ContextSourcePort,
+    // NEM-024 (D-3 A2): optional trailing dependencies; absent → the 3-argument path is exactly the accepted NEM-019/022 turn.
+    @Optional() private readonly retrieval?: QueryContextSource,
+    @Optional() private readonly indexPermission?: IndexingPermission,
+    @Optional() private readonly anchors?: AnchorResolver,
+    @Optional() private readonly turnRecords?: TurnRecordStore,
   ) {}
 
-  async run(userId: string, sessionId: string, clientKey: string): Promise<TurnResult> {
+  /**
+   * NEM-024 (D-3 A3): with `question`, the research turn retrieves eligible book passages, records the turn, and
+   * replays by key. Without it, the accepted turn below runs unchanged.
+   */
+  async run(userId: string, sessionId: string, clientKey: string, question?: string): Promise<TurnResult> {
+    if (question !== undefined) return this.runQuestion(userId, sessionId, clientKey, question);
     // 1. Entitlement and tier policy.
     const r = await this.sessions.resolveOrDeny(userId);
 
@@ -148,6 +206,266 @@ export class TurnService {
       await this.gateway.release(prepared);
     } catch {
       // Held until reconciliation (see above).
+    }
+  }
+
+  // ── NEM-024 Checkpoint A: the question turn ─────────────────────────────────────────────────────────────────
+  //
+  // Order (ADR-006 B-5, unchanged): 1 entitlement → 2 set + eligibility + RETRIEVAL + Context Builder (preflight: no
+  // lock, no charge) → 3 Gateway prepare/reserve → 4 lock transaction + turn record T0 → 4b FINAL ELIGIBILITY CHECK →
+  // 5 provider call → 6 per-attempt settlement (Gateway) → 7 completion T1. The ledger is never read or written here.
+
+  private async runQuestion(userId: string, sessionId: string, clientKey: string, rawQuestion: string): Promise<TurnResult> {
+    const { retrieval, indexPermission, anchors, turnRecords } = this;
+    if (!retrieval || !indexPermission || !anchors || !turnRecords) throw new IntelligenceDenied('feature_disabled');
+    const question = normalizeTurnQuestion(rawQuestion);
+
+    // 1. Entitlement and tier policy.
+    const r = await this.sessions.resolveOrDeny(userId);
+
+    // 2. Session gate, replay, set, eligibility, retrieval, Context Builder (preflight: no lock, no charge).
+    const ownedRows = await this.db.query<{ status: string }>(
+      `SELECT status FROM ai_conversations WHERE id = $1 AND "userId" = $2`,
+      [sessionId, userId],
+    );
+    if (ownedRows.length === 0) throw new IntelligenceDenied('not_found');
+    const key = turnIdempotencyKey(userId, sessionId, clientKey);
+    const existing = await turnRecords.findByKey(sessionId, key);
+    if (existing) return this.replay(existing);
+    if (ownedRows[0].status === 'read_only') throw new IntelligenceDenied('session_read_only');
+    const books = await this.sessions.books(this.db, sessionId);
+    if (books.length > r.limits.maxBooks) {
+      await this.sessions.markOverLimit(sessionId);
+      throw new IntelligenceDenied('session_read_only');
+    }
+    const preHash = bookSetHash(books);
+    const allowed: string[] = [];
+    const excluded: string[] = [];
+    for (const b of books) {
+      if (b.bookId && (await this.rights.eligibility(userId, b.bookId, RESEARCH_OPERATION)).eligible) allowed.push(b.bookId);
+      else if (b.bookId) excluded.push(b.bookId);
+    }
+    if (allowed.length === 0) throw new IntelligenceDenied('no_eligible_books');
+    let retrieved: QueryContextResult;
+    try {
+      retrieved = await retrieval.resolve(userId, allowed, question);
+    } catch {
+      throw new IntelligenceDenied('turn_failed'); // before reservation: no lock, no charge, no record
+    }
+    const candidates = await this.contextSource.candidates(userId, sessionId, allowed);
+    const context = this.contextBuilder.build(userId, allowed, [...candidates, ...retrieved.items]);
+    const exclusions: TurnExclusions = {
+      ineligible: excluded, unindexed: retrieved.excluded.unindexed, stale: retrieved.excluded.stale,
+      unavailable: retrieved.excluded.unavailable, indexNotPermitted: retrieved.excluded.indexNotPermitted,
+    };
+
+    // 3. Negotiate and reserve attempt 1. The ledger's attempt-key uniqueness is the gate against a second reservation.
+    let prepared: PreparedCall;
+    try {
+      prepared = await this.gateway.prepare({
+        pathId: ContextBuilderService.PATH,
+        context,
+        templateId: TURN_TEMPLATE_ID,
+        requiredCapabilities: [RESEARCH_SESSION],
+        output: { mode: 'text' },
+        maxOutputTokens: this.config.turnMaxOutputTokens ?? 1024,
+        cacheIntent: { mode: 'none' },
+        turnKey: key,
+        budget: { userId, tier: r.tier, capability: RESEARCH_SESSION, sessionId },
+        nonTokenUnitBounds: { tool_call: this.config.turnMaxToolCalls ?? 0 },
+      });
+    } catch (e) {
+      if (e instanceof IntelligenceDenied && e.reason === 'duplicate_turn') {
+        const row = await turnRecords.findByKey(sessionId, key);
+        if (row) return this.replay(row);
+        throw new TurnStatusDenied('duplicate_turn', { status: 'pending' }); // the original is between reserve and lock
+      }
+      throw e;
+    }
+
+    // 4. Short lock transaction: lock, set check, turn count, and the provisional record (T0), atomically.
+    type Lock = { outcome: 'ok'; id: string; attemptToken: string } | { outcome: 'session_read_only' | 'set_changed' | 'duplicate_turn' | 'turn_failed' };
+    let lock: Lock;
+    try {
+      lock = await this.db.transaction(async (m): Promise<Lock> => {
+        const s = await this.sessions.lockOwned(m, userId, sessionId);
+        if (s.status === 'read_only') return { outcome: 'session_read_only' };
+        const current = await this.sessions.books(m, sessionId);
+        const hash = bookSetHash(current);
+        if (hash !== preHash || (s.bookSetHash && s.bookSetHash !== hash)) return { outcome: 'set_changed' };
+        const [u] = await m.query(
+          `WITH u AS (
+             UPDATE ai_conversations
+                SET "lockedAt" = COALESCE("lockedAt", now()), "bookSetHash" = COALESCE("bookSetHash", $2),
+                    "turnCount" = "turnCount" + 1, "updatedAt" = now()
+              WHERE id = $1 RETURNING "turnCount")
+           SELECT "turnCount" FROM u`,
+          [sessionId, hash],
+        );
+        const rec = await turnRecords.insertAccepted(m, { sessionId, keyHash: key, question, turnIndex: Number(u.turnCount) });
+        return { outcome: 'ok', ...rec };
+      });
+    } catch (e) {
+      lock = { outcome: isUniqueViolation(e, 'UQ_ai_turns_one_provisional') || isUniqueViolation(e, 'UQ_ai_turns_session_key') ? 'duplicate_turn' : 'turn_failed' };
+    }
+    if (lock.outcome !== 'ok') return this.step4Failure(sessionId, key, question, prepared, lock.outcome);
+    const { id: turnId, attemptToken } = lock;
+
+    // 4b. Final eligibility check (F-3): fresh user-level rights for every allowed book and fresh book-level index
+    // permission (same text hash) for every book contributing chunks. Nothing else is awaited between its completion
+    // and the provider call.
+    const ineligible = await this.finalIneligible(userId, allowed, retrieved);
+    if (ineligible.length > 0) {
+      const release = await this.releaseObserved(prepared);
+      const detail = await this.recordOwnerFailure(turnId, attemptToken, 'book_ineligible', release, { ...exclusions, ineligible: [...exclusions.ineligible, ...ineligible] });
+      throw new TurnStatusDenied('book_ineligible', { ...detail, exclusions: { ineligible } });
+    }
+    // 5–6. Provider call outside any transaction; the Gateway settles each attempt before releasing any text (F-3).
+    const result = await this.gateway.invoke(prepared);
+    if (result.scopeViolation) {
+      throw new TurnStatusDenied('scope_violation', await this.recordOwnerFailure(turnId, attemptToken, 'scope_violation'));
+    }
+    if (result.outcome !== 'completed' || result.error !== null) {
+      throw new TurnStatusDenied('turn_failed', await this.recordOwnerFailure(turnId, attemptToken, 'turn_failed'));
+    }
+
+    // 7. Completion (T1). Answer text is released only after this request's own transition is confirmed (G5).
+    const passages = new Map(retrieved.passages.map((p) => [p.ref, p.text]));
+    const citations: TurnCitation[][] = [];
+    const stored: StoredSegment[] = [];
+    for (const seg of result.segments) {
+      const segCitations: TurnCitation[] = [];
+      for (const c of seg.citations) {
+        let anchor: string | null = null;
+        try {
+          anchor = (await anchors.resolve(c.ref))?.anchor ?? null;
+        } catch {
+          anchor = null;
+        }
+        const excerpt = c.kind === 'chunk' ? passages.get(c.ref) ?? null : null;
+        segCitations.push({ ref: c.ref, kind: c.kind, bookId: c.bookId, anchor, excerpt, sourceState: anchor ? 'available' : 'position_unavailable' });
+      }
+      citations.push(segCitations);
+      const a = toAnswerSegment(seg);
+      stored.push({ ...a, citations: segCitations.map(({ ref, kind, bookId, anchor }) => ({ ref, kind, bookId, anchor })) });
+    }
+    const answer: TurnResult = {
+      sessionId, segments: result.segments.map(toAnswerSegment), excludedBookIds: excluded, settlement: result.settlement,
+      turnId, status: 'completed', citations, exclusions,
+    };
+    let outcome: 'committed' | 'lost' | 'error' = 'error';
+    for (let i = 0; i < 2 && outcome === 'error'; i++) {
+      try {
+        outcome = (await turnRecords.complete(turnId, attemptToken, { segments: stored, exclusions: { ...exclusions }, settlement: result.settlement })) ? 'committed' : 'lost';
+      } catch {
+        outcome = 'error';
+      }
+    }
+    if (outcome === 'committed') return answer;
+    let row: TurnRow | null;
+    try {
+      row = await turnRecords.findById(turnId);
+    } catch {
+      throw new TurnStatusDenied('turn_failed', { turnId, status: 'unknown' }); // nothing confirmed: no text
+    }
+    if (row && row.status === 'completed' && row.attemptToken === attemptToken) return answer; // our commit landed
+    if (outcome === 'error' && row && row.status === 'accepted') return { ...answer, unrecorded: true }; // D-8(a), best effort
+    throw this.denialFor(row, turnId); // another terminal outcome won: no text (G5)
+  }
+
+  /** Replay of a recorded turn. Never calls the Gateway; never reserves. */
+  private replay(row: TurnRow): TurnResult {
+    if (row.status === 'completed') {
+      const segs = row.segments ?? [];
+      return {
+        sessionId: row.sessionId,
+        segments: segs.map((s) => (s.bookId ? { origin: s.origin as AnswerSegment['origin'], text: s.text, bookId: s.bookId } : { origin: s.origin as AnswerSegment['origin'], text: s.text })),
+        excludedBookIds: row.exclusions?.ineligible ?? [],
+        settlement: (row.settlement as TurnResult['settlement']) ?? 'held',
+        turnId: row.id, status: 'completed', replayed: true,
+        citations: segs.map((s) => s.citations.map((c) => ({ ...c, excerpt: null, sourceState: 'deferred' as const }))),
+        exclusions: {
+          ineligible: row.exclusions?.ineligible ?? [], unindexed: row.exclusions?.unindexed ?? [], stale: row.exclusions?.stale ?? [],
+          unavailable: row.exclusions?.unavailable ?? [], indexNotPermitted: row.exclusions?.indexNotPermitted ?? [],
+        },
+      };
+    }
+    throw this.denialFor(row, row.id);
+  }
+
+  private denialFor(row: TurnRow | null, turnId: string): TurnStatusDenied {
+    if (!row) return new TurnStatusDenied('turn_failed', { turnId, status: 'unknown' });
+    if (row.status === 'accepted') return new TurnStatusDenied('duplicate_turn', { turnId, status: 'accepted' });
+    if (row.status === 'failed') {
+      return new TurnStatusDenied(asDenial(row.failureReason), { turnId, status: 'failed', ...(row.reservationRelease ? { reservationRelease: row.reservationRelease } : {}) });
+    }
+    return new TurnStatusDenied('turn_failed', { turnId, status: row.status === 'completed' ? 'unknown' : row.status });
+  }
+
+  /**
+   * Step-4 failure (Amendment 1, B-2): release the never-sent attempt through the Gateway, then write an idempotent
+   * terminal `failed` record (no lock, no turn count, no Gateway call). Release is reported as `released` only when
+   * the Gateway call completed without error; otherwise `unconfirmed` (held for NEM-021 reconciliation).
+   */
+  private async step4Failure(sessionId: string, keyHash: string, question: string, prepared: PreparedCall, reason: DenialReason): Promise<never> {
+    const release = await this.releaseObserved(prepared);
+    const detail: TurnStatusDetail = { status: 'failed', reservationRelease: release, recorded: true };
+    try {
+      detail.turnId = await this.turnRecords!.recordStep4Failure({ sessionId, keyHash, question, reason, release });
+    } catch {
+      detail.recorded = false;
+    }
+    throw new TurnStatusDenied(reason, detail);
+  }
+
+  /** T2 with a conservative status report: `failed` only if this statement committed it; otherwise the stored status. */
+  private async recordOwnerFailure(
+    turnId: string, attemptToken: string, reason: string, release: ReservationRelease | null = null, exclusions: TurnExclusions | null = null,
+  ): Promise<TurnStatusDetail> {
+    try {
+      if (await this.turnRecords!.fail(turnId, attemptToken, reason, release, exclusions ? { ...exclusions } : null)) {
+        return { turnId, status: 'failed', ...(release ? { reservationRelease: release } : {}) };
+      }
+      const row = await this.turnRecords!.findById(turnId);
+      return this.denialFor(row, turnId).detail;
+    } catch {
+      return { turnId, status: 'unknown' };
+    }
+  }
+
+  private async finalIneligible(userId: string, allowed: string[], retrieved: QueryContextResult): Promise<string[]> {
+    const failed = new Set<string>();
+    for (const b of allowed) {
+      let ok = false;
+      try {
+        ok = (await this.rights.eligibility(userId, b, RESEARCH_OPERATION)).eligible;
+      } catch {
+        ok = false;
+      }
+      if (!ok) failed.add(b);
+    }
+    const chunkHashes = new Map<string, string>();
+    for (const p of retrieved.passages) chunkHashes.set(p.bookId, p.textHash);
+    for (const [b, hash] of chunkHashes) {
+      let ok = false;
+      try {
+        const d = await this.indexPermission!.check(b);
+        ok = d.permitted && d.textHash === hash;
+      } catch {
+        ok = false;
+      }
+      if (!ok) failed.add(b);
+    }
+    return [...failed].sort();
+  }
+
+  /** Gateway release of a never-sent attempt; never inferred from the ledger. */
+  private async releaseObserved(prepared: PreparedCall): Promise<ReservationRelease> {
+    try {
+      await this.gateway.release(prepared);
+      return 'released';
+    } catch {
+      return 'unconfirmed';
     }
   }
 }
