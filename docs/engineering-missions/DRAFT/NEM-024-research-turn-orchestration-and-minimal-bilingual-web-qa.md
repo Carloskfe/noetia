@@ -14,6 +14,8 @@
 > - The specification is renamed from the E6 DRAFT to NEM-024 (`git mv`, history preserved).
 > - Every decision marked **[D-x]** below is now **approved** (PO-034). The text written on the "recommended" or "proposed baseline" options is the approved text.
 > - Added: the explicit bilingual (en/es) interface requirement (§5.2) and PostgreSQL time-fence semantics under concurrent transactions and lock waits (§9.2 item 7a).
+>
+> **F-7 correction (PA review of `da5a2c8`):** the fence cutoff is the **statement start** (`statement_timestamp()`), not the commit. A transition attempted before `fenceAt` may commit after it. Uniqueness and finality come from the row lock plus the `status = 'accepted'` predicate. Guarantees G1–G6 and tests LW-1 (sharpened) and LW-7 to LW-10 (§9.2 item 7a; [review package §7.7](../../reports/2026-11-10-E6-pa-final-review-package.md#77-cutoff-semantics-and-guarantees-f-7)). No redesign.
 
 > **Revision 5** (PA review of `4e2c041`, finding **F-6**):
 > - `interrupted` is **terminal**, and **no terminal state ever changes**.
@@ -109,7 +111,7 @@ ADR-003, ADR-005, ADR-006 · PO-026, PO-027, PO-028, PO-033 · NEM-019 technical
 5. **Turn record:** additive migration `ai_turns`:
    - **Identity:** `id`, `sessionId` (FK `ai_conversations` ON DELETE CASCADE), `turnIndex`, `keyHash` (UNIQUE with `sessionId`).
    - **Content:** `question` (user content), `segments` (jsonb: validated segments with citations as **refs + anchors only, no excerpt text**), `exclusions` (jsonb).
-   - **State:** `status`, `settlement`, `createdAt`, `completedAt`, **`attemptToken`** (uuid per request), **`fenceAt`** (database time after which the owner can no longer commit, §9.2 item 7). Indexes: UNIQUE (`sessionId`, `keyHash`); **partial UNIQUE (`sessionId`) WHERE `status = 'accepted'`** (one provisional turn per session).
+   - **State:** `status`, `settlement`, `createdAt`, `completedAt`, **`attemptToken`** (uuid per request), **`fenceAt`** (database time at or after which no owner or cancel transition may **start** successfully, and from which finalization may start; §9.2 items 7 and 7a). Indexes: UNIQUE (`sessionId`, `keyHash`); **partial UNIQUE (`sessionId`) WHERE `status = 'accepted'`** (one provisional turn per session).
    - No provider or model names. **No verbatim book text** (S2 principle preserved).
 6. **Durable completion and idempotency** (§9.2).
 7. **`TurnResult` v2:** `turnId`, `status`, `segments[] {origin, text, citations[] {ref, kind, bookId, anchor, excerpt|null, sourceState}}`, `exclusions {ineligible, unindexed, stale, unavailable, indexNotPermitted}`, `settlement`.
@@ -267,9 +269,17 @@ Retrieval failure **before** reservation → `turn_failed`, with no lock, no cha
      | T2 | `accepted` → `failed` | Owner | `attemptToken = owner AND statement_timestamp() < fenceAt` | Re-read; return that status |
      | T3 | `accepted` → `cancelled` | Explicit cancel | `statement_timestamp() < fenceAt` | Lazy-finalize; return the current status |
      | T4 | `accepted` → `interrupted` | Sweep or any lazy reader | `statement_timestamp() >= fenceAt` | No-op |
-   - **Exclusivity:** T1–T3 and T4 have disjoint time predicates, and row locking orders T1–T3, so **at most one terminal transition per row**.
-   - **Lazy finalization:** every replay, history, single-turn, and cancel request runs T4 for the rows it reads before responding, and the sweep (`@Interval`) does the same for unread rows. **No client ever sees `accepted` after the fence or `interrupted` before it.**
-   - **A fenced owner** (a late completion after T4) returns `interrupted` and **releases no answer text**; the charge, if any, stands per the ledger; metric `intelligence_turn_fenced_total`; disclosed residual.
+   - **Exclusivity (precise, F-7):**
+     - The time predicates partition transition **statements by start time**: T1–T3 only if started before `fenceAt`, T4 only if started at or after it.
+     - **Uniqueness does not rely on that.** It relies on the **row lock plus `status = 'accepted'`**: all four transitions update the same row; the row lock serialises them; and under READ COMMITTED a statement that waited re-checks its `WHERE` clause against the committed row version.
+     - So **at most one terminal transition commits per row**, even when a pre-fence T1 and a post-fence T4 are in flight at the same time.
+   - **Lazy finalization:** every replay, history, single-turn, and cancel request runs T4, as its own statement, for the rows it reads before responding, and the sweep (`@Interval`) does the same for unread rows.
+     - If a pre-fence transition holds the row, T4 waits for that commit and then finds the row terminal.
+     - **A status response never reports `accepted` if its T4 statement started at or after the fence, and never reports `interrupted` before the fence** (G3, G4). No non-finalizing status read is exposed by the API.
+   - **Answer release rule (G5):** the owner releases answer text **only after its own T1 returned 1 row and its commit was confirmed**.
+     - **0 rows** (another terminal transition committed first, or T1 started after the fence): re-read and return that terminal status, with **no text**.
+     - **Ambiguous outcome** (an error after the commit was sent): re-read by `id`; release text only if the row is `completed` with this request's `attemptToken`, otherwise return the stored status with no text.
+     - The charge, if any, stands per the ledger; metric `intelligence_turn_fenced_total`; disclosed residual.
    - **Crash:** the row stays provisional until the fence (≈ 60–75 s with today's defaults), then becomes `interrupted`.
    - **Ledger:** never touched by recovery; held attempts resolve through NEM-021 reconciliation.
 7a. **PostgreSQL time-fence semantics under concurrency (must be tested):**
@@ -278,18 +288,38 @@ Retrieval failure **before** reservation → `turn_failed`, with no lock, no cha
    - **Lock waits (READ COMMITTED):**
      - a transition blocked on a row lock keeps its statement-start timestamp;
      - after the lock is released, PostgreSQL re-evaluates the `WHERE` clause against the **new row version**, so the `status = 'accepted'` predicate prevents any second terminal transition;
-     - **decision instant = statement start**, so an owner write that started before the fence and waited on a lock may commit shortly after the fence. That is still a single, final outcome, and no reader can have observed `interrupted` (T4 would have blocked behind it or found the row terminal).
+     - **decision instant = statement start**, so an owner write that started before the fence and waited on a lock may **commit after the fence**. That is still a single, final outcome, and no reader can have observed `interrupted` (T4 would have blocked behind it or found the row terminal).
+   - **Three instants, distinguished (F-7):**
+
+     | Instant | Role |
+     |---|---|
+     | **Statement start** (`statement_timestamp()`) | Where the fence is evaluated; stable through lock waits and re-checks |
+     | **Row update** | Where the row lock orders transitions and the waiter re-checks `status` |
+     | **Commit** | Where the outcome becomes observable |
+
+     **The fence restricts when a transition may be *attempted*, not when it *commits*.** Guaranteed:
+     - G1: at most one terminal commit per row;
+     - G2: an observable terminal outcome never changes;
+     - G3/G4: status responses consistent with the fence;
+     - G5: no answer text after losing;
+     - G6: no owner write that *starts* at or after the fence succeeds.
+
+     **Not guaranteed:** that no write *commits* after `fenceAt`.
    - **Bound on lock waits:** all transitions are short single statements under the knowledge `statement_timeout` (5 s). `grace` (30 s) ≫ the statement timeout.
    - **Required lock-wait tests (real PostgreSQL, two or three connections; blocking via `SELECT … FOR UPDATE` held in a separate transaction; the fence placed ~2 s ahead):**
 
      | # | Scenario | Expected |
      |---|---|---|
-     | LW-1 | T1 starts **before** the fence, blocks on a held row lock until **after** the fence, then the lock is released | T1 commits `completed` (decision instant before the fence); a subsequent T4 affects 0 rows; no reader saw `interrupted` |
+     | LW-1 | T1 starts **before** the fence, blocks on a held row lock until **after** the fence, then the lock is released | T1 commits `completed` (decision instant before the fence). **The test records T1's `statement_timestamp()` < `fenceAt` and a post-commit `clock_timestamp()` > `fenceAt`, proving the commit-after-fence case explicitly**; a subsequent T4 affects 0 rows; no reader saw `interrupted` |
      | LW-2 | T1 holds the row (in progress) across the fence; T4 starts after the fence and blocks | After T1 commits, T4 re-checks and affects 0 rows; the reader returns `completed` |
      | LW-3 | T4 commits first after the fence; a T1 that started after the fence was blocked | T1 affects 0 rows (both the fence and the status predicate fail); the owner returns `interrupted`, no text |
      | LW-4 | T3 (cancel) and T1 both start before the fence and contend for the row lock (both orders) | Exactly one terminal state; the loser affects 0 rows and reports the winner |
      | LW-5 | **Transaction-start trap:** the same predicate evaluated with `now()` inside an explicit transaction opened before the fence | Demonstrates the stale instant (documentation test); an **architecture test** asserts every transition SQL uses `statement_timestamp()` and runs as its own statement |
      | LW-6 | A lazy reader's T4 blocked behind an in-flight T1/T3 | Waits, then returns the terminal status set by the winner; never `accepted` after the fence once the reader responds |
+     | LW-7 | Frozen owner: T1 **starts after** the fence with no competing transaction (row still `accepted`) | 0 rows (fence predicate, G6); the owner runs its lazy T4 and returns `interrupted`; no text |
+     | LW-8 | T4 acquires the row lock **first** while a pre-fence T1 waits | T4 commits `interrupted`; T1 re-checks, finds `status <> 'accepted'`, 0 rows; the owner releases no text (G2, G5) |
+     | LW-9 | Ambiguous commit: a fault injected after T1's commit is sent (unit level via injected driver error; integration level by terminating the owner backend between update and acknowledgement where feasible) | The owner re-reads: text released once only if `completed` with its `attemptToken`; otherwise the stored status, no text (G5) |
+     | LW-10 | A reader's T4 issued after the fence while a pre-fence T3 (cancel) holds the row | The reader waits and returns `cancelled`; never `accepted` (G3) |
 
 8. **Account and session deletion:**
    - `ai_turns` cascades from `ai_conversations`, which cascades from `users` (ADR-005 B-2); the existing `deleteAccount` path is unchanged.
@@ -431,7 +461,8 @@ Excerpts only; no verbatim book text stored in `ai_turns`; no full-text export.
       - no terminal state ever changes (the seeded monotonicity property test, ≥ 200 interleavings);
       - a fenced owner releases no text;
       - a second key in a provisional session is released with no charge;
-      - lazy finalization (no reader sees `accepted` after the fence);
+      - lazy finalization (no status response reports `accepted` once its T4 started at or after the fence);
+      - the commit-after-fence case and every G1–G6 guarantee (LW-1 to LW-10, §9.2 item 7a).
       - the ledger is untouched by E6.
 12. **Performance (E-1 carried, not waived):** stage histograms; end-to-end turn latency with the simulator on the NEM-023 sized fixture (3 and 10 books). No ranking change, no cache.
 13. **Coverage (E-2 carried, not waived):** new and changed code ≥ 80% branches; the global API branch figure does not decrease.

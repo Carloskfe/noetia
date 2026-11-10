@@ -265,6 +265,14 @@ Documentation only. No application code, tests, migrations, CI/CD, or infrastruc
 
 The PO recorded NEM-022's acceptance at `f6a5cb7` after PA re-review (NEM-022 report §20). R-1's remaining decision is therefore **resolved**. NEM-023's wording was reconciled without changing its status. **No E6 decision and no E6 mission approval follows from this update.**
 
+### Update 2026-11-10 — PA finding F-7 (of `da5a2c8`)
+
+- The fence cutoff is the **statement start** (`statement_timestamp()`), not the commit: a pre-fence transition may commit after `fenceAt`.
+- Uniqueness and finality rest on the row lock plus the `status = 'accepted'` re-check.
+- Guarantees G1–G6; answer text only after a confirmed own commit.
+- Tests LW-1 (sharpened) and LW-7 to LW-10.
+- See review package §7.7 and NEM-024 §9.2 items 7 and 7a. No redesign.
+
 ### Update 2026-11-10 — NEM-024 finalization (PO-034)
 
 - The PO approved all E6 decisions in **PO-034** (documentation and final PA sign-off only).
