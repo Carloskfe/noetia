@@ -59,7 +59,7 @@
 |---|---|---|
 | NEM-019 (control plane) | **COMPLETED — PO-accepted** (register); Draft PR #46, not merged | Foundation |
 | NEM-021 (contract v1, cost ledger) | **COMPLETED — ACCEPTED**; Draft PR #50, not merged | Accounting |
-| **NEM-022 (Gateway v2, simulator v2)** | **Not accepted per every repository record** (mission, register, report §19 "NEM-022 is not accepted", PR #51 with no reviews, branch head `f6a5cb7` "returned for re-review"). NEM-023 docs call it "accepted" from `4018ce3` without a decision record (packet §0) | **P-0:** a recorded PA re-review outcome + PO acceptance, **or** an explicit PO authorization to build on the unaccepted head |
+| **NEM-022 (Gateway v2, simulator v2)** | **COMPLETED — ACCEPTED (PO, 2026-11-10)** at `f6a5cb7` after PA re-review; F-1/F-2/F-3 resolved (NEM-022 report §20). Open: global branch coverage 77.49% vs 80% (not waived); intermittent-test monitoring note | **P-0 satisfied.** E6 builds on `f6a5cb7` |
 | NEM-023 (retrieval) | **ACCEPTED WITH OPEN EXCEPTIONS E-1, E-2**; Draft PR #53 | Retrieval; latency inherits E-1 |
 | E3 (text identity + verification authority adapters) | Not started; ports unbound | With the unbound ports every book is denied in the real module. E6 can be built and tested dark on fixture ports (the E5 precedent) **if the PO accepts that sequencing** (D-7) |
 | E4 (qualifying-plan adapter, TT-15) | Not started | Same: fixture port in tests |

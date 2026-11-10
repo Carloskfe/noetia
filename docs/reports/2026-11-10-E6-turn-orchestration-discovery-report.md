@@ -24,7 +24,7 @@
 |---|---|
 | NEM-019 | COMPLETED, PO-accepted (register). Code: `src/knowledge/{entitlement,rights,sessions,metering,ai}`. Migrations 069–072. Draft PR #46 |
 | NEM-021 | COMPLETED — ACCEPTED. Contract v1 frozen; cost ledger; migrations 073–074. Draft PR #50 |
-| **NEM-022** | **Not accepted per every repository record** (mission, register, report §19, PR #51 without reviews, head `f6a5cb7`). NEM-023 docs call it "accepted" without a decision record (§11 R-1). Gateway v2 (`ai-gateway.service.ts`), simulator v2, provider contract suite. Draft PR #51 |
+| **NEM-022** | **COMPLETED — ACCEPTED (PO, 2026-11-10)** at `f6a5cb7` after PA re-review (report §20); open: global branch coverage 77.49% vs 80%; intermittent-test monitoring note. *At revision 2 it was not recorded as accepted (§11 R-1).* Gateway v2, simulator v2, provider contract suite. Draft PR #51 |
 | NEM-023 | ACCEPTED WITH OPEN EXCEPTIONS **E-1** (p95 594 ms vs 150 ms) and **E-2** (branch coverage 78.75% vs 80%). Amendment 1: book passages only; chapter/phrase metadata NULL. Migration 075. Draft PR #53 |
 | PO-026 / PO-027 / PO-028 / PO-033 | Decided: book-plan prerequisite; 3/10 book limit, locked at the first turn; My Knowledge vs Ask My Highlights; E5 decisions. PO-029 still DRAFT |
 | ADR-005 / ADR-006 | Accepted rev 3: deny-first resolver; ledger authority; turn order B-5; Context Builder invariants; trust boundary; Highlight Context Builder for AMH |
@@ -150,7 +150,7 @@ NEM-021 reserves the **worst case** before the call, so the allocator must cap c
 
 | ID | Type | Description | Mitigation / owner |
 |---|---|---|---|
-| **B-A / P-0** | Blocker | NEM-022 is not accepted per repository records; E6 depends on its behaviour | A recorded PA re-review outcome + PO acceptance, or an explicit PO authorization to build on the unaccepted head (packet §0) |
+| B-A / P-0 | **Resolved 2026-11-10** | NEM-022 acceptance was not recorded at revision 2 | PO acceptance recorded at `f6a5cb7` after PA re-review (NEM-022 report §20). Its coverage shortfall (77.49%) is carried, not waived |
 | B-B | Resolved by recommendation (decision open) | Highlights cannot be read without an exception to accepted NEM-019 tests | D-2 C (first implementation without user knowledge); A/B later |
 | **B-C** | Blocker (decision) | The turn input, response, port wiring, and routes are accepted dark surfaces | D-3 explicit authorization; direct injection keeps the pinned port binding unchanged |
 | R-1 | High | E-1 latency inside preflight, plus per-attempt streaming, gives a slow time-to-answer for large sessions | Measure; stage UI; no workaround (no cache or cap per the PA) |
@@ -169,7 +169,7 @@ NEM-021 reserves the **worst case** before the call, so the allocator must cap c
 
 | ID | Decision |
 |---|---|
-| P-0 | NEM-022 status (prerequisite, evidence in packet §0) |
+| P-0 | NEM-022 status: **satisfied 2026-11-10** (packet §0) |
 | D-1 | Scope: **(a)** backend + minimal web **or** **(b)** backend only (both open, kept distinct) |
 | D-2 | User knowledge: **C recommended now** (passages only); A/B later |
 | D-3 | Authorize the accepted-surface amendments (direct injection; no binding change) |
@@ -260,5 +260,9 @@ Documentation only. No application code, tests, migrations, CI/CD, or infrastruc
 | Correction | D-1 (a) and (b) are kept distinct and both open; the mission marks the D-1(a)-only items (scope 13, AC 14, Checkpoint C). Measured on 1 vCPU / 512 MB (§5.4): memory is not binding (+~40 MB per 10-book turn; production image idle 73–102 MiB), while event-loop CPU is (lag p99 85 ms at one 10-book turn, 169 ms at two). Guard changed to **weighted W = 10** before reservation, with a reader-latency acceptance against a PA threshold (D-11). E-1 and E-2 remain unresolved. No infrastructure, cache, provider, or ranking change |
 | Evidence | §5.4 tables; `docker-compose.server.yml` api `cpus: "1.0"`, `memory: 512M`; locally built production image measurement |
 | Remaining decisions | D-1 ((a) or (b)); D-11 (W and threshold) |
+
+### Update 2026-11-10 — P-0 satisfied
+
+The PO recorded NEM-022's acceptance at `f6a5cb7` after PA re-review (NEM-022 report §20). R-1's remaining decision is therefore **resolved**. NEM-023's wording was reconciled without changing its status. **No E6 decision and no E6 mission approval follows from this update.**
 
 **STOP for independent Product Architecture re-review before any implementation authorization.**

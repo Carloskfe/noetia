@@ -1,6 +1,6 @@
 # E6 — Product Owner Decision Packet (Turn Orchestration) — revision 2
 
-**Status:** DRAFT — for PO / PA decision. Prepared under PO *"E6 Turn Orchestration Discovery — documentation-only"* (2026-11-10). Revised after the PA review of PR #54 (`e73c277`). **No decision below is taken by this document.**
+**Status:** DRAFT — for PO / PA decision (P-0 updated 2026-11-10: satisfied). Prepared under PO *"E6 Turn Orchestration Discovery — documentation-only"* (2026-11-10). Revised after the PA review of PR #54 (`e73c277`). **No decision below is taken by this document.**
 
 **Evidence:**
 - [discovery report](2026-11-10-E6-turn-orchestration-discovery-report.md) (§11: revision responses)
@@ -14,7 +14,15 @@ Only decisions **genuinely required before implementation** are in §1. Launch-t
 
 ---
 
-## 0. Prerequisite P-0: NEM-022 status (evidence, not a decision by this document)
+## 0. Prerequisite P-0: NEM-022 status — **SATISFIED (recorded 2026-11-10)**
+
+- **Record:** the Product Owner accepted NEM-022 on 2026-11-10 as a completed, disconnected development implementation at commit `f6a5cb7`, following independent Product Architecture re-review. F-1, F-2, and F-3 were accepted as resolved.
+  - [NEM-022 report §20](2026-11-09-NEM-022-gateway-simulator-v2-report.md#20-product-architecture-re-review-outcome-and-product-owner-acceptance-2026-11-10); NEM-022 mission status; register.
+- **Carried from NEM-022 (not waived):** global API branch coverage **77.49% vs 80%**; a monitoring note for one unreproduced intermittent test failure (NEM-022 report §19.3).
+- **NEM-023 wording reconciled:** NEM-023 mission §3 and report §19 note that "accepted" was unbacked when first written and now matches the record (NEM-023 was built on `f6a5cb7`). NEM-023's own status is unchanged.
+- **Scope of this update:** P-0 only. **No E6 decision (D-1 to D-11) is approved, and the DRAFT mission is not approved.**
+
+### Historical evidence (revision 2, before the acceptance was recorded)
 
 | Evidence | Says |
 |---|---|
@@ -64,6 +72,6 @@ TT-11 (limit behaviour) · TT-13 (thresholds) · TT-14 (retention; D-10 is only 
 
 ## 4. Recommended package
 
-1. Resolve **P-0**.
+1. ~~Resolve **P-0**~~ — satisfied 2026-11-10.
 2. Decide **D-1 ((a) or (b))**, **D-2 C**, **D-3 (1)–(6)**, **D-4(a)**, **D-5 NEM-024**, **D-6(a)**, **D-7(a)**, **D-8(a)**, **D-9(a)**, **D-10(a)**, **D-11 W=10** (plus the PA threshold).
 3. Then PA review of mission revision 2 → PO approval.

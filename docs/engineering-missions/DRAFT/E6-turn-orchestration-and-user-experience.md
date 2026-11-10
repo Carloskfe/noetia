@@ -2,7 +2,7 @@
 ## Research-Turn Orchestration (dark, simulated provider only) — revision 2
 
 **Status:** DRAFT — **never executable** (`DRAFT/`). It becomes executable only after:
-1. prerequisite P-0 (NEM-022 status) is satisfied (§3);
+1. prerequisite P-0 (NEM-022 status) — **satisfied 2026-11-10** (§3);
 2. the PO decides the [decision packet](../../reports/2026-11-10-E6-product-owner-decision-packet.md);
 3. the PA reviews this specification;
 4. the PO approves it and gives an explicit execution instruction naming the mission.
@@ -53,6 +53,10 @@ All of this is dark, with default deny everywhere in the real module.
 
 ## 3. Dependencies
 
+**P-0 — NEM-022 status: SATISFIED (recorded 2026-11-10).** The PO accepted NEM-022 at commit `f6a5cb7` after independent PA re-review; F-1, F-2, F-3 resolved ([NEM-022 report §20](../../reports/2026-11-09-NEM-022-gateway-simulator-v2-report.md#20-product-architecture-re-review-outcome-and-product-owner-acceptance-2026-11-10); register). E6 builds on that commit (an ancestor of this branch). NEM-022's open item, global API branch coverage 77.49% vs 80%, is **not waived**, and its intermittent-test monitoring note applies. *This satisfies only the prerequisite; it approves no E6 decision and does not approve this mission.*
+
+<details><summary>Historical P-0 text (revision 2, before the acceptance was recorded)</summary>
+
 **P-0 — NEM-022 status (prerequisite).**
 - Repository records say NEM-022 is **not accepted**:
   - the mission and register say "returned for PA re-review" (2026-11-09);
@@ -60,6 +64,8 @@ All of this is dark, with default deny everywhere in the real module.
   - PR #51 has no review or comment.
 - NEM-023 documents describe NEM-022 as "accepted" from commit `4018ce3` onward, without a recorded decision. Evidence: report §11 R-1.
 - **E6 may execute only after the PA re-review outcome and the PO acceptance decision for NEM-022 are recorded in the repository, or after the PO explicitly authorizes E6 to build on the unaccepted NEM-022 head `f6a5cb7`.**
+
+</details>
 
 **Other dependencies:**
 - Code: the NEM-019/021/022/023 branch stack (not `main`).
@@ -305,7 +311,7 @@ Stage histograms, outcome counters, `intelligence_turn_unrecorded_total`, guard 
 
 ## 14. Deployment / rollout
 
-None. Branch + Draft PR only. Launch prerequisites (separate authorizations): NEM-022 acceptance (P-0), E3/E4 adapters, TT-22, TT-11/13/14 values, NEM-023 RB-1..RB-7 and E-1 evaluation, billing (E10), merge order.
+None. Branch + Draft PR only. Launch prerequisites (separate authorizations): E3/E4 adapters, TT-22, TT-11/13/14 values, NEM-023 RB-1..RB-7 and E-1 evaluation, billing (E10), merge order.
 
 ## 15. Documentation deliverables
 
@@ -317,7 +323,6 @@ D-1 to D-11 (packet §1). Launch-time items (packet §3) are not required for th
 
 ## 17. Stop conditions
 
-- P-0 not satisfied.
 - Any change to a protected item beyond the authorized D-3 items, or any other NEM-019/021/022/023 test needing change.
 - Any need to read `fragments` or `sync_maps` (D-2 C).
 - A real or paid provider, embeddings, pgvector, a cache, new infrastructure, staging/production access, or production credentials appearing necessary.
