@@ -1,6 +1,6 @@
 # NEM-024 — Checkpoint B Report (cancellation, recovery, history, guard)
 
-**Status:** **CHECKPOINT B IMPLEMENTED — AWAITING INDEPENDENT PRODUCT ARCHITECTURE REVIEW (2026-11-10).**
+**Status:** **CHECKPOINT B IMPLEMENTED — PA targeted verification F-1 to F-4 answered (§12); AWAITING FINAL INDEPENDENT CHECKPOINT B REVIEW (2026-11-10).** The fenced recovery design is provisionally accepted by the PA.
 **Authorization:** [PO-036](../operating-framework/decisions/product-owner/PO-036-nem-024-checkpoint-a-conditional-acceptance-and-checkpoint-b-authorization.md): Checkpoint A accepted conditionally; Checkpoint B authorized with a **mandatory release condition** (stranded `accepted` turns recovered and verified before any user-facing release).
 **Delivery state:** Branch `feat/nem-024-checkpoint-b` (stacked on PR #55) · Draft PR (see §1) · not merged · not deployed · simulated provider only · no user-facing functionality activated.
 
@@ -125,3 +125,105 @@ Unit: owner T3 losing to finalization reports the stored status; registry entrie
 - **Untouched:** Checkpoints **C, D, and E** (no SSE, no capability probe, no web UI, no performance qualification).
 
 **STOP after Checkpoint B, for independent Product Architecture review.**
+
+---
+
+## 12. Targeted PA verification (review of `c9e1e5e`): F-1 to F-4
+
+### F-1 — History citation mapping: **defect found and fixed** (fix commit `5689f46`)
+
+- **Finding:** in `toViews`, `parsed` is a `Map` keyed by `turnId | ref | anchor`. A citation repeated **within one turn** (in two segments, or twice in one segment) was therefore **deduplicated**, so `sliced[book]` held one excerpt per unique key. The view loop, however, advanced the per-book `cursor` once per **occurrence**. After a repeated citation, every later citation of the same book in the page received its **neighbour's excerpt**. Distinct ranges, interleaved books, stale citations, and identical anchors in *different* turns were correct only because their keys were unique; the shift appeared whenever a repeat existed earlier in the page.
+- **Proof before the fix:** the two new repeated-citation unit tests failed exactly as predicted; the three unique-key tests passed.
+- **Fix (mapping only):** excerpts are stored in `excerptByKey` and looked up by each citation's own key. The occurrence cursor is removed. No other behaviour changed.
+- **Deterministic tests:**
+  - **Unit** (`turn.service.checkpoint-b.spec.ts`, "F-1", 5):
+    - repeated identical citations within and across segments, followed by a distinct range;
+    - distinct ranges of one book out of order, interleaved with a second book and a stale citation (the stale one does not shift later excerpts);
+    - identical anchors in two completed turns, with a repeat in the newer turn;
+    - the same ref with two different anchors;
+    - one object fetch per book per page.
+
+    The fixtures include an astral character, so code-point and UTF-16 offsets differ.
+  - **Integration** (real PostgreSQL + S2 store): two completed turns with repeated citations, an identical anchor across turns, and interleaved books. Every excerpt equals `codePointSlice(source, start, end)`.
+- **Results:** unit spec 29/29 · Checkpoint B integration 33/33.
+
+### F-2 — Cancellation boundary N-B1: reconciliation and **proposed Amendment 2** (not applied)
+
+**Approved matrix (mission §9.3):** "after reservation, before the lock commits → `gateway.release`; lock: none; record: none".
+
+**Implemented:** an abort arriving in that window is observed at the first post-lock boundary. The lock transaction has committed (session lock, `turnCount + 1`, a T0 record), so the owner releases the attempt through the Gateway and commits T3 → `cancelled`.
+
+| Concern | Why the implemented behaviour is safe | Residual |
+|---|---|---|
+| **Idempotency** | The `cancelled` row holds the turn key (UNIQUE), so a same-key replay returns `cancelled`. The ledger's attempt-key uniqueness prevents any second reservation or provider call | None |
+| **Charging** | The never-sent attempt is released through the Gateway (reported `released`, or `unconfirmed` → held for NEM-021 reconciliation). No provider call, no settlement | None |
+| **Turn accounting** | `turnCount` and `turnIndex` count *accepted* turns (ADR-006 lock semantics). They are never billing inputs (billing is ledger-only). History shows an accepted-then-cancelled turn honestly | The count includes a turn that produced no answer |
+| **User expectation** | Cancelling is an explicit action on a turn the user started | **The book set becomes locked by a turn that produced no answer.** Changing books then requires a fork (ADR-006) |
+
+**Mismatch with the approved matrix:** lock and record exist where the matrix says none. Taking the matrix literally (abort before the lock, no record) would leave a same-key replay answering `pending` indefinitely, the same gap B-2 closed for step-4 failures. That is why it was not implemented literally.
+
+**Proposed Amendment 2 (for PO decision; a contract change, not applied):**
+
+| Option | Behaviour | Change needed |
+|---|---|---|
+| **A** | Amend the matrix row to the implemented behaviour: lock stands, `turnCount + 1`, record `cancelled`, reservation released | Specification only; no code |
+| **B (recommended)** | Matrix-faithful: check the cancel signal **inside the step-4 lock transaction before taking the lock**. On abort, the transaction rolls back (**no lock, no turn count**), the Gateway releases, and a terminal **`cancelled`** record is written by the B-2 idempotent mechanism (`turnIndex` NULL, observed `reservationRelease`), so replay returns `cancelled` | **Extends the B-2 exception** from terminal `failed` records to terminal `cancelled` records: a new exception, **PO approval required**. Small code change plus tests |
+| C | Literal matrix (no lock, no record) | Rejected: replay would return `pending` indefinitely |
+
+**Until decided:** the code stays as implemented (Option A behaviour), and the deviation is recorded here and in the mission (§9.3 note).
+
+### F-3 — History reader boundary N-B3: **confirmed within the B-1 intent**
+
+- **B-1 intent:**
+  - E5 is wired only at two approved points (the module registers providers; `TurnService` consumes the facade);
+  - `TurnService` never reaches the indexer, the ranking service, or the raw `RetrievalPort`;
+  - bindings are unchanged.
+- **Implementation:**
+  - `TURN_BOOK_TEXT` is defined in `turn.service.ts`, typed `BookTextPort` (from `retrieval.types`, on the B-1 allow-list), and bound in the module as `{ provide: TURN_BOOK_TEXT, useExisting: StorageBookText }`. It is an alias of the existing E5 S2 adapter provider: no new reader, no new import path.
+  - `TurnService` calls only `read(key)`, and only after re-validating user rights and index permission. Code-point slicing is a local helper, not an import of E5 internals.
+- **Architecture-test evidence (all passing):**
+  - **NEM-023 B-1 test (unchanged):** importers of `retrieval/` are only `knowledge.module.ts` and `turn.service.ts`, by exact allow-listed paths; `TurnService` names no `BookIndexer` / `LexicalRetrievalService` / `RetrievalPort`; the module registers no indexer; bindings `CONTEXT_SOURCE_PORT → EmptyContextSource` and `TEXT_IDENTITY_PORT → UnboundTextIdentityPort` are pinned.
+  - **New NEM-024 test `tests/unit/knowledge/sessions/turn-architecture.spec.ts` (5, additive):**
+    - `TURN_BOOK_TEXT` is referenced only by `turn.service.ts` and `knowledge.module.ts`;
+    - the binding is exactly `useExisting: StorageBookText`;
+    - `TurnService` imports `BookTextPort, decodeUtf8` from `retrieval.types` and nothing from storage, SDK, or MinIO;
+    - the reader is used only via `.read`, after `rights.eligibility` and `indexPermission.check`;
+    - no other `sessions/` file imports `retrieval/`.
+  - NEM-019 `architecture.spec.ts` (unchanged): pass.
+  - Combined run: **33/33**.
+
+### F-4 — Multi-instance limitation N-B5: **consistent with the approved deployment; documented**
+
+**Approved deployment assumption (verified):**
+- `docker-compose.server.yml` defines **one** `api` service, with no `replicas` and no `scale`.
+- `KNOWLEDGE_MODULE_ENABLED` is set in **no** compose file or env example, so the module is **off by default** (NEM-019 §5.6), and no production activation is authorized.
+- Staging is likewise a single colocated stack.
+
+**Limitation (documented, no infrastructure added):**
+- The abort signal reaches the owner only when the cancel request lands on the **same process**.
+- The **T3 transition is database-only**, so the `cancelled` outcome, idempotency, and terminal consistency hold on any instance.
+- On a different instance, the in-flight provider call is **not interrupted**. The owner's later T1 loses, so no text is released, but the provider attempt runs to completion and is **settled (charged)**, so a cancel would not save cost.
+
+**Condition recorded (launch item):** before the API is scaled beyond one instance with the knowledge module enabled, a shared cancellation channel must be designed and approved separately. Recovery (sweep, lazy finalization) is already multi-instance safe, because all transitions are single conditional statements.
+
+### 12.1 Regression after F-1 (fresh disposable `postgres:16-alpine` + `redis:7-alpine`, removed afterwards)
+
+| Suite | Result |
+|---|---|
+| All integration suites | **11 passed, 1 skipped (opt-in performance); 197/197** |
+| Full API unit suite | **135 suites, 1,912/1,912** |
+| Coverage | `knowledge/sessions` 98.86% statements / **89.14% branches**; **global branches 79.95%** (E-2 open, improved from 79.77%) |
+| Typecheck (source, tests) · ESLint | 0 errors · 0 problems |
+
+### 12.2 Disposition
+
+| ID | Disposition |
+|---|---|
+| F-1 | **Defect confirmed and fixed** (mapping only); deterministic unit and real-PostgreSQL evidence |
+| F-2 | **Reconciled**; deviation documented with a safety analysis; **Amendment 2 proposed** (Option B recommended; extends the B-2 exception, so PO approval is required). Behaviour unchanged until decided |
+| F-3 | **Confirmed** within the B-1 intent; architecture evidence, unchanged B-1 test plus an additive NEM-024 test |
+| F-4 | **Confirmed** consistent with the single-instance, flag-off deployment; limitation and launch condition documented; no infrastructure added |
+
+No Checkpoint C, D, or E work; no merge; no deployment; no production activation; no new protected-contract exception applied.
+
+**STOP for final independent Checkpoint B review.**

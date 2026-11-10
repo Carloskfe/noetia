@@ -364,6 +364,8 @@ Retrieval failure **before** reservation → `turn_failed`, with no lock, no cha
 | Any time, including preflight | **Client disconnect or stream close** (network loss, tab close, app background) | **Never a cancellation** (D-9 a, approved): the turn continues to completion and is persisted, so a same-key replay returns it | As normal | — | As normal |
 
 - Explicit cancel is `POST …/turns/cancel {idempotencyKey}`. It signals the in-flight request through an **in-process** registry (`Map<serverKey, AbortController>`).
+- **Implementation note (Checkpoint B, N-B1):** an abort arriving after reservation but before the lock commits is observed at the first post-lock boundary (record `cancelled`, reservation released, **lock stands**). This deviates from the row "after reservation, before the lock commits" above. **Proposed Amendment 2** (pending PO decision, not applied): Option B — check the signal inside the lock transaction (no lock, no turn count) and write a terminal `cancelled` record via the B-2 mechanism. See the [Checkpoint B report §12 F-2](../../reports/2026-11-10-NEM-024-checkpoint-b-report.md).
+- **Deployment assumption (N-B5):** a single API instance with the knowledge module flag off (verified in `docker-compose.server.yml`). T3 is database-only and safe on any instance. Aborting a live provider call from another instance needs a separately approved shared channel before horizontal scaling.
 - With more than one API instance this would need a shared channel. That is a known limitation and is not built now (single instance; no new infrastructure).
 - The accepted Gateway streaming contract is unchanged.
 
