@@ -93,12 +93,16 @@ export class CostConfigService {
       await m.query(`UPDATE ai_pricing_schemas SET active = false WHERE provider = $1 AND "modelKey" = $2 AND active`, [target.provider, target.modelKey]);
       await m.query(`UPDATE ai_pricing_schemas SET active = true, "activatedAt" = now(), "activationReviewRef" = $2 WHERE id = $1`, [id, reviewRef]);
       if (open.length === 0) return { closedBreakers: 0 };
-      const closed = await m.query(
-        `UPDATE ai_overrun_breakers SET state = 'closed', "closedAt" = now(), "closedByReviewRef" = $2, "replacementSchemaId" = $1
-          WHERE state = 'open' AND "pricingSchemaId" = ANY($3::uuid[]) RETURNING "pricingSchemaId"`,
+      // Wrapped in a CTE so the statement is a SELECT: on PostgreSQL, TypeORM returns `[rows, rowCount]` for a bare
+      // UPDATE … RETURNING, which would make any length-based count wrong.
+      const [closed] = await m.query(
+        `WITH closed AS (
+           UPDATE ai_overrun_breakers SET state = 'closed', "closedAt" = now(), "closedByReviewRef" = $2, "replacementSchemaId" = $1
+            WHERE state = 'open' AND "pricingSchemaId" = ANY($3::uuid[]) RETURNING "pricingSchemaId")
+         SELECT count(*)::int AS n FROM closed`,
         [id, reviewRef, open.map((b) => b.pricingSchemaId)],
       );
-      return { closedBreakers: closed.length };
+      return { closedBreakers: Number(closed.n) };
     });
   }
 

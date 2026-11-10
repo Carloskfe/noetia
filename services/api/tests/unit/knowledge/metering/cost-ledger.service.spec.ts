@@ -227,7 +227,7 @@ const ROW = {
   pricingSchemaId: 'ps-1', unitWeightSchemaId: 'uw-1', pricingModifiers: [], noChargeDeclarations: [],
 };
 
-function settleSetup(o: { row?: object | null; settled?: boolean; partial?: boolean; released?: boolean; open?: boolean; exists?: boolean; usageEvent?: object | null } = {}) {
+function settleSetup(o: { row?: object | null; settled?: boolean; partial?: boolean; released?: boolean; open?: boolean; exists?: boolean; usageEvent?: object | null; hasPartial?: boolean } = {}) {
   const ctx = setup();
   const { db } = ctx;
   db.on(/^SELECT r\."userId", r\."sessionId", r\.capability/, () => (o.row === null ? [] : [o.row ?? ROW]));
@@ -240,6 +240,7 @@ function settleSetup(o: { row?: object | null; settled?: boolean; partial?: bool
   db.on(/^SELECT 1 FROM ai_budget_ledger r WHERE r\."idempotencyKey" = \$1 AND r\."attemptNumber" IS NOT NULL/, () => (o.open ? [{}] : []));
   db.on(/^SELECT 1 FROM ai_budget_ledger WHERE "idempotencyKey" = \$1 AND "entryType" = 'reservation' AND "attemptNumber" IS NOT NULL/, () => (o.exists === false ? [] : [{}]));
   db.on(/^SELECT provider FROM ai_usage_events/, () => (o.usageEvent ? [o.usageEvent] : []));
+  db.on(/^SELECT 1 FROM ai_budget_ledger r WHERE r\."idempotencyKey" = \$1 AND r\."entryType" = 'reservation' AND EXISTS \(SELECT 1 FROM ai_partial_settlements/, () => (o.hasPartial ? [{}] : []));
   return ctx;
 }
 
@@ -340,6 +341,21 @@ describe('CostLedgerService.settleAttempt', () => {
     expect(await settleSetup({ released: false }).svc.settleAttempt(u)).toBe('already_resolved');
   });
 
+  it('evidenced zero after a recorded partial is contradictory: the attempt stays held, no evidence or release is written', async () => {
+    const u = usage({ outcome: 'rejected', error: 'rate_limited', usageCompleteness: 'zero_confirmed', zeroUsageEvidence: 'provider_reported_zero' }, { inputUncached: 0, output: 0 });
+    const { svc, db } = settleSetup({ hasPartial: true });
+    expect(await svc.settleAttempt(u)).toBe('held');
+    expect(db.ran(/^INSERT INTO ai_usage_events/)).toHaveLength(0);
+    expect(db.ran(/'release', 0, 0/)).toHaveLength(0);
+  });
+
+  it('the release statement itself excludes partially settled attempts; a blocked open attempt reports held', async () => {
+    const u = usage({ outcome: 'rejected', error: 'rate_limited', usageCompleteness: 'zero_confirmed', zeroUsageEvidence: 'provider_reported_zero' }, { inputUncached: 0, output: 0 });
+    const { svc, db } = settleSetup({ released: false, open: true }); // e.g. a partial landed between the check and the insert
+    expect(await svc.settleAttempt(u)).toBe('held');
+    expect(db.ran(/'release', 0, 0/)[0].sql).toMatch(/NOT EXISTS \(SELECT 1 FROM ai_partial_settlements p WHERE p\."attemptKey" = r\."idempotencyKey"\)/);
+  });
+
   it('throws (caller keeps it held) on invalid usage, a no-provider claim, a pinned schema that is gone, or a ledger outage', async () => {
     await expect(settleSetup().svc.settleAttempt({ ...usage(), prompt: 'x' } as any)).rejects.toThrow();
     await expect(settleSetup().svc.settleAttempt(usage({ providerKey: NO_PROVIDER }))).rejects.toBeInstanceOf(CostLedgerError);
@@ -364,6 +380,13 @@ describe('CostLedgerService.releaseAttempt (provider never called)', () => {
     expect(await svc.releaseAttempt('turn:abc:a1')).toBe('released');
     expect(db.ran(/^INSERT INTO ai_usage_events/)[0].params.slice(3, 6)).toEqual(['turn:abc:a1', NO_PROVIDER, 1]);
     expect(db.ran(/'release', 0, 0/)[0].params).toEqual(['turn:abc:a1', true, NO_PROVIDER]);
+  });
+
+  it('is refused once a partial settlement is recorded (the partial obligation can never be released to zero)', async () => {
+    const ctx = settleSetup({ hasPartial: true });
+    await expect(ctx.svc.releaseAttempt('turn:abc:a1')).rejects.toThrow('only a final settlement can resolve it');
+    expect(ctx.db.ran(/^INSERT INTO ai_usage_events/)).toHaveLength(0);
+    expect(ctx.db.ran(/'release', 0, 0/)).toHaveLength(0);
   });
 
   it('is refused once a provider has reported usage for the attempt', async () => {

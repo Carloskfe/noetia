@@ -137,6 +137,12 @@ const ATTEMPT_COLUMNS = `r."userId", r."sessionId", r.capability, r."attemptNumb
 /** An attempt reservation (alias `r`) that is still unresolved. */
 const OPEN_ATTEMPT = `r."attemptNumber" IS NOT NULL AND ${UNRESOLVED}`;
 
+/**
+ * The attempt (alias `r`) has at least one recorded partial settlement. A partially settled attempt holds a real
+ * obligation inside *settled*, so it can never be released to zero: only a final settlement resolves it.
+ */
+const HAS_PARTIAL = `EXISTS (SELECT 1 FROM ai_partial_settlements p WHERE p."attemptKey" = r."idempotencyKey")`;
+
 /** Copy of the reservation's identity columns, for resolution and flag entries. */
 const FROM_RESERVATION = `r."userId", r."sessionId", r."policyId", r.tier, r.capability, r."idempotencyKey"`;
 
@@ -385,6 +391,9 @@ export class CostLedgerService {
     if (existing && existing.provider !== NO_PROVIDER) {
       throw new CostLedgerError('provider usage is recorded for this attempt; release requires evidenced zero usage');
     }
+    if (await this.hasPartial(attemptKey)) {
+      throw new CostLedgerError('a partial settlement is recorded for this attempt; only a final settlement can resolve it');
+    }
     await this.db.query(
       `INSERT INTO ai_usage_events ("userId", "sessionId", capability, "idempotencyKey", provider, "modelKey", outcome,
          "unitsReported", "contractOutcome", "attemptNumber")
@@ -465,7 +474,9 @@ export class CostLedgerService {
       return 'held';
     }
     if (action === 'release' || action === 'no_reservation') {
-      // Evidenced zero_confirmed, or `not_sent` (the provider was never called): release with no charge.
+      // Evidenced zero_confirmed, or `not_sent` (the provider was never called): release with no charge — unless a
+      // partial settlement already proved a charge. Zero evidence then contradicts recorded usage: keep it held.
+      if (await this.hasPartial(key)) return 'held';
       if (recordEvidence) await this.recordEvidence(row, usage, 0n, 0n);
       return this.appendRelease(key, false);
     }
@@ -566,16 +577,24 @@ export class CostLedgerService {
          "settledMicroUsd", "pricingSchemaId", "unitWeightSchemaId", "attemptNumber", "turnKey")
        SELECT ${FROM_RESERVATION}, 'release', 0, 0, r."pricingSchemaId", r."unitWeightSchemaId", r."attemptNumber", r."turnKey"
          FROM ai_budget_ledger r
-        WHERE r."idempotencyKey" = $1 AND ${OPEN_ATTEMPT}
+        WHERE r."idempotencyKey" = $1 AND ${OPEN_ATTEMPT} AND NOT ${HAS_PARTIAL}
           AND ($2::boolean = false OR EXISTS (
             SELECT 1 FROM ai_usage_events u WHERE u."idempotencyKey" = r."idempotencyKey" AND u.provider = $3))
        ON CONFLICT DO NOTHING
        RETURNING "userId", capability`,
       [key, requireNoProvider, NO_PROVIDER],
     );
-    if (rows.length === 0) return this.resolvedOrMissing(key);
+    if (rows.length === 0) {
+      const open = await this.db.query(`SELECT 1 FROM ai_budget_ledger r WHERE r."idempotencyKey" = $1 AND ${OPEN_ATTEMPT}`, [key]);
+      return open.length > 0 ? 'held' : this.resolvedOrMissing(key); // still open: blocked by a partial or missing evidence
+    }
     await this.clearCache(rows[0]);
     return 'released';
+  }
+
+  private async hasPartial(key: string): Promise<boolean> {
+    const rows = await this.db.query(`SELECT 1 FROM ai_budget_ledger r WHERE r."idempotencyKey" = $1 AND r."entryType" = 'reservation' AND ${HAS_PARTIAL}`, [key]);
+    return rows.length > 0;
   }
 
   private async openBreaker(m: Queryable, pricingSchemaId: string | null) {

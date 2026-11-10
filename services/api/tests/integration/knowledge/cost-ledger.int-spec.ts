@@ -190,6 +190,24 @@ describe('NEM-021 cost-aware ledger on real PostgreSQL', () => {
       await w.costLedger.reconcileAttempts();
       expect((await state()).committed).toBe(1_100_000n);
     });
+
+    it('a partially settled attempt can never be released: the partial obligation stays in committed', async () => {
+      const r = await w.costLedger.reserveAttempt(attempt(await newUser(ds), 1_000_000));
+      const partial = usage(r.attemptKey, { inputUncached: 300_000 }, { outcome: 'refused', error: 'refusal', usageCompleteness: 'partial' });
+      expect(await w.costLedger.settleAttempt(partial)).toBe('partially_settled');
+      const expected = { settled: 300_000n, held: 700_000n, committed: 1_000_000n };
+      // Not-sent release and contradictory zero evidence are both refused; the attempt stays held.
+      await expect(w.costLedger.releaseAttempt(r.attemptKey)).rejects.toThrow('only a final settlement can resolve it');
+      const zero = usage(r.attemptKey, {}, { outcome: 'rejected', error: 'rate_limited', usageCompleteness: 'zero_confirmed', zeroUsageEvidence: 'provider_reported_zero' });
+      expect(await w.costLedger.settleAttempt(zero)).toBe('held');
+      await w.costLedger.reconcileAttempts();
+      expect(await state()).toMatchObject(expected);
+      expect(await rowCount(ds, `SELECT count(*) AS n FROM ai_budget_ledger WHERE "idempotencyKey" = $1 AND "entryType" = 'release'`, [r.attemptKey])).toBe(0);
+      // The final settlement still resolves it, counted once.
+      const final = usage(r.attemptKey, { inputUncached: 800_000 }, { outcome: 'refused', error: 'refusal', usageCompleteness: 'complete' });
+      expect(await w.costLedger.settleAttempt(final)).toBe('settled');
+      expect(await state()).toMatchObject({ settled: 800_000n, held: 0n, committed: 800_000n });
+    });
   });
 
   it('AC-9: injected overrun — exact record, once-only accounting, breaker until reviewed replacement, admissions stop, total = allowance + overruns', async () => {

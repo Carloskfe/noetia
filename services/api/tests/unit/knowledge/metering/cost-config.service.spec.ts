@@ -66,7 +66,9 @@ describe('CostConfigService — pricing schemas', () => {
       ctx.db.on(/FROM ai_overrun_breakers b JOIN/, () => open.map((id) => ({ pricingSchemaId: id })));
       ctx.db.on(/UPDATE ai_pricing_schemas SET active = false/, () => []);
       ctx.db.on(/UPDATE ai_pricing_schemas SET active = true/, () => []);
-      ctx.db.on(/UPDATE ai_overrun_breakers SET state = 'closed'/, (p) => p[2].map((id: string) => ({ pricingSchemaId: id })));
+      // The closure runs as `WITH closed AS (UPDATE … RETURNING) SELECT count(*)`, so the driver returns one count row
+      // (a bare UPDATE … RETURNING returns `[rows, rowCount]` through TypeORM on PostgreSQL).
+      ctx.db.on(/WITH closed AS \(\s*UPDATE ai_overrun_breakers SET state = 'closed'/, (p) => [{ n: p[2].length }]);
       return ctx;
     };
 
