@@ -1,7 +1,7 @@
 # NOETIA ENGINEERING MISSION — NEM-### (E5) — identifier pending PO reservation
 ## Knowledge Retrieval and Grounding (Stage 1: lexical, provider-independent)
 
-**Status:** DRAFT — REVISION 2 — **not executable** (governance README: a DRAFT mission is never executed)
+**Status:** DRAFT — REVISION 3 — **not executable** (governance README: a DRAFT mission is never executed)
 **Mission type:** IMPLEMENTATION (proposed)
 **Implementation authorization:** NONE (requires PO approval of this specification, decisions D-1 to D-9, **and** a separate execution instruction)
 **Schema changes:** ADDITIVE ONLY (proposed: one table, three text-search configurations, and the `unaccent` contrib extension if D-5 is approved), on disposable test databases only
@@ -19,7 +19,13 @@
 > 6. invariants (§8, §11);
 > 7. PO decisions (§16).
 >
-> Evidence: [E5 discovery report, revision 2](../../reports/2026-11-09-E5-retrieval-discovery-report.md).
+> **Revision 3** answers the final clarifications on revision 2 (`53fc73f`):
+> - **C-1:** book-level index permission is separated from user-level query-time eligibility; the indexer uses no user identity and denies by default (§9.6).
+> - **C-2:** S2 still stores a lexical derivative (`tsvector`) of book content in PostgreSQL and its backups (§5.1, §10).
+>
+> Everything else is unchanged.
+>
+> Evidence: [E5 discovery report, revision 3](../../reports/2026-11-09-E5-retrieval-discovery-report.md).
 
 ---
 
@@ -68,7 +74,7 @@ Only under `services/api` (plus tests and docs):
    - configurable size and overlap (D-8); prefers paragraph and sentence boundaries; never splits a word;
    - exact code-point offsets; headings → chapter labels; phrase ranges derived from sync maps (read-only).
 3. **Indexer (explicit command, offline):**
-   - per book: read the MinIO text; `textHash = computeTextHash(bytes)`; check scope (§9.4); chunk; write **one complete set in one transaction**;
+   - per book: **establish book-level index permission (§9.6; default deny)**; read the MinIO text; `textHash = computeTextHash(bytes)`, which must equal the hash the permission was granted for; chunk; write **one complete set in one transaction**;
    - idempotent (skips an existing set), resumable, concurrency 1, enforces the §9.4 limits;
    - **never writes sync maps, fragments, or reader data.**
    - Commands: `index <bookId|all>`, `prune` (non-current sets past grace), `purge <bookId>` (immediate).
@@ -91,6 +97,8 @@ Only under `services/api` (plus tests and docs):
 | Retrieval | One SQL query returns ranked passages with text; snippets via `ts_headline` | SQL ranking, then MinIO GET per distinct result book (≤ 10), verify the object hash, slice by offsets; optional bounded in-memory LRU (no persistence) |
 | Failure mode | PostgreSQL only | MinIO unavailable or object hash mismatch → that book returns nothing (fail closed) |
 | Extra criteria | Purge removes text rows; backup note in the runbook | MinIO fault tests; latency measured with fetch; cache bounded and content-free in logs |
+
+**Both variants store a lexical derivative of book content in PostgreSQL.** `tsvector` holds the chunk's stemmed, accent-folded words **with positions**, which approximately reconstructs the wording. So S2 is not "content only in MinIO". It is "**verbatim text** only in MinIO". Under both variants, that derivative is in every PostgreSQL dump: 7 daily + 4 weekly on the server, plus the daily offsite copy, kept until rotation (up to about 28 days after a purge).
 
 Exposure, latency, and storage comparison: discovery report §6.
 
@@ -154,7 +162,7 @@ Reader, Escucha Activa, **`sync_maps`** (read-only input), ownership, `user_book
 
 | Item | Default (D-6, D-7, D-8) | Enforcement |
 |---|---|---|
-| **Indexing scope** | Published, has stored text, and **rights-eligible via the unchanged `RightsService`** at indexing time | Indexer check; otherwise skipped (metric) |
+| **Indexing scope** | Published, has stored text, and **passes the book-level `IndexingPermission` (§9.6)**; there is no user-level check at indexing time | Indexer check; otherwise skipped (metric `skipped_scope`) |
 | **Retention** | Current and previous set per book; previous kept up to 30 days; `prune` and `purge` commands; book delete cascades | Commands; at most 2 sets per book |
 | Chunk size / overlap | ≈ 1,500 characters / 10% | Configuration |
 | Chunks per book | ≤ 2,000 | Over → skipped, metric |
@@ -171,6 +179,25 @@ Reader, Escucha Activa, **`sync_maps`** (read-only input), ownership, `user_book
 - **Budgets:** enforced before the Gateway's `prepare`, so NEM-021 reservations stay bounded.
 - **Privacy:** no query or passage text in logs, metrics, errors, or persistence.
 
+### 9.6 Book-level index permission vs user-level eligibility (C-1)
+
+- **Two authorizations:**
+  - **Indexing time (book level):** may an index of this book version be created and kept?
+  - **Query time (user level):** may this user, in this session, use the book now? This is answered by the **unchanged** `RightsService.eligibility(userId, bookId, 'research_analysis')` in the caller's (E6) turn step, plus the session set.
+- **No user identity in indexing.** `RightsService.eligibility` needs a `userId` and ends with an ownership check, so the indexer **never calls it, never calls `OwnershipPort`, and never fabricates or impersonates a user** (architecture test).
+- **`IndexingPermission.check(bookId)`** evaluates only NEM-019's book-level steps, from the same sources. Every failure denies:
+  1. current hash from `TextIdentityPort`;
+  2. the `book_ai_rights` row for that hash;
+  3. `status = 'verified'` and the **exported** `isCompleteRecord` / `isWellFormedRecord` (reused, not re-implemented);
+  4. `permittedOperations` includes **`retrieval_indexing`** (an explicit, distinct grant to store an index; data in the existing column, so no schema change);
+  5. `reviewDate` not past;
+  6. `RightsVerificationAuthorityPort.attest(...) === 'attested'`.
+- **Default deny.** Any missing input, error, or non-`attested` answer means no chunks. With the current unbound ports, nothing is indexable.
+- **Parity test.** `IndexingPermission` denies whenever `RightsService.eligibility` denies with a book-level reason, and additionally requires `retrieval_indexing`.
+- **At query time:** `QueryContextSource` also re-checks `IndexingPermission` for each allowed book (cached per request). A book that no longer passes is excluded (`index_not_permitted`) and flagged for `purge`.
+- Index permission never makes a book usable, and ownership never makes a book indexable.
+- **NEM-019 code and bindings are unchanged.**
+
 ## 10. Security / privacy / copyright
 
 - Chunk text storage per D-4; exposure trade-offs in discovery report §6. The runbook records the backup implication of the approved variant.
@@ -183,14 +210,18 @@ Reader, Escucha Activa, **`sync_maps`** (read-only input), ownership, `user_book
 1. **Allowed set only.** Retrieval returns only chunks whose (`bookId`, `textHash`) is in `allowed`. An empty set or empty query is rejected or returns nothing. Adversarial tests (other books, other hashes, SQL-meta characters in the query) never leak, proven at SQL level.
 2. **Stale never served.** After a simulated text replacement, chunks of the old hash are never returned, and the anchor resolver refuses old refs while the current hash differs.
 3. **Hash authority.** The current hash always comes from `TextIdentityPort`. Changing only chunk rows cannot make a book retrievable (test). `computeTextHash` has a single definition. The module binding of `TEXT_IDENTITY_PORT` is unchanged.
-4. **Eligibility.** Ineligible books (unverified, revoked, stale, non-owned licensed, unattested) are neither indexed under the default scope nor retrievable.
+4. **Two authorizations (C-1).**
+   - A book is indexed only if `IndexingPermission` passes: verified, complete, well-formed, current hash, `retrieval_indexing` granted, not past review, attested. Every failure case and the unbound-port case create no chunks.
+   - The indexer never calls `RightsService.eligibility` or `OwnershipPort` and uses no user identity (architecture test).
+   - The parity test with `RightsService` book-level denials passes.
+   - At query time, books failing user-level eligibility (unchanged `RightsService`) or current index permission return no passages.
 5. **User isolation.** Highlight and note results contain only the requesting user's rows for allowed books. The `fragments` schema is unchanged.
 6. **Anchors.** For every passage, `codePointSlice(sourceText, charStart, charEnd) == passage.text` under the recorded hash. Derived phrase ranges are consistent when a sync map exists.
 7. **Full-text quality.** Accent-insensitive Spanish and English matching (with D-5), stemming, and stop words on fixtures. The partial GIN indexes are used. The cross-language limitation is documented by test.
 8. **End to end (test code):** eligibility → `QueryContextSource` → unchanged Context Builder → accepted Gateway and simulator. `library` segments cite retrieved chunk refs and pass NEM-022's citation policy; a citation to a non-retrieved ref is a scope violation. **No `TurnService` or `ContextSourcePort` change.**
 9. **Budgets and cost:** the context budget is never exceeded; NEM-021 reservations reflect the budgeted context.
 10. **Limits:** every §9.4 limit is enforced fail-closed and measured; indexing is idempotent and transactional (a crash leaves no partial set); `sync_maps`, reader data, and `fragments` are byte-unchanged; `prune` and `purge` behave as specified.
-11. **Storage variant (D-4):** the variant's extra criteria in §5.1 pass.
+11. **Storage variant (D-4):** the variant's extra criteria in §5.1 pass. Under either variant, `purge` removes all `tsvector` (and S1 text) rows for the book, and the runbook records that PostgreSQL dumps retain the lexical derivative until rotation.
 12. **Regression:** all NEM-019, NEM-021, and NEM-022 suites pass unchanged; migrations run up and down; architecture and privacy tests pass; no provider, network, or credential use.
 
 ## 12. Required tests
@@ -219,9 +250,9 @@ Technical-note section (architecture, schema, hash mechanism, full-text configur
 | D-1 | TT-25 | Lexical at launch, vector-ready interface | Semantic now needs an image change and an embedding provider |
 | D-2 | E5/E6 boundary | E5 dark components; E6 wires turns | E5 needs authority for NEM-019 changes |
 | D-3 | Text-hash mechanism | SHA-256 of MinIO bytes; shared function; E3 binds | E5 binds (NEM-019 test exception) |
-| D-4 | Chunk text storage | **No default: PO (with legal input if wanted)** | — |
+| D-4 | Chunk text storage | **No default: PO (with legal input if wanted).** Both S1 and S2 store a lexical derivative (`tsvector`) in PostgreSQL and its dumps; S1 adds verbatim text | — |
 | D-5 | `unaccent` extension | Yes | Accent-sensitive matching |
-| D-6 | Indexing scope | Rights-eligible books only | Wider text copy, larger index |
+| D-6 | Indexing scope and permission | Book-level `IndexingPermission` with an explicit `retrieval_indexing` grant; default deny | Reuse `research_analysis` (no separate grant to store an index), or index all published books (derived content stored for uncleared books) |
 | D-7 | Retention | Current + previous, 30 days; purge on revocation | More storage and exposure |
 | D-8 | Limits and defaults | §9.4 | Other values |
 | D-9 | Identifier | PO reserves | — |
@@ -232,6 +263,7 @@ Technical-note section (architecture, schema, hash mechanism, full-text configur
 - A change to `TurnService`, `ContextSourcePort`, module port bindings, `sync_maps`, `fragments` (schema or writes), frozen contract v1, or accepted NEM-022 behaviour appears necessary.
 - A NEM-019, NEM-021, or NEM-022 test must change to pass.
 - Authorization cannot be expressed as SQL predicates.
+- Book-level index permission cannot be established without a user identity or without changing NEM-019 code or bindings.
 - `unaccent`, the generated column, or index use cannot be verified on the disposable database (escalate; do not improvise).
 - A product or legal value (D-4) would need to be assumed.
 
