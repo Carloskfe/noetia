@@ -1,7 +1,16 @@
 # NOETIA ENGINEERING MISSION — NEM-023 (E5)
 ## Knowledge Retrieval and Grounding (Stage 1: lexical, provider-independent)
 
-**Status:** **APPROVED — IMPLEMENTATION COMPLETE, AWAITING PRODUCT ARCHITECTURE REVIEW (2026-11-10).** Executed under Amendment 1 (B-1, B-2, B-3 Option A). Checkpoints A–C done; PA follow-up applied (cache removed); acceptance exception: retrieval p95 ≤ 150 ms not met ([report](../../reports/2026-11-10-NEM-023-knowledge-retrieval-report.md)). Not merged, not deployed.
+**Status:** **COMPLETED — ACCEPTED WITH OPEN EXCEPTIONS (PO, 2026-11-10)** as a completed, disconnected development implementation (PR #53, reviewed commit `c5153ed`). **Open exceptions E-1 (retrieval p95 594 ms vs 150 ms) and E-2 (global API branch coverage 78.75% vs 80%) — not waived, relaxed, or satisfied.** Not merged, not deployed; production indexing blocked ([report §18](../../reports/2026-11-10-NEM-023-knowledge-retrieval-report.md#18-product-owner-acceptance-record-2026-11-10)).
+
+> **Product Owner acceptance (2026-11-10):** *"NEM-023 Product Owner Acceptance Record — ACCEPTED WITH OPEN EXCEPTIONS"*.
+> - **Accepted:** the approved development scope only (as amended by Amendment 1), at PR #53 commit `c5153ed`. Dark, disconnected: no module binding, no turn wiring.
+> - **E-1 — retrieval performance:** p95 **594 ms** against the **150 ms** target (§9.4). **Open.**
+> - **E-2 — global API branch coverage:** **78.75%** against the **80%** threshold. **Open.**
+> - Neither requirement is waived, relaxed, or considered satisfied. Neither may be closed without new evidence and a separate decision.
+> - **Verified-text cache:** removed after the PA follow-up (`cf64287`) and **remains absent**; every retrieval re-reads and re-verifies the MinIO object.
+> - **Production-indexing blockers preserved (§14):** RB-1 (PO-029 corpus), RB-2 (TT-26 legal evidence standard), RB-3 (E3 adapters; verified, attested `retrieval_indexing` records), RB-5 (author opt-in / D6), RB-6 (legal position on the `tsvector` derivative), RB-7 (offsite backup retention), plus governance (merge, deployment, `unaccent` enablement, snapshot).
+> - **Not authorized:** merge, deployment, production indexing, paid AI services, E6.
 **Identifier:** `NEM-023`, reserved by the PO on 2026-11-10 ([PO-033](../../operating-framework/decisions/product-owner/PO-033-e5-knowledge-retrieval-decisions-and-nem-023-reservation.md))
 **Mission type:** IMPLEMENTATION (proposed)
 **Implementation authorization:** **GRANTED 2026-11-10** (PO *"EXECUTE NEM-023"*, reviewed specification `54ad768`): checkpoints A–C within the exact scope and stop conditions, **as amended by Amendment 1** (B-1, B-2) and the B-3 test exception

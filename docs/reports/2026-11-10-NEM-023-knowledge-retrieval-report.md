@@ -1,6 +1,6 @@
 # NEM-023 — Report: Knowledge Retrieval and Grounding (Stage 1)
 
-**Status:** **IMPLEMENTATION COMPLETE — PA FOLLOW-UP CORRECTIONS APPLIED (§17); AWAITING PRODUCT ARCHITECTURE REVIEW.** Checkpoints A–C done under Amendment 1 (PO: B-1, B-2, B-3 Option A, §9). Acceptance exception: retrieval p95 ≤ 150 ms is **not met** and stays recorded as unmet (§13, §17).
+**Status:** **COMPLETED — ACCEPTED WITH OPEN EXCEPTIONS (PO, 2026-11-10; §18).** Checkpoints A–C done under Amendment 1 (PO: B-1, B-2, B-3 Option A, §9); PA follow-up applied (§17). **Open exceptions E-1 and E-2** (§18) — not waived, relaxed, or satisfied.
 **Delivery state:** Draft PR #53 · Not merged · Not deployed · No production indexing · No staging · No paid or external AI.
 
 > **Historical record:** §1–§8 are the pre-execution check exactly as reported while BLOCKED (including its statement that no implementation PR existed at that time). They are kept as evidence and are superseded by §9 onward.
@@ -318,3 +318,21 @@ No accepted contract, protected test, or approved scope changed. Only NEM-023's 
 Unchanged from §15: R-3 (websearch AND semantics), R-4 (Jest flag for the opt-in MinIO run), R-5 (production indexing blocked); deviations D-A to D-D.
 
 **STOP for Product Architecture review.** No merge, deployment, or production indexing.
+
+## 18. Product Owner acceptance record (2026-11-10)
+
+**PO decision: ACCEPTED WITH OPEN EXCEPTIONS** (*"NEM-023 Product Owner Acceptance Record"*).
+
+| Item | Record |
+|---|---|
+| Accepted | NEM-023 as a **completed, disconnected development implementation**, for its approved development scope only (as amended by Amendment 1) |
+| Reviewed implementation | PR #53, commit `c5153ed` |
+| **E-1 — retrieval performance** | p95 **594 ms** vs the **150 ms** target (§17.3). **OPEN** |
+| **E-2 — global API branch coverage** | **78.75%** vs the **80%** threshold (§17.4). **OPEN** |
+| Status of E-1 / E-2 | Neither waived, relaxed, nor considered satisfied; not to be closed without new evidence (e.g. the §17.5 benchmark for E-1) and a separate decision |
+| Verified-text cache | Removed (`cf64287`, PA follow-up P-2) and **remains absent**; every retrieval re-reads and re-verifies the MinIO object |
+| Production-indexing blockers (mission §14), preserved | RB-1 PO-029 eligible corpus · RB-2 TT-26 legal evidence standard / Named Verifier · RB-3 E3 production `TextIdentityPort` + verification-authority adapters and verified, attested `retrieval_indexing` records for exact text versions · RB-5 author/publisher opt-in terms (D6) · RB-6 legal position on storing the `tsvector` derivative · RB-7 offsite backup retention · governance: merge, deployment, `unaccent` enablement under ADR-004 safety steps, server snapshot |
+| Delivery state | PR #53 remains **Draft**. Not merged, not deployed |
+| Not authorized | Merge, deployment, production indexing, paid AI services, E6 implementation |
+
+This record is documentation only: no application code, tests, migrations, CI/CD, or infrastructure changed.
