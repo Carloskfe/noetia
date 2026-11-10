@@ -45,6 +45,14 @@ export class KnowledgeMetricsService {
   private readonly overspendMicroUsd = counter(
     'intelligence_overspend_micro_usd_total', 'Micro-USD by which actual cost exceeded reservations (classification only)',
   );
+  // NEM-022 Gateway v2 (§13). Outcome labels are contract-v1 outcomes only — never content, provider, or model.
+  private readonly gatewayOutcome = counter(
+    'intelligence_gateway_outcome_total', 'Gateway attempts by terminal outcome (contract v1)', ['outcome'],
+  );
+  private readonly gatewayRetry = counter('intelligence_gateway_retry_total', 'Gateway retries (each a new reserved attempt)');
+  private readonly capabilityUnavailable = counter(
+    'intelligence_capability_unavailable_total', 'Requests no registered model could serve (denied before reservation)',
+  );
   private readonly globalAllowanceRejected = counter(
     'intelligence_global_allowance_rejected_total', 'Cost-aware admissions rejected by the global micro-USD allowance',
   );
@@ -60,4 +68,7 @@ export class KnowledgeMetricsService {
   costOverrunInc() { this.costOverrun.inc(); }
   overspendMicroUsdInc(amount: bigint) { this.overspendMicroUsd.inc(Number(amount)); }
   globalAllowanceRejectedInc() { this.globalAllowanceRejected.inc(); }
+  gatewayOutcomeInc(outcome: string) { this.gatewayOutcome.inc({ outcome }); }
+  gatewayRetryInc() { this.gatewayRetry.inc(); }
+  capabilityUnavailableInc() { this.capabilityUnavailable.inc(); }
 }
