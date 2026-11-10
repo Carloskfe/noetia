@@ -34,14 +34,14 @@ function metrics() {
 interface State { settledFinal?: bigint; settledPartial?: bigint; held?: bigint; compensated?: bigint; overrun?: bigint }
 
 function setup(o: {
-  policy?: object | null; global?: object | null; pricing?: object; weights?: object | null; dup?: boolean; breaker?: boolean;
+  policy?: object | null; global?: object | null; pricing?: object; weights?: object | null; dup?: boolean; breaker?: boolean; pinCurrent?: boolean | null;
   scope?: { units: string; oldestAge: number }; overall?: string; state?: State; consumed?: string; inserted?: boolean;
   cache?: { isExhausted: jest.Mock; markExhausted: jest.Mock; clear: jest.Mock } | null; config?: Partial<typeof TEST_CONFIG>;
 } = {}) {
   const db = new FakeDb();
   db.on(/pg_advisory_xact_lock/, () => [{}]);
   db.on(/^SELECT 1 FROM ai_budget_ledger WHERE "idempotencyKey" = \$1 AND "entryType" = 'reservation'$/, () => (o.dup ? [{}] : []));
-  db.on(/FROM ai_overrun_breakers WHERE/, () => (o.breaker ? [{}] : []));
+  db.on(/AS "breakerOpen"/, () => (o.pinCurrent === null ? [] : [{ current: o.pinCurrent ?? true, breakerOpen: !!o.breaker }]));
   db.on(/MIN\(r\."createdAt"\)/, () => [o.scope ?? { units: '0', oldestAge: 0 }]);
   db.on(/^SELECT COALESCE\(SUM\(r\.units\), 0\)::text AS units FROM ai_budget_ledger r WHERE/, () => [{ units: o.overall ?? '0' }]);
   db.on(/WITH open_attempts/, () => [{
@@ -130,6 +130,9 @@ describe('CostLedgerService.reserveAttempt — admission', () => {
     ['no unit-weight schema', { weights: null }, 'unit_weights_missing'],
     ['duplicate attempt key', { dup: true }, 'duplicate_attempt'],
     ['open overrun breaker on the schema', { breaker: true }, 'overrun_breaker_open'],
+    ['open breaker wins even if the schema was also replaced (F-9b)', { breaker: true, pinCurrent: false }, 'overrun_breaker_open'],
+    ['schema replaced or deactivated between pre-check and lock (F-9b)', { pinCurrent: false }, 'pricing_schema_missing'],
+    ['schema row gone between pre-check and lock (F-9b)', { pinCurrent: null }, 'pricing_schema_missing'],
     ['per-scope unresolved units above the bound', { scope: { units: String(POLICY.maxUnresolvedUnits + 1), oldestAge: 0 } }, 'scope_unresolved'],
     ['per-scope oldest unresolved too old', { scope: { units: '0', oldestAge: 4000 } }, 'scope_unresolved'],
     ['overall unresolved units bound', { overall: String(TEST_CONFIG.overallUnresolvedUnitsBound!) }, 'overall_unresolved_units'],

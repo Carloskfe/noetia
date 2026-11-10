@@ -244,8 +244,19 @@ export class CostLedgerService {
       if (!global) return 'global_policy_unset' as const;
       const dup = await m.query(`SELECT 1 FROM ai_budget_ledger WHERE "idempotencyKey" = $1 AND "entryType" = 'reservation'`, [key]);
       if (dup.length > 0) return 'duplicate_attempt' as const;
-      const breaker = await m.query(`SELECT 1 FROM ai_overrun_breakers WHERE "pricingSchemaId" = $1 AND state = 'open'`, [pricing.id]);
-      if (breaker.length > 0) return 'overrun_breaker_open' as const;
+      // F-9b: the pricing schema was looked up before the lock, and pricing activation does not take the global
+      // lock. Re-check, in ONE statement (one snapshot), that it is still the active, unexpired schema AND that its
+      // breaker is closed. Otherwise a reviewed replacement that closed the breaker in between would let this
+      // admission pin the known-underpriced schema. A schema replaced in between denies (fail closed; retry prices
+      // with the new one).
+      const [pin] = await m.query(
+        `SELECT (s.active AND (s."expiresAt" IS NULL OR s."expiresAt" > now())) AS current,
+                EXISTS (SELECT 1 FROM ai_overrun_breakers b WHERE b."pricingSchemaId" = s.id AND b.state = 'open') AS "breakerOpen"
+           FROM ai_pricing_schemas s WHERE s.id = $1`,
+        [pricing.id],
+      );
+      if (pin?.breakerOpen) return 'overrun_breaker_open' as const;
+      if (!pin?.current) return 'pricing_schema_missing' as const;
 
       const [scope] = await m.query(
         `SELECT COALESCE(SUM(r.units), 0)::text AS units,

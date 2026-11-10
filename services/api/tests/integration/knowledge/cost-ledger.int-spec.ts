@@ -440,6 +440,24 @@ describe('NEM-021 cost-aware ledger on real PostgreSQL', () => {
       expect(await reservations()).toBe(0);
     });
 
+    it('F-9b: a replacement pricing schema activated between pre-check and lock cannot let an admission pin the broken schema', async () => {
+      // Open the breaker on golden v1 with an injected overrun.
+      const u = await newUser(ds);
+      const r = await w.costLedger.reserveAttempt(attempt(u, 10_000));
+      await w.costLedger.settleAttempt(usage(r.attemptKey, { inputUncached: 10_000, output: 5_000 }));
+      expect(await ds.query(`SELECT state FROM ai_overrun_breakers WHERE "pricingSchemaId" = $1`, [cfg.pricingA])).toEqual([{ state: 'open' }]);
+      const v2 = await w.costConfig.addPricingSchema(goldenPricing(2));
+      // The admission has already looked up v1 (still active) and is about to take the global lock.
+      const pause = pauseAt(w, /pg_advisory_xact_lock/);
+      const admission = denialCause(w.costLedger.reserveAttempt(attempt(u, 1_000)));
+      await pause.reached;
+      expect(await w.costConfig.activatePricingSchema(v2, 'PA-review-fixture-009')).toEqual({ closedBreakers: 1 });
+      pause.release();
+      expect(await admission).toBe('pricing_schema_missing'); // v1 is no longer current: fail closed, never pinned to v1
+      expect(await rowCount(ds, `SELECT count(*) AS n FROM ai_budget_ledger WHERE "entryType" = 'reservation' AND "pricingSchemaId" = $1`, [cfg.pricingA])).toBe(1);
+      expect((await w.costLedger.reserveAttempt(attempt(u, 1_000))).pricingSchemaId).toBe(v2); // a retry prices with v2
+    });
+
     it('parallel admissions interleaved with repeated activations: no deadlock, and every admission fits the policy it committed under', async () => {
       await setGlobalPolicy(w, 1_000_000n);
       const allowances = [300_000n, 900_000n, 200_000n, 700_000n, 1_000_000n];
