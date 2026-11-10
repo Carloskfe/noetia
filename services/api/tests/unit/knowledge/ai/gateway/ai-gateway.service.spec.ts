@@ -5,6 +5,7 @@ import { AdapterEvent, AdapterRequest, GatewayEvent, GatewayRequest, ProviderAda
 import { RAW_SIMULATOR_DESCRIPTORS, SIMULATOR_DESCRIPTORS } from '../../../../../src/knowledge/ai/simulator/simulator-fixtures';
 import { SimulatorV2Adapter } from '../../../../../src/knowledge/ai/simulator/simulator-v2';
 import { ContextItem, sealContext } from '../../../../../src/knowledge/ai/verified-context';
+import { IntelligenceDenied } from '../../../../../src/knowledge/common/intelligence-denied.error';
 import { mockMetrics, TEST_CONFIG } from '../../support/fixtures';
 
 const [STANDARD, LONG] = SIMULATOR_DESCRIPTORS;
@@ -112,15 +113,16 @@ describe('AiGatewayService.prepare — negotiation, token count, reservation', (
 });
 
 describe('AiGatewayService.invoke / stream — order, settlement, citations', () => {
-  it('reserve → provider call → settle; events arrive as deltas, then validated segments, then usage, then terminal', async () => {
+  it('reserve → provider call → settle; each segment\'s validated deltas precede its segment event, then usage, then terminal', async () => {
     const { gateway, ledger, sim, metrics } = setup();
     const spy = jest.spyOn(sim, 'invoke');
     const p = await gateway.prepare(request());
     const events = await collect(gateway.stream(p));
     const types = events.map((e) => e.type);
-    expect(types.indexOf('delta')).toBe(0);
-    expect(types.lastIndexOf('delta')).toBeLessThan(types.indexOf('segment'));
+    expect(types[0]).toBe('delta');
     expect(types.slice(-2)).toEqual(['usage', 'terminal']);
+    const segmentAt = (i: number) => events.findIndex((e) => e.type === 'segment' && e.segment === i);
+    events.forEach((e, at) => { if (e.type === 'delta') expect(at).toBeLessThan(segmentAt(e.segment)); });
     expect(ledger.reserveAttempt.mock.invocationCallOrder[0]).toBeLessThan(spy.mock.invocationCallOrder[0]);
     expect(spy.mock.invocationCallOrder[0]).toBeLessThan(ledger.settleAttempt.mock.invocationCallOrder[0]);
     const terminal = events.at(-1) as Extract<GatewayEvent, { type: 'terminal' }>;
@@ -201,11 +203,12 @@ describe('AiGatewayService — retries (shared outcome model, each attempt reser
     const { gateway, ledger, sim, metrics } = setup({ config: retrying });
     sim.enqueue({ kind: 'reject', error: 'rate_limited', evidence: 'none', retryAfterMs: 40 }, { kind: 'success' });
     const p = await gateway.prepare(request());
-    const events: GatewayEvent[] = [];
-    const at: number[] = [];
-    for await (const e of gateway.stream(p)) { events.push(e); at.push(performance.now()); }
-    const retryAt = events.findIndex((e) => e.type === 'retry');
-    expect(at[retryAt + 1] - at[retryAt]).toBeGreaterThanOrEqual(38); // retry-after honoured before the next attempt
+    const calls: number[] = [];
+    const original = sim.invoke.bind(sim);
+    jest.spyOn(sim, 'invoke').mockImplementation((...a) => { calls.push(performance.now()); return original(...a); });
+    const events = await collect(gateway.stream(p));
+    expect(calls).toHaveLength(2);
+    expect(calls[1] - calls[0]).toBeGreaterThanOrEqual(39); // the second provider call starts only after retry-after
     expect(events.find((e) => e.type === 'retry')).toEqual({ type: 'retry', attemptNumber: 2, afterMs: 40 });
     expect(ledger.reserveAttempt.mock.calls.map((c: any[]) => c[0].attemptNumber)).toEqual([1, 2]);
     const r = (events.at(-1) as any).response;
@@ -267,33 +270,31 @@ describe('AiGatewayService — retries (shared outcome model, each attempt reser
 });
 
 describe('AiGatewayService — abort, timeout, and misbehaving adapters', () => {
-  it('a client abort mid-stream cancels the simulated call and yields client_abort / aborted with partial usage', async () => {
-    const { gateway, ledger, sim } = setup();
-    sim.enqueue({ kind: 'partial_stream', deltas: 5, then: 'hang' });
+  it('a client abort mid-stream cancels the simulated call and yields client_abort / aborted with partial usage; no partial text leaks', async () => {
+    const { gateway, ledger, sim } = setup({ config: { providerTimeoutMs: 5_000 } });
+    sim.enqueue({ kind: 'partial_stream', deltas: 2, then: 'hang' });
     const ctrl = new AbortController();
-    const events: GatewayEvent[] = [];
-    for await (const e of gateway.stream(await gateway.prepare(request()), { signal: ctrl.signal })) {
-      events.push(e);
-      if (e.type === 'delta') ctrl.abort();
-    }
+    setTimeout(() => ctrl.abort(), 30); // the provider has streamed its partial output and is hanging
+    const events = await collect(gateway.stream(await gateway.prepare(request()), { signal: ctrl.signal }));
+    expect(events.filter((e) => e.type === 'delta' || e.type === 'segment')).toEqual([]);
     const r = (events.at(-1) as any).response;
     expect(r).toMatchObject({ outcome: 'aborted', error: 'client_abort', segments: [], settlement: 'held' });
     expect(r.usage.usageCompleteness).toBe('partial');
     expect(ledger.settleAttempt).toHaveBeenCalledWith(expect.objectContaining({ error: 'client_abort', usageCompleteness: 'partial' }));
   });
 
-  it('a consumer that abandons the stream stops the provider call; the attempt is left held (never settled or released)', async () => {
+  it('while the provider streams, the consumer receives nothing (no event to abandon mid-attempt); the provider call is stopped at the end', async () => {
     let providerSignal: AbortSignal | undefined;
     const slow = new ScriptedAdapter(STANDARD, async function* (_req, signal) {
       providerSignal = signal;
-      yield { type: 'delta', segment: 0, origin: 'synthesis', text: 'first' };
+      yield { type: 'delta', segment: 0, origin: 'synthesis', text: 'not yet validated' };
       await new Promise((r) => signal.addEventListener('abort', r, { once: true }));
     });
-    const { gateway, ledger } = setup({ adapters: [slow], config: { providerTimeoutMs: 5_000 } });
-    for await (const e of gateway.stream(await gateway.prepare(request()))) if (e.type === 'delta') break;
+    const { gateway, ledger } = setup({ adapters: [slow], config: { providerTimeoutMs: 40, abortGraceMs: 10 } });
+    const events = await collect(gateway.stream(await gateway.prepare(request())));
+    expect(events.map((e) => e.type)).toEqual(['usage', 'terminal']);
     expect(providerSignal?.aborted).toBe(true);
-    expect(ledger.settleAttempt).not.toHaveBeenCalled();
-    expect(ledger.releaseAttempt).not.toHaveBeenCalled();
+    expect(ledger.settleAttempt).toHaveBeenCalledWith(expect.objectContaining({ error: 'timeout', usageCompleteness: 'unknown' }));
   });
 
   it('a call aborted before it starts is released (never sent), not settled', async () => {
@@ -342,5 +343,102 @@ describe('AiGatewayService — abort, timeout, and misbehaving adapters', () => 
     const invalid = new ScriptedAdapter(STANDARD, async function* (req) { yield { type: 'final', usage: { ...usageFor(req, STANDARD), attemptKey: 'other' } }; });
     const b = setup({ adapters: [invalid] });
     expect((await b.gateway.invoke(await b.gateway.prepare(request()))).usage).toMatchObject({ error: 'internal', usageCompleteness: 'unknown' });
+  });
+});
+
+describe('review F-1: no unvalidated text reaches a streaming consumer (fail closed)', () => {
+  const deltas = (events: GatewayEvent[]) => events.filter((e) => e.type === 'delta');
+
+  it('a citation outside the allowed set arriving AFTER the text: no delta or segment is ever emitted', async () => {
+    const leaky = new ScriptedAdapter(STANDARD, async function* (req) {
+      yield { type: 'delta', segment: 0, origin: 'library', text: 'Text that must never leak.' };
+      yield { type: 'delta', segment: 1, origin: 'synthesis', text: 'More text.' };
+      yield { type: 'citation', segment: 0, ref: 'ref-outside-context' };
+      yield { type: 'final', usage: usageFor(req, STANDARD) };
+    });
+    const { gateway, ledger } = setup({ adapters: [leaky] });
+    const events = await collect(gateway.stream(await gateway.prepare(request())));
+    expect(deltas(events)).toEqual([]);
+    expect(events.filter((e) => e.type === 'segment')).toEqual([]);
+    expect((events.at(-1) as any).response).toMatchObject({ scopeViolation: true, segments: [] });
+    expect(ledger.settleAttempt).toHaveBeenCalledTimes(1); // usage is still settled, once
+  });
+
+  it('a tool call naming a disallowed book arriving AFTER all text and valid citations: nothing is emitted', async () => {
+    const leaky = new ScriptedAdapter(STANDARD, async function* (req) {
+      yield { type: 'delta', segment: 0, origin: 'library', text: 'Validly cited text.' };
+      yield { type: 'citation', segment: 0, ref: 'c-1' };
+      yield { type: 'tool_call', name: 'retrieve', bookId: 'b-9' };
+      yield { type: 'final', usage: usageFor(req, STANDARD, { nonTokenUnits: { tool_call: 1 } }) };
+    });
+    const { gateway } = setup({ adapters: [leaky] });
+    const events = await collect(gateway.stream(await gateway.prepare(request({ nonTokenUnitBounds: { tool_call: 1 } }))));
+    expect(deltas(events)).toEqual([]);
+    expect((events.at(-1) as any).response.scopeViolation).toBe(true);
+  });
+
+  it('the first delta is released only after the adapter has sent its final event (whole-attempt validation)', async () => {
+    let finalSent = false;
+    const observed = new ScriptedAdapter(STANDARD, async function* (req) {
+      yield { type: 'delta', segment: 0, origin: 'library', text: 'Cited.' };
+      yield { type: 'citation', segment: 0, ref: 'c-1' };
+      finalSent = true;
+      yield { type: 'final', usage: usageFor(req, STANDARD) };
+    });
+    const { gateway } = setup({ adapters: [observed] });
+    const seenAtFirstDelta: boolean[] = [];
+    for await (const e of gateway.stream(await gateway.prepare(request()))) if (e.type === 'delta') seenAtFirstDelta.push(finalSent);
+    expect(seenAtFirstDelta).toEqual([true]);
+  });
+
+  it.each([
+    ['a timeout after partial text', { kind: 'partial_stream', deltas: 2, then: 'hang' }, { providerTimeoutMs: 30 }],
+    ['a stream that ends without usage after partial text', { kind: 'partial_stream', deltas: 2, then: 'drop' }, {}],
+  ] as const)('%s releases no text', async (_l, step, config) => {
+    const { gateway, sim } = setup({ config });
+    sim.enqueue(step as any);
+    const events = await collect(gateway.stream(await gateway.prepare(request())));
+    expect(deltas(events)).toEqual([]);
+  });
+
+  it('structured output is never streamed: no delta even when valid; the validated object is only in the terminal response', async () => {
+    const { gateway, sim } = setup();
+    sim.enqueue({ kind: 'success', structured: { answer: 'Invented.' } });
+    const events = await collect(gateway.stream(await gateway.prepare(request({ output: { mode: 'structured', schema: { type: 'object' } } }))));
+    expect(deltas(events)).toEqual([]);
+    expect((events.at(-1) as any).response.structured).toEqual({ answer: 'Invented.' });
+  });
+
+  it('released deltas are exactly the validated segments (relabelled origins are asserted only in segment events)', async () => {
+    const { gateway, sim } = setup();
+    sim.enqueue({ kind: 'success', segments: [{ origin: 'library', text: 'An uncited claim that is long enough to span chunks.' }, { origin: 'synthesis', text: 'Tail.' }] });
+    const events = await collect(gateway.stream(await gateway.prepare(request())));
+    const r = (events.at(-1) as any).response;
+    r.segments.forEach((seg: any, i: number) => {
+      expect(deltas(events).filter((e: any) => e.segment === i).map((e: any) => e.text).join('')).toBe(seg.text);
+    });
+    expect(events.find((e) => e.type === 'segment' && e.segment === 0)).toMatchObject({ origin: 'synthesis' });
+  });
+});
+
+describe('review F-2: the sealed context must belong to the budget user', () => {
+  it('a context sealed for another user is rejected before negotiation, reservation, or any provider call', async () => {
+    const { gateway, ledger, sim, metrics } = setup();
+    const spy = jest.spyOn(sim, 'invoke');
+    const foreign = sealContext({ pathId: 'research_session.turn', invariant: 'research_session_context', userId: 'u-other', allowedBookIds: ['b-1'], items: [CHUNK] });
+    const e = await gateway.prepare(request({ context: foreign })).catch((x) => x);
+    expect(e).toBeInstanceOf(IntelligenceDenied);
+    expect(e.reason).toBe('scope_violation');
+    expect(ledger.reserveAttempt).not.toHaveBeenCalled();
+    expect(spy).not.toHaveBeenCalled();
+    expect(metrics.scopeViolationInc).toHaveBeenCalledTimes(1);
+    expect(metrics.capabilityUnavailableInc).not.toHaveBeenCalled();
+  });
+
+  it('a budget user different from the context owner is equally rejected (either side mismatching)', async () => {
+    const { gateway, ledger } = setup();
+    const r = request();
+    await expect(gateway.prepare({ ...r, budget: { ...r.budget, userId: 'u-other' } })).rejects.toMatchObject({ reason: 'scope_violation' });
+    expect(ledger.reserveAttempt).not.toHaveBeenCalled();
   });
 });

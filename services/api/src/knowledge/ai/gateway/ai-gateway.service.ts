@@ -41,7 +41,8 @@ interface AttemptResult {
   segments: GatewaySegment[];
   scopeViolation: boolean;
   structured?: unknown;
-  emittedDeltas: boolean;
+  /** The provider streamed output in this attempt (nothing reached the caller unless the attempt validated). */
+  providerStreamed: boolean;
   stopReason: StopReason | null;
   refusalCategory: string | null;
   retryAfterMs: number | null;
@@ -86,6 +87,12 @@ export class AiGatewayService {
     if (!path || !isVerifiedContext(ctx) || ctx.pathId !== request.pathId || ctx.invariant !== path.invariant) {
       throw new Error('context invariant not satisfied for model path');
     }
+    // F-2: the sealed context must belong to the user whose budget pays for the call. Checked before negotiation,
+    // reservation, or any provider call; a mismatch is a scope violation (ADR-006 source-scope isolation).
+    if (ctx.userId !== request.budget.userId) {
+      this.metrics.scopeViolationInc();
+      throw new IntelligenceDenied('scope_violation');
+    }
     const envelope = renderEnvelope(request.templateId, ctx);
     const n = this.router.negotiate(request, envelope);
     if (!n.ok) {
@@ -114,7 +121,11 @@ export class AiGatewayService {
     return response;
   }
 
-  /** Streaming contract (§5.4): deltas → validated segments → per-attempt usage → one terminal event. */
+  /**
+   * Streaming contract (§5.4), fail closed (review F-1): per attempt, validated deltas and segments → usage; then one
+   * terminal event. Deltas are released only after the attempt's citations, origins, and tool scope are validated,
+   * so incremental delivery is per attempt rather than per provider token (the documented tradeoff).
+   */
   async *stream(prepared: PreparedCall, opts: { signal?: AbortSignal } = {}): AsyncGenerator<GatewayEvent> {
     if (prepared.state !== 'reserved') throw new Error('prepared call already used');
     prepared.state = 'invoked';
@@ -127,7 +138,7 @@ export class AiGatewayService {
       last = yield* this.runAttempt(prepared, reservation, opts.signal);
       attempts.push(last.record);
       yield { type: 'usage', attempt: last.record, usage: last.usage };
-      if (n >= maxAttempts || !isRetryable(last.usage.error) || last.emittedDeltas || opts.signal?.aborted) break;
+      if (n >= maxAttempts || !isRetryable(last.usage.error) || last.providerStreamed || opts.signal?.aborted) break;
       const wait = last.usage.error === 'rate_limited' ? (last.retryAfterMs ?? 0) : (this.config.retryBackoffMs ?? 0);
       if (wait > maxRetryDelay) break;
       yield { type: 'retry', attemptNumber: n + 1, afterMs: wait };
@@ -168,7 +179,9 @@ export class AiGatewayService {
     const raw: RawSegment[] = [];
     const toolCalls: { name: string; bookId: string }[] = [];
     let final: Extract<AdapterEvent, { type: 'final' }> | undefined;
-    let emittedDeltas = false;
+    /** F-1: every delta is buffered per segment and released only after the attempt has been validated. */
+    const chunks: string[][] = [];
+    let providerStreamed = false;
     let condition: GatewayCondition | undefined;
 
     if (external?.aborted) {
@@ -208,8 +221,8 @@ export class AiGatewayService {
           while (raw.length <= ev.segment) raw.push({ origin: ev.origin, text: '', citations: [] });
           raw[ev.segment].origin = ev.origin;
           raw[ev.segment].text += ev.text;
-          emittedDeltas = true;
-          yield { type: 'delta', segment: ev.segment, text: ev.text };
+          (chunks[ev.segment] ??= []).push(ev.text);
+          providerStreamed = true; // buffered, not yielded: see the release step below
         } else if (ev.type === 'citation') {
           while (raw.length <= ev.segment) raw.push({ origin: 'synthesis', text: '', citations: [] });
           raw[ev.segment].citations.push(ev.anchor === undefined ? { ref: ev.ref } : { ref: ev.ref, anchor: ev.anchor });
@@ -225,8 +238,7 @@ export class AiGatewayService {
     } finally {
       clearTimeout(timer);
       external?.removeEventListener('abort', onExternal);
-      // Also reached when the consumer abandons the stream mid-attempt: stop the provider call. The attempt is then
-      // never settled here and stays held (reconciliation flags it on expiry; it is never released to zero).
+      // Always stop the provider call when the attempt's read loop ends (completion, timeout, abort, or error).
       ctrl.abort();
     }
     if (!condition && !final) condition = 'adapter_failure';
@@ -244,11 +256,16 @@ export class AiGatewayService {
       adapterUsage: final?.usage, condition, structuredInvalid,
     });
 
-    // Citations and origins (§5.6). Only answers from completed or refused attempts are returned.
+    // Citations, origins, and tool scope (§5.6), over the WHOLE attempt: a citation or tool call can arrive at any
+    // point until the final event, so no text is released before this check. Only answers from completed or refused
+    // attempts are released; structured output is never streamed (the validated object is in the terminal response).
     const answered = usage.outcome === 'completed' || usage.outcome === 'refused';
     const cite = enforceCitations(p.request.context, answered ? raw : [], toolCalls);
     if (answered && !cite.scopeViolation && p.request.output.mode === 'text') {
+      // F-1 release (fail closed): the buffered deltas, in their original chunks and order, then each segment's
+      // validated origin and citations. Nothing reaches the caller from an attempt that failed validation.
       for (let i = 0; i < cite.segments.length; i++) {
+        for (const text of chunks[i] ?? []) yield { type: 'delta', segment: i, text };
         yield { type: 'segment', segment: i, origin: cite.segments[i].origin, citations: cite.segments[i].citations };
       }
     }
@@ -257,16 +274,16 @@ export class AiGatewayService {
     let settlement: AttemptSettlement;
     try { settlement = await this.costLedger.settleAttempt(usage); } catch { settlement = 'ledger_error'; }
     const segments = answered && !cite.scopeViolation && p.request.output.mode === 'text' ? cite.segments : [];
-    return this.result(res, usage, settlement, segments, cite.scopeViolation, structured, emittedDeltas, final);
+    return this.result(res, usage, settlement, segments, cite.scopeViolation, structured, providerStreamed, final);
   }
 
   private result(
     res: AttemptReservation, usage: NormalizedUsage, settlement: AttemptSettlement, segments: GatewaySegment[], scopeViolation: boolean,
-    structured: unknown, emittedDeltas: boolean, final: Extract<AdapterEvent, { type: 'final' }> | undefined,
+    structured: unknown, providerStreamed: boolean, final: Extract<AdapterEvent, { type: 'final' }> | undefined,
   ): AttemptResult {
     return {
       record: { attemptNumber: res.attemptNumber, attemptKey: res.attemptKey, outcome: usage.outcome, error: usage.error, usageCompleteness: usage.usageCompleteness, settlement },
-      usage, segments, scopeViolation, structured, emittedDeltas,
+      usage, segments, scopeViolation, structured, providerStreamed,
       stopReason: final?.stopReason ?? (usage.error === null ? 'end_turn' : 'error'),
       refusalCategory: usage.error === 'refusal' ? final?.refusalCategory ?? null : null,
       retryAfterMs: final?.retryAfterMs ?? null,

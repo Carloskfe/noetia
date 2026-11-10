@@ -54,6 +54,15 @@ describe('NEM-022 Gateway v2 architecture and security', () => {
     expect(labels.every((l) => ['reason', 'tier', 'outcome'].includes(l))).toBe(true);
   });
 
+  it('review F-1: deltas are yielded only after whole-attempt validation, and the context owner is checked before reservation', () => {
+    const gw = src(join(AI, 'gateway/ai-gateway.service.ts'));
+    const yields = [...gw.matchAll(/yield \{ type: 'delta'/g)].map((m) => m.index!);
+    expect(yields).toHaveLength(1);
+    expect(gw.indexOf('enforceCitations(')).toBeGreaterThan(0);
+    expect(yields[0]).toBeGreaterThan(gw.indexOf('enforceCitations('));
+    expect(gw.indexOf('ctx.userId !== request.budget.userId')).toBeLessThan(gw.indexOf('this.reserve(request'));
+  });
+
   it('the Gateway never decides settle, hold, or release: no ledger action literals in gateway code', () => {
     const gw = walk(join(AI, 'gateway')).filter((f) => /'settle_partial_hold_remainder'|ledgerActionFor\(|'release'\s*:/.test(src(f)));
     expect(gw.map(rel)).toEqual([]);

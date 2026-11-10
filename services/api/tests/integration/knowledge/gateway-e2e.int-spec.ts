@@ -101,20 +101,45 @@ describe('NEM-022 Gateway v2 end to end through the NEM-021 cost ledger (real Po
     expect(await entries(`${key}:a1`)).toEqual(expected);
   });
 
-  it('client abort mid-stream: client_abort / aborted with partial usage, held at the reserved amount', async () => {
+  it('client abort mid-stream: client_abort / aborted with partial usage, held at the reserved amount; no partial text released', async () => {
     await configure();
     const u = await newUser(ds);
-    const { gw } = gateway([{ kind: 'partial_stream', deltas: 5, then: 'hang' }]);
+    const { gw } = gateway([{ kind: 'partial_stream', deltas: 2, then: 'hang' }], { config: { providerTimeoutMs: 5_000 } });
     const p = await gw.prepare(request(u, 'turn:e2e-abort'));
     const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 50); // the provider has streamed partial text and is hanging
     let response: any;
+    let released = 0;
     for await (const e of gw.stream(p, { signal: ctrl.signal })) {
-      if (e.type === 'delta') ctrl.abort();
+      if (e.type === 'delta' || e.type === 'segment') released++;
       if (e.type === 'terminal') response = e.response;
     }
+    expect(released).toBe(0);
     expect(response).toMatchObject({ outcome: 'aborted', error: 'client_abort', settlement: 'held' });
     expect(response.usage.usageCompleteness).toBe('partial');
     expect(await state()).toMatchObject({ held: p.firstReservation.reservedMicroUsd, settled: 0n });
+  });
+
+  it('review F-1: an unauthorized citation releases no text to the stream, while the usage is still settled exactly once', async () => {
+    await configure();
+    const u = await newUser(ds);
+    const { gw } = gateway([{ kind: 'citation_error' }]);
+    const events = [];
+    for await (const e of gw.stream(await gw.prepare(request(u, 'turn:e2e-leak')))) events.push(e);
+    expect(events.filter((e) => e.type === 'delta' || e.type === 'segment')).toEqual([]);
+    expect((events.at(-1) as any).response).toMatchObject({ scopeViolation: true, segments: [], settlement: 'settled' });
+    expect(await entries('turn:e2e-leak:a1')).toEqual(['reservation', 'settlement']);
+  });
+
+  it('review F-2: a context sealed for another user is rejected before any reservation', async () => {
+    await configure();
+    const [owner, payer] = [await newUser(ds), await newUser(ds)];
+    const { gw, sim } = gateway();
+    const spy = jest.spyOn(sim, 'invoke');
+    await expect(gw.prepare(request(owner, 'turn:e2e-foreign', { budget: { userId: payer, tier: 'noetia_plus', capability: CAP, sessionId: null } })))
+      .rejects.toMatchObject({ reason: 'scope_violation' });
+    expect(spy).not.toHaveBeenCalled();
+    expect(await rowCount(ds, `SELECT count(*) AS n FROM ai_budget_ledger WHERE "entryType" = 'reservation'`)).toBe(0);
   });
 
   it('structured output that fails validation is completed + malformed_output and settled', async () => {
