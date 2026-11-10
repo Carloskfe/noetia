@@ -1,132 +1,236 @@
 # E5 — Knowledge Retrieval and Grounding: Discovery Report
 
-**Status:** COMPLETE (read-only analysis) — for Product Architecture review.
-**Authorization:** Product Owner, *"E5 Discovery and Engineering Mission Draft"* (2026-11-09): read-only analysis plus a documentation draft. **No implementation is authorized.**
-**Changes made:** this report and a DRAFT mission ([`DRAFT/E5-knowledge-retrieval-and-grounding.md`](../engineering-missions/DRAFT/E5-knowledge-retrieval-and-grounding.md)). No code, migrations, database changes, extensions, dependencies, infrastructure, CI/CD, merges, deployments, or provider activity.
+**Status:** REVISION 2 (read-only analysis) — returned for Product Architecture review.
+**Authorization:** Product Owner, *"E5 Discovery and Engineering Mission Draft"* (2026-11-09), and the Product Architecture review response on PR #52 (*"Architectural direction supported — changes required before mission approval"*). Documentation only.
+**Changes made:** this report and the DRAFT mission ([`DRAFT/E5-knowledge-retrieval-and-grounding.md`](../engineering-missions/DRAFT/E5-knowledge-retrieval-and-grounding.md)). No code, migrations, database changes, extensions, dependencies, infrastructure, CI/CD, merges, deployments, or provider activity.
 
-Legend: **[F]** verified repository fact (with source) · **[M]** measured in this session (local dev database, read-only) · **[A]** assumption · **[D]** missing decision.
+Legend: **[F]** verified repository fact (with source) · **[M]** measured (local dev database, read-only) · **[A]** assumption · **[D]** Product Owner decision (§9).
+
+**Revision 2 changes** (review items 1–7):
+1. An authoritative current-text-hash mechanism (§4).
+2. The query interface and the E6 boundary (§5).
+3. A storage comparison, with no option chosen (§6).
+4. Spanish/English full-text search and accent handling (§7).
+5. Indexing scope, retention, and resource limits (§8).
+6. A table of preserved invariants (§10).
+7. Product Owner decisions with defaults and consequences (§9).
 
 ---
 
-## 1. Recommendation in one paragraph
+## 1. Summary
 
-Build E5 in **stages**.
+The supported direction is preserved:
+- **Stage 1 (E5):** lexical retrieval on PostgreSQL full-text search, behind a technology-neutral `RetrievalPort`.
+- **Stage 2 (a separate mission, post-gate):** pgvector and hybrid retrieval behind the same port (ADR-004).
 
-**Stage 1 (proposed E5)** is lexical retrieval on **PostgreSQL's built-in full-text search**:
-- a new, additive `ai_book_chunks` table built from each book's stored text by an offline chunker;
-- authoritative X-3 anchors (`textHash`, `charStart`, `charEnd`), plus derived chapter and phrase-range references;
-- retrieval behind a provider-independent `RetrievalPort`, filtered at query level to the session's eligible books;
-- results feed NEM-019's `ContextSourcePort`, so they pass the Context Builder invariant and reach the accepted NEM-022 Gateway unchanged.
+Stage 1 needs **no embedding provider, no new service, no PostgreSQL image change, and no paid cost.** The only proposed schema additions are one new table and two custom text-search configurations, plus the contrib extension `unaccent` (decision D-5). Those extensions are already in the running image, but not installed.
 
-Stage 1 needs no embedding provider, no new service, no PostgreSQL image change, and no paid cost. It satisfies the ADR-004 guardrail that product logic never depends on the retrieval technology.
+Revision 2 makes three things independent of the index:
+- **text identity:** the hash comes from the MinIO object, never from chunk rows;
+- **authorization:** the allowed set is supplied by the caller's existing eligibility step and enforced in SQL;
+- **turn integration:** E5 is not wired into `TurnService`; E6 does that.
 
-**Stage 2 (a separate future mission, after the launch gate)** adds pgvector embeddings and hybrid fusion behind the same port. This is semantic and cross-language retrieval, which ADR-004 requires eventually. It needs a production PostgreSQL image change and an embedding-provider decision, so it is out of scope now.
+## 2. Repository facts (unchanged from revision 1; summary)
 
-## 2. Phase 1 — Repository assessment
-
-### 2.1 Text, structure, highlights, notes, ownership
-
-| Item | Finding |
+| Area | Fact |
 |---|---|
-| Full book text | **[F]** Stored as a text object in the private MinIO `books` bucket. `books.textFileKey` points to it; read by `StorageService.getText` (`ingestion/whisper-sync.service.ts:38`); presigned for the reader (`books.controller.ts:101`). No book text is stored in PostgreSQL apart from sync maps |
-| Sync maps | **[F]** `sync_maps.phrases` (jsonb) holds `SyncPhrase { index, text, startTime, endTime, type?: 'text' \| 'heading' \| 'paragraph-break', exception? }` (`books/sync-map.entity.ts`). Escucha Activa depends on them; **protected** |
-| Chapters | **[F]** No chapter table. Chapters are derivable from `type = 'heading'` phrases. **[M]** The median book has 28 heading phrases; the largest has 89 |
-| Highlights and notes | **[F]** `fragments`: `userId`, `bookId` (both `ON DELETE CASCADE`), `startPhraseIndex`, `endPhraseIndex`, `text` (the saved quotation), `note` (optional user note), `themes` jsonb. **There is no separate notes table**: a note is a field on a fragment |
-| Ownership | **[F]** `user_books (userId, bookId, purchaseType: 'free' \| 'token' \| 'courtesy' \| 'purchase')` |
-| AI rights | **[F]** NEM-019 `book_ai_rights` (per book + `textHash`), evaluated by `RightsService.eligibility` (default deny; stale `textHash` denied; F-12 authority port) |
-| Text identity | **[F]** `TextIdentityPort.currentTextHash(bookId)` exists, bound to `UnboundTextIdentityPort` (returns `null`). Its production adapter is planned for E3 (P0 packet line 169) |
+| Book text | **[F]** Private MinIO object `books.textFileKey`, read by `StorageService.getText`. No book text in PostgreSQL apart from `sync_maps.phrases` (Escucha Activa; **protected**) |
+| Chapters | **[F]** Derivable from `type = 'heading'` phrases. **[M]** median book 28, largest 89 |
+| Highlights and notes | **[F]** `fragments (userId, bookId, startPhraseIndex, endPhraseIndex, text, note, themes)`; there is no separate notes table |
+| Ownership and rights | **[F]** `user_books`; NEM-019 `book_ai_rights` (book + `textHash`) evaluated by `RightsService` (default deny, F-12 authority) |
+| PostgreSQL | **[F]** dev and production `postgres:16-alpine`; **[M]** 16.13; `pg_trgm` and `unaccent` available, not installed; **no pgvector** (staging branch only) |
+| Search | **[F]** No text full-text search; book search is `ILIKE`; Meilisearch indexes book metadata only |
+| Retrieval seam | **[F]** `ContextSourcePort.candidates(userId, sessionId, allowedBookIds)` → `EmptyContextSource` (returns `[]`) |
+| Turn | **[F]** `TurnService.run(userId, sessionId, clientKey)` has no question input |
+| Languages | **[F]** `books.language` defaults to `'es'`; the catalogue (`ingestion/catalogue.ts`) marks 39 titles `'en'`. **[M]** the dev database holds 39 Spanish books (a subset) |
+| Sizes | **[M]** median book ≈ 124,000 characters (≈ 31,000 tokens **[A]**), largest ≈ 2.0 million characters (≈ 500,000 tokens) |
+| Backups | **[F]** PostgreSQL dump daily, 7 daily + 4 weekly kept (`infra/server/backup-db.sh`); MinIO archive weekly, 4 kept (`backup-minio.sh`); the latest of each is copied offsite, encrypted (`docs/operations/offsite-backups.md`) |
 
-### 2.2 PostgreSQL capabilities, search, migrations
+## 3. Architecture comparison (summary; full table in revision 1, unchanged in substance)
 
-| Item | Finding |
-|---|---|
-| Version and image | **[F]** Development and production both run `postgres:16-alpine` (`docker-compose.yml:105`, `docker-compose.server.yml:198`). **[M]** Server version 16.13 |
-| Extensions in use | **[F]** Only `uuid-ossp` and `pgcrypto` (`infra/postgres/init.sql`) |
-| Extensions available in that image | **[M]** `pg_trgm` and `unaccent` (contrib) are available but not installed. **`vector` (pgvector) is NOT available** in `postgres:16-alpine` |
-| pgvector anywhere | **[F]** Only on the **staging** branch (`nem-006a-staging`), which uses a pgvector-enabled PostgreSQL 16 image ("staging only"). Not on `main`, not in production |
-| Full-text search | **[F]** **None.** No `tsvector`, `to_tsquery`, or GIN index anywhere in `src` or migrations. Book search is `ILIKE` on title and author (`books.service.ts:32`) |
-| Meilisearch | **[F]** v1.7, index `books`. Searchable: title, author, description; filterable: category, isFree, isPublished, language, meetsStandard (`search/search.service.ts:42-43`). **No book text, chunks, or fragments are indexed** |
-| Migrations | **[F]** 000–074 on the NEM stack (073–074 from NEM-021). No retrieval tables |
-
-### 2.3 Existing retrieval components
-
-**[F]** There is no chunking, embedding, vector search, text full-text search, or retrieval service anywhere in the repository. The only seam is NEM-019's `ContextSourcePort.candidates(userId, sessionId, allowedBookIds)`. It is bound to `EmptyContextSource`, which returns `[]` and says explicitly "NEM-019 performs NO retrieval".
-
-### 2.4 Integration with accepted work
-
-| Component | What E5 must respect | Integration point |
-|---|---|---|
-| NEM-019 Context Builder | Invariant `research_session_context`: every chunk, highlight, and note belongs to a selected, eligible book; highlights and notes belong to the requesting user; a violation aborts the turn. Only Context Builders seal contexts | E5 supplies `ContextItem { kind: 'chunk' \| 'highlight' \| 'note', ref, bookId, userId?, text? }` through `ContextSourcePort`. **No change to the invariant** |
-| NEM-019 turn | **[F]** `TurnService.run(userId, sessionId, clientKey)` has **no question or query input**: the stub carries no user message. **[D-2]** Retrieval needs a query, so either E5 adds an optional query to the port (additive) or turn wiring waits for E6 (conversations) |
-| NEM-021 cost ledger | Retrieved text raises counted input tokens and therefore the worst-case reservation. **A context budget (max tokens per turn) must bound it before `prepare`** | E5 enforces a configurable context budget; no ledger change |
-| NEM-022 Gateway | Citations must reference sealed-context refs (accepted citation policy); `library` requires chunk citations; context text travels in the neutralized data channel | E5 chunk `ref` = stable chunk id; the Gateway's citation `anchor` can carry the X-3 offsets. **No Gateway change** |
-| ADR-002 / ADR-006 | Retrieval only within the explicit, server-derived allowed set, as a **query-level filter, not a post-filter** (03 §rule 6) | The retrieval SQL takes `allowedBookIds` as a mandatory, non-empty parameter |
-| ADR-004 | pgvector is the approved vector store; Meilisearch stays lexical; the **Semantic Retrieval Interface is mandatory**; exact search first; chunks stay separate from sync phrases and only *reference* phrase ranges | Stage 1 defines that interface (`RetrievalPort`) with a lexical implementation; Stage 2 adds the vector implementation |
-| X-3 (02 reconciliation) | Citation anchor = `textHash` + character range; phrase range is derived and re-resolvable | Chunk rows store `textHash`, `charStart`, `charEnd`; the phrase range is computed, not authoritative |
-
-### 2.5 Rights, privacy, ownership, citation, and isolation constraints
-
-1. **Default deny.** Only books returned eligible by `RightsService` (verified rights with a matching `textHash`, F-12 authority) may be retrieved. `isFree` is not evidence.
-2. **Stale-index rule.** A chunk whose `textHash` differs from the book's current text hash, or from the rights record, must never be retrieved. This makes E5 depend on a source of the current text hash (**[D-3]**: E3's `TextIdentityPort` adapter, or an E5-computed hash that E3 later adopts).
-3. **Highlights and notes.** Only the requesting user's `fragments`, only for books in the allowed set. A saved quotation is **an assertion, not evidence** (F-17) and is labelled `user_content`, never `library`.
-4. **No full-text export.** Excerpts only (PRD). E5 returns bounded excerpts within a context budget; reconstruction accounting is E6 (F-2).
-5. **Copyright exposure.** **[D-4]** Chunk text in PostgreSQL duplicates book text that today lives only in private MinIO. That widens where the text sits, including database backups and the encrypted offsite backups. It needs a PO decision, possibly with legal input (C2). The alternative is storing only offsets and reading text from MinIO at retrieval time (slower, no duplication).
-6. **Privacy.** Chunks hold no user data. Queries and retrieved text are never logged or used as metric labels. No query text is persisted in E5.
-7. **Reader protection.** Indexing runs offline (an ingestion script or a low-concurrency worker job), never on the reader path. Sync maps are read-only inputs.
-
-### 2.6 Resource implications
-
-| Measure | Value |
-|---|---|
-| Corpus (dev, **[M]**) | 39 books, all Spanish. Sync-map JSON 22.5 MB in total (590 KB per book on average, 2.8 MB maximum). Whole dev database 28 MB |
-| Text per book (**[M]**) | Median ≈ 124,000 characters (≈ 31,000 tokens at about 4 characters per token **[A]**); largest ≈ 2.0 million characters (≈ 500,000 tokens) |
-| Production corpus (**[A]**) | About 66 books (free library), growing toward 50+ author titles. ≈ 20 MB of text, ≈ 5 million tokens |
-| Chunks (**[A]**, about 1,500 characters each, 10% overlap) | ≈ 15,000 chunks for 66 books (≈ 8,000 for dev) |
-| PostgreSQL growth, Stage 1 (**[A]**) | Chunk text ≈ 20–25 MB, plus `tsvector` and GIN index ≈ 1–2× the text: **≈ 50–80 MB in total**. Negligible on the 400 GB / 24 GB-RAM server |
-| Indexing CPU and time (**[A]**) | Chunking plus `to_tsvector` is linear: seconds per book, minutes for the corpus, single-threaded, run offline |
-| Query cost, Stage 1 (**[A]**) | GIN-indexed lexical query filtered to ≤ 10 books (≤ about 2,500 chunks): **expected well under 100 ms**. To be measured in E5 |
-| Stage 2 storage (**[A]**) | 15,000 × 1,024-dimension float vectors ≈ 60 MB plus overhead. Exact search over ≤ 2,500 scoped vectors is cheap |
-| Stage 2 cost (**[A]**) | One-time embedding of ≈ 5 million tokens, plus one query embedding per turn, at the **chosen provider's price** (no price assumed). A self-hosted model would mean a new service, which is infrastructure |
-| Paid-provider cost, Stage 1 | **None** |
-| Turn cost impact | Retrieval *lowers* model input cost against a whole-book context: a median 3-book Noetia+ set would be ≈ 93,000 tokens per turn whole-book, against a budgeted ≈ 4,000–8,000 retrieved tokens **[A]**. NoetiaX (10 books) and large books **cannot** fit whole |
-
-## 3. Phase 2 — Architecture comparison
-
-| Criterion | A. PostgreSQL full-text search | B. pgvector semantic | C. Hybrid (A + B, fused) | (D. Meilisearch over chunks) |
+| | A. PostgreSQL full-text search | B. pgvector | C. Hybrid | D. Meilisearch over chunks |
 |---|---|---|---|---|
-| New infrastructure | **None.** Core FTS needs no extension. `unaccent`/`pg_trgm` are optional contrib extensions already in the image (one additive `CREATE EXTENSION`) | Production PostgreSQL image change to a pgvector build: snapshot, compatibility verification, infrastructure mission | Same as B | None (already running), but chunk text is copied into a second store |
-| Provider and cost | None | Embedding provider (PO-005/ADR-001), paid or self-hosted; blocked until the launch gate by PO strategy | Same as B | None |
-| Quality | Lexical with stemming (Spanish and English configurations); misses synonyms and paraphrase; **no cross-language** | Semantic, paraphrase-robust, cross-language with a multilingual model (ADR-004 guardrail) | Best recall and precision; standard for RAG | Lexical plus typo tolerance; ranking not tunable to citations |
-| Authorization | Native SQL join and filter on `allowedBookIds` and `textHash` in one query (query-level filter) | Same (ADR-004's main reason) | Same | A filter on an index attribute: correctness depends on index sync; outside the system of record (ADR-004) |
-| Determinism and testing | Fully deterministic; runs on the existing disposable `postgres:16-alpine` | Needs a pgvector image for tests, plus simulated embeddings | Both | Needs a Meilisearch test container |
-| Citation anchors | Chunk row carries the X-3 anchor | Same | Same | Must mirror anchors |
-| Operational risk | Lowest | Medium (image change, re-embedding on model change) | Medium | Low-to-medium (index drift, data duplication) |
-| Fit with ADR-004 | Fits: the interface first, the lexical implementation inside PostgreSQL | The approved vector store | ADR-004 "future hybrid" | Rejected as the system of record for semantic chunks; lexical role only |
+| New infrastructure | none (contrib `unaccent` only) | production image change | same as B | none, but a second copy of text |
+| Provider and cost | none | embedding provider (post-gate) | same as B | none |
+| Quality | lexical, stemmed, accent-folded; no paraphrase or cross-language | semantic, cross-language | best | lexical with typo tolerance |
+| Authorization in SQL | **yes** | yes | yes | index-attribute filter (drift risk) |
 
-**Staged recommendation:**
+**Staged recommendation unchanged:** A now (E5); B, then C later.
 
-| Stage | Contents | Why |
+## 4. Authoritative current-text-hash mechanism (review item 1)
+
+**Definition (one definition for the whole system):**
+- `textHash = "sha256:" + lowercase-hex(SHA-256(exact bytes of the MinIO object at books.textFileKey))`;
+- no normalization (byte-exact), so any byte change is a new text version;
+- character offsets (`charStart`, `charEnd`) are **Unicode code-point indices** into the UTF-8-decoded text, re-resolvable identically in PostgreSQL (`substring`) and TypeScript (code-point slicing).
+
+**Authority:**
+- The current hash is computed **from the MinIO object**, never read from chunk rows.
+- The component is a `TextIdentityPort` adapter: `currentTextHash(bookId)` reads `textFileKey` and hashes the object bytes.
+- It may cache the hash keyed by (`textFileKey`, object ETag, size) and recomputes when the ETag or size changes. The cache holds a hash, never text.
+- Chunk rows only *record* the hash they were built from. Retrieval compares the two, so a stale index can never certify itself.
+
+**Coordination with E3 (owner of the adapter, P0 packet E3):**
+- **Shared pure function.** `computeTextHash(bytes): string` lives in one new module under `knowledge/rights/` and is used by the E3 adapter, the E5 indexer, and future rights manifests. An architecture test enforces one definition. Whichever mission lands first adds it with its unit tests; the other reuses it.
+- **E5 does not bind the port.** NEM-019's architecture test requires `TEXT_IDENTITY_PORT → UnboundTextIdentityPort` in the module (`tests/unit/knowledge/architecture.spec.ts:65`).
+  - In the dark module, every book therefore stays ineligible and E5 retrieval returns nothing for real books: a consistent default deny.
+  - Binding the real adapter is **E3's** step, under its own authorization (it changes an accepted NEM-019 guard).
+  - E5 tests bind a fixture `TextIdentityPort`.
+- **Accepted NEM-019 behaviour is untouched.** `RightsService` keeps comparing `book_ai_rights.textHash` with the port's value. E5 reads the same port, so eligibility and retrieval agree on the version.
+
+**Residual race:** the text could be replaced between the eligibility check and retrieval. Retrieval re-reads the port (same cache key, so normally the same value) and only returns chunks for the hash it read. A changed text yields no chunks (fail closed) until the book is re-indexed, and its rights row must match the new hash before the book is eligible again.
+
+## 5. E5 query interface and E6 boundary (review item 2)
+
+**E5 delivers dark, unwired components:**
+
+```ts
+interface RetrievalPort {                               // technology-neutral (ADR-004)
+  retrieve(req: RetrievalRequest): Promise<RetrievalResult>;
+}
+interface RetrievalRequest {
+  allowed: ReadonlyArray<{ bookId: string; textHash: string }>; // non-empty; produced by the caller's eligibility step
+  query: string;                                         // NFC-normalized, trimmed, 1–500 code points
+  topK: number;                                          // 1–20 (default 8)
+  budgetTokens: number;                                  // ≤ 8,000 (default 6,000)
+}
+interface RetrievalResult {
+  passages: RetrievedPassage[];                          // ranked, within budget
+  excluded: { unindexed: string[]; stale: string[] };    // bookIds, for disclosure (no text)
+  truncated: boolean;
+}
+interface RetrievedPassage {
+  chunkId: string; bookId: string; textHash: string; charStart: number; charEnd: number;
+  chapterLabel: string | null; phraseRange: { start: number; end: number } | null; text: string; score: number;
+}
+
+/** E5's adapter for E6 to call. NOT a ContextSourcePort binding. */
+interface QueryContextSource {
+  candidatesFor(userId: string, allowedBookIds: readonly string[], query: string): Promise<ContextItem[]>;
+}
+```
+
+`candidatesFor` resolves each allowed book's current hash through `TextIdentityPort`, calls `RetrievalPort`, and adds the user's own highlights and notes for the same books. It returns NEM-019 `ContextItem`s (`chunk`, `highlight`, `note`) with `text`, which E6 passes to the **unchanged** Context Builder.
+
+**Boundary:**
+
+| E5 (this mission) | E6 (later, own authorization) |
+|---|---|
+| Chunk table, configurations, indexer, `RetrievalPort` + lexical implementation, `QueryContextSource`, anchor resolver, highlight search on the user's rows | User message input on turns; calling `QueryContextSource` from the turn after step 2; any change to `ContextSourcePort` or `TurnService`; conversation persistence; reconstruction accounting; library-wide Ask My Highlights |
+| `ContextSourcePort` stays bound to `EmptyContextSource`; **no `TurnService` change** | Binds grounded context into turns |
+| End-to-end tests call eligibility (existing `RightsService` / `SessionsService`), then `QueryContextSource`, then the Context Builder, then the accepted Gateway **directly in test code** | Turn-level tests |
+
+**Query safety:**
+- The query is always a bound parameter to `websearch_to_tsquery` (never concatenated).
+- A query that is empty after normalization returns no passages (there is no "match all").
+- Over-length input is rejected.
+- No query text is logged, stored, or used as a metric label.
+
+## 6. Chunk-text storage: PostgreSQL vs offsets plus MinIO (review item 3) — **no option chosen**
+
+Full-text search needs a `tsvector` per chunk in PostgreSQL in every option. A `tsvector` holds stemmed, accent-folded lexemes with positions (stop words removed): **less than the text, but not nothing**, since vocabulary and word order are largely recoverable.
+
+| Criterion | **S1 — chunk text in PostgreSQL** | **S2 — offsets + `tsvector` in PostgreSQL; text read from MinIO at retrieval** |
 |---|---|---|
-| **1 (E5, now)** | A behind `RetrievalPort`; chunk schema already carries everything Stage 2 needs except the vector itself (stable chunk ids, `textHash`, offsets, language); highlight search lexical on the user's own `fragments` rows (matches TT-25 option (a), provisional) | Zero provider, zero infrastructure, zero cost; immediately unblocks E6 with real grounded context on simulated models |
-| **2 (separate mission, post-gate)** | B, then C: an `ai_chunk_embeddings` table (pgvector), embedding versioning (ADR-004), RRF fusion, exact search first | Adds semantic and cross-language retrieval once the image change and embedding provider are approved; no domain rewrite |
+| Where publisher text lives | MinIO **and** PostgreSQL (`ai_book_chunks.text`) | MinIO only; PostgreSQL holds lexemes and positions |
+| Backup exposure **[F]** | Text added to every PostgreSQL dump: **about 11 on-server copies** (7 daily + 4 weekly), plus the daily offsite copy, on top of MinIO's 4 weekly archives | Unchanged for full text (MinIO archives only); dumps gain lexemes |
+| Access surface | Anyone with database read access (and any SQL-injection defect) can read chunk text | Database access yields lexemes; full text still needs MinIO credentials |
+| Rights and takedown | Revocation or deletion must also purge chunk rows (cascade on book delete; purge command on revocation). Dumps keep copies until rotation (up to about 28 days) | Purge lexeme rows; full text follows MinIO's existing lifecycle |
+| Storage **[A]** (66 books, ≈ 20 MB of text) | ≈ 20–25 MB text + ≈ 30–55 MB `tsvector`/GIN = **≈ 50–80 MB**; dumps grow by about that much each | ≈ **30–55 MB**; no extra text in dumps |
+| Retrieval latency **[A]** | One SQL query returns ranked passages with text: **expected tens of milliseconds** | SQL ranking, then one MinIO GET per distinct result book (≤ 10). Objects are median ≈ 124 KB, largest ≈ 2 MB; **expected +5–30 ms per book, more for the largest**, unless cached. A cache is a new in-memory copy of text (bounded LRU; no Redis persistence) |
+| Availability | Retrieval depends on PostgreSQL only | Also depends on MinIO. A MinIO outage means retrieval fails closed |
+| Consistency | Transactional with the chunk rows | Requires the MinIO object to still match `textHash` (checked; a mismatch returns nothing for that book) |
+| Snippets and highlighting | `ts_headline` on stored text | Must slice fetched text by offsets |
+| Engineering effort | Lower | Moderately higher (fetch, cache, and slice path; MinIO fault tests) |
 
-## 4. Missing decisions (for the PO and Product Architecture)
+This is legally sensitive, so **the PO decides (D-4), with legal input if wanted. The draft mission does not choose.** It specifies the schema and acceptance criteria for both variants, and implementation builds only the approved one.
 
-| ID | Decision | Recommendation |
+## 7. Spanish/English full-text search and accent handling (review item 4)
+
+**Built-in facts (PostgreSQL 16 core):** the text-search configurations `spanish` and `english` exist (Snowball stemmers and stop-word lists) and need no extension. **The Snowball stemmers do not fold accents:** a stored `canción` and a typed `cancion` do not match.
+
+**Proposed configurations** (one additive migration; requires `unaccent`, decision D-5):
+- `CREATE EXTENSION IF NOT EXISTS unaccent;` — a contrib extension present in the running image **[M]**. **[A]** It is marked trusted since PostgreSQL 13, so the database owner can create it without superuser. E5 verifies this on the disposable database before any use.
+- `noetia_es` (`COPY = spanish`), `noetia_en` (`COPY = english`), and `noetia_simple` (`COPY = simple`, the fallback for other languages). Each is altered so that word token types (`asciiword`, `asciihword`, `hword_asciipart`, `word`, `hword`, `hword_part`) map to `unaccent, <language>_stem` (`unaccent, simple` for the fallback).
+
+**Columns and indexes:**
+- `language` on each chunk: `'es'`, `'en'`, or `'simple'`, from `books.language`; unknown values map to `'simple'`.
+- `tsv`:
+  - **S1:** a generated stored column, `CASE language WHEN 'en' THEN to_tsvector('noetia_en'::regconfig, text) WHEN 'es' THEN to_tsvector('noetia_es'::regconfig, text) ELSE to_tsvector('noetia_simple'::regconfig, text) END`. `to_tsvector(regconfig, text)` is immutable; E5 verifies the generated column on the disposable database.
+  - **S2:** there is no text column, so the indexer computes `to_tsvector(<config>, $text)` and stores it.
+- Partial GIN indexes, one per language (`… USING gin (tsv) WHERE language = 'es'`, and likewise for `en` and `simple`), plus a btree on (`bookId`, `textHash`).
+
+**Query:**
+- One sub-query per language present in the allowed set, each with a **constant** configuration so its partial GIN index is used, for example `tsv @@ websearch_to_tsquery('noetia_es', $q)`, combined with `UNION ALL`.
+- Ranked by `ts_rank_cd(tsv, q, 32)`, then `bookId`, `chunkIndex` (deterministic tie-break).
+- **Each sub-query also constrains `(bookId, textHash) ∈ allowed` in the same `WHERE` clause.**
+
+**Highlights and notes:** `fragments` has no language column, so the language comes from the fragment's book. `to_tsvector` is computed at query time over **the requesting user's rows for the allowed books only**, capped by the limits in §8. No index is added to the protected `fragments` table.
+
+**Known limitation:** cross-language queries (a Spanish question over an English book) match only shared tokens such as names and numbers. This is disclosed to users as an indexing limitation and resolved in Stage 2 (multilingual embeddings, ADR-004).
+
+**Without `unaccent` (core only), the consequence:** accent-sensitive matching. Queries typed without accents, which is common on mobile, miss accented Spanish words. Stemming still works for correctly accented input.
+
+## 8. Indexing scope, retention, and resource limits (review item 5)
+
+**Conservative scope (default, D-6):** index a book only if all of these hold at indexing time:
+1. it is published;
+2. it has a stored text object;
+3. it is **rights-eligible for AI use according to the unchanged `RightsService`**: a verified rights record matching the current hash, attested by the configured authority.
+
+- *Consequence:* in production nothing is indexed until E3 (the text-identity adapter, the manifest-based authority) and legal attestation exist. Exposure is zero until then; development and tests use fixtures.
+- *Alternative:* index all published books with text, with eligibility only at query time. That is a wider copy of text (under S1) and a larger index.
+
+**Retention and pruning (default, D-7):**
+- At most **two chunk sets per book**: the current `textHash` and the immediately previous one, kept up to **30 days** so in-flight answers can still resolve anchors.
+- Durable citations (E6 Briefs) will later define references that block pruning; until then nothing references old sets.
+- An explicit, idempotent **prune** command removes non-current sets past the grace period.
+- An explicit **purge** command removes every set for a book immediately, for rights revocation or takedown. Book deletion cascades.
+- No automatic background job in E5.
+
+**Measurable resource limits (defaults, D-8; enforced in code and verified in the completion report):**
+
+| Limit | Default | Enforcement |
 |---|---|---|
-| **D-1 (TT-25)** | Lexical or semantic retrieval at launch. The P0 packet requires it closed **before** E5 | **(a) lexical at launch with a vector-ready interface**; semantic as Stage 2 at the gate |
-| **D-2** | Query input: `TurnService` has none. Add an optional query to `ContextSourcePort` / the turn (additive, NEM-019 files) in E5, or deliver retrieval plus the context source in E5 and wire the user question in E6 | Deliver the retrieval service and an E5 context-source adapter with an explicit query parameter; **turn wiring of the user's question in E6**, which owns messages. Keeps NEM-019 turn behaviour unchanged in E5 |
-| **D-3** | Source of the current text hash (X-3, stale-index rule) | E5 computes SHA-256 of the stored MinIO text object at indexing, behind the existing `TextIdentityPort` shape; E3 adopts the same function (one definition) |
-| **D-4** | Store chunk text in PostgreSQL, or only offsets with text read from MinIO at retrieval | Store chunk text (simpler, faster, transactional), **subject to PO/legal confirmation** of the backup-exposure change |
-| **D-5** | `unaccent` / `pg_trgm` contrib extensions (additive migration) or core FTS only | Core FTS plus `unaccent` (accent-insensitive Spanish); defer `pg_trgm` |
-| **D-6** | Which books are indexed: all published books with stored text (eligibility at query time), or only rights-verified books | Index all published books with text; **eligibility enforced at query time** (re-indexing on rights changes not needed) |
-| **D-7** | Chunk size, overlap, top-k, and context budget (engineering defaults, configurable) | About 1,500 characters, 10% overlap, top-k 8, context budget 6,000 tokens (to be tuned in E5 with fixtures) |
-| **D-8** | Mission identifier reservation | PO to reserve |
+| Chunks per book | ≤ 2,000 (the largest measured book is ≈ 1,330 at 1,500 characters) | Over the cap → book skipped, counted in a metric |
+| Total index size (table + indexes) | ≤ 250 MB | The indexer checks `pg_total_relation_size` and refuses a new set above budget (fail closed) |
+| Indexing concurrency | 1 book at a time; per-book transaction; per-book statement timeout 60 s | Command option; run manually, off-peak |
+| Indexing time | Target ≤ 30 s per median book (measured) | Reported |
+| Retrieval statement timeout | 2 s | Transaction-local `statement_timeout` |
+| Retrieval latency | Target p95 ≤ 150 ms for ≤ 10 allowed books on a fixture sized like 10 copies of the largest book | Measured in integration |
+| Query length / topK / budget | ≤ 500 code points / ≤ 20 / ≤ 8,000 tokens | Validated |
+| User fragments scanned per query | ≤ 5,000 rows | `LIMIT` in SQL |
+| Database growth | S1 ≈ 50–80 MB; S2 ≈ 30–55 MB for about 66 books **[A]** | Measured and reported |
 
-## 5. Assumptions to validate in E5
+## 9. Product Owner decisions required
 
-Production book count and text sizes (only dev was measured); the token estimate of about 4 characters per token (simulator approximation); Spanish/English stemming quality on the corpus; query latency on a production-sized fixture; whether every published book has a stored text object (**[M]** dev: 38 of 39 have `textFileKey`).
+| ID | Decision | Recommended default | Consequence of the default | Consequence of the alternative |
+|---|---|---|---|---|
+| **D-1** | TT-25: lexical or semantic at launch (the P0 packet requires it closed before E5) | **Lexical at launch**, vector-ready interface | No paraphrase or cross-language matching at launch; no provider or cost | Semantic now needs a production image change and an embedding provider before the gate |
+| **D-2** | E5/E6 boundary | **E5 delivers dark components; E6 wires turns** (§5) | No grounded turns until E6; zero change to NEM-019 turn behaviour | E5 would need authority to change `ContextSourcePort`/`TurnService` (NEM-019 test exceptions) |
+| **D-3** | Text-hash mechanism | **SHA-256 of MinIO bytes, one shared function; E3 binds the port** (§4) | Production retrieval stays empty until E3 binds the adapter | E5 binds it, which needs a NEM-019 architecture-test exception |
+| **D-4** | Chunk text storage (legal sensitivity) | **No default: PO decision, with legal input if wanted** (§6) | — | S1: simpler and faster; text in more backups. S2: text only in MinIO; MinIO in the retrieval path |
+| **D-5** | Install `unaccent` (contrib) | **Yes**, in the additive E5 migration | Accent-insensitive Spanish and English | Core only: accent-sensitive misses |
+| **D-6** | Indexing scope | **Rights-eligible books only** (§8) | Empty production index until rights verification exists | All published books: wider text copy, larger index |
+| **D-7** | Retention | **Current + previous set, 30-day grace; explicit purge on revocation** | Bounded storage; anchors survive one re-ingestion | Longer retention: more storage and exposure |
+| **D-8** | Resource limits and retrieval defaults | **§8 table** | Measurable, fail-closed bounds | Other values |
+| **D-9** | Mission identifier | PO to reserve | — | — |
 
-## 6. Not done (by instruction)
+## 10. Preserved invariants (review item 6)
 
-No implementation, migration, extension installation, dependency, service, CI/CD, infrastructure, staging, or production change. No database modification. One read-only analysis query on the local dev database was cancelled server-side after it ran too long, leaving no state behind. No merge, deployment, or provider activity. NEM-021 and NEM-022 are untouched.
+| Invariant (owner) | How E5 preserves it |
+|---|---|
+| Allowed set explicit, non-empty, server-derived; query-level filter (ADR-006; 03 rule 6) | `RetrievalRequest.allowed` is required and non-empty, built by the caller's existing eligibility step; enforced as SQL predicates (`(bookId, textHash) ∈ allowed`), never post-filtered |
+| Default deny; F-12 authority (NEM-019) | Eligibility only through the unchanged `RightsService`; with the unbound port, nothing is eligible |
+| Context Builder invariant `research_session_context` (NEM-019) | E5 returns `ContextItem`s; only the unchanged Context Builder seals them. E5 never calls `sealContext` (NEM-019 architecture test) |
+| User isolation (ADR-006) | Highlight and note SQL constrains `userId = $requestingUser` and `bookId ∈ allowed` |
+| Citation anchors (X-3) | `textHash` + code-point offsets per chunk; anchor resolver; NEM-022 citation policy unchanged |
+| Turn order, ledger, Gateway (NEM-019/021/022) | No change; E5 budgets bound the context before `prepare`, so NEM-021 reservations stay bounded |
+| Frozen contract v1 (NEM-021) | Not touched |
+| Escucha Activa / sync maps (protected) | Read-only input for chapter labels and phrase ranges |
+| Trust boundary (F-17) | Saved quotations and notes are `user_content`, never `library` |
+| No content in logs or metrics | Architecture test (existing pattern) |
+
+## 11. Not done (by instruction)
+
+No implementation, migration, extension, dependency, service, CI/CD, infrastructure, staging, production, database modification, merge, deployment, or provider activity. Assumptions marked **[A]** are verified only in E5, on disposable databases.
