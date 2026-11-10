@@ -43,6 +43,12 @@ export interface TurnRow {
   attemptToken: string;
 }
 
+export interface HistoryRow extends TurnRow {
+  question: string;
+  createdAt: Date;
+  completedAt: Date | null;
+}
+
 /** Grace between the owner's own bound (T_max) and the fence (proposed 30 s; review package Q-12). */
 export const FENCE_GRACE_SECONDS = 30;
 /** Mirrors the Gateway's per-turn attempt ceiling (metering/attempt-key.ts) without importing metering code. */
@@ -133,6 +139,56 @@ export class TurnRecordStore {
       [id, attemptToken, reason, release, exclusions === null ? null : JSON.stringify(exclusions)],
     );
     return rows === 1;
+  }
+
+  /** T3 — explicit cancel. Eligible only when the statement starts before the fence; never overwrites a terminal state. */
+  async cancel(id: string): Promise<boolean> {
+    return (await this.transition(
+      `UPDATE ai_turns SET status = 'cancelled'
+        WHERE id = $1 AND status = 'accepted' AND statement_timestamp() < "fenceAt"
+        RETURNING id`,
+      [id],
+    )) === 1;
+  }
+
+  /**
+   * T4 — finalization of the given rows (lazy, from a status-returning read). Eligible only when the statement starts
+   * at or after the fence. If a pre-fence transition holds a row, this statement waits for its commit and then
+   * re-checks `status = 'accepted'` (READ COMMITTED), so it never overwrites a terminal outcome.
+   */
+  async finalize(ids: string[]): Promise<number> {
+    if (ids.length === 0) return 0;
+    return this.transition(
+      `UPDATE ai_turns SET status = 'interrupted'
+        WHERE id = ANY($1::uuid[]) AND status = 'accepted' AND statement_timestamp() >= "fenceAt"
+        RETURNING id`,
+      [ids],
+    );
+  }
+
+  /** T4 — the periodic sweep: finalize up to `limit` expired provisional rows. Never touches the ledger. */
+  async sweep(limit = 500): Promise<number> {
+    return this.transition(
+      `UPDATE ai_turns SET status = 'interrupted'
+        WHERE id IN (SELECT id FROM ai_turns WHERE status = 'accepted' AND "fenceAt" <= statement_timestamp() ORDER BY "fenceAt" LIMIT $1)
+          AND status = 'accepted' AND statement_timestamp() >= "fenceAt"
+        RETURNING id`,
+      [limit],
+    );
+  }
+
+  /** History page for one session, newest first (the caller verifies ownership). */
+  async listBySession(sessionId: string, limit: number): Promise<HistoryRow[]> {
+    return this.db.query<HistoryRow>(
+      `SELECT ${COLUMNS}, question, "createdAt", "completedAt" FROM ai_turns WHERE "sessionId" = $1 ORDER BY "createdAt" DESC, id DESC LIMIT $2`,
+      [sessionId, limit],
+    );
+  }
+
+  async findHistoryRow(sessionId: string, id: string): Promise<HistoryRow | null> {
+    const [r] = await this.db.query<HistoryRow>(
+      `SELECT ${COLUMNS}, question, "createdAt", "completedAt" FROM ai_turns WHERE "sessionId" = $1 AND id = $2`, [sessionId, id]);
+    return r ?? null;
   }
 
   /**

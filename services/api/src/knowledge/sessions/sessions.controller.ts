@@ -1,8 +1,8 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, DefaultValuePipe, Delete, Get, HttpCode, Param, ParseIntPipe, ParseUUIDPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CapabilityGuard, DeclareCapability } from '../entitlement/capability.guard';
 import { RESEARCH_SESSION } from '../knowledge.types';
-import { AddBookDto, CreateSessionDto, ForkSessionDto, TurnDto } from './sessions.dto';
+import { AddBookDto, CancelTurnDto, CreateSessionDto, ForkSessionDto, TurnDto } from './sessions.dto';
 import { SessionsService } from './sessions.service';
 import { TurnService } from './turn.service';
 
@@ -52,6 +52,32 @@ export class SessionsController {
   @DeclareCapability(RESEARCH_SESSION, 'use')
   fork(@Req() req: AuthedRequest, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ForkSessionDto) {
     return this.sessions.fork(req.user.id, id, dto.bookIds);
+  }
+
+  // NEM-024 Checkpoint B: history and single-turn reads (owner only; expired provisional turns are finalized first;
+  // source excerpts are re-validated against current eligibility).
+  @Get(':id/turns')
+  @DeclareCapability(RESEARCH_SESSION, 'history')
+  history(
+    @Req() req: AuthedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    return this.turns.history(req.user.id, id, limit);
+  }
+
+  @Get(':id/turns/:turnId')
+  @DeclareCapability(RESEARCH_SESSION, 'history')
+  turnView(@Req() req: AuthedRequest, @Param('id', ParseUUIDPipe) id: string, @Param('turnId', ParseUUIDPipe) turnId: string) {
+    return this.turns.turnView(req.user.id, id, turnId);
+  }
+
+  // NEM-024 Checkpoint B: explicit, authenticated cancellation (a disconnect never cancels; D-9 a).
+  @Post(':id/turns/cancel')
+  @HttpCode(200)
+  @DeclareCapability(RESEARCH_SESSION, 'use')
+  cancel(@Req() req: AuthedRequest, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CancelTurnDto) {
+    return this.turns.cancel(req.user.id, id, dto.idempotencyKey);
   }
 
   @Post(':id/turns')

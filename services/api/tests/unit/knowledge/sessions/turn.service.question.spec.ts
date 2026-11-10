@@ -83,6 +83,9 @@ function setup(o: Over = {}) {
     insertAccepted: jest.fn(async (..._a: any[]) => ({ id: TURN, attemptToken: TOKEN })),
     complete: jest.fn(async (..._a: any[]) => { log.push('complete'); const v = completes.length ? completes.shift() : true; if (v === 'throw') throw new Error('write failed'); return v; }),
     fail: jest.fn(async (..._a: any[]): Promise<boolean> => true),
+    // Checkpoint B: lazy finalization (T4) is attempted for provisional rows; 0 = still before the fence.
+    finalize: jest.fn(async (..._a: any[]) => 0),
+    cancel: jest.fn(async (..._a: any[]) => true),
     recordStep4Failure: jest.fn(async (..._a: any[]) => { if (o.recordError) throw new Error('db down'); return 'failrow-1'; }),
   };
   const contextBuilder = { build: jest.fn((u: string, allowed: string[], items: any[]) => { log.push('build'); return { userId: u, allowedBookIds: allowed, items }; }) };

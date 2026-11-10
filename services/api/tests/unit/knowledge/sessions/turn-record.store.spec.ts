@@ -74,4 +74,36 @@ describe('TurnRecordStore (NEM-024 Checkpoint A)', () => {
     expect(isUniqueViolation({ code: '40001' }, 'UQ_ai_turns_session_key')).toBe(false);
     expect(isUniqueViolation(null, 'x')).toBe(false);
   });
+
+  it('Checkpoint B: T3 cancel and T4 finalize/sweep are fenced in opposite directions and require status accepted', async () => {
+    const { db, store } = setup([[/SET status = 'cancelled'/, () => [{ n: 1 }]], [/SET status = 'interrupted'/, () => [{ n: 2 }]]]);
+    expect(await store.cancel(T)).toBe(true);
+    expect(await store.finalize([T, 'x'])).toBe(2);
+    expect(await store.finalize([])).toBe(0);
+    expect(await store.sweep(7)).toBe(2);
+    const [cancel] = db.ran(/SET status = 'cancelled'/);
+    expect(cancel.sql).toMatch(/status = 'accepted' AND statement_timestamp\(\) < "fenceAt"/);
+    for (const c of db.ran(/SET status = 'interrupted'/)) {
+      expect(c.sql).toMatch(/status = 'accepted' AND statement_timestamp\(\) >= "fenceAt"/);
+      expect(c.sql).toMatch(/^WITH u AS \(UPDATE/);
+      expect(c.sql).not.toMatch(/\bnow\(\)/);
+      expect(c.sql).not.toMatch(/ai_budget_ledger|ai_usage_events/);
+    }
+    expect(db.ran(/SET status = 'interrupted'/)[1].params).toEqual([7]);
+    expect(db.ran(/SET status = 'interrupted'/).length).toBe(2); // finalize([]) issues no statement
+  });
+
+  it('LW-5 guard (source-level): no transition statement uses now()', () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, '../../../../src/knowledge/sessions/turn-record.store.ts'), 'utf8');
+    const updates = [...src.matchAll(/`(UPDATE ai_turns[^`]*)`/g)].map((m: RegExpMatchArray) => m[1]);
+    expect(updates.length).toBeGreaterThanOrEqual(5);
+    for (const u of updates) { expect(u).not.toMatch(/\bnow\(\)/); expect(u).toMatch(/statement_timestamp\(\)/); }
+  });
+
+  it('history listing and single-row lookup are scoped to the session', async () => {
+    const { db, store } = setup([[/ORDER BY "createdAt" DESC/, () => [{ id: T }]], [/"sessionId" = \$1 AND id = \$2/, () => []]]);
+    expect(await store.listBySession(S, 5)).toEqual([{ id: T }]);
+    expect(db.ran(/ORDER BY "createdAt" DESC/)[0].params).toEqual([S, 5]);
+    expect(await store.findHistoryRow(S, T)).toBeNull();
+  });
 });

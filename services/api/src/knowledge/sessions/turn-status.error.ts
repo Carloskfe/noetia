@@ -12,6 +12,9 @@ export interface TurnStatusDetail {
   /** False when a terminal failure record could not be written (Amendment 1, B-2 residual). */
   recorded?: boolean;
   exclusions?: Record<string, string[]>;
+  /** Weighted-guard refusal (Checkpoint B): retry hint and reason; no charge was made. */
+  retryAfterSeconds?: number;
+  guard?: 'over_limit' | 'exceeds_limit';
 }
 
 export class TurnStatusDenied extends IntelligenceDenied {
