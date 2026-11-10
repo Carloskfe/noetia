@@ -42,3 +42,5 @@ PO-034 and every decision in it; NEM-023 exceptions E-1 and E-2; NEM-022's cover
 ## Execution record
 
 Pre-execution check result (2026-11-10): **BLOCKED.** See the [Checkpoint A report](../../../reports/2026-11-10-NEM-024-checkpoint-a-report.md) (blocker B-1: an accepted NEM-023 architecture test forbids the wiring that D-3 authorizes).
+
+**Resumption (2026-11-10):** the PO approved B-1 Option A (one intent-preserving NEM-023 test amendment, own commit) and B-2 Option ii (a durable terminal failure record after a step-4 failure). They are recorded as NEM-024 Amendment 1 and in report §8. Only these two amendments are authorized, followed by Checkpoint A.

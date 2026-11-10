@@ -1,6 +1,6 @@
 # NEM-024 — Checkpoint A Report (pre-execution)
 
-**Status:** **BLOCKED AT PRE-EXECUTION CHECK — no implementation code written.** One approved stop condition is triggered (B-1). A second item (B-2) is a specification gap needing a PA ruling. Partial report under the reporting protocol (blocked work).
+**Status:** **RESUMED (2026-11-10)**: the PO approved B-1 (Option A) and B-2 (Option ii) together (§8). §1–§7 are the record of the blocked pre-execution check.
 **Delivery state:** Branch `feat/nem-024-checkpoint-a` (documentation records only) · no implementation PR · not merged · not deployed.
 
 ## 1. Authorization
@@ -89,3 +89,16 @@ Not modified: NEM-019, NEM-021, NEM-022, NEM-023 code, tests, and bindings; `fra
 ## 7. Next action
 
 PO + PA decision on B-1 (protected-test exception) and a PA ruling on B-2. *(Recommendation only.)*
+
+---
+
+## 8. PO decision on B-1 and B-2 (2026-11-10)
+
+PO *"NEM-024 Checkpoint A — Product Owner Approval of B-1 and B-2"* approves **both** amendments together, recorded as mission **Amendment 1**.
+
+| ID | Decision | Effect |
+|---|---|---|
+| B-1 | **Option A** | One intent-preserving amendment of the NEM-023 test *"no turn or port wiring"*, in its own commit before any Checkpoint A code. It permits only the approved module registration and `TurnService` dependencies; it keeps the prohibition on direct indexer or retrieval-service access from `TurnService` and the two port bindings. No alias imports; no unrelated assertion weakened |
+| B-2 | **Option ii** | A terminal `failed` record after a step-4 failure and the release: idempotent; not a successful turn; no extra reservation or charge; no interference with the one-provisional-turn index; no ledger query; `reservationRelease` reported conservatively (`released` only when the Gateway release completed without error). Concurrency and persistence-failure tests required. Semantics: mission §9.2 item 1a |
+
+Scope: only these two amendments, then Checkpoint A. No other architecture exception; Checkpoints B–E, production providers, infrastructure, merge, and deployment are not authorized.

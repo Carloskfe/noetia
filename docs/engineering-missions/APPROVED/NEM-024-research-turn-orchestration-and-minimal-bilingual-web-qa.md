@@ -1,15 +1,25 @@
 # NOETIA ENGINEERING MISSION — NEM-024
 ## Research-Turn Orchestration and Minimal Bilingual Web Q&A (dark, simulated provider only)
 
-**Status:** **APPROVED (PO, 2026-11-10; [PO-035](../../operating-framework/decisions/product-owner/PO-035-nem-024-specification-approval-and-checkpoint-a-authorization.md)) — CHECKPOINT A EXECUTION AUTHORIZED — BLOCKED AT PRE-EXECUTION CHECK.** An accepted NEM-023 architecture test forbids the D-3 wiring (B-1, stop condition); specification gap B-2 (replay after a step-4 failure). No implementation code written ([Checkpoint A report](../../reports/2026-11-10-NEM-024-checkpoint-a-report.md)). Checkpoints B–E **not authorized**. *(Previous status: proposed, review-ready; decisions in PO-034.)*
+**Status:** **APPROVED (PO, 2026-11-10; [PO-035](../../operating-framework/decisions/product-owner/PO-035-nem-024-specification-approval-and-checkpoint-a-authorization.md)) — CHECKPOINT A EXECUTION AUTHORIZED — RESUMED** after PO approval of B-1 (Option A) and B-2 (Option ii), recorded as **Amendment 1** below ([Checkpoint A report](../../reports/2026-11-10-NEM-024-checkpoint-a-report.md)). Checkpoints B–E **not authorized**.
 **Identifier:** `NEM-024`, assigned by the PO on 2026-11-10 (PO-034 D-5). Verified unused on all remote branches, PR titles, and the register.
 **Mission type:** IMPLEMENTATION
-**Implementation authorization:** **Checkpoint A only** (PO-035, 2026-11-10). Execution blocked pending decisions B-1 and B-2. Checkpoints B, C, D, E, merge, deployment, production providers, production indexing, and infrastructure are NOT authorized
+**Implementation authorization:** **Checkpoint A only** (PO-035), as amended by Amendment 1 (B-1, B-2). Checkpoints B, C, D, E, merge, deployment, production providers, production indexing, and infrastructure are NOT authorized
 **Schema changes:** ADDITIVE ONLY: one table, `ai_turns` (with a partial unique index); disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED (none needed)
 **Production deployment:** NOT AUTHORIZED (staging and merge to `main` also not authorized). Provider usage **simulated only**; every production integration **disabled**
 **Product Owner approval:** decisions approved (PO-034); specification approval pending the final PA sign-off
 
+> **Amendment 1 (PO *"NEM-024 Checkpoint A — Product Owner Approval of B-1 and B-2"*, 2026-11-10):**
+> - **B-1, Option A — one protected-test amendment.** The NEM-023 architecture test *"no turn or port wiring"* is amended, **in its own commit before any Checkpoint A code**, to:
+>   - permit only the approved retrieval-provider registration in `knowledge.module.ts` and the approved retrieval / indexing-permission dependencies in `sessions/turn.service.ts`;
+>   - keep prohibiting direct indexer or retrieval-service access from `TurnService`;
+>   - keep the `CONTEXT_SOURCE_PORT` and `TEXT_IDENTITY_PORT` bindings.
+>
+>   No other assertion is weakened, and no import aliases are used.
+> - **B-2, Option ii — durable terminal failure record** (exception to "step-4 failures create no row"). Revised semantics in §9.2 item 1a.
+> - Scope: only these two amendments, then Checkpoint A as approved. No other architecture exception; B–E not authorized.
+>
 > **Finalization (PO *"NEM-024 Formal Mission Finalization"*, 2026-11-10):**
 > - The specification is renamed from the E6 DRAFT to NEM-024 (`git mv`, history preserved).
 > - Every decision marked **[D-x]** below is now **approved** (PO-034). The text written on the "recommended" or "proposed baseline" options is the approved text.
@@ -224,6 +234,19 @@ Retrieval failure **before** reservation → `turn_failed`, with no lock, no cha
 
 **Lifecycle:**
 1. **Record creation:** the row is inserted with `status = 'accepted'`, a fresh `attemptToken`, and `fenceAt = statement_timestamp() + T_max + grace` (database time) **inside the existing step-4 lock transaction** (with the lock and `turnCount` update). Preflight failures and step-4 failures (attempt released by the existing `releaseOrHold`) create **no** row.
+1a. **Step-4 failure record (Amendment 1, B-2).** After a step-4 failure (lock-transaction error, set change, read-only, or the one-provisional-turn index) **and** the subsequent `gateway.release(prepared)` call:
+   - **Record:** a **terminal `failed`** row is inserted by `INSERT … ON CONFLICT ("sessionId", "keyHash") DO NOTHING` (**idempotent**: an existing row for the key is kept unchanged), with:
+     - `failureReason` = the step-4 denial code;
+     - `turnIndex = NULL`;
+     - `reservationRelease` = `'released'` only if the Gateway's `release` call **completed without error**, otherwise `'unconfirmed'`. The attempt then stays held for NEM-021 reconciliation. **E6 never queries the ledger** and never reports a release it did not observe complete;
+     - a fresh `attemptToken`;
+     - `fenceAt = statement_timestamp()`.
+   - **Effects:**
+     - It is **not a successful research turn**: the step-4 transaction rolled back, so there is no session lock and no `turnCount` increment, and `turnIndex` is NULL.
+     - **No additional reservation or charge:** it is written only after the release, and with no Gateway call.
+     - It does **not interfere** with the one-provisional-turn index, which covers only `status = 'accepted'`.
+   - **Replay:** a same-key replay returns the recorded denial (`turn_failed`, or the specific step-4 code) with `{turnId, status: 'failed', reservationRelease}`.
+   - **If the failure record itself cannot be written:** the original response still carries the denial with `recorded: false`. A later same-key replay then finds no row and returns `409 duplicate_turn {status: 'pending'}` (a disclosed residual; no charge, since the release ran first).
 2. **When a turn is durably completed:** when the single conditional `UPDATE … SET status = 'completed', segments = …, completedAt = now() WHERE id = $1 AND attemptToken = $2 AND status = 'accepted' AND statement_timestamp() < fenceAt` **commits** (transition T1, item 7). This happens after the Gateway's terminal event. By NEM-022 F-3, the attempt's usage is already settled, or held, in the NEM-021 ledger before any consumer-visible event. **Settlement and completion are separate facts:** the ledger is the only authority for charges, and `ai_turns` is only the conversation record.
 3. **Order of response vs completion:** the server attempts the completion write **before** sending the terminal response or event, with one bounded retry.
 4. **Persistence fails after settlement (D-8 a, approved; residual risk documented):**
