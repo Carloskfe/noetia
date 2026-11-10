@@ -1,7 +1,8 @@
-# NEM-022 — Report: Provider-Independent AI Gateway and Simulator v2
+# NEM-022 — Completion Report: Provider-Independent AI Gateway and Simulator v2
 
-**Status:** **BLOCKED AT PRE-EXECUTION CHECK — no implementation code written.** Two verified conflicts between the approved specification and accepted, frozen test baselines need a decision before implementation can start (§10b). Partial report under the reporting protocol (§2.2, blocked work).
-**Delivery state:** Not merged · Not deployed · No Draft PR yet (created at the implementation checkpoint).
+**Status:** **IMPLEMENTED AND VERIFIED — AWAITING PRODUCT ARCHITECTURE REVIEW.** §5 items 1–12 are implemented. Every acceptance criterion (§11, AC-1 to AC-11) is proven by tests run in this session, including a fresh disposable PostgreSQL run. **NEM-022 is not accepted**: that needs the independent Product Architecture review (§19) and a separate Product Owner decision.
+**Delivery state:** Not merged · Not deployed · Draft PR (stacked on NEM-021 PR #50).
+**Revision:** 2 (2026-11-09). Supersedes revision 1, the pre-execution BLOCKED report (kept as history in §14).
 
 ---
 
@@ -11,182 +12,271 @@
 |---|---|
 | Mission | NEM-022 — Provider-Independent AI Gateway and Simulator v2 (E2), specification Revision 3 (PO-032) |
 | Type | IMPLEMENTATION |
-| Authorization | PO *"Product Owner Execution Authorization: NEM-022"* (2026-11-09): execute §5 items 1–12 and the matching acceptance criteria, on frozen contract v1 and the accepted NEM-021 ledger. **"If a prerequisite is missing or a stop condition applies, STOP and report it before writing implementation code."** Not authorized: merge, deployment, schema or migration changes, infrastructure, CI/CD, real providers, SDKs, endpoints, credentials, AI costs, protected systems, other missions, and **changing NEM-019 or NEM-021 tests merely to make NEM-022 pass** |
+| Authorization | PO *"Product Owner Execution Authorization: NEM-022"* (2026-11-09), §5 items 1–12 |
+| Pre-execution decisions | **D-1, Option A — approved by Product Architecture** (2026-11-09): replace only the two obsolete Phase-2 boundary guards in `contract-architecture.spec.ts` with NEM-022 guards; keep every other frozen protection; record the new test-tree hash; contract source unchanged. **D-2, Option A — recommended by Product Architecture and confirmed by the Product Owner** (2026-11-09, explicit confirmation in session): migrate `TurnService` to the Gateway v2 per-attempt path, with only the minimum intent-preserving amendments to `turn.service.spec.ts`, the turn-related assertions in `ledger.int-spec.ts` and `sessions.int-spec.ts`, and the harness wiring in `it-env.ts`; no double reservation; no second accounting path for a turn |
+| Excluded | Merge, deployment, schemas or migrations, infrastructure, CI/CD, real providers, SDKs, endpoints, credentials, paid AI, AI costs, protected systems, other missions, changing NEM-019/NEM-021 tests beyond D-1 and D-2 |
 
 ## 2. Date and status
 
-2026-11-09. Lifecycle: Authorized → In progress (pre-execution check) → **BLOCKED**.
+2026-11-09. Lifecycle: Authorized → BLOCKED (pre-execution) → unblocked by D-1 and D-2 → implemented → verified → **awaiting review**.
 
-## 3. Repository baseline
+## 3. Repository baseline and commits
 
 | Item | Value |
 |---|---|
-| New branch | `feat/nem-022-gateway-simulator-v2`, created from the accepted NEM-021 head `f94612486188dfd4cb96a5354f150e36b56d9609` (stacked-PR ancestry preserved: NEM-021 PR #50 → #49 → … → #46) |
-| Accepted NEM-021 commit | `bbd7c99` (code = `484f6ac`); acceptance record `f946124` |
-| Contract source tree at branch point | `634266826c934e3d615a7342a04a5e7458c6a84d`: **matches** the frozen v1 baseline |
-| Contract test tree at branch point | `d8de089995b57b0e86298d9a2609f5dbee08c980`: **matches** the approved (D-2) baseline |
-| Migrations | 073 and 074 present; NEM-022 needs no schema change (§7 F-5) |
+| Branch | `feat/nem-022-gateway-simulator-v2`, from the accepted NEM-021 head `f946124` (ancestry: NEM-021 PR #50 → #49 → … → #46) |
+| Code HEAD verified | `1261832c80d9dfb5565b047726463c876b9be5b0` |
+| Frozen contract source tree | `634266826c934e3d615a7342a04a5e7458c6a84d`: **unchanged** (no diff under `src/knowledge/ai/contract`) |
+| Contract test tree | `d8de089…` (NEM-021 approved) → **`52aec852e9843e739aada63688b0d291f74e5458`** (D-1). Only `contract-architecture.spec.ts` changed. **This is the new approved test-tree baseline**, pending PA confirmation in this review |
 
-## 4. Scope and exclusions
+| Commit | Content |
+|---|---|
+| `1d84116` | docs: authorization recorded; BLOCKED at pre-execution (revision 1) |
+| `5e09f85` | **test: approved test amendments D-1 and D-2** (separate commit, as instructed). These reference the new Gateway, so they compile and pass from the next commit on |
+| `0c54468` | feat: Gateway v2, simulator v2, `TurnService` migration, and NEM-022 test suites |
+| `1261832` | fix: stop the provider call when a stream consumer abandons it (found while writing this report, §7 F-6) |
+| *(docs commit)* | This report, technical note §12, mission status, register |
 
-In scope: the pre-execution verification required by the PO instruction §1 and the governance README. Implementation (§5 items 1–12) was **not started**. Excluded, as instructed: everything listed in §1.
+## 4. Scope
+
+**In scope (done):** §5 items 1–12. **Out of scope (untouched):** real adapters, retrieval, sessions beyond the turn stub, product values, schema, CI, infrastructure, deployment. No contract v1.x addition was needed (§16).
 
 ## 5. Executive summary
 
-The specification is sound, and the accepted NEM-021 baseline is intact. NEM-022 needs no schema change and no provider, network, or credential. Two preconditions fail, both by design of earlier, accepted work:
+NEM-022 delivers a provider-independent Gateway on frozen contract v1:
+- **Negotiation and accounting:** capability negotiation over a simulated-only allowlist, a per-attempt reservation through the NEM-021 cost ledger before any provider call, and normalization of every result onto exactly one §9.3 row, with evidence discipline.
+- **Calls:** bounded retries, each a new reserved attempt; streaming with abort and timeout.
+- **Output:** validated structured output, and citation and origin enforcement.
 
-- **B-1 (frozen NEM-021 guard).** Two tests in the frozen contract test tree (approved hash `d8de089`) allow the contract to be imported **only** by `knowledge/metering`. They also pin the Gateway, router, provider, paths, simulator, and `turn.service.ts` by digest and forbid any `ai/` or `sessions/` file from importing the contract or the cost ledger. NEM-022 must do exactly that (§5.1, §5.2, §5.10, §9). A two-line probe made both tests fail. These guards were written as the Phase 2 → E2 hand-off ("Gateway, router, and turn execution remain outside Phase 2"), so they are meant to be replaced now. But they are frozen, and the PO instruction forbids changing NEM-021 tests to make NEM-022 pass → **decision D-1 (Product Architecture)**.
-- **B-2 (turn integration conflicts with "NEM-019 suites unchanged").** Today `TurnService` reserves and settles each turn through the **legacy** units-only NEM-019 ledger. Spec §9 says the Gateway never calls a provider without a confirmed **per-attempt** reservation (E1 API), and §5.10 makes `TurnService` use that Gateway. AC-9 and AC-11 require every NEM-019 turn and ledger test to pass **unchanged**. Those tests assert the legacy per-turn ledger rows and drive the current Gateway and simulator API. All three requirements cannot hold together → **decision D-2 (Product Architecture; PO if a NEM-019 test exception is chosen)**.
+Simulator v2 is deterministic and emulates caching, tiers, refusals, rate limits, timeouts, partial streams, and malformed output. The reusable `runProviderContract` suite passes against both simulator models, and a self-test shows deliberately broken adapters fail it.
 
-Neither blocker is a product defect. Recommended resolutions are in §11.
+`TurnService` now reserves and settles through the Gateway with an **unchanged turn order** and a single accounting path.
+
+Results, this session, at code HEAD `1261832`:
+
+| Suite | Result |
+|---|---|
+| API unit | **1,673/1,673** (112 suites); NEM-022 unit **152/152** |
+| NEM-021 contract | **212/212** |
+| Integration, fresh disposable PostgreSQL 16 + Redis 7 | **108/108** |
+| TypeScript (build and test configs) | 0 errors |
+| ESLint | **0 errors**; the warnings are `no-explicit-any`, all in test files |
+
+The 108 integration tests break down as:
+- NEM-019: 56/56. `sessions.int-spec.ts` and `account-deletion.int-spec.ts` pass **unchanged**; only five turn tests in `ledger.int-spec.ts` were amended (D-2).
+- NEM-021: 37/37.
+- NEM-022 end to end: 15/15.
 
 ## 6. Work completed
 
-1. Read the full NEM-022 specification (Revision 3), the NEM-021 acceptance record (Phase 2 report §19, mission file), and the D-2 freeze record.
-2. Verified the accepted NEM-021 baseline: branch head, both contract tree hashes, and migrations 073–074 (§3).
-3. Inspected the NEM-019 AI layer:
-   - `ai/model-gateway.service.ts`, `model-router.service.ts`, `model-provider.ts`, `model-paths.ts`, `simulated-provider.service.ts`, `verified-context.ts`;
-   - `sessions/turn.service.ts` and `context-builder.service.ts`;
-   - their unit tests, the NEM-019 integration harness `support/it-env.ts`, and `ledger.int-spec.ts`.
-4. Ran a **temporary probe** (§7 F-1). The probe file was deleted straight afterwards, and `git status` is clean.
-5. Created the NEM-022 branch, and recorded the authorization and BLOCKED status (mission file, register, this report). Documentation only.
+1. Recorded D-1 and D-2. Applied the approved test amendments as a separate commit (`5e09f85`):
+   - **D-1:** the two guards replaced with "contract imports only in `metering/` and the Gateway layer `ai/`" and "`sessions/*` never imports the contract, cost ledger, rate cards, or legacy ledger; the turn service uses Gateway v2".
+   - **D-2:** `turn.service.spec.ts` (27 tests, same count, same intent), five full-turn tests in `ledger.int-spec.ts`, and the `it-env.ts` wiring.
+2. Implemented Gateway v2 (`src/knowledge/ai/gateway/`: types, templates, router, normalizer, citation policy, structured output, service) and simulator v2 (`src/knowledge/ai/simulator/`).
+3. Migrated `TurnService` (step 3 `prepare`, step-4 failure `release`, steps 5–6 `invoke`). Swapped the module registrations to Gateway v2. The legacy Gateway, router, and simulator files are unchanged and no longer registered.
+4. Added config (all optional) and three metrics.
+5. Wrote the provider contract suite and its self-test, unit suites for every component, architecture and security tests, and the PostgreSQL end-to-end suite.
+6. Verified: full unit regression, fresh-DB integration, tsc, ESLint, frozen-tree and protected-file checks. Containers removed.
 
-## 7. Verified findings and evidence
+## 7. Verified findings and design evidence
 
-**F-1 (B-1). Frozen guards forbid what NEM-022 must do.** `services/api/tests/unit/knowledge/ai/contract/contract-architecture.spec.ts`, inside *"Phase 2 boundaries (D-2)"*:
-- *"contract integration is limited to the ledger/metering layer"*: any non-`metering/` file importing the contract fails;
-- *"Gateway, router, and turn execution remain outside Phase 2 (unchanged; no contract or cost-ledger imports)"*:
-  - SHA-256 digest `d35dca78…` over `ai/model-gateway.service.ts`, `ai/model-router.service.ts`, `ai/model-provider.ts`, `ai/model-paths.ts`, `ai/simulated-provider.service.ts`, `sessions/turn.service.ts`;
-  - no file in `ai/` or `sessions/` may import `contract`, `cost-ledger`, `cost-config`, or `cost-reconciliation`.
-
-NEM-022 requires the opposite:
-- §9: "all types, outcome and error categories … come from contract v1", so the Gateway imports the contract;
-- §5.1–§5.3, §5.7: the Gateway, router, and simulator are rebuilt on the contract;
-- §5.9: reservation and settlement go through the cost ledger;
-- §5.10: `TurnService` uses the new Gateway.
-
-**Probe** (a two-line `src/knowledge/ai/zz-gateway-probe.ts` importing `CONTRACT_VERSION` from `./contract`; never committed; deleted):
-
-```
-✕ contract integration is limited to the ledger/metering layer
-✕ Gateway, router, and turn execution remain outside Phase 2 (unchanged; no contract or cost-ledger imports)
-    + "src/knowledge/ai/zz-gateway-probe.ts",
-Tests: 2 failed, 11 passed, 13 total
-```
-
-These tests belong to the approved contract test tree `d8de089…`. Changing them needs Product Architecture review under the v1 freeze change control. The other D-2 guards remain valid for NEM-022 and should stay:
-- historical migrations byte-identical;
-- migrations ≥ 073 additive;
-- no money primitives outside the contract;
-- frozen source, fixtures, and golden vectors pinned.
-
-**F-2 (B-2). Three requirements cannot all hold for turns.**
-
-| Requirement | Source |
-|---|---|
-| (a) No provider call without a confirmed reservation **for that attempt** (per-attempt E1 API) | §9; §5.3 ("each attempt reserves and settles separately through E1's per-attempt API") |
-| (b) `TurnService` uses the new Gateway; turn order and Context Builder invariant unchanged | §5.10, AC-9 |
-| (c) All NEM-019 suites pass **unchanged** | AC-9, AC-11; PO instruction §5 |
-
-Today `turn.service.ts` calls `ledger.reserve` (legacy, one units reservation per turn) before the Gateway, then `ledger.recordUsage` and `settle` / `release` on the legacy key (lines 82–144). The NEM-019 tests are bound to that:
-- `tests/unit/knowledge/sessions/turn.service.spec.ts`: 24 assertions on `ledger.reserve`, `settle`, `release`, and `recordUsage`; it constructs `new ModelGatewayService(new ModelRouterService([sim]), TEST_CONFIG)` with `SimulatedProviderService`;
-- `tests/integration/knowledge/support/it-env.ts:149-150`: the same construction for every NEM-019 integration suite;
-- `ledger.int-spec.ts` and `sessions.int-spec.ts`: full turns that assert legacy reservation and settlement rows and exact unit budgets (e.g. `allowanceUnits: 10, reserveUnitsPerTurn: 10` admits exactly one turn).
-
-Consequences of each way of satisfying (a) and (b):
-- **Turns move onto per-attempt cost reservations.** The legacy rows those tests assert no longer appear, so NEM-019 tests change; that violates (c).
-- **Turns keep the legacy turn reservation and the Gateway adds a per-attempt reservation.** Units are reserved twice, and both kinds count in the shared unresolved and allowance bounds (NEM-021 R-1/AC-5). Exact-budget tests such as the one above would then deny a turn they expect to admit, violating (c); this is analysis, not executed. It would also double-charge a user's unit allowance, which is a product-behaviour change.
-- **Turns keep the legacy reservation and the Gateway skips its own reservation on the turn path.** That violates (a).
-
-Not probed by code: any probe would itself be implementation. The coupling is shown by the file and line references above.
-
-**F-3. No schema change is needed.** The Gateway, simulator, and contract suite are code; end-to-end settlement uses NEM-021's existing tables and API. No stop condition there.
-
-**F-4. No provider, network, or credential is needed.** Simulated providers only; the router allowlist stays simulated-only.
-
-**F-5. Dependencies.** Structured-output validation can use `class-validator` (already a direct dependency) or a small validator inside `knowledge/ai`. `ajv` is present only transitively, so using it would add a direct dependency; it is not proposed. Not a blocker.
-
-**F-6. Other preconditions passed:** explicit authorization naming the mission; NEM-021 accepted; frozen hashes match; clean branch; disposable PostgreSQL/Redis workflow available within the VM limits; no product value needs inventing (TT-18: no web capability is built).
+- **F-1. Turn order preserved (AC-9).** The reservation happens before the lock: `gateway.prepare` reserves attempt 1 at step 3. A lock failure releases a never-sent attempt. The provider call and settlement happen after the lock.
+  - Asserted in the unit spec: `reserveAttempt` before the provider `invoke`, before `settleAttempt`.
+  - Integration: lock failure → `['reservation', 'release']` on the attempt key, no provider call.
+  - The Context Builder and its invariant code are unchanged; all its tests pass unchanged.
+- **F-2. One accounting path per turn (D-2).** `turn.service.ts` imports neither the legacy ledger nor rate cards (D-1 guard). Per-turn units are the contract worst case from the fixture unit weights, so there is no double reservation.
+- **F-3. The Gateway never decides settle/hold/release.** It produces normalized usage only; `CostLedgerService.settleAttempt` applies `ledgerActionFor` (architecture test: no ledger-action literals in Gateway code). Evidence discipline is enforced twice:
+  - the contract validator rejects zero claims without evidence;
+  - the Gateway downgrades `documented_no_charge` for an undeclared class to `unknown` (held).
+- **F-4. Test-side corrections during the work** (no product defect):
+  - a sealed-context spread kept its symbol brand, so the "unsealed" fixture was rewritten;
+  - a wall-clock retry-after assertion was replaced by an event-gap measurement (the Gateway waited 44 ms for a 40 ms retry-after);
+  - the contract harness threw instead of reporting on invalid records, and now reports;
+  - the concurrency test admitted everyone until admissions were raced with all reservations held;
+  - a failing first test cascaded leftover simulator scripts into the next test.
+- **F-5. NEM-019 integration coupling was smaller than the D-2 authorization allowed.** Only the five full-turn tests in `ledger.int-spec.ts` needed amendment. `sessions.int-spec.ts` and `account-deletion.int-spec.ts` pass with the harness wiring alone. The harness maps NEM-019's legacy simulator vocabulary onto simulator v2:
+  - failure with unknown usage → `provider_unavailable` (held);
+  - failure with known usage → refusal with complete usage (settled);
+  - abort → stream without usage (held);
+  - hang → timeout;
+  - throw → internal.
+- **F-6. Abandoned streams (fixed in `1261832`).** A consumer that stopped iterating left the simulated call un-aborted. The attempt's `finally` now aborts the provider call; the attempt stays held (fail closed). Unit-tested.
 
 ## 8. External references
 
-None.
+None. No provider documentation, price, endpoint, or network resource. All prices are E1 fixtures.
 
-## 9. Risks
+## 9. Risks and limitations
 
-| ID | Rating | Risk |
+| ID | Rating | Item |
 |---|---|---|
-| R-1 | **High** (schedule) | Implementation cannot start until D-1 and D-2 are decided |
-| R-2 | Medium | Working around B-1 without approval, e.g. by placing the Gateway under `metering/` to dodge the guard, would defeat the guard's purpose and misplace the code. Not pursued |
-| R-3 | Medium | Working around B-2 by double reservation would silently halve users' effective unit allowance. Not pursued |
-| R-4 | Low | The probe ran only locally on a unit test; nothing persisted |
+| R-1 | Low | **Legacy files kept.** `model-gateway.service.ts`, `model-router.service.ts`, `simulated-provider.service.ts` (and `model-provider.ts` types) are unchanged and unregistered, kept only because their NEM-019 unit test must pass unchanged. Removal is a later cleanup that needs that test retired |
+| R-2 | Low | **Retries are off by default** (`maxProviderAttempts` 1, `maxRetryDelayMs` 0). They are operational settings and need configuration to take effect; enabled only in tests |
+| R-3 | Info | **AC-8 "under-priced schema"** is exercised as actual usage beyond the reservation (the simulated provider ignores `max_tokens`). Reservation and settlement use the same pinned schema, so a cheaper schema alone cannot create actual > reserved in simulation. The model error is equivalent, and so is NEM-021 AC-9's approach. The full actual is settled once, the overrun is classified, and the breaker opens |
+| R-4 | Low | **Streaming deltas carry text before validation.** Origins are asserted only in validated `segment` events, and a scope violation ends with `terminal.scopeViolation` and no segments, so stream consumers must discard deltas in that case. `TurnService` uses `invoke` and never exposes deltas |
+| R-5 | Low | Context item `text` is optional and invented fixture text only, until a retrieval mission supplies content |
+| R-6 | Info | The research-turn instruction template is engineering text (not customer-visible copy) and needs product review before any launch |
+| R-7 | Info | Operational defaults: a turn output bound of 1,024 tokens, 0 billable tool calls per turn, and a 100 ms abort grace. Not product values |
+| R-8 | Info | Integration tests are not in CI (no PostgreSQL there); raw output is in §13 |
+
+**Unresolved failures:** none.
 
 ## 10. Decisions
 
 **(a) Made under existing authority:**
-- Stopped at the pre-execution check, as the PO instruction requires.
-- Created the NEM-022 branch from the accepted NEM-021 head (pre-execution step 5).
-- Ran a temporary, uncommitted probe to turn the suspected B-1 into a verified one.
-- Recorded the authorization and BLOCKED status (governance records are in scope).
+- New files under `ai/gateway` and `ai/simulator`.
+- The JSON-Schema-subset validator in-module (no new dependency; `ajv` is only transitive).
+- Simulator models derived from the E1 fixtures with `estimated` counting.
+- The contract harness lives in tests (`tests/.../support/provider-contract.ts`); no test code in `src`.
+- A call aborted before it starts is released as never sent.
+- No retry after any delta.
+- Gateway conditions override adapter claims.
 
-**(b) Requiring a decision:**
+**(b) Requiring review:** Product Architecture to confirm the new approved contract test-tree hash `52aec85…` (D-1) and to review R-1 to R-4.
 
-| ID | Decision | Owner |
-|---|---|---|
-| D-1 | Whether the two NEM-021 Phase-2-boundary guards may be replaced with NEM-022 boundary guards (contract source, fixtures, and golden vectors unchanged) | **Product Architecture** (v1 freeze change control) |
-| D-2 | How `TurnService` integrates with the Gateway v2 and the cost ledger, given "NEM-019 suites unchanged" | **Product Architecture**; plus **Product Owner** if option A is chosen (a NEM-019 test exception) |
+## 11. Acceptance-criteria matrix (§11)
 
-## 11. Recommendations
+| AC | Requirement | Status | Evidence (executed this session) |
+|---|---|---|---|
+| 1 | Negotiation selects only satisfying descriptors; `capability_unavailable` before any reservation | Complete, tested | `capability-router.service.spec` (refusals, per-feature, ordering); Gateway spec (no `reserveAttempt`, metric); e2e (0 reservation rows) |
+| 2 | Every error → one §9.3 row; retries only for retryable rows, each a new reserved attempt, retry-after honoured; `context_too_large` and `capability_unavailable` before reservation; release only on evidenced zero | Complete, tested | `attempt-normalizer.spec` (every row, evidence); Gateway retry specs (attempts 1/2 reserved separately, 44 ms ≥ 40 ms retry-after, non-retryable, cap, after-deltas, denied retry); e2e rows (unevidenced held, evidenced released, undeclared `documented_no_charge` held) |
+| 3 | Streaming order; abort cancels the call → `client_abort` / `aborted`, partial or unknown held | Complete, tested | Gateway spec (event order, mid-stream abort with partial usage, pre-start abort released, abandoned stream aborts the call); e2e client abort held at the reserved amount |
+| 4 | Structured output: valid passes; invalid → `completed` + `malformed_output`, settled; never unvalidated | Complete, tested | `structured-output.spec`; Gateway spec; e2e malformed settled |
+| 5 | Citation outside the sealed set → scope-violation path; `library` without valid citation never returned as `library` | Complete, tested | `citation-policy.spec`; Gateway spec (violation, metric, settled once; relabel); turn spec AC-14 |
+| 6 | Simulator v2 reproduces cache write/read, tier repricing, refusals, 429s, timeouts, malformed output, deterministically | Complete, tested | `simulator-v2.spec` (identical events for the same seed and clock; cache write → read → re-write after expiry; automatic writes; tier −1 vs 0 via E1 `priceUsage`) |
+| 7 | `runProviderContract(simulatorV2)` passes; a broken adapter fails | Complete, tested | `provider-contract.spec`: 17 scenarios plus golden vectors × 2 models pass; 12 broken-adapter variants plus pricing, non-simulated, and missing-scenario self-tests all fail as required |
+| 8 | End to end through the E1 ledger: invariant at every admission under concurrency; settled + held ≤ allowance within reservations; overrun counted once, breaker opens, later admissions denied | Complete, tested | `gateway-e2e.int-spec` (15 tests: success exact pricing, retry, eight contract rows, abort, malformed, pre-reservation denials, 16-user race, overrun) |
+| 9 | NEM-019 turn order and Context Builder tests pass unchanged; every path declares an invariant with a proving test | Complete, tested (D-2 amendments only) | Turn order preserved and asserted; Context Builder tests unchanged; NEM-019 `architecture.spec` (path registry, Gateway callers, sealers) passes unchanged |
+| 10 | Dark: flag off → no module, no route; no SDK, HTTP client, or credentials; no non-simulated provider | Complete, tested | `gateway-architecture.spec`; NEM-019 `architecture.spec` (AC-18, routes) unchanged; router registration refusal |
+| 11 | All NEM-019 and E1 suites pass unchanged | Complete, tested (D-1/D-2 exceptions only) | Unit 1,673/1,673; integration NEM-019 56/56, NEM-021 37/37; contract 212/212 |
 
-**D-1 options (B-1):**
+**§5 items:** 1 Gateway on contract v1 ✓ · 2 negotiation ✓ · 3 errors and retries ✓ · 4 streaming ✓ · 5 structured output ✓ · 6 citations ✓ · 7 simulator v2 ✓ · 8 contract suite ✓ · 9 end-to-end settlement ✓ · 10 turn integration ✓ · 11 dark and security tests ✓ · 12 technical note (§12) and this report ✓.
 
-| Option | What it means | Consequence |
-|---|---|---|
-| **A (recommended)** | PA authorizes replacing exactly two tests in `contract-architecture.spec.ts` with NEM-022 guards: (i) contract imports allowed only in `knowledge/metering/*` and the Gateway layer `knowledge/ai/*` (and no other knowledge folder); (ii) `sessions/*` may use the Gateway but never imports the contract, the cost ledger, or pricing directly; (iii) router allowlist and simulated-only checks unchanged. The other four D-2 tests stay unchanged. The contract **source** tree (`6342668…`) and every fixture and golden vector stay unchanged; `CONTRACT_VERSION` stays `1.0.0`. The new test-tree hash is recorded as the updated approved baseline | Same pattern as NEM-021 D-2. Keeps controlled wiring for the next phase |
-| B | Keep the guards | NEM-022 cannot be implemented as specified |
+## 12. Changed-file inventory (`1d84116..1261832`)
 
-**D-2 options (B-2):**
+**New production code** (`src/knowledge/ai/`):
 
-| Option | What it means | Consequence |
-|---|---|---|
-| **A (recommended)** | Turns move onto the per-attempt cost ledger through Gateway v2, which NEM-021 R-3 anticipated ("until NEM-022 moves turns onto attempts"). The PO authorizes one **intent-preserving** amendment set to the NEM-019 turn tests: `turn.service.spec.ts`, the turn-related cases in `ledger.int-spec.ts` and `sessions.int-spec.ts`, and the harness wiring in `it-env.ts`. Every turn-order step, lock, held-on-unknown, reconcile-once, and fail-closed assertion is kept, re-expressed on attempt keys and the cost ledger. NEM-019 ledger-only tests (legacy `reserve`/`settle` called directly) stay unchanged, because the legacy API remains | One accounting path for turns, with per-attempt retries and micro-USD guard. Records one explicit, PO-approved exception to "unchanged" (as NEM-021 D-1) |
-| B | Turns stay on the legacy ledger. Gateway v2 is introduced **alongside** the current Gateway; `TurnService` keeps the current Gateway, so NEM-019 tests are fully unchanged. End-to-end cost settlement (§5.9, AC-8) is proven through Gateway v2 directly; §5.10 is deferred to a later mission | No NEM-019 test changes, but §5.10 is not delivered (needs a specification amendment), and turns stay units-only |
-| Not viable | Double reservation (legacy turn + per-attempt) | Halves effective user allowance; fails NEM-019 exact-budget tests |
-
-## 12. Changes made
-
-- **New branch** `feat/nem-022-gateway-simulator-v2` (from `f946124`).
-- `docs/engineering-missions/APPROVED/NEM-022-provider-independent-ai-gateway-and-simulator-v2.md`: execution authorization recorded; status BLOCKED.
-- `docs/engineering-missions/README.md`: NEM-022 register row.
-- `docs/reports/2026-11-09-NEM-022-gateway-simulator-v2-report.md`: this report.
-
-**No application code, tests, fixtures, migrations, dependencies, configuration, CI/CD, or infrastructure changed.** The probe file was never staged and has been deleted.
-
-## 13. Tests and validation
-
-| Run | Result |
+| File | Lines |
 |---|---|
-| Frozen tree hashes at the branch point (`git rev-parse HEAD:<path>`) | Both match (§3) |
-| Probe: `npx jest tests/unit/knowledge/ai/contract/contract-architecture.spec.ts` with one `ai/` file importing the contract | 2 failed, 11 passed (F-1) |
+| `gateway/ai-gateway.service.ts` | 298 |
+| `gateway/gateway.types.ts` | 174 |
+| `gateway/attempt-normalizer.ts` | 100 |
+| `gateway/citation-policy.ts` | 73 |
+| `gateway/structured-output.ts` | 73 |
+| `gateway/instruction-templates.ts` | 61 |
+| `gateway/capability-router.service.ts` | 54 |
+| `simulator/simulator-v2.ts` | 233 |
+| `simulator/simulator-fixtures.ts` | 53 |
 
-**Not run:** NEM-022 tests (no NEM-022 code exists). The full regression was last run green at the accepted NEM-021 head (Phase 2 report §18.5: contract 212, unit 1,521, integration 93), and no code has changed since.
+**Changed production code:**
 
-## 14. Deviations and discoveries
+| File | Change |
+|---|---|
+| `sessions/turn.service.ts` | +52/−52 (D-2) |
+| `knowledge.module.ts` | +10/−9 (registrations) |
+| `common/knowledge-config.ts` | +24 (optional settings) |
+| `common/knowledge-metrics.service.ts` | +11 (3 counters) |
+| `ai/verified-context.ts` | +5 (optional fixture `text`) |
 
-- Two accepted baselines (the frozen D-2 guards and the NEM-019 turn tests) encode "Gateway and turns are not yet on the contract or cost ledger". NEM-022 exists to change exactly that, so the conflict is structural and expected. It still needs explicit decisions under the freeze and the "unchanged tests" rules.
+**New tests:**
+- Unit (`tests/unit/knowledge/ai/`): `gateway/ai-gateway.service.spec`, `attempt-normalizer.spec`, `capability-router.service.spec`, `citation-policy.spec`, `structured-output.spec`, `instruction-templates.spec`, `gateway-architecture.spec`, `provider-contract.spec`, `support/provider-contract.ts`, and `simulator/simulator-v2.spec`.
+- Integration: `tests/integration/knowledge/gateway-e2e.int-spec.ts`.
+
+**Amended under approval:**
+
+| File | Change | Approval |
+|---|---|---|
+| `contract-architecture.spec.ts` | +16/−9 | D-1 |
+| `turn.service.spec.ts` | +70/−50 | D-2 |
+| `ledger.int-spec.ts` | +15/−7 | D-2 |
+| `support/it-env.ts` | +63/−8 | D-2 |
+
+**Not changed:**
+- the contract source, fixtures, and golden vectors;
+- every migration, `package.json`, `app.module.ts`, users, metering (cost ledger included), and the legacy AI files;
+- `sessions.int-spec.ts` and `account-deletion.int-spec.ts`;
+- CI/CD, Docker, and infrastructure.
+
+## 13. Tests and validation (raw output, this session)
+
+Unit: `npx jest --maxWorkers=2`. Integration: `jest -c jest.integration.config.js --runInBand` on freshly created `postgres:16-alpine` (512 MB) and `redis:7-alpine` (128 MB) containers at code HEAD `1261832`; containers removed afterwards (`docker ps -a --filter name=nem022` → 0).
+
+```
+# API unit regression (+ knowledge coverage)
+Test Suites: 112 passed, 112 total
+Tests:       1673 passed, 1673 total          (1,521 at NEM-021 acceptance + 152 NEM-022)
+All files                            |   98.36 |    94.38 |   96.72 |   99.61 |
+  ai-gateway.service.ts              |   95.18 |    93.87 |   88.46 |     100 |
+  attempt-normalizer.ts              |      90 |    94.59 |     100 |     100 |
+  capability-router.service.ts       |     100 |      100 |     100 |     100 |
+  citation-policy.ts                 |     100 |      100 |     100 |     100 |
+  instruction-templates.ts           |     100 |     87.5 |     100 |     100 |
+  structured-output.ts               |     100 |    98.14 |     100 |     100 |
+  simulator-fixtures.ts              |     100 |      100 |     100 |     100 |
+  simulator-v2.ts                    |     100 |    95.23 |     100 |     100 |
+  knowledge-config.ts                |     100 |      100 |     100 |     100 |
+  knowledge-metrics.service.ts       |     100 |      100 |     100 |     100 |
+  turn.service.ts                    |   98.66 |    83.87 |   85.71 |     100 |
+
+# NEM-022 unit (gateway + simulator dirs)       Tests: 152 passed, 152 total
+# NEM-021 contract (incl. D-1 guards)           Tests: 212 passed, 212 total
+# Provider contract suite: 17 scenarios + golden vectors, both simulator models; self-test variants all fail as required
+
+# Integration — fresh disposable PostgreSQL 16 + Redis 7
+ledger 24 · sessions 25 · a-schema-migrations 6 · account-deletion 1   (NEM-019: 56)
+cost-ledger 34 · cost-migration 3                                     (NEM-021: 37)
+gateway-e2e 15                                                        (NEM-022: 15)
+Test Suites: 7 passed, 7 total
+Tests:       108 passed, 108 total
+    ✓ success: the reservation is the E1 worst case and the settlement is exactly E1 priceUsage of the usage, with the pinned schema
+    ✓ retry: each attempt reserves separately; an unevidenced rate limit stays held, an evidenced one is released
+    ✓ contract row through the ledger: refusal with complete usage
+    ✓ contract row through the ledger: refusal with partial usage
+    ✓ contract row through the ledger: timeout
+    ✓ contract row through the ledger: partial stream that ends without usage
+    ✓ contract row through the ledger: invalid request without evidence
+    ✓ contract row through the ledger: invalid request with provider-reported zero
+    ✓ contract row through the ledger: undeclared documented_no_charge is held, never released
+    ✓ contract row through the ledger: provider unavailable
+    ✓ client abort mid-stream: client_abort / aborted with partial usage, held at the reserved amount
+    ✓ structured output that fails validation is completed + malformed_output and settled
+    ✓ capability_unavailable and context_too_large are decided before any reservation
+    ✓ admission invariant under concurrent distinct users through the Gateway; settled + held ≤ allowance when usage stays within reservations
+    ✓ overrun (the simulated provider ignores max_tokens): full actual settled once, overrun classified, breaker opens, later admissions denied
+
+# First integration run after the TurnService migration (before the D-2 test amendments): only the five
+# full-turn tests in ledger.int-spec failed (rows read by turn key, legacy settlement statement, worst-case units);
+# sessions.int-spec and account-deletion.int-spec passed unchanged.
+
+# TypeScript: tsc -p tsconfig.json → 0 · tsc -p tsconfig.test.json → 0
+# ESLint (src/knowledge, tests/unit/knowledge, tests/integration/knowledge): 0 errors, 215 warnings (no-explicit-any, test files)
+```
+
+**Not executed:** CI (no PostgreSQL), staging, production, any real provider or network call.
+
+## 14. Deviations and history
+
+- **Revision 1 (pre-execution, `1d84116`):** BLOCKED on B-1 (frozen Phase-2 guards) and B-2 (turn integration vs. "NEM-019 suites unchanged"). Resolved by D-1 (PA) and D-2 Option A (PA recommendation plus PO confirmation).
+- The D-2 authorization allowed amending `sessions.int-spec.ts`; that proved unnecessary (F-5).
+- One fix after the implementation commit (`1261832`, F-6), with the full regression re-run afterwards.
 
 ## 15. Protected-systems confirmation
 
-Not modified: reader, Escucha Activa, sync, ownership, `user_books`, `fragments`, tokens, Stripe, subscriptions, `app.module.ts`, every NEM-019 and NEM-021 file and test, the frozen contract source and tests, migrations, web, mobile, worker, CI/CD, Docker, infrastructure, staging, production. No provider, credential, network call, or AI cost.
+Not modified:
+- reader, Escucha Activa, sync, ownership, `user_books`, `fragments`;
+- tokens, Stripe, subscriptions;
+- `users.service.ts`, `app.module.ts`;
+- every migration (no schema change);
+- the frozen contract source, fixtures, and golden vectors;
+- the NEM-021 cost ledger and configuration services;
+- web, mobile, worker, CI/CD, Docker, infrastructure, staging, production.
 
-## 16. Open questions
+NEM-019 and NEM-021 tests are changed only as approved (D-1, D-2). No provider, SDK, endpoint, credential, paid service, or AI cost. Dark: the module still loads only behind `KNOWLEDGE_MODULE_ENABLED`, and no route was added.
 
-- D-1 (PA) and D-2 (PA, plus PO for option A).
-- Once unblocked, these points would be decided under engineering authority and recorded in the completion report:
-  - structured-output validation via a small in-module validator (no new dependency);
-  - the retry bound as configuration (fixture value only);
-  - Gateway v2 placed in new files under `knowledge/ai/`.
+## 16. Contract v1.x additions
+
+**None.** Gateway v2 consumes contract v1 as frozen. No new error category, outcome, or field.
 
 ## 17. Next recommended action
 
-PA decision on D-1 and D-2 (and the PO decision if D-2 option A is chosen). On approval, start from this branch: apply the approved test amendments first as a separate commit, show the NEM-019 and NEM-021 suites green on them, then implement §5 items 1–12. *(Recommendation only; nothing is executed automatically.)*
+Independent **Product Architecture review** (`REVIEW-CHECKLIST.md`), including confirmation of the new contract test-tree hash `52aec85…` and R-1 to R-4, then a separate **Product Owner acceptance decision**. *(Recommendation only. Not merged, not deployed; no other mission started.)*
