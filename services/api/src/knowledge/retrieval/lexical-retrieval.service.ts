@@ -2,7 +2,6 @@ import { KnowledgeDbService } from '../common/knowledge-db.service';
 import { computeTextHash, TEXT_HASH_PATTERN } from '../rights/text-hash';
 import { sliceCodePointRanges } from './chunker';
 import { RetrievalMetricsService } from './retrieval-metrics.service';
-import { VerifiedTextCache } from './verified-text-cache';
 import {
   BookTextPort,
   chunkRef,
@@ -80,22 +79,16 @@ export function normalizeQuery(q: unknown): string {
  *
  * SQL ranks chunk offsets; then, per distinct result book (≤ 10), the MinIO object is read, its hash verified against
  * the chunk's `textHash` (which is the caller's current hash), and passages are sliced by code-point offsets. A read
- * failure or hash mismatch drops that book (fail closed). Verified texts may be kept in a bounded in-memory LRU keyed
- * by (object key, verified hash), so a cached text is only ever used for the exact hash it was verified against.
- * Passages are trimmed to the token budget in rank order.
+ * failure or hash mismatch drops that book (fail closed). Passages are trimmed to the token budget in rank order.
  * No query or passage text is logged, persisted, or put in metrics or errors.
  */
 export class LexicalRetrievalService implements RetrievalPort {
-  private readonly cache: VerifiedTextCache;
-
   constructor(
     private readonly db: KnowledgeDbService,
     private readonly text: BookTextPort,
     private readonly metrics: RetrievalMetricsService,
     private readonly config: RetrievalConfig,
-  ) {
-    this.cache = new VerifiedTextCache(config.verifiedTextCacheBytes ?? 0);
-  }
+  ) {}
 
   private validate(req: RetrievalRequest): { books: string[]; hashes: string[]; query: string } {
     const allowed = Array.isArray(req?.allowed) ? req.allowed : null;
@@ -157,11 +150,6 @@ export class LexicalRetrievalService implements RetrievalPort {
     await Promise.all(resultBooks.map(async (bookId) => {
       const hash = rows.find((r) => r.bookId === bookId)!.textHash;
       const key = keys.get(bookId);
-      const cached = key ? this.cache.get(key, hash) : undefined;
-      if (cached !== undefined) {
-        texts.set(bookId, cached); // verified earlier against exactly this hash
-        return;
-      }
       let bytes: Uint8Array;
       try {
         if (!key) throw new Error('no key');
@@ -175,9 +163,7 @@ export class LexicalRetrievalService implements RetrievalPort {
         return;
       }
       try {
-        const decoded = decodeUtf8(bytes);
-        this.cache.set(key, hash, decoded);
-        texts.set(bookId, decoded);
+        texts.set(bookId, decodeUtf8(bytes));
       } catch {
         excluded.unavailable.push(bookId);
       }

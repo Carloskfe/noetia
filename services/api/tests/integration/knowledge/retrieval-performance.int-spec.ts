@@ -97,9 +97,7 @@ const pct = (xs: number[], p: number) => { const s = [...xs].sort((a, b) => a - 
     const metrics = new RetrievalMetricsService();
     const permission = new IndexingPermission(db, identity, authority);
     const indexer = new BookIndexer(db, permission, store, metrics, DEFAULT_RETRIEVAL_CONFIG);
-    const cacheBytes = Number(process.env.NEM023_CACHE_BYTES ?? 64 * 1024 * 1024); // measured option (default config: 0)
-    const cold = new LexicalRetrievalService(db, store, metrics, { ...DEFAULT_RETRIEVAL_CONFIG, verifiedTextCacheBytes: 0 });
-    const retrieval = new LexicalRetrievalService(db, store, metrics, { ...DEFAULT_RETRIEVAL_CONFIG, verifiedTextCacheBytes: cacheBytes });
+    const retrieval = new LexicalRetrievalService(db, store, metrics, DEFAULT_RETRIEVAL_CONFIG);
 
     const vocab = vocabulary(6000);
     const sizeBefore = Number((await ds.query(`SELECT pg_total_relation_size('ai_book_chunks') AS s`))[0].s);
@@ -139,14 +137,6 @@ const pct = (xs: number[], p: number) => { const s = [...xs].sort((a, b) => a - 
         passages += r.passages.length;
       }
     }
-    const coldLat: number[] = [];
-    for (let round = 0; round < 3; round++) {
-      for (const q of queries) {
-        const t0 = process.hrtime.bigint();
-        await cold.retrieve({ allowed, query: q, topK: 8, budgetTokens: 6000 });
-        coldLat.push(Number(process.hrtime.bigint() - t0) / 1e6);
-      }
-    }
     const fetchLat: number[] = [];
     const hashLat: number[] = [];
     for (const b of bookIds.slice(0, 5)) {
@@ -159,20 +149,16 @@ const pct = (xs: number[], p: number) => { const s = [...xs].sort((a, b) => a - 
       new TextDecoder('utf-8', { fatal: true }).decode(bytes);
       hashLat.push(Number(process.hrtime.bigint() - t0) / 1e6);
     }
-    const perQuery: { matches: number; coldP50: number; cachedP50: number }[] = [];
+    const perQuery: { matches: number; p50: number }[] = [];
     for (const q of queries) {
       const [{ n }] = await ds.query(`SELECT count(*)::int AS n FROM ai_book_chunks WHERE language = 'es' AND tsv @@ websearch_to_tsquery('noetia_es'::regconfig, $1)`, [q]);
       const c: number[] = [];
-      const h: number[] = [];
       for (let i = 0; i < 3; i++) {
-        let t0 = process.hrtime.bigint();
-        await cold.retrieve({ allowed, query: q, topK: 8, budgetTokens: 6000 });
-        c.push(Number(process.hrtime.bigint() - t0) / 1e6);
-        t0 = process.hrtime.bigint();
+        const t0 = process.hrtime.bigint();
         await retrieval.retrieve({ allowed, query: q, topK: 8, budgetTokens: 6000 });
-        h.push(Number(process.hrtime.bigint() - t0) / 1e6);
+        c.push(Number(process.hrtime.bigint() - t0) / 1e6);
       }
-      perQuery.push({ matches: n, coldP50: Math.round(pct(c, 50)), cachedP50: Math.round(pct(h, 50)) });
+      perQuery.push({ matches: n, p50: Math.round(pct(c, 50)) });
     }
     const selective = perQuery.filter((x) => x.matches <= 1000);
     const sqlLat: number[] = [];
@@ -188,11 +174,9 @@ const pct = (xs: number[], p: number) => { const s = [...xs].sort((a, b) => a - 
       store: storeKind, books: BOOKS, codePointsPerBook: CODE_POINTS, chunks, chunksPerBook: chunks / BOOKS,
       indexBytes: { total: Number(sz.total) - sizeBefore, heap: Number(sz.heap), indexes: Number(sz.indexes), toast: Number(sz.toast), budget: DEFAULT_RETRIEVAL_CONFIG.maxIndexBytes },
       indexingMsPerBook: { min: Math.min(...indexMs), median: pct(indexMs, 50), max: Math.max(...indexMs), total: indexMs.reduce((a, b) => a + b, 0) },
-      cachedRunTextCacheBytes: cacheBytes,
-      retrievalCachedMs: { n: lat.length, p50: pct(lat, 50), p95: pct(lat, 95), max: Math.max(...lat), avgPassages: passages / lat.length },
-      retrievalDefaultNoCacheMs: { n: coldLat.length, p50: pct(coldLat, 50), p95: pct(coldLat, 95), max: Math.max(...coldLat) },
+      retrievalMs: { n: lat.length, p50: pct(lat, 50), p95: pct(lat, 95), max: Math.max(...lat), avgPassages: passages / lat.length },
       perQuery: perQuery.sort((a, b) => a.matches - b.matches), totalChunks: chunks,
-      selectiveQueries: { count: selective.length, maxColdP50: Math.max(...selective.map((x) => x.coldP50)), maxCachedP50: Math.max(...selective.map((x) => x.cachedP50)) },
+      selectiveQueries: { count: selective.length, maxP50: Math.max(...selective.map((x) => x.p50)) },
       perObjectMs: { fetchMedian: pct(fetchLat, 50), hashAndDecodeMedian: pct(hashLat, 50) },
       sqlOnlyMs: { p50: pct(sqlLat, 50), max: Math.max(...sqlLat) },
       ginUsed: /IDX_ai_book_chunks_tsv_es/.test(plan), plan,
@@ -200,6 +184,6 @@ const pct = (xs: number[], p: number) => { const s = [...xs].sort((a, b) => a - 
     process.stdout.write(`NEM023_PERF ${JSON.stringify(report)}\n`);
     expect(report.ginUsed).toBe(true);
     expect(Number(sz.total)).toBeLessThan(DEFAULT_RETRIEVAL_CONFIG.maxIndexBytes);
-    expect(Math.max(...lat, ...coldLat)).toBeLessThan(DEFAULT_RETRIEVAL_CONFIG.retrievalStatementTimeoutMs);
+    expect(Math.max(...lat)).toBeLessThan(DEFAULT_RETRIEVAL_CONFIG.retrievalStatementTimeoutMs);
   }, 900_000);
 });

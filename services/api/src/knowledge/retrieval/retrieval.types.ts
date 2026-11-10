@@ -97,11 +97,6 @@ export interface RetrievalConfig {
   maxAllowedBooks: number;
   /** In-flight window before a superseded set is pruned. Clamped to the 30-day hard cap. */
   previousSetGraceHours: number;
-  /**
-   * Byte budget of the optional in-memory LRU of hash-verified texts (S2, §5.1). 0 (default) disables it: every
-   * retrieval re-reads and re-verifies the object. Enabling it is a PA decision (see the completion report).
-   */
-  verifiedTextCacheBytes: number;
 }
 
 /** D-7 hard cap: a superseded set is never kept beyond 30 days (not configurable). */
@@ -121,7 +116,6 @@ export const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig = Object.freeze({
   defaultBudgetTokens: 6_000,
   maxAllowedBooks: 10,
   previousSetGraceHours: 24,
-  verifiedTextCacheBytes: 0,
 });
 
 /**
