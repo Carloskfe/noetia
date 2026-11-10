@@ -10,7 +10,7 @@
 - NEM-023: accepted with **open exceptions E-1** (retrieval p95 594 ms vs 150 ms) and **E-2** (global branch coverage 78.75% vs 80%). Neither is waived.
 
 **Companions:**
-- [DRAFT mission rev 4](../engineering-missions/DRAFT/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md)
+- [DRAFT mission rev 4](../engineering-missions/APPROVED/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md)
 - [decision packet rev 4](2026-11-10-E6-product-owner-decision-packet.md)
 - [discovery report](2026-11-10-E6-turn-orchestration-discovery-report.md)
 - [11](../architecture/three-tier-intelligence/11-e6-turn-lifecycle-and-boundaries.md)–[14](../architecture/three-tier-intelligence/14-e6-minimal-ux-proposal.md)
@@ -45,7 +45,7 @@ Verified against source on this branch. **Design rule:** every amendment is **ad
 
 ### 1.3 Protected-test amendments required
 
-**None** under this design. A later D-2 A/B step would need its own authorization.
+~~**None** under this design.~~ **Correction (2026-11-10, Checkpoint A pre-execution check):** one is required. The accepted NEM-023 test *"no turn or port wiring"* (`tests/unit/knowledge/retrieval/retrieval-architecture.spec.ts`) forbids A6/A7; it was overlooked here. Proposed intent-preserving amendment and decision: [NEM-024 Checkpoint A report](2026-11-10-NEM-024-checkpoint-a-report.md) §3–§4 (B-1). A later D-2 A/B step would need its own authorization.
 
 ### 1.4 New architecture tests E6 adds
 

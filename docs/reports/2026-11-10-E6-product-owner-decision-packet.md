@@ -1,6 +1,6 @@
 # E6 / NEM-024 — Product Owner Decision Packet (Turn Orchestration) — revision 6 (DECIDED)
 
-**Status:** **DECIDED — all decisions approved by the PO on 2026-11-10 in [PO-034](../operating-framework/decisions/product-owner/PO-034-e6-research-turn-decisions-and-nem-024-assignment.md), for documentation and final independent PA sign-off only. Implementation NOT authorized.** Mission: [NEM-024](../engineering-missions/DRAFT/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md) (proposed, review-ready). *Earlier revisions (1–5) are preserved below as the decision history.*
+**Status:** **DECIDED — all decisions approved by the PO on 2026-11-10 in [PO-034](../operating-framework/decisions/product-owner/PO-034-e6-research-turn-decisions-and-nem-024-assignment.md), for documentation and final independent PA sign-off only. Implementation NOT authorized.** Mission: [NEM-024](../engineering-missions/APPROVED/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md) (proposed, review-ready). *Earlier revisions (1–5) are preserved below as the decision history.*
 
 **Evidence:**
 - [discovery report](2026-11-10-E6-turn-orchestration-discovery-report.md) (§11: revision responses)
@@ -8,7 +8,7 @@
 - [12 inventory](../architecture/three-tier-intelligence/12-e6-interface-and-dependency-inventory.md)
 - [13 security](../architecture/three-tier-intelligence/13-e6-security-rights-and-failure-modes.md)
 - [14 UX](../architecture/three-tier-intelligence/14-e6-minimal-ux-proposal.md)
-- [DRAFT mission rev 2](../engineering-missions/DRAFT/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md)
+- [DRAFT mission rev 2](../engineering-missions/APPROVED/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md)
 
 Only decisions **genuinely required before implementation** are in §1. Launch-time items are in §3.
 

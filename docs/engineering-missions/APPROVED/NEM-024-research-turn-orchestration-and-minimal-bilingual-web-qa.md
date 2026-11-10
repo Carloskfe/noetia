@@ -1,10 +1,10 @@
 # NOETIA ENGINEERING MISSION — NEM-024
 ## Research-Turn Orchestration and Minimal Bilingual Web Q&A (dark, simulated provider only)
 
-**Status:** **PROPOSED — REVIEW-READY (2026-11-10).** All E6 decisions are approved by the PO in [PO-034](../../operating-framework/decisions/product-owner/PO-034-e6-research-turn-decisions-and-nem-024-assignment.md), **for documentation and final independent Product Architecture sign-off only**. Awaiting final PA sign-off. **Not executable; implementation NOT authorized.** The file stays in `DRAFT/` (the NEM-023 precedent) and moves to `APPROVED/` only after the PA sign-off and PO approval of the specification. Execution then still requires an explicit PO instruction naming NEM-024.
+**Status:** **APPROVED (PO, 2026-11-10; [PO-035](../../operating-framework/decisions/product-owner/PO-035-nem-024-specification-approval-and-checkpoint-a-authorization.md)) — CHECKPOINT A EXECUTION AUTHORIZED — BLOCKED AT PRE-EXECUTION CHECK.** An accepted NEM-023 architecture test forbids the D-3 wiring (B-1, stop condition); specification gap B-2 (replay after a step-4 failure). No implementation code written ([Checkpoint A report](../../reports/2026-11-10-NEM-024-checkpoint-a-report.md)). Checkpoints B–E **not authorized**. *(Previous status: proposed, review-ready; decisions in PO-034.)*
 **Identifier:** `NEM-024`, assigned by the PO on 2026-11-10 (PO-034 D-5). Verified unused on all remote branches, PR titles, and the register.
 **Mission type:** IMPLEMENTATION
-**Implementation authorization:** NONE (pending PA sign-off, PO specification approval, and an explicit execution instruction)
+**Implementation authorization:** **Checkpoint A only** (PO-035, 2026-11-10). Execution blocked pending decisions B-1 and B-2. Checkpoints B, C, D, E, merge, deployment, production providers, production indexing, and infrastructure are NOT authorized
 **Schema changes:** ADDITIVE ONLY: one table, `ai_turns` (with a partial unique index); disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED (none needed)
 **Production deployment:** NOT AUTHORIZED (staging and merge to `main` also not authorized). Provider usage **simulated only**; every production integration **disabled**
