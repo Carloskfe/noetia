@@ -57,7 +57,7 @@ Mobile follows **D-6 (TT-20)**. Provisional P0 recommendation: web first.
 
 - From a book page: "Research with Noetia+" → create a session with that book.
 - From the library: multi-select up to the tier limit (server-enforced; the UI mirrors `limit_reached`).
-- Hidden entirely unless the flag/entitlement probe succeeds. There is no endpoint for that probe today; **E6 adds `GET /knowledge/me` (tier, capabilities, limits; no budget values)** or reuses the `create` denial (D-3 lists it).
+- Hidden entirely unless the flag/entitlement probe succeeds. There is no endpoint for that probe today; **E6 adds `GET /knowledge/sessions/capabilities`** in the existing `SessionsController` (tier, capabilities, limits; no budget values; declared before the `:id` routes).
 
 ## 3. States
 

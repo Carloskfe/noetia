@@ -1,6 +1,6 @@
-# E6 — Product Owner Decision Packet (Turn Orchestration) — revision 3
+# E6 — Product Owner Decision Packet (Turn Orchestration) — revision 4
 
-**Status:** DRAFT — for PO / PA decision. **Revision 3 (2026-11-10): D-1(a) APPROVED by the PO**; P-0 satisfied. Final PA questions: [PA final review package](2026-11-10-E6-pa-final-review-package.md). Prepared under PO *"E6 Turn Orchestration Discovery — documentation-only"* (2026-11-10). Revised after the PA review of PR #54 (`e73c277`). **No decision below is taken by this document.**
+**Status:** DRAFT — for PO / PA decision. **Revision 4 (PA review F-1…F-5 of `ccb3acc`): D-8 best-effort wording, D-9 consistency, D-11 candidate W and 50 ms acceptance. Revision 3 (2026-11-10): D-1(a) APPROVED by the PO**; P-0 satisfied. Final PA questions: [PA final review package](2026-11-10-E6-pa-final-review-package.md). Prepared under PO *"E6 Turn Orchestration Discovery — documentation-only"* (2026-11-10). Revised after the PA review of PR #54 (`e73c277`). **No decision below is taken by this document.**
 
 **Evidence:**
 - [discovery report](2026-11-10-E6-turn-orchestration-discovery-report.md) (§11: revision responses)
@@ -49,7 +49,7 @@ Only decisions **genuinely required before implementation** are in §1. Launch-t
 |---|---|
 | **Approved (PO, 2026-11-10)** | **D-1(a)**: backend plus one minimal web Q&A interface. E9 keeps all broader UX (mission §5.1) |
 | **Proposed baselines** (named by the PO; **not approved**; the mission is written on them) | D-2(C) book passages only · D-4(a) stateless model context with persistent conversation history · D-6(a) web first · D-7(a) simulator and fixture-based dark development · D-9(a) disconnect does not cancel a turn |
-| **Open: PA judgement** | D-3 (precise amendments, review package §1) · D-8 (§2) · D-10 (§3) · D-11 (§4) · cancellation consistency (§5) · revocation during an active turn (§6) · Q-1 to Q-10 (§8) |
+| **Open: PA judgement** | D-3 (precise amendments, review package §1) · D-8 (§2) · D-10 (§3) · D-11 (§4) · cancellation consistency (§5) · revocation during an active turn, including the final eligibility check (§6) · race-safe recovery (§7) · Q-4 to Q-13 (§10; Q-1 to Q-3 closed or superseded) |
 | **Open: PO** | D-5 identifier (NEM-024 verified unused) |
 
 
@@ -57,17 +57,17 @@ Only decisions **genuinely required before implementation** are in §1. Launch-t
 
 | ID | Decision | Owner | Options | Recommendation |
 |---|---|---|---|---|
-| **D-1** — ✅ **APPROVED (a), PO 2026-11-10** | E6 delivery scope | PO | **(a)** backend + one minimal web Q&A screen behind the existing flag; **(b)** backend only (API, persistence, streaming transport); all UI in E9 (P0 packet); **(c)** P0 E6 + E9 for Noetia+ | **(b)** if the priority is the smallest reviewable change and P0 alignment; **(a)** if an end-to-end visible slice is wanted now. *Both remain open; the mission marks the D-1(a)-only items (scope 13, AC 14, Checkpoint C)* |
+| **D-1** — ✅ **APPROVED (a), PO 2026-11-10** | E6 delivery scope | PO | **Approved:** backend plus **one minimal web Q&A interface**; E9 keeps all broader UX (mission §5.1) | — *(Options (b) backend-only and (c) were considered and are not selected; see the revision 2 history in the discovery report §11 R-5)* |
 | **D-2** — proposed baseline (not approved) | User knowledge (highlights and notes) in the first implementation | **PA + PO** | **C (revised recommendation):** book passages only; no `fragments` access; NEM-019 protections unchanged. **A:** one named, test-asserted `SELECT` of own rows on eligible selected books (amends NEM-019 AC-10/17). **B:** read function from the fragments module injected via registration (changes two tests + the registration contract) | **C** for the first implementation. It avoids any change to accepted NEM-019 protections. A or B remain available as a **later**, separately authorized step with the isolation-first sequence in [13 §3.5](../architecture/three-tier-intelligence/13-e6-security-rights-and-failure-modes.md#35-adding-user-knowledge-later-without-weakening-isolation) |
-| **D-3** | Authorize the accepted-surface amendments | **PA + PO** | In dark code only:<br>(1) `TurnDto.question`;<br>(2) `TurnService` wiring (retrieval, turn record, replay, cancel) with the turn order unchanged;<br>(3) `TurnResult` v2;<br>(4) routes: history, single turn, stream, cancel, `me`;<br>(5) direct injection of `QueryContextSource` (no binding or F-12 change);<br>(6) E5 providers registered with unbound ports | Authorize (1)–(6) |
+| **D-3** | Authorize the accepted-surface amendments | **PA + PO** | In dark code only:<br>(1) `TurnDto.question`;<br>(2) `TurnService` wiring (retrieval, turn record, replay, cancel) with the turn order unchanged;<br>(3) `TurnResult` v2;<br>(4) routes: history, single turn, stream, cancel, capability probe (`GET /knowledge/sessions/capabilities`, in `SessionsController`);<br>(5) direct injection of `QueryContextSource` (no binding or F-12 change);<br>(6) E5 providers registered with unbound ports | Authorize (1)–(6) |
 | **D-4** — proposed baseline (not approved) | Conversation memory in model context | PA (product effect: PO) | (a) stateless; (b) bounded prior turns (needs a new `ContextItem` kind) | (a) |
 | **D-5** | Identifier | PO | Reserve NEM-024 (verified unused) | Reserve |
 | **D-6** — proposed baseline (not approved) | Mobile in the MVP (TT-20) | PO | (a) web first; (b) parity; (c) read-only history | (a). Moot under D-1(b) |
 | **D-7** — proposed baseline (not approved) | Build before E3/E4 adapters | PO | (a) dark on fixture ports; (b) wait | (a); E3 design note R-2 (hash once per text version) |
-| **D-8** *(new, R-3)* | Answer delivery when the turn record cannot be written after settlement | **PA** (product effect: PO) | **(a)** return the answer marked `unrecorded`; replay → `result_unavailable`. **(b)** withhold the answer and return an error (the user is charged with no answer) | **(a)**: the charge stands either way (NEM-021 authority); (a) avoids charging for an unseen answer |
-| **D-9** *(new, R-4)* — proposed baseline (a) (not approved) | Client disconnect vs explicit cancel | **PO + PA** | **(a)** disconnect continues to completion (persisted; same-key replay returns it); only explicit cancel aborts. **(b)** disconnect aborts like cancel (the attempt is held at the reserved amount, no answer) | **(a)**: mobile and network blips do not cost an unseen answer; explicit cancel stays available |
+| **D-8** *(new, R-3)* | Answer delivery when the turn record cannot be written after settlement | **PA** (product effect: PO) | **(a)** attempt to return the answer marked `unrecorded` (**best effort**); replay → `result_unavailable`. **(b)** withhold the answer and return an error | **(a)**, proposed. **Neither option prevents an unseen charge:** under (a), if the response is also lost (network failure, closed tab), the answer is lost and the charge stands; (b) makes the unseen charge certain. The charge always stands (NEM-021 authority). Review package §2 |
+| **D-9** *(new, R-4)* — proposed baseline (a) (not approved) | Client disconnect vs explicit cancel | **PO + PA** | **(a)** a disconnect or stream close **never** cancels (at any stage, including preflight); the turn continues and, once recorded, a same-key replay returns it. Only the explicit, authenticated cancel endpoint aborts. **(b)** disconnect aborts like cancel (held at the reserved amount, no answer) | **(a)**: a dropped connection does not by itself lose a **recorded** answer (an unrecorded one is covered by D-8) |
 | **D-10** *(new, R-4)* | Historical excerpts after revocation (dark-build default; the final policy is TT-14) | **PO** | **(a)** hide excerpts (`source no longer available`); keep the generated answer text. **(b)** keep showing the excerpts. **(c)** hide the whole answer | **(a)**: the most conservative choice that needs no deletion; `ai_turns` stores no excerpt text, so (a) needs no data change if TT-14 later chooses otherwise |
-| **D-11** *(new, R-5)* | Concurrency weight `W` and the acceptable reader-latency impact | **PA** | `W` = Σ selected books in flight per process. Measured: W=10 → lag p99 ~85 ms (one 10-book turn) or ~96 ms (three 3-book turns); W=20 → ~169 ms | **W = 10**. The PA sets the acceptable reader p95 delta, verified on the production image under the cap in Checkpoint D. If unmet, stop (no in-scope remedy) |
+| **D-11** *(new, R-5)* | Concurrency weight `W` and reader-latency acceptance | **PA** | **Candidate W = 10** (Σ selected books with S2 work in flight per process). **Acceptance (proposed): reader endpoint p95 delta ≤ 50 ms** under sustained permitted retrieval load, against idle, on the production API image (1 vCPU / 512 MB) | W = 10 is a **candidate, not accepted**. If the test fails, reduce W **10 → 6 → 3** and retest. If the accepted W < 10, 10-book turns cannot be admitted, a product conflict with PO-027, so escalate (review package Q-11) |
 
 ## 2. Carried exceptions (no waiver requested)
 
@@ -84,7 +84,7 @@ TT-11 (limit behaviour) · TT-13 (thresholds) · TT-14 (retention; D-10 is only 
 
 1. ~~Resolve P-0~~ (satisfied) · ~~D-1~~ (approved: (a)).
 2. **PO:** confirm or change the proposed baselines D-2(C), D-4(a), D-6(a), D-7(a), D-9(a); reserve D-5 (NEM-024).
-3. **PA:** judge D-3, D-8, D-10, D-11 and Q-1 to Q-10 in the [final review package](2026-11-10-E6-pa-final-review-package.md).
-4. PA review of mission revision 3 → PO approval → an explicit execution instruction naming the mission.
+3. **PA:** judge D-3, D-8, D-10, D-11, the final eligibility check, recovery, and Q-4 to Q-13 in the [final review package](2026-11-10-E6-pa-final-review-package.md).
+4. PA review of mission revision 4 → PO approval → an explicit execution instruction naming the mission.
 
-*Revision 2 package text (superseded by the above):* resolve P-0; decide D-1 ((a) or (b)), D-2 C, D-3 (1)–(6), D-4(a), D-5 NEM-024, D-6(a), D-7(a), D-8(a), D-9(a), D-10(a), D-11 W=10 (plus the PA threshold); then PA review of mission revision 2 → PO approval.
+*Revision 2 package text (superseded; D-1 is now approved (a)):* resolve P-0; decide D-1, D-2 C, D-3 (1)–(6), D-4(a), D-5 NEM-024, D-6(a), D-7(a), D-8(a), D-9(a), D-10(a), D-11 W=10 (plus the PA threshold); then PA review of mission revision 2 → PO approval.

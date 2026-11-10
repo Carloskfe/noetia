@@ -48,7 +48,7 @@ Proposed order (ADR-006 B-5 preserved):
 
 | Implemented (dark, unmerged) | Missing |
 |---|---|
-| Entitlement, prerequisite port, limits, lock, fork, read-only; user eligibility; Context Builder; Gateway prepare/invoke/stream/release; citation policy; per-attempt cost ledger, reconciliation; E5 retrieval, index permission, anchors | Question input; retrieval wiring; user-content source; context budget allocator; turn persistence and replay; `TurnResult` v2 with citations; history, stream, and `me` routes; abort propagation; stage metrics; any UI |
+| Entitlement, prerequisite port, limits, lock, fork, read-only; user eligibility; Context Builder; Gateway prepare/invoke/stream/release; citation policy; per-attempt cost ledger, reconciliation; E5 retrieval, index permission, anchors | Question input; retrieval wiring; user-content source; context budget allocator; turn persistence and replay; `TurnResult` v2 with citations; history, stream, cancel, and capability-probe routes; abort propagation; stage metrics; any UI |
 
 Production adapters for qualifying plan (E4), text identity and verification authority (E3), and ownership are absent. With them unbound, the real module denies everything. E6 can be built dark on fixture ports (D-7).
 
@@ -161,7 +161,7 @@ NEM-021 reserves the **worst case** before the call, so the allocator must cap c
 | R-6 | Medium | Revoked-book excerpts persisted in `ai_turns` | Render-time "source unavailable"; TT-14 before launch |
 | R-7 | Medium | Cancelled or failed provider attempts stay **held** at the reserved amount until reconciliation, so users may briefly see reduced capacity | Disclose in the UI; existing reconciliation |
 | R-8 | Low | A completion-write failure after settlement breaks replay for that key | D-8 (a): the answer is delivered as `unrecorded`; replay → `result_unavailable`; recovery → `interrupted`; ledger untouched |
-| R-10 | Medium | Revocation between step 2 and the provider call is not re-checked within the turn | Accepted residual; disclosed; the next turn excludes the book |
+| R-10 | Medium → reduced | Revocation between step 2 and the provider call | **Final eligibility check** immediately before invocation (review package §6, F-3). Remaining window: during the provider call only (history hides the excerpt) |
 | R-11 | Low | Explicit cancel uses an in-process registry, so it would not reach another API instance | Single instance today; a shared channel only if scaled out (launch item) |
 | R-9 | Low | The dev nginx proxy may buffer SSE | `X-Accel-Buffering: no` response header (no infrastructure change); Traefik streams |
 
@@ -190,8 +190,8 @@ NEM-021 reserves the **worst case** before the call, so the allocator must cap c
    - question input; retrieval wiring by direct injection; context budget;
    - `ai_turns` migration with durable completion, the duplicate table, and replay;
    - `TurnResult` v2 (refs + anchors; excerpts from the in-context passages).
-2. **Checkpoint B — transport and resilience:** SSE stream endpoint (per-attempt events + `stage`), explicit cancel registry (disconnect ≠ cancel), recovery sweep, history with excerpt re-materialization and `sourceState`, `GET /knowledge/me`, weighted guard, stage metrics.
-3. **Checkpoint C — web MVP: only under D-1(a).** Research screen, citation dialog, states, en/es, accessibility; a Playwright flow on the simulated stack.
+2. **Checkpoint B — transport and resilience:** SSE stream endpoint (per-attempt events + `stage`), explicit cancel registry (disconnect ≠ cancel), recovery sweep, history with excerpt re-materialization and `sourceState`, `GET /knowledge/sessions/capabilities`, weighted guard, stage metrics.
+3. **Checkpoint C — minimal web Q&A interface (required; D-1(a) approved).** Research screen, citation dialog, states, en/es, accessibility; a Playwright flow on the simulated stack.
 4. **Checkpoint D — verification:**
    - integration: duplicates under a barrier, persistence-failure injection, each cancellation row, revocation, deletion during flight;
    - latency tables for 3/10 books (E-1);
@@ -257,13 +257,22 @@ Documentation only. No application code, tests, migrations, CI/CD, or infrastruc
 | Part | Content |
 |---|---|
 | Finding | D-1 (a)/(b) were blended in the mission. The "2 concurrent retrievals" guard was assumed, not measured |
-| Correction | D-1 (a) and (b) are kept distinct and both open; the mission marks the D-1(a)-only items (scope 13, AC 14, Checkpoint C). Measured on 1 vCPU / 512 MB (§5.4): memory is not binding (+~40 MB per 10-book turn; production image idle 73–102 MiB), while event-loop CPU is (lag p99 85 ms at one 10-book turn, 169 ms at two). Guard changed to **weighted W = 10** before reservation, with a reader-latency acceptance against a PA threshold (D-11). E-1 and E-2 remain unresolved. No infrastructure, cache, provider, or ranking change |
+| Correction | *(Revision 2; superseded by the PO approval of D-1(a) on 2026-11-10: the web interface is now required.)* At revision 2, D-1 (a) and (b) were kept distinct; the mission marked the D-1(a)-only items (scope 13, AC 14, Checkpoint C). Measured on 1 vCPU / 512 MB (§5.4): memory is not binding (+~40 MB per 10-book turn; production image idle 73–102 MiB), while event-loop CPU is (lag p99 85 ms at one 10-book turn, 169 ms at two). Guard changed to **weighted W = 10** before reservation, with a reader-latency acceptance against a PA threshold (D-11). E-1 and E-2 remain unresolved. No infrastructure, cache, provider, or ranking change |
 | Evidence | §5.4 tables; `docker-compose.server.yml` api `cpus: "1.0"`, `memory: 512M`; locally built production image measurement |
-| Remaining decisions | D-1 ((a) or (b)); D-11 (W and threshold) |
+| Remaining decisions | ~~D-1~~ (approved (a)); D-11 (W candidate and reader-latency acceptance) |
 
 ### Update 2026-11-10 — P-0 satisfied
 
 The PO recorded NEM-022's acceptance at `f6a5cb7` after PA re-review (NEM-022 report §20). R-1's remaining decision is therefore **resolved**. NEM-023's wording was reconciled without changing its status. **No E6 decision and no E6 mission approval follows from this update.**
+
+### Update 2026-11-10 — PA review F-1 to F-5 (of `ccb3acc`)
+
+The corrections are recorded in review package revision 2 §9, mission revision 4, and packet revision 4:
+- F-1: D-1(a) only; the probe is `GET /knowledge/sessions/capabilities`.
+- F-2: D-8 best-effort delivery, with no unseen-charge guarantee.
+- F-3: a final eligibility check before invocation.
+- F-4: W = 10 is a candidate, with reader p95 delta ≤ 50 ms as the criterion and the reduction 10 → 6 → 3.
+- F-5: lease-based race-safe recovery.
 
 ### Update 2026-11-10 — D-1(a) approved; final PA review package
 

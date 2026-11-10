@@ -1,6 +1,6 @@
 # 13 — E6 Security, Rights, and Failure-Mode Assessment (DISCOVERY, DRAFT)
 
-**Status:** DRAFT, documentation-only — **revision 2** (PA review of PR #54: R-2, R-3, R-4). No protected system is changed by this document. Conflicts with accepted architecture are recorded with options and are not resolved here.
+**Status:** DRAFT, documentation-only — **revision 3** (PA reviews: R-2…R-4; F-2, F-3, F-5). No protected system is changed by this document. Conflicts with accepted architecture are recorded with options and are not resolved here.
 
 ## 1. Authorization layers per turn (all must pass; most restrictive wins)
 
@@ -25,7 +25,8 @@ E6 adds **no new authority**. It wires existing layers in order and adds user co
 | Situation | Behaviour |
 |---|---|
 | Revoked **before** a turn's step 2 | The book is excluded from that turn and the exclusion is disclosed (`exclusions.ineligible` / `indexNotPermitted`). The locked set is unchanged. With no eligible book → `no_eligible_books` (no charge, no record) |
-| Revoked **between step 2 and the provider call** | Not re-checked inside the turn (window = lock + provider time). Accepted residual, disclosed; the next turn excludes the book |
+| Revoked **between step 2 and the provider call** | **Caught by the final eligibility check** run immediately before invocation (user-level research rights and book-level indexing permission, both fresh): no invoke; `gateway.release` (held if the release cannot be written); record `failed`; `book_ineligible` with exclusions; the lock stands (review package §6) |
+| Revoked **during the provider call** | Not re-checked; the answer is delivered; history hides the excerpt (D-10) |
 | Revoked **after an answer was stored** | `ai_turns` keeps **refs and anchors only, never excerpt text**. On each history read the book's eligibility is re-checked and the excerpt is re-materialized through S2 (current hash = anchor hash). If it is ineligible, stale, unavailable, or purged → `excerpt: null`, `sourceState: revoked \| stale \| unavailable`, and the UI shows "source no longer available" |
 | Historical excerpts visible after revocation? | **Default: no** (D-10 a). The generated answer text remains (generated content, ADR-006) pending **TT-14**. No deletion. Because no excerpt text is stored, any later TT-14 policy needs no data migration |
 | Index purge after revocation | Unchanged (NEM-023 runbook). A history read for a purged chunk falls under `unavailable` |
@@ -128,15 +129,15 @@ Proposed sequence, each step separately authorized; no step may be folded silent
 | Client disconnect | any | As normal | — | — | **Not a cancellation** (D-9 a): the turn completes and is persisted; a same-key replay returns it |
 | Scope violation (bad citation) | 11 | Settled | Yes | `scope_violation` | Generic error; no text released; alert metric |
 | Malformed output / refusal | 9–11 | Settled | Yes | `turn_failed` | Generic error |
-| Completion write fails after settlement | 7 (complete) | Settled or held (ledger authority; E6 never compensates) | Yes | Answer returned with `status: 'unrecorded'` (D-8 a) | The row stays `accepted` and recovery marks it `interrupted`. A same-key replay → `result_unavailable` (no provider call, no charge). Metric `intelligence_turn_unrecorded_total` |
-| Process crash after lock, before completion | 5–7 | Held until NEM-021 reconciliation | Yes | Client sees a network error | Same-key replay → `409 duplicate_turn {status: accepted}` until recovery marks `interrupted`, then the stored status; ask again with a new key |
+| Completion write fails after settlement | 7 (complete) | Settled or held (ledger authority; E6 never compensates) | Yes | Answer returned with `status: 'unrecorded'` **on a best-effort basis** (D-8 a): if the response is also lost, the answer is lost and the charge stands (an unseen charge) | The row stays `accepted` and recovery marks it `interrupted`. A same-key replay → `result_unavailable` (no provider call, no charge). Metric `intelligence_turn_unrecorded_total` |
+| Process crash after lock, before completion | 5–7 | Held until NEM-021 reconciliation | Yes | Client sees a network error | Lease stops renewing → the sweep marks `interrupted` within L + grace + interval (a live turn with a renewed lease is never swept). Same-key replay → `409 duplicate_turn {status: accepted}` until then, then the stored status; ask again with a new key |
 | Duplicate request (same key) | any | Never a second reservation (ledger attempt-1 uniqueness) | — | Per the mission §9.2 duplicate table | One record (UNIQUE `sessionId`, `keyHash`) |
 
 ### 5.1 Cancellation matrix (R-4; the Gateway streaming contract is unchanged)
 
 | When | Server action | Charge | Lock | Record |
 |---|---|---|---|---|
-| Before reservation | Stop at the next stage boundary | None | None | None |
+| Before reservation (explicit cancel only) | Stop at the next stage boundary | None | None | None |
 | After reservation, before the lock commits | `gateway.release(prepared)` (held if the release cannot be written) | None | None | None |
 | After the lock, before the provider call | Do not invoke; `gateway.release(prepared)` | None | Stands | `cancelled` |
 | During a provider attempt | `AbortSignal` → `client_abort`; no text released | **Held** at the reserved amount until reconciliation | Stands | `cancelled` |

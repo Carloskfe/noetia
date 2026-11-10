@@ -1,15 +1,15 @@
-# E6 — Product Architecture Final Review Package (pre-approval)
+# E6 — Product Architecture Final Review Package (pre-approval) — revision 2
 
-**Status:** DRAFT — prepared under PO *"E6 Final Mission Review Preparation"* (2026-11-10). Documentation only. **Authorizes no implementation and approves no decision.**
+**Status:** DRAFT — prepared under PO *"E6 Final Mission Review Preparation"* (2026-11-10). **Revision 2** answers the PA review of PR #54 at `ccb3acc` (F-1 to F-5; §9). Documentation only. **Authorizes no implementation and approves no decision.**
 **Review target:** branch `docs/e6-turn-orchestration-discovery` (Draft PR #54).
 
 **Decision state:**
 
 | State | Items |
 |---|---|
-| **Approved** | **D-1(a)** — backend plus one minimal web Q&A interface (PO, 2026-11-10) |
+| **Approved** | **D-1(a)**: backend plus one minimal web Q&A interface (PO, 2026-11-10) |
 | **Proposed baselines** (PO-indicated, **not approved**) | D-2(C), D-4(a), D-6(a), D-7(a), D-9(a) |
-| **Open for PA judgement** (this package) | D-3, D-8, D-10, D-11, cancellation consistency, revocation during an active turn |
+| **Open for PA judgement** (this package) | D-3, D-8, D-10, D-11, cancellation consistency, revocation during an active turn, recovery |
 | **Open for PO** | D-5 (identifier) |
 
 **Carried:**
@@ -17,8 +17,8 @@
 - NEM-023: accepted with **open exceptions E-1** (retrieval p95 594 ms vs 150 ms) and **E-2** (global branch coverage 78.75% vs 80%). Neither is waived.
 
 **Companions:**
-- [DRAFT mission rev 3](../engineering-missions/DRAFT/E6-turn-orchestration-and-user-experience.md)
-- [decision packet rev 3](2026-11-10-E6-product-owner-decision-packet.md)
+- [DRAFT mission rev 4](../engineering-missions/DRAFT/E6-turn-orchestration-and-user-experience.md)
+- [decision packet rev 4](2026-11-10-E6-product-owner-decision-packet.md)
 - [discovery report](2026-11-10-E6-turn-orchestration-discovery-report.md)
 - [11](../architecture/three-tier-intelligence/11-e6-turn-lifecycle-and-boundaries.md)–[14](../architecture/three-tier-intelligence/14-e6-minimal-ux-proposal.md)
 
@@ -26,74 +26,65 @@
 
 ## 1. D-3 — Precise accepted-interface amendments
 
-Verified against source on this branch. **Design rule:** every amendment is **additive and backward-compatible**, so existing NEM-019/021/022/023 tests run unchanged. Where that is impossible, the item is listed as a protected-test amendment needing explicit authorization (§1.3).
+Verified against source on this branch. **Design rule:** every amendment is **additive and backward-compatible**, so existing NEM-019/021/022/023 tests run unchanged.
 
 ### 1.1 Amendments to accepted code (dark only)
 
 | # | Surface (file) | Today (verified) | Proposed amendment | Compatibility proof |
 |---|---|---|---|---|
-| A1 | `TurnDto` (`sessions/sessions.dto.ts`) | `{ idempotencyKey: string /^[A-Za-z0-9_-]{8,64}$/ }` | `+ question: string` (`@IsString`, NFC-normalized and trimmed server-side, 1–500 code points; matching E5) — **required on the HTTP route** | DTO only; the global whitelist pipe already strips unknown fields. Route tests change only where they post a body (new tests, not edits) |
-| A2 | `TurnService` constructor (`sessions/turn.service.ts`) | `(db, sessions, rights, contextBuilder, gateway, config, contextSource)`; positional in `tests/unit/knowledge/sessions/turn.service.spec.ts:44` and `tests/integration/knowledge/support/it-env.ts:206` | Append **optional** trailing dependencies: `retrieval?: QueryContextSource`, `turns?: TurnRecordStore`, `guard?: RetrievalGuard`, `cancels?: CancelRegistry` (`@Optional()` in Nest) | Existing positional constructions keep compiling; absent dependencies mean today's behaviour |
-| A3 | `TurnService.run(userId, sessionId, clientKey)` | No question; returns `TurnResult` | `run(userId, sessionId, clientKey, question?: string, opts?: { signal?: AbortSignal; onStage?: (s) => void })` | Existing 3-argument calls behave **exactly as today**: no retrieval, no record, the same `TurnResult` fields. **The turn order steps 1–6 are unchanged**; retrieval runs inside step 2 only when `question` and `retrieval` are present |
-| A4 | `TurnResult` (`sessions/turn.service.ts`) | `{ sessionId, segments: AnswerSegment[], excludedBookIds, settlement }` | **Additive** optional fields: `turnId?`, `status?`, `citations?` (per segment index: `{ref, kind, bookId, anchor, excerpt\|null, sourceState}`), `exclusions?` | Existing tests use `toMatchObject` / field checks (`turn.service.spec.ts:65,129`), so extra fields do not break them. **`AnswerSegment` (`ai/model-provider.ts`, also used by the legacy `model-gateway.service.ts`) is NOT changed**; citations live in a parallel structure |
-| A5 | `SessionsController` (`sessions/sessions.controller.ts`) | 6 routes | Add **in the same controller**: `GET :id/turns`, `GET :id/turns/:turnId`, `POST :id/turns/stream`, `POST :id/turns/cancel`, and a capability probe (path per Q-1) | The NEM-019 architecture test pins `sessions.controller.ts` as the **only** controller in `knowledge/` (`architecture.spec.ts:138–139`). New routes in the same controller keep it unchanged. Each route carries `@DeclareCapability` (test §10) |
-| A6 | `KnowledgeModule` providers (`knowledge.module.ts`) | No retrieval providers | Add `IndexingPermission`, `LexicalRetrievalService`, `QueryContextSource`, `AnchorResolver`, `StorageBookText` (+ `StorageModule` import), `RetrievalMetricsService`, `TurnRecordStore`, `RetrievalGuard`, `CancelRegistry`, recovery `@Interval` job | **No pinned binding changes:** `CONTEXT_SOURCE_PORT → EmptyContextSource`, `TEXT_IDENTITY_PORT → UnboundTextIdentityPort`, etc. stay (F-12 test). E5 classes get their ports from the **same unbound tokens**, so the real module still denies everything |
-| A7 | Retrieval wiring | `contextSource.candidates(userId, sessionId, allowed)` (always empty) | `TurnService` merges `contextSource.candidates(...)` **and** `retrieval.resolve(...)` before `contextBuilder.build` | `ContextSourcePort` signature and binding unchanged (direct injection, not a port change) |
-| A8 | Migration `ai_turns` (≥ 076) | — | Additive table (mission §5.5) | NEM-019 AC-19 and NEM-021 AC-13 migration tests are position-independent (B-3, D-1) |
-| A9 | Web | No intelligence UI | New route `app/(research)/research/[sessionId]` + components; i18n keys in `lib/i18n/{en,es}.ts` | No reader file changes; reader suites unchanged (AC) |
+| A1 | `TurnDto` (`sessions/sessions.dto.ts`) | `{ idempotencyKey: string /^[A-Za-z0-9_-]{8,64}$/ }` | `+ question: string` (`@IsString`, NFC-normalized and trimmed server-side, 1–500 code points; matching E5), required on the HTTP route | DTO only; the global whitelist pipe already strips unknown fields |
+| A2 | `TurnService` constructor (`sessions/turn.service.ts`) | `(db, sessions, rights, contextBuilder, gateway, config, contextSource)`; positional in `turn.service.spec.ts:44` and `it-env.ts:206` | Append **optional** trailing dependencies (`@Optional()`): `retrieval?: QueryContextSource`, `indexPermission?: IndexingPermission`, `turns?: TurnRecordStore`, `guard?: RetrievalGuard`, `cancels?: CancelRegistry` | Existing positional constructions keep compiling; absent dependencies mean today's behaviour |
+| A3 | `TurnService.run(userId, sessionId, clientKey)` | No question | `run(userId, sessionId, clientKey, question?: string, opts?: { signal?: AbortSignal; onStage?: (s) => void })` | Existing 3-argument calls behave **exactly as today**. Turn order steps 1–6 unchanged; retrieval inside step 2; the final eligibility check (§6) sits between step 4 and step 5 and only runs when `question` is present |
+| A4 | `TurnResult` | `{ sessionId, segments: AnswerSegment[], excludedBookIds, settlement }` | **Additive** optional fields: `turnId?`, `status?`, `citations?` (per segment index: `{ref, kind, bookId, anchor, excerpt\|null, sourceState}`), `exclusions?` | Existing tests use `toMatchObject` / field checks (`turn.service.spec.ts:65,129`). **`AnswerSegment` (`ai/model-provider.ts`, shared with the legacy `model-gateway.service.ts`) is unchanged** |
+| A5 | `SessionsController` (`sessions/sessions.controller.ts`) | 6 routes | Add **in the same controller**: `GET capabilities` (**capability probe: `GET /knowledge/sessions/capabilities`, declared before the `:id` routes** so `ParseUUIDPipe` never sees it), `GET :id/turns`, `GET :id/turns/:turnId`, `POST :id/turns/stream`, `POST :id/turns/cancel` | The NEM-019 architecture test pins `sessions.controller.ts` as the **only** controller in `knowledge/` (`architecture.spec.ts:138–139`), so it is unchanged. Each route carries `@DeclareCapability` (test §10); the probe declares `research_session` / `history`, so an unentitled user gets the standard denial (UI hidden) |
+| A6 | `KnowledgeModule` providers | No retrieval providers | Add `IndexingPermission`, `LexicalRetrievalService`, `QueryContextSource`, `AnchorResolver`, `StorageBookText` (+ `StorageModule` import), `RetrievalMetricsService`, `TurnRecordStore`, `RetrievalGuard`, `CancelRegistry`, the recovery `@Interval` job | No pinned binding changes (F-12 test); E5 classes use the **same unbound** port tokens, so the real module denies everything |
+| A7 | Retrieval wiring | `contextSource.candidates(...)` (always empty) | `TurnService` merges `contextSource.candidates(...)` **and** `retrieval.resolve(...)` before `contextBuilder.build` | `ContextSourcePort` signature and binding unchanged |
+| A8 | Migration `ai_turns` (≥ 076) | — | Additive table (mission §5.5), including the lease columns of §7 | NEM-019 AC-19 / NEM-021 AC-13 are position-independent |
+| A9 | Web | No intelligence UI | `app/(research)/research/[sessionId]` + components; i18n keys in `lib/i18n/{en,es}.ts` | No reader file changes |
 
 ### 1.2 Not amended (explicitly preserved)
 
-- `ContextSourcePort` and all port bindings.
-- `ContextBuilderService` and its invariant.
-- `MODEL_PATHS` (still only `research_session.turn`).
-- `AiGatewayService` (all methods and the streaming contract).
-- `citation-policy.ts`, contract v1, the cost-ledger API and tables, `IntelligenceDenied` codes (reused; new codes only if PA approves, see Q-4).
-- E5 retrieval classes.
-- `fragments` and `sync_maps` (D-2 C baseline).
-- `app.module.ts` and `knowledge.registration.ts`.
+- `ContextSourcePort` and all port bindings; `ContextBuilderService` and its invariant; `MODEL_PATHS`.
+- `AiGatewayService` (all methods and the streaming contract); `citation-policy.ts`; contract v1.
+- The cost-ledger API and tables; `IntelligenceDenied` codes (reused).
+- E5 retrieval classes; `fragments` and `sync_maps` (D-2 C baseline).
+- `app.module.ts`, `knowledge.registration.ts`.
 
 ### 1.3 Protected-test amendments required
 
-**None** under the baseline design (A1–A9). Two triggers would require one:
-- a separate controller for the probe (Q-1 option b);
-- any D-2 A/B later step.
+**None** under this design. A later D-2 A/B step would need its own authorization.
 
-Either needs its own explicit authorization.
+### 1.4 New architecture tests E6 adds
 
-### 1.4 New architecture tests E6 adds (positive guards)
-
-- E6 code writes no ledger table (`ai_budget_ledger`, `ai_usage_events`, cost tables).
-- No `fragments` / `sync_maps` SQL (redundant with NEM-019; kept explicit).
-- `ai_turns` has no excerpt or verbatim text column, and the completion payload carries refs + anchors only.
+- E6 writes no ledger table.
+- No `fragments` / `sync_maps` SQL.
+- `ai_turns` has no excerpt or verbatim text column.
 - No content in logs, metrics, or SSE `stage` events.
-- The three-argument `run` path is byte-for-byte equivalent in behaviour: the existing turn suites pass.
+- The 3-argument `run` path is unchanged (the existing suites pass).
+- The final eligibility check reads no cached decision (§6).
 
 ---
 
-## 2. D-8 — Durable completion, persistence failure, idempotency
+## 2. D-8 — Durable completion, persistence failure, idempotency (F-2 corrected)
 
-**Mechanism** (mission §9.2):
-- Two database constraints:
-  - the **NEM-021 ledger attempt key** `turnKey:a1` is unique, so there is at most one first reservation and at most one first provider call per turn key;
+**Mechanism:**
+- Only two database constraints are relied on:
+  - the **NEM-021 ledger attempt key** `turnKey:a1` (unique), so there is at most one first reservation and one first provider call per turn key;
   - **`ai_turns` UNIQUE (`sessionId`, `keyHash`)**, so there is at most one record.
-- Nothing else is relied on.
-- **No exactly-once claim** is made beyond these two constraints.
+- Status transitions are **conditional single-statement updates** (§7).
+- **No exactly-once claim.**
 
 | Question | Specification |
 |---|---|
-| When is a turn durably completed? | When `UPDATE ai_turns SET status = 'completed', … WHERE id = $1 AND status = 'accepted'` commits. It runs after the Gateway terminal event, by which point usage is already settled or held in the ledger (NEM-022 F-3). Settlement (a charge fact, ledger authority) and completion (a conversation fact) are separate |
-| When is the record created? | `INSERT … status = 'accepted'` inside the existing step-4 lock transaction, so a record exists **iff** the session lock and turn count were committed for this turn |
-| Persistence fails after settlement | One bounded retry. Then the answer is returned with `status: 'unrecorded'` (D-8 a, proposed). The charge stands; E6 never compensates; the row stays `accepted`; recovery → `interrupted`; a replay of that key → `result_unavailable`; metric `intelligence_turn_unrecorded_total`. *Alternative D-8 b:* withhold the answer and return an error (the user is charged with no answer) |
-| Duplicates | Five-case table (mission §9.2 item 5): preflight race (the ledger admits one), in flight (`409 duplicate_turn {turnId, status}`), completed (`200` replay), failed/cancelled/interrupted (the stored status; a new key is required), released after a step-4 failure (`409 turn_failed`, new key) |
-| Retries | Gateway-internal retries are separate reserved attempts (accepted NEM-022 behaviour; E6 adds none). A client retry with the same key never reserves or calls the provider again. A new question means a new key, which is a new charge by design |
-| Recovery | An `@Interval` sweep: `accepted` rows older than `providerTimeoutMs × maxAttempts + grace` → `interrupted`. It **never writes ledger rows**; held attempts resolve through the existing NEM-021 reconciliation (60 s) |
-| Account deletion | `ai_turns` → `ai_conversations` → `users` ON DELETE CASCADE. A late completion `UPDATE` affects 0 rows (no resurrection). The `deleteAccount` path is unchanged |
-| Tests | A barrier-synchronised concurrent same-key test (one reservation, one provider invocation by spy, one row); failure injection on the completion write; a crash between lock and completion (recovery); deletion during flight |
-
-**PA judgement requested:**
-- the D-8 (a)/(b) policy;
-- whether `unrecorded` delivery is acceptable given that the answer then exists only in the HTTP response.
+| Record creation | `INSERT … status = 'accepted', attemptToken, leaseExpiresAt` inside the existing step-4 lock transaction |
+| Durable completion | When the conditional completion `UPDATE` (§7) commits. This happens after the Gateway terminal event, by which time usage is settled or held in the ledger (NEM-022 F-3). Settlement (charge, ledger authority) and completion (conversation record) are separate facts |
+| Persistence fails after settlement (D-8 a, proposed) | One bounded retry. Then the server **attempts** to return the answer with `status: 'unrecorded'`. The charge stands; E6 never compensates; replay of that key → `result_unavailable`; recovery (§7) eventually marks the row `interrupted`; metric `intelligence_turn_unrecorded_total` |
+| **What D-8 (a) does and does not guarantee** | It **does not guarantee** that the user sees the answer they were charged for. Delivery of the `unrecorded` response is **best effort**: if the HTTP response or SSE terminal event is lost (network failure, tab closed, app backgrounded, proxy timeout), the answer is **lost**. It exists only in that response, and replay returns `result_unavailable`. The user is then **charged for an answer never seen**. D-8 (a) only avoids **withholding** an answer the server still holds. *Alternative D-8 (b):* return an error and discard the answer, which is a certain unseen charge |
+| Network failure with a **recorded** turn | The ordinary case. If the response is lost but the completion committed, the turn is recoverable: a same-key replay or `GET …/turns/:turnId` returns the stored result with no new charge. With D-9 (a), a disconnect does not cancel, so the turn continues to completion |
+| Combined failure (record failed **and** response lost) | Unseen charge, as above. Bounded by the rarity of a completion-write failure; counted by `intelligence_turn_unrecorded_total`; disclosed in the report as a known residual |
+| Duplicates | The five-case table (mission §9.2 item 5): preflight race (the ledger admits one); in flight (`409 duplicate_turn {turnId, status}`); completed (`200` replay); failed, cancelled, or interrupted (the stored status; a new key is required); released after a step-4 failure (`409 turn_failed`, new key) |
+| Retries | Gateway-internal retries are separate reserved attempts (accepted NEM-022); E6 adds none. A client retry with the same key never reserves or calls the provider again |
+| Account deletion | `ai_turns` → `ai_conversations` → `users` CASCADE; a late conditional update affects 0 rows; `deleteAccount` is unchanged |
 
 ---
 
@@ -101,108 +92,156 @@ Either needs its own explicit authorization.
 
 | Element | Specification |
 |---|---|
-| Storage | `ai_turns.segments` holds generated text plus citations as **refs + anchors only** (`bookId`, `textHash`, `charStart`, `charEnd`). **No excerpt text.** This preserves NEM-023 S2: no verbatim book text in PostgreSQL |
-| History read | Per cited book: `RightsService.eligibility(user, book, 'research_analysis')` **and** `IndexingPermission.check`, then S2 re-materialization (current hash = anchor hash → MinIO GET → hash verify → slice) |
-| Outcomes | `sourceState: available` (excerpt shown) · `revoked` (ineligible or index permission withdrawn) · `stale` (text version changed) · `unavailable` (object missing or read failure; chunk purged). The last three give `excerpt: null` and "source no longer available" |
-| Default (D-10 a, proposed) | Historical excerpts are **hidden** after revocation. The generated answer text remains (generated content, ADR-006). Final retention/redaction policy: **TT-14**. Because no excerpt is stored, any TT-14 outcome needs no data migration |
-| Cost | History reads perform S2 work (one GET + hash per cited book per page), so they share the E-1 cost profile **and count toward the D-11 guard** (§4) |
-
-**PA judgement requested:**
-- (a) vs (b) keep vs (c) hide the whole answer;
-- whether generated answer text quoting a revoked book should also be redacted before TT-14. Not proposed; it would need quotation detection, related to TT-13.
+| Storage | `ai_turns.segments` holds generated text plus citations as **refs + anchors only**. No excerpt text (NEM-023 S2 preserved) |
+| History read | Per cited book: user-level `RightsService.eligibility(user, book, 'research_analysis')` **and** book-level `IndexingPermission.check(book)`, then S2 re-materialization (current hash = anchor hash → GET → verify → slice) |
+| Outcomes | `available` · `revoked` (either check fails) · `stale` (the text version changed) · `unavailable` (object missing or read failure; chunk purged). Only `available` shows the excerpt |
+| Default (D-10 a, proposed) | Excerpts hidden after revocation; the generated answer text remains pending **TT-14** |
+| Cost | History reads perform S2 work and count toward the D-11 guard (Q-5) |
 
 ---
 
-## 4. D-11 — Weighted concurrency, reader-latency acceptance, reader protection
+## 4. D-11 — Weighted concurrency, reader-latency acceptance (F-4 corrected)
 
-**Measured** (discovery report §5.4; `node:20-alpine`, `--cpus=1 --memory=512m`; the production API image idles at 73–102 MiB):
-- **CPU on the single event loop** is the constraint.
-- Lag p99 is ~85 ms with one in-flight 10-book retrieval, ~169 ms with two, and ~96 ms with three 3-book retrievals.
-- Memory: +~40 MB per concurrent 10-book turn (not binding).
+**Measured** (discovery report §5.4; `node:20-alpine`, `--cpus=1 --memory=512m`; the production image idles at 73–102 MiB):
+- CPU on the single event loop is the constraint.
+- Lag p99 is ~85 ms (one 10-book retrieval), ~169 ms (two), ~96 ms (three 3-book retrievals), and ~56 ms (one 3-book retrieval).
 
 | Element | Proposal |
 |---|---|
-| Guard | Per process: Σ (books whose S2 work is in flight) ≤ **W = 10**. Covers turn retrieval **and** history excerpt re-materialization |
-| Admission point | **Before reservation** (step 2, before retrieval). Over the limit → `503` + `Retry-After` (`budget_unavailable` class); no charge, lock, or record |
-| Fairness | No queueing in the MVP (reject, not wait), which avoids holding requests and memory |
-| Reader protection — acceptance | On the **production image** under `--cpus=1 --memory=512m`, with disposable PostgreSQL / Redis / MinIO and a fixture of 10 books × ~2M code points: measure the p95 of `GET /books` and of the reader text endpoint (a) idle and (b) with sustained turns at W. **Pass if p95(b) − p95(a) ≤ Δ, where Δ is set by the PA** (Q-3). Reported with raw output |
-| If it fails | Stop condition. In-scope remedies are limited to lowering W. Worker threads, reducing the per-book synchronous block (NEM-023 code), and a separate API container are out of scope (separate approvals) |
-| E-1 | Unchanged and **not waived**. The guard limits interference; it does not improve retrieval latency |
-
-**PA judgement requested:**
-- W;
-- Δ (Q-3);
-- whether history reads share W or get a separate smaller budget (Q-5).
+| Guard | Per process: Σ books whose S2 work is in flight ≤ **W**. Covers turn retrieval and history excerpt re-materialization. Admission is **before reservation**; over the limit → `503` + `Retry-After`; no charge, lock, or record. No queueing |
+| **W status** | **W = 10 is a candidate, not accepted.** The value is accepted only by the measurement below |
+| **Acceptance criterion (proposed)** | **Reader endpoint p95 delta ≤ 50 ms** under **sustained permitted retrieval load** at W, against idle, on the **production API image** |
+| Method | Disposable PostgreSQL / Redis / MinIO; fixture 10 books × ~2M code points.<br>1. Measure the p95 of `GET /books` and the reader text endpoint over ≥ 1,000 requests each, (a) idle and (b) while turns run continuously at the guard limit.<br>2. **Delta = p95(b) − p95(a), per endpoint.**<br>3. Raw output attached |
+| If it fails | **Reduce W and retest**, in order **10 → 6 → 3**, recording each result. The accepted W is the largest that passes. Never assume a value passes |
+| Consequence if W < 10 | A NoetiaX 10-book turn can never be admitted (its weight exceeds W). That is a **product conflict** with PO-027 (10-book sessions), **not an engineering choice** → stop and escalate to PA + PO (Q-11). The measured single-turn lag (~85 ms p99 at 10 books) suggests this outcome is **plausible** |
+| If W = 3 fails | Stop condition; remedies outside scope (worker threads, reducing NEM-023's per-book synchronous block, or a separate container) need separate approval |
+| E-1 | Unchanged, **not waived**. The guard limits interference; it does not improve retrieval latency |
 
 ---
 
 ## 5. Cancellation — consistency between explicit cancel and disconnect
 
 **Principle (D-9 a, proposed): only an explicit, authenticated cancel aborts a turn; a transport event never does.**
-- **Web streaming:** closing the SSE body ends delivery only; the turn continues and is persisted. The UI's "Cancelar" sends `POST …/turns/cancel {idempotencyKey}` and then closes the stream.
-- **Non-streaming:** the same rule applies.
-- **Reload:** the client recovers the turn by `GET …/turns/:turnId` (or a same-key replay).
+- **Stream close:** closing the SSE body ends delivery only; the turn continues and is persisted.
+- **UI cancel:** "Cancelar" sends `POST …/turns/cancel {idempotencyKey}`, then closes the stream.
+- **Reload:** the client recovers by `GET …/turns/:turnId` or a same-key replay.
 
-| Stage when cancel arrives | Action | Charge | Lock | Record |
+| Stage when cancel arrives | Action | Charge | Lock | Record (conditional update, §7) |
 |---|---|---|---|---|
 | Before reservation | Stop at the next stage boundary | None | None | None |
 | After reservation, before the lock commits | `gateway.release(prepared)` (held if the release cannot be written) | None | None | None |
-| After the lock, before the provider call | Skip the invoke; `gateway.release(prepared)` | None | Stands | `cancelled` |
-| During a provider attempt | `AbortSignal` → `client_abort`; no text released (F-1) | **Held** at the reserved amount until reconciliation | Stands | `cancelled` |
+| After the lock, before the provider call | Skip the invoke; `gateway.release(prepared)` | None | Stands | `accepted → cancelled` |
+| During a provider attempt | `AbortSignal` → `client_abort`; no text released (F-1) | **Held** at the reserved amount until reconciliation | Stands | `accepted → cancelled` |
 | After settlement | No effect | As settled | Stands | `completed` |
 
 **Consistency rules:**
 1. Cancel is idempotent: a repeat or late cancel returns the current status.
-2. Cancel for an unknown key → `404`.
-3. Cancel by another user is impossible: the key is server-namespaced by `userId` + `sessionId`.
-4. The UI shows "Cancelada" only after the cancel response, never on stream close.
-5. The registry is in-process, so a multi-instance deployment needs a shared channel (launch item).
-
-**PA judgement requested:** whether "after the lock, before the provider call" should keep the lock (ADR-006: the turn was accepted) or treat the turn as never accepted. Keeping the lock is proposed because the lock transaction already committed.
+2. An unknown key → `404`.
+3. Keys are server-namespaced by `userId` + `sessionId`, so another user cannot cancel.
+4. The UI shows "Cancelada" only after the cancel response.
+5. The registry is in-process; a multi-instance deployment needs a shared channel (launch item).
 
 ---
 
-## 6. Rights revocation during an active turn
+## 6. Rights revocation during an active turn (F-3 corrected)
+
+**Two distinct authorizations are preserved (NEM-023 §9.6):**
+- **User-level research rights:** `RightsService.eligibility(userId, bookId, 'research_analysis')`. May this user use this book now?
+- **Book-level indexing permission:** `IndexingPermission.check(bookId)`. May the index of this exact text version be used?
+
+They are evaluated independently, the most restrictive wins, and neither substitutes for the other.
+
+### 6.1 Final eligibility check (new)
+
+| Element | Specification |
+|---|---|
+| Position | **After the step-4 lock transaction commits and immediately before `gateway.invoke` / `gateway.stream`.** No other awaited operation may sit between the check's completion and the invoke call (architecture-asserted ordering test). No external I/O is added inside the lock transaction, so ADR-006's "no provider call while holding the lock" is unchanged |
+| Inputs | The sealed context's `allowedBookIds` and the set of books contributing `chunk` items |
+| Checks (fresh, no cached decision from step 2 or from `QueryContextSource`'s per-request cache) | (1) **user-level:** `RightsService.eligibility(user, b, 'research_analysis')` for **every** book in `allowedBookIds`; (2) **book-level:** `IndexingPermission.check(b)` for **every** book contributing chunk items. In both, the current hash must still equal the hash used in step 2 |
+| On failure (any book fails either check) | **Do not invoke.** Call the existing `gateway.release(prepared)` for the never-sent attempt. If the release cannot be written, the attempt stays **held** and the existing NEM-021 reconciliation resolves it from the no-provider evidence. **No charge** for a released attempt. The record goes `accepted → failed` with an internal reason (`user_rights_changed` / `index_permission_changed`). The lock stands (the step-4 transaction already committed; consistent with Q-7). The user gets the existing `book_ineligible` denial with an `exclusions` payload naming the book(s); asking again uses a new key, and the next turn excludes the book |
+| No rebuild in place | Rebuilding the context without the book would change the counted input after reservation. The attempt key `turnKey:a1` cannot be reserved twice, so a new attempt would need a new turn. **Abort-and-retry** is specified instead |
+| Contracts | **Gateway and ledger unchanged.** Only existing methods are used (`release` for a never-invoked prepared call; reconciliation as accepted) |
+| Cost | One extra pass of eligibility + index-permission checks per turn. With fixture ports this is negligible. With E3 it depends on the text-identity design (discovery R-2: the hash must not be recomputed from the full object per call) |
+
+### 6.2 Remaining windows
 
 | Moment of revocation | Behaviour |
 |---|---|
-| Before step 2 | The book is excluded and disclosed; with none left → `no_eligible_books` (no charge, lock, or record) |
-| During step 2, after the book's eligibility check but before retrieval | Retrieval re-checks `IndexingPermission`, so the book is excluded (`indexNotPermitted`); user-level eligibility is not re-checked within the step |
-| Between the end of step 2 and the provider call (prepare, lock) | **Not re-checked**: the context is already sealed. Window ≈ reservation + lock time (tens of ms) |
-| During the provider call | Not re-checked; the answer may cite the revoked book. The answer is delivered (proposed), and the next history read hides the excerpt (D-10) |
+| Before step 2 | Excluded and disclosed; with none left → `no_eligible_books` (no charge, lock, or record) |
+| Between step 2 and the final check | **Caught by the final check** → release, `failed`, `book_ineligible` |
+| Between the final check and the invoke | No awaited operation exists there (ordering test). Effectively closed |
+| During the provider call | Not re-checked; the answer may cite the revoked book. It is delivered; the next history read hides the excerpt (D-10) |
 | After completion | History read → `revoked`, excerpt hidden (D-10) |
-
-**Proposed:** accept the residual window as documented (ADR-006 says rights are re-evaluated **per turn**). An optional post-generation re-check before release would hold the validated answer while eligibility is re-run. It is possible without a Gateway change, because `invoke` returns before E6 releases anything. It adds latency and drops already-paid answers.
-
-**PA judgement requested** (Q-2): accept the residual, or require the post-generation re-check (and, if so, whether a dropped answer is shown as "source became unavailable").
 
 ---
 
-## 7. Implementation sequence — independently reviewable checkpoints
+## 7. Recovery — race-safe stale-turn handling (F-5 new)
 
-Each checkpoint ends in a commit set with tests green and a PA review. A checkpoint does not start until the previous one is reviewed.
+**Problem:** an age-only sweep could mark a still-running turn (a slow provider, retries) as `interrupted`.
+
+**Mechanism** (existing infrastructure only: PostgreSQL + the knowledge module's `@Interval` pattern + Node timers):
+
+| Element | Specification |
+|---|---|
+| Columns (in the new `ai_turns`, additive) | `attemptToken uuid` (random per request, set at insert), `leaseExpiresAt timestamptz` |
+| Lease | Set at insert to `now() + L` (proposed L = 30 s). While the request is in flight, it renews every L/3 with `UPDATE ai_turns SET leaseExpiresAt = now() + L WHERE id = $1 AND attemptToken = $2 AND status = 'accepted'` |
+| Bound | The request stops renewing, and aborts its own call through the existing `AbortSignal`, at **T_max = providerTimeoutMs × maxProviderAttempts + Σ allowed retry delays + grace**, so no turn holds a lease beyond T_max + L |
+| Sweep (`@Interval`, e.g. 60 s) | `UPDATE ai_turns SET status = 'interrupted' WHERE status = 'accepted' AND leaseExpiresAt < now() - interval '<grace>' RETURNING id`. Single statement, atomic per row, safe with concurrent instances. **Never touches the ledger** (NEM-021 reconciliation resolves held attempts) |
+| Completion | `UPDATE … SET status = 'completed', segments = … WHERE id = $1 AND attemptToken = $2 AND status IN ('accepted', 'interrupted')`. A turn that the sweep marked `interrupted` because its process stalled past its lease, then finished, **may still be recorded** (its answer is real and paid). A `cancelled` or `failed` row is never overwritten |
+| Cancel | `UPDATE … SET status = 'cancelled' WHERE id = $1 AND status = 'accepted'`. If 0 rows: return the current status (idempotent; completion or recovery won) |
+| Final-check failure (§6) | `UPDATE … SET status = 'failed' WHERE id = $1 AND attemptToken = $2 AND status = 'accepted'` |
+| Crash | No renewal, so the lease expires and the sweep marks `interrupted` within L + grace + sweep interval. Replay then returns `interrupted` |
+| Who wins races | Exactly one terminal status per row, decided by PostgreSQL row locking on the conditional updates. The only permitted overwrite is `interrupted → completed` by the owning `attemptToken` |
+
+**Required tests** (integration; real PostgreSQL; barrier-synchronised where noted):
+1. Sweep vs active turn: a renewing turn running past several sweep intervals and past the old age bound is **not** interrupted.
+2. Crash: no renewal → interrupted within L + grace + interval; the ledger is untouched by E6.
+3. **Recovery vs completion (barrier):** exactly one final state; if the sweep commits first, the owning completion still records `completed`; a different `attemptToken` cannot.
+4. **Recovery vs cancellation (barrier):** exactly one of `cancelled` / `interrupted`; never both; the ledger is untouched by E6.
+5. **Cancellation vs completion (barrier):** exactly one of `cancelled` / `completed`; a held attempt resolves through NEM-021 reconciliation.
+6. Bound: renewal stops at T_max, and the request aborts itself.
+7. Deletion during flight: all conditional updates affect 0 rows.
+
+---
+
+## 8. Implementation sequence — independently reviewable checkpoints
+
+Each checkpoint ends with tests green and a PA review before the next starts.
 
 | Checkpoint | Content | Review evidence |
 |---|---|---|
-| **A — Turn wiring + record** | A1–A4, A6–A8; retrieval inside step 2; context budget; `ai_turns`; durable completion; duplicate table; replay; `TurnResult` additive fields. Only the non-streaming route | Existing NEM-019/021/022/023 suites unchanged and green; new unit + integration (barrier duplicates, completion failure, deletion cascade, migration up/down) |
-| **B — Resilience** | Explicit cancel (registry + route) with the §5 matrix; recovery sweep; history and single-turn routes with D-10 re-materialization; W guard; stage metrics | Each §5 row and §6 row tested; guard admission before reservation; history redaction tests |
-| **C — Transport + probe** | SSE stream route (Gateway per-attempt events + content-free `stage`); the capability probe (Q-1); `X-Accel-Buffering: no` | No text before the validated `segment`; stream close ≠ cancel; probe denies by default |
-| **D — Minimal web Q&A (required, D-1 a)** | `/research/[sessionId]` per [14](../architecture/three-tier-intelligence/14-e6-minimal-ux-proposal.md): ask, stage states, answer with origin labels, citation dialog (excerpt / `sourceState`), "Open book" link, cancel, error mapping, read-only/fork notice, exclusions banner; en/es; accessibility | Jest component tests; one Playwright flow against the simulated local stack; i18n parity; reader suites unchanged |
-| **E — Verification and report** | Reader-latency measurement (§4) on the production image; E-1 latency tables (3 and 10 books); coverage (E-2: new code ≥ 80% branches, no global decrease); completion report | Raw outputs; Δ against the PA threshold |
+| **A — Turn wiring + record** | A1–A4, A6–A8; retrieval in step 2; context budget; `ai_turns` with lease columns; durable completion; duplicate table; replay; **final eligibility check (§6)**; additive `TurnResult` fields; non-streaming route | Existing suites unchanged; barrier duplicates; completion failure; final-check failure (release, no charge); ordering test; deletion cascade; migration up/down |
+| **B — Resilience** | Explicit cancel (§5) with conditional updates; lease renewal and recovery sweep (§7); history and single-turn routes with D-10 re-materialization; W guard; stage metrics | §5 rows; §7 tests 1–7; history redaction; guard before reservation |
+| **C — Transport + probe** | SSE stream route (per-attempt Gateway events + content-free `stage`); `GET /knowledge/sessions/capabilities`; `X-Accel-Buffering: no` | No text before the validated `segment`; stream close ≠ cancel; the probe denies by default |
+| **D — Minimal web Q&A (required, D-1 a)** | `/research/[sessionId]` per doc 14 and mission §5.1 | Jest component tests; one Playwright flow on the simulated stack; i18n parity; accessibility; reader suites unchanged |
+| **E — Verification and report** | **Reader-latency acceptance (§4: ≤ 50 ms p95 delta, W reduction 10 → 6 → 3 if needed)**; E-1 latency tables (3 and 10 books); E-2 coverage; completion report | Raw outputs; accepted W; escalation if W < 10 (Q-11) |
 
-## 8. Remaining questions for PA judgement
+## 9. Responses to the PA review of `ccb3acc` (F-1 to F-5)
+
+| ID | Finding | Correction | Where |
+|---|---|---|---|
+| F-1 | Superseded D-1 text implied both options were open; the probe route was not standardized | D-1 is recorded as approved (a) everywhere; revision-2 text is marked superseded. The probe is **`GET /knowledge/sessions/capabilities` in `SessionsController`** (declared before `:id`) in the mission, packet, package, report, and doc 14. Q-1 is closed | Mission §5 item 8; packet D-1 and D-3; §1 A5; doc 14 §2.2; report §7, §8, §11 |
+| F-2 | `unrecorded` was presented as preventing an unseen charge | D-8 (a) stays proposed, with an explicit statement that delivery is **best effort** and that a lost response plus a failed record means an unseen charge. The network-failure cases are distinguished | §2; mission §9.2; packet D-8 |
+| F-3 | Revocation between step 2 and invoke was accepted as a residual | **Final eligibility check** after the lock commit and immediately before invoke. User-level rights and book-level index permission are checked separately and fresh. On failure: `gateway.release` (held if not writable), `failed`, `book_ineligible`, lock stands. Gateway and ledger are unchanged | §6; mission §9.4; doc 13 |
+| F-4 | W=10 was presented as the value | W=10 is a **candidate**. Acceptance is reader p95 delta ≤ 50 ms under sustained load vs idle on the production image; reduce 10 → 6 → 3 and retest; W < 10 is escalated as a product conflict | §4; mission §9.5; packet D-11 |
+| F-5 | An age-only sweep could interrupt a live turn | A lease (`leaseExpiresAt`, renewed every L/3, bounded by T_max) plus `attemptToken`; conditional single-statement transitions; the sweep only touches expired leases; seven race tests | §7; mission §9.2 items 7–8 |
+
+## 10. Remaining questions for PA judgement
 
 | ID | Question | Proposed answer |
 |---|---|---|
-| **Q-1** | Capability probe location: (a) `GET /knowledge/sessions/capabilities` in `SessionsController` (no test amendment) vs (b) a separate `GET /knowledge/me` controller (amends the NEM-019 controller-list test) | (a) |
-| **Q-2** | Revocation during an active turn: accept the residual window, or add a post-generation re-check | Accept and document |
-| **Q-3** | Reader-latency threshold Δ (p95 increase allowed at W) | PA to set. The measurement method is fixed in §4 |
-| **Q-4** | New `DenialReason` codes (`result_unavailable`, `turn_in_progress`) vs reusing `duplicate_turn` / `turn_failed` with a status payload | Reuse existing codes plus a status payload (no change to the accepted enum) |
-| **Q-5** | Do history re-materializations share W with turns? | Share W (simplest; protects the reader) |
-| **Q-6** | D-8 (a) `unrecorded` delivery vs (b) withhold | (a) |
-| **Q-7** | Lock after a cancel between lock and provider call: keep (proposed) or roll back as "not accepted" | Keep |
-| **Q-8** | D-10 (a) hide excerpts vs (b) keep vs (c) hide the answer, before TT-14 | (a) |
-| **Q-9** | Whether the context budget allocator's default (6,000 passage tokens) is acceptable for the simulator-only phase | Accept as engineering configuration |
-| **Q-10** | Entry point to the E6 screen: (a) URL-only, for sessions created through the API or fixtures; (b) one minimal "Research with Noetia+" button on the book page that creates a one-book session (touches a non-reader page; the book picker remains E9) | (a) for the dark build. (b) only if the PA wants a clickable path for review; it must not touch reader files |
+| ~~Q-1~~ | ~~Probe location~~ | **Closed by F-1:** `GET /knowledge/sessions/capabilities` in `SessionsController` |
+| ~~Q-2~~ | ~~Accept the revocation residual~~ | **Superseded by F-3** (final eligibility check) |
+| ~~Q-3~~ | ~~Reader threshold~~ | **Proposed by the PA (F-4):** ≤ 50 ms p95 delta. Confirmation that this criterion is final |
+| Q-4 | New `DenialReason` codes vs reusing existing codes + a status payload | Reuse (`duplicate_turn`, `turn_failed`, `book_ineligible` + payload) |
+| Q-5 | History re-materialization shares W with turns? | Share |
+| Q-6 | D-8 (a) best-effort `unrecorded` delivery vs (b) withhold | (a), with the §2 residual disclosed |
+| Q-7 | Lock after a cancel or final-check failure between lock and invoke: keep vs roll back | Keep (the lock transaction committed) |
+| Q-8 | D-10 (a) hide excerpts / (b) keep / (c) hide the answer, before TT-14 | (a) |
+| Q-9 | Context budget default (6,000 passage tokens) for the simulator phase | Accept as engineering configuration |
+| Q-10 | Entry point: URL-only vs one book-page button | URL-only for the dark build |
+| **Q-11** *(new)* | If the reader test passes only at W < 10, how should 10-book (NoetiaX) turns be handled? Options: (a) escalate to the PO (product conflict with PO-027) and leave NoetiaX turns unadmitted in the dark build; (b) allow a single over-weight turn only when nothing else is in flight (likely breaks the 50 ms criterion); (c) separate approval of an out-of-scope remedy | (a). Not decided by engineering |
+| **Q-12** *(new)* | Lease parameters L = 30 s and the renewal cadence L/3; recovery grace | Accept as engineering configuration; verified by §7 tests |
+| **Q-13** *(new)* | Whether the owning completion may overwrite `interrupted → completed` (proposed), or `interrupted` is final | Allow (the answer is real and paid; only the owning `attemptToken`) |
 
-**STOP for independent Product Architecture review.** No implementation, merge, or deployment.
+**STOP for independent Product Architecture re-review.** No implementation, merge, or deployment.

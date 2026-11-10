@@ -28,6 +28,7 @@ Legend: **IMPL** = implemented (dark, on the unmerged branch stack) · **PART** 
  [6] Context ──────────── ContextBuilderService.build (research_session_context invariant) → sealed VerifiedContext                IMPL
  [7] Prepare ──────────── AiGatewayService.prepare: negotiate → count → reserve attempt 1 (NEM-021 cost ledger)                     IMPL
  [8] Lock tx ──────────── SELECT … FOR UPDATE; first-turn lock; set-hash check  + INSERT ai_turns(status='accepted')              IMPL (+ record: E6)
+ [8b] Final check ────── fresh user-level eligibility + book-level index permission; fail → release, record failed, book_ineligible   E6 (F-3)
  [9] Provider call ────── gateway.invoke (today) | gateway.stream (per-attempt release; F-1/F-3)                                  IMPL (HTTP streaming MISSING)
 [10] Settlement ───────── per attempt in the Gateway; held when unknown; reconciliation every 60 s                                IMPL
 [11] Citations ────────── enforceCitations (scope + origin rules) → AnchorResolver (E5)                                           PART (TurnResult drops citations)
@@ -37,7 +38,7 @@ Legend: **IMPL** = implemented (dark, on the unmerged branch stack) · **PART** 
  Client: render segments with origin labels, citation chips → excerpt panel / open book                                            MISSING (UX: see 14)
 ```
 
-Order invariant (ADR-006 B-5, unchanged): **[1]–[7] preflight with no lock and no charge; failure at [8] releases the attempt; at [9]–[10] the lock stands and settlement is never assumed.** E6 inserts [4]–[5] inside the existing step 2 (before reservation), so the invariant is preserved.
+Order invariant (ADR-006 B-5, unchanged; [8b] adds a check after the lock commit with no I/O inside the lock transaction and no Gateway/ledger change): **[1]–[7] preflight with no lock and no charge; failure at [8] releases the attempt; at [9]–[10] the lock stands and settlement is never assumed.** E6 inserts [4]–[5] inside the existing step 2 (before reservation), so the invariant is preserved.
 
 ## 2. Stage-by-stage ownership
 
