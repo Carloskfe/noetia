@@ -103,6 +103,23 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Not authorized:** execution, merge, deployment, provider acquisition, paid AI.
 - Sequencing: NEM-021's contract v1 needs a Product Architecture checkpoint before ledger work; NEM-021 must be completed and accepted before NEM-022 executes.
 
+### PO-034 — E6 research-turn decisions and NEM-024 assignment — decided 2026-11-10
+→ **[PO-034](../operating-framework/decisions/product-owner/PO-034-e6-research-turn-decisions-and-nem-024-assignment.md)**
+
+- E6 decisions D-1(a) through D-11 **approved** for documentation and final PA sign-off only:
+  - backend plus one minimal bilingual web Q&A interface;
+  - eligible book passages only;
+  - six additive interface amendments;
+  - stateless model context;
+  - web first; dark simulator;
+  - best-effort `unrecorded` delivery;
+  - a disconnect does not cancel;
+  - hidden revoked excerpts;
+  - W = 10 as a test candidate with reader p95 delta ≤ 50 ms.
+- Also approved: the final eligibility check, terminal database-fenced recovery, and one provisional turn per session.
+- Identifier **NEM-024** assigned.
+- **Not authorized:** implementation, merge, deployment, paid AI.
+
 ### Still open in the three-tier package
 TT-01 purchased-token expiry · TT-12 verified AI-eligible launch corpus and rights · NoetiaX depth and evaluation criteria (TT-07) · AI budget values and resets (TT-09, TT-11) · premium pricing and Stripe architecture (TT-16) · quotation and anti-reconstruction thresholds (TT-13) · retention and export (TT-14) · legal disclosures and provider data handling (TT-22). **PO-025** (three-tier structure) was **decided on 2026-11-08** with TT-01 kept open; draft **PO-029** (eligible corpus) remains **not decided**. See [`05-open-decisions.md`](../architecture/three-tier-intelligence/05-open-decisions.md).
 
