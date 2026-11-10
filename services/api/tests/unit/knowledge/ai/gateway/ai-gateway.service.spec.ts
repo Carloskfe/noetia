@@ -282,6 +282,20 @@ describe('AiGatewayService — abort, timeout, and misbehaving adapters', () => 
     expect(ledger.settleAttempt).toHaveBeenCalledWith(expect.objectContaining({ error: 'client_abort', usageCompleteness: 'partial' }));
   });
 
+  it('a consumer that abandons the stream stops the provider call; the attempt is left held (never settled or released)', async () => {
+    let providerSignal: AbortSignal | undefined;
+    const slow = new ScriptedAdapter(STANDARD, async function* (_req, signal) {
+      providerSignal = signal;
+      yield { type: 'delta', segment: 0, origin: 'synthesis', text: 'first' };
+      await new Promise((r) => signal.addEventListener('abort', r, { once: true }));
+    });
+    const { gateway, ledger } = setup({ adapters: [slow], config: { providerTimeoutMs: 5_000 } });
+    for await (const e of gateway.stream(await gateway.prepare(request()))) if (e.type === 'delta') break;
+    expect(providerSignal?.aborted).toBe(true);
+    expect(ledger.settleAttempt).not.toHaveBeenCalled();
+    expect(ledger.releaseAttempt).not.toHaveBeenCalled();
+  });
+
   it('a call aborted before it starts is released (never sent), not settled', async () => {
     const { gateway, ledger, sim } = setup();
     const spy = jest.spyOn(sim, 'invoke');

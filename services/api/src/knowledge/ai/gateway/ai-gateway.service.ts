@@ -225,6 +225,9 @@ export class AiGatewayService {
     } finally {
       clearTimeout(timer);
       external?.removeEventListener('abort', onExternal);
+      // Also reached when the consumer abandons the stream mid-attempt: stop the provider call. The attempt is then
+      // never settled here and stays held (reconciliation flags it on expiry; it is never released to zero).
+      ctrl.abort();
     }
     if (!condition && !final) condition = 'adapter_failure';
 
