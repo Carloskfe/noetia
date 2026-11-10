@@ -66,7 +66,11 @@ Provide **dark, unwired** retrieval components that, given an allowed set alread
 - **PO decisions:** [PO-033](../../operating-framework/decisions/product-owner/PO-033-e5-knowledge-retrieval-decisions-and-nem-023-reservation.md).
 - **Rights blockers (decision packet §3, RB-1 to RB-3 and RB-5 to RB-7; RB-4 resolved by PO-033)** gate **production indexing**, not fixture implementation: PO-029 undecided, TT-26 open, no verified records, `retrieval_indexing` vocabulary adoption, author opt-in and D6, legal treatment of the `tsvector` derivative for licensed titles, offsite backup retention.
 - **Not required:** pgvector, an embedding provider, staging, CI changes, any paid service.
-- **Test environment:** the existing disposable `postgres:16-alpine` + Redis harness; VM limits (`--maxWorkers=2`, one heavy job at a time).
+- **Test environment:**
+  - isolated, **local, disposable** PostgreSQL 16 (`postgres:16-alpine`) and Redis containers (the existing harness);
+  - a **local MinIO-compatible fixture** for S2 text reads: an in-process fake object store, or a disposable local MinIO container created for the run and removed afterwards;
+  - VM limits (`--maxWorkers=2`, one heavy job at a time);
+  - network rules in §9.5.
 
 ## 4. Source-of-truth references
 
@@ -118,7 +122,11 @@ Only S2 is built. S1 is shown for the record and is **out of scope**.
 | Failure mode | PostgreSQL only | MinIO unavailable or object hash mismatch → that book returns nothing (fail closed) |
 | Extra criteria | Purge removes text rows; backup note in the runbook | MinIO fault tests; latency measured with fetch; cache bounded and content-free in logs |
 
-**Both variants store a lexical derivative of book content in PostgreSQL.** `tsvector` holds the chunk's stemmed, accent-folded words **with positions**, which approximately reconstructs the wording. So S2 is not "content only in MinIO". It is "**verbatim text** only in MinIO". Under both variants, that derivative is in every PostgreSQL dump: 7 daily + 4 weekly on the server, plus the daily offsite copy, kept until rotation (up to about 28 days after a purge).
+**Both variants store a lexical derivative of book content in PostgreSQL.** `tsvector` holds the chunk's stemmed, accent-folded words **with positions**, which approximately reconstructs the wording. So S2 is not "content only in MinIO". It is "**verbatim text** only in MinIO". Under S2, that derivative is in every PostgreSQL dump. **After a purge:**
+- **on-server** PostgreSQL dumps keep it until they rotate out under the existing retention (7 daily + 4 weekly, about 28 days);
+- **offsite** copies currently have **no automatic pruning** and **may persist indefinitely**.
+
+That is why **RB-7 remains a production-indexing blocker** (§14).
 
 Exposure, latency, and storage comparison: discovery report §6.
 
@@ -174,7 +182,11 @@ Reader, Escucha Activa, **`sync_maps`** (read-only input), ownership, `user_book
 - **`tsv`** (S2): the indexer computes `to_tsvector('<config>'::regconfig, <chunk text read from MinIO>)` and stores it. There is no generated column, because there is no text column.
 - **Partial GIN per language.** The query issues one sub-query per language present in the allowed set, each with a constant configuration (index-usable), combined with `UNION ALL`.
 - **Ranking:** `ts_rank_cd(tsv, q, 32)`, then `bookId`, `chunkIndex`.
-- **Verified in E5 on the disposable database** before use: `unaccent` creatable by the database owner (trusted extension); generated column accepted; partial GIN indexes used (`EXPLAIN`).
+- **Verified in E5 on the disposable database** before use:
+  - `unaccent` can be created by the database owner (trusted extension);
+  - `noetia_es`, `noetia_en`, and `noetia_simple` produce the expected lexemes (accent folding, stemming, stop words) on ES and EN fixtures;
+  - the `tsvector` the indexer stores equals `to_tsvector('<config>', <chunk text>)` for the MinIO text;
+  - the partial GIN indexes are used (`EXPLAIN`).
 - **Cross-language limitation** is documented and tested (a Spanish query over an English book matches only shared tokens).
 - **If D-5 is declined:** use the core `spanish`/`english` configurations without `unaccent`, and test and disclose the accent-sensitivity limitation.
 
@@ -199,6 +211,15 @@ Reader, Escucha Activa, **`sync_maps`** (read-only input), ownership, `user_book
 - **Determinism:** the same corpus, query, and parameters give the same ranked output.
 - **Budgets:** enforced before the Gateway's `prepare`, so NEM-021 reservations stay bounded.
 - **Privacy:** no query or passage text in logs, metrics, errors, or persistence.
+- **Network and credentials:**
+  - **Permitted:** isolated tests may connect only to local, disposable PostgreSQL, Redis, and MinIO-compatible fixtures created for the test run.
+  - **Prohibited:**
+    - production credentials (e.g. `.env.production` or server secrets);
+    - connections to production or staging systems (databases, MinIO, Redis, APIs);
+    - external AI providers or SDKs;
+    - paid services;
+    - any other external network call.
+  - S2 text reads go through a book-text port: its runtime adapter is the existing `StorageService`, and tests bind the local fixture. No HTTP client or provider SDK in `knowledge/*` (NEM-019 architecture test).
 
 ### 9.6 Book-level index permission vs user-level eligibility (C-1)
 
@@ -244,8 +265,8 @@ If implementation finds that any of these facts no longer holds (for example, a 
 
 - **S2 (selected):** verbatim text only in MinIO. PostgreSQL holds the lexical derivative (`tsvector`) and offsets.
 - **Backups after a purge:**
-  - on-server PostgreSQL dumps keep the derivative until rotation (up to about 28 days);
-  - **offsite PostgreSQL copies keep it indefinitely**, because there is no offsite retention or pruning today (RB-7).
+  - on-server PostgreSQL dumps keep the derivative until they rotate out under the existing retention (7 daily + 4 weekly, about 28 days);
+  - **offsite PostgreSQL copies have no automatic pruning and may persist indefinitely** (RB-7, a production-indexing blocker).
 
   The runbook records this.
 - Fixtures: invented or public-domain text only.
@@ -273,13 +294,13 @@ If implementation finds that any of these facts no longer holds (for example, a 
     - snippets come from the MinIO object only after its hash equals the chunk's and the current `textHash`; a MinIO fault or mismatch fails closed (tests);
     - latency is measured including the fetch;
     - `purge` removes all of a book's chunk rows;
-    - the runbook records the on-server (≈ 28 days) and offsite (indefinite) retention of the derivative.
-12. **Regression:** all NEM-019, NEM-021, and NEM-022 suites pass unchanged; migrations run up and down; architecture and privacy tests pass; no provider, network, or credential use.
+    - the runbook records that, after a purge, on-server dumps keep the derivative until rotation under the existing retention (about 28 days), and offsite copies have no automatic pruning and may persist indefinitely (RB-7).
+12. **Regression:** all NEM-019, NEM-021, and NEM-022 suites pass unchanged; migrations run up and down; architecture and privacy tests pass. Tests use only local disposable PostgreSQL, Redis, and MinIO-compatible fixtures, with **no production credentials, no production or staging connection, no external AI provider, and no paid service** (§9.5).
 
 ## 12. Required tests
 
 - **Unit (≥ 80%):** chunker (boundaries, code-point offsets, Unicode, headings, overlap), `computeTextHash`, indexer (mocks; scope; limits; idempotency), retrieval (validation, budget), `QueryContextSource`, anchor resolver.
-- **Integration (disposable PostgreSQL 16 + Redis):** allowed-pair and stale SQL filters, user isolation, eligibility, full-text configurations and `EXPLAIN` index use, migration up/down, crash safety, prune/purge, end-to-end citation flow, latency on a sized fixture, and the D-4 variant tests.
+- **Integration (local disposable PostgreSQL 16 + Redis + MinIO-compatible fixture; §9.5):** allowed-pair and stale SQL filters, user isolation, eligibility, `unaccent` and language-configuration lexemes, `EXPLAIN` GIN index use, migration up/down, crash safety, prune/purge, end-to-end citation flow, latency on a sized fixture, and the S2 tests (MinIO fault and hash mismatch fail closed).
 - **Architecture and security:** retrieval-technology isolation, single `computeTextHash`, no turn or port wiring, no content logging, no provider/HTTP/SDK, `sync_maps` and `fragments` read-only.
 - **Regression:** NEM-019, NEM-021 (contract, ledger), NEM-022.
 
@@ -327,13 +348,13 @@ Technical-note section (architecture, schema, hash mechanism, full-text configur
 
 ## 17. Stop conditions
 
-- pgvector, embeddings, a provider, network, or credentials appear necessary.
+- pgvector, embeddings, an external AI provider, a paid service, a connection to production or staging, or production credentials appear necessary.
 - A change to `TurnService`, `ContextSourcePort`, module port bindings, `sync_maps`, `fragments` (schema or writes), frozen contract v1, or accepted NEM-022 behaviour appears necessary.
 - A NEM-019, NEM-021, or NEM-022 test must change to pass.
 - Authorization cannot be expressed as SQL predicates.
 - Book-level index permission cannot be established without a user identity or without changing NEM-019 code or bindings.
 - Any §9.7 compatibility fact no longer holds (for example, an operation allowlist), so that introducing `retrieval_indexing` would change accepted NEM-019 behaviour. Present the exception for PO approval.
-- `unaccent`, the generated column, or index use cannot be verified on the disposable database (escalate; do not improvise).
+- `unaccent`, the language configurations, or GIN index use cannot be verified on the disposable database (escalate; do not improvise).
 - A product or legal value (D-4) would need to be assumed.
 
 ## 18. Completion report
