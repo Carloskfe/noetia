@@ -56,6 +56,14 @@ export interface TurnCitation {
   sourceState: 'available' | 'position_unavailable' | 'deferred' | 'revoked' | 'stale' | 'unavailable';
 }
 
+/** NEM-024 Checkpoint C: the capability-probe response. Contains no monetary or provider values. */
+export interface CapabilityProbe {
+  tier: string;
+  capabilities: string[];
+  features: { researchTurns: boolean; streaming: boolean; cancellation: boolean; history: boolean };
+  limits: { maxBooks: number; questionMaxCodePoints: number; historyPageMax: number };
+}
+
 /** NEM-024 Checkpoint B: one turn as returned by the history and single-turn routes (owner only). */
 export interface TurnView {
   turnId: string;
@@ -107,13 +115,37 @@ export interface TurnExclusions {
   indexNotPermitted: string[];
 }
 
+/** NEM-024 Checkpoint C: content-free progress stages reported to the SSE transport (doc 14 names). */
+export type TurnStage = 'checking' | 'searching' | 'composing';
+export interface TurnRunOptions {
+  /** Synchronous, content-free progress callback. Never awaited; a throwing callback never affects the turn. */
+  onStage?: (stage: TurnStage) => void;
+}
+
+/** NEM-024 Checkpoint C: the probe's question limit, kept equal to the validation below. */
+export const TURN_QUESTION_MAX_CODE_POINTS = 500;
+/** NEM-024 Checkpoint C: the history page ceiling (`history`). */
+export const TURN_HISTORY_PAGE_MAX = 50;
+
 /** NEM-024: question normalization (NFC + trim) and validation (1–500 code points), matching E5. */
 export function normalizeTurnQuestion(raw: unknown): string {
   if (typeof raw !== 'string') throw new IntelligenceDenied('invalid_request');
   const q = raw.normalize('NFC').trim();
   const n = [...q].length;
-  if (n < 1 || n > 500) throw new IntelligenceDenied('invalid_request');
+  if (n < 1 || n > TURN_QUESTION_MAX_CODE_POINTS) throw new IntelligenceDenied('invalid_request');
   return q;
+}
+
+type StageReporter = (stage: TurnStage) => void;
+/** Wraps the transport callback so it can never throw into the turn. */
+function stageReporter(cb?: (stage: TurnStage) => void): StageReporter {
+  return (st) => {
+    try {
+      cb?.(st);
+    } catch {
+      // transport problems never affect the turn (D-9 a)
+    }
+  };
 }
 
 /** Amendment 2 (PO-037): thrown inside the step-4 transaction so PostgreSQL rolls the lock back atomically. */
@@ -178,8 +210,8 @@ export class TurnService {
    * NEM-024 (D-3 A3): with `question`, the research turn retrieves eligible book passages, records the turn, and
    * replays by key. Without it, the accepted turn below runs unchanged.
    */
-  async run(userId: string, sessionId: string, clientKey: string, question?: string): Promise<TurnResult> {
-    if (question !== undefined) return this.runQuestion(userId, sessionId, clientKey, question);
+  async run(userId: string, sessionId: string, clientKey: string, question?: string, opts: TurnRunOptions = {}): Promise<TurnResult> {
+    if (question !== undefined) return this.runQuestion(userId, sessionId, clientKey, question, stageReporter(opts.onStage));
     // 1. Entitlement and tier policy.
     const r = await this.sessions.resolveOrDeny(userId);
 
@@ -276,10 +308,11 @@ export class TurnService {
   // lock, no charge) → 3 Gateway prepare/reserve → 4 lock transaction + turn record T0 → 4b FINAL ELIGIBILITY CHECK →
   // 5 provider call → 6 per-attempt settlement (Gateway) → 7 completion T1. The ledger is never read or written here.
 
-  private async runQuestion(userId: string, sessionId: string, clientKey: string, rawQuestion: string): Promise<TurnResult> {
+  private async runQuestion(userId: string, sessionId: string, clientKey: string, rawQuestion: string, stage: StageReporter): Promise<TurnResult> {
     const { retrieval, indexPermission, anchors, turnRecords } = this;
     if (!retrieval || !indexPermission || !anchors || !turnRecords) throw new IntelligenceDenied('feature_disabled');
     const question = normalizeTurnQuestion(rawQuestion);
+    stage('checking');
 
     // 1. Entitlement and tier policy.
     const r = await this.sessions.resolveOrDeny(userId);
@@ -296,7 +329,7 @@ export class TurnService {
     // Checkpoint B: explicit cancellation of this in-flight turn (a transport disconnect never reaches this registry).
     const signal = this.cancels?.register(key);
     try {
-      return await this.executeQuestion(userId, sessionId, key, question, r, ownedRows[0].status, signal);
+      return await this.executeQuestion(userId, sessionId, key, question, r, ownedRows[0].status, signal, stage);
     } finally {
       if (signal) this.cancels!.unregister(key, signal);
     }
@@ -304,7 +337,7 @@ export class TurnService {
 
   private async executeQuestion(
     userId: string, sessionId: string, key: string, question: string, r: Awaited<ReturnType<SessionsService['resolveOrDeny']>>,
-    sessionStatus: string, signal: AbortSignal | undefined,
+    sessionStatus: string, signal: AbortSignal | undefined, stage: StageReporter = () => undefined,
   ): Promise<TurnResult> {
     const retrieval = this.retrieval!; // presence checked by runQuestion
     const turnRecords = this.turnRecords!;
@@ -331,6 +364,7 @@ export class TurnService {
       this.turnMetrics?.guardRejectedInc(admitted.reason);
       throw new TurnStatusDenied('budget_unavailable', { status: 'pending', retryAfterSeconds: 1, guard: admitted.reason });
     }
+    stage('searching');
     let retrieved: QueryContextResult;
     const tRetrieval = process.hrtime.bigint();
     try {
@@ -409,6 +443,7 @@ export class TurnService {
     if (lock.outcome === 'cancelled') return this.step4Failure(sessionId, key, question, prepared, 'turn_failed', 'cancelled');
     if (lock.outcome !== 'ok') return this.step4Failure(sessionId, key, question, prepared, lock.outcome);
     const { id: turnId, attemptToken } = lock;
+    stage('composing'); // synchronous and content-free; emitted before the final eligibility check, never between it and invoke
 
     // 4b. Final eligibility check (F-3): fresh user-level rights for every allowed book and fresh book-level index
     // permission (same text hash) for every book contributing chunks. Nothing else is awaited between its completion
@@ -643,11 +678,27 @@ export class TurnService {
     return { turnId: row.id, status: row.status };
   }
 
+  /**
+   * NEM-024 Checkpoint C — capability probe (`GET /knowledge/sessions/capabilities`). Deny-first: the single
+   * entitlement resolver decides (the route's CapabilityGuard already denied an unentitled caller). Returns tier,
+   * capability keys, and limits only: never budgets, ledger balances, prices, provider or model configuration.
+   */
+  async capabilities(userId: string): Promise<CapabilityProbe> {
+    const r = await this.sessions.resolveOrDeny(userId);
+    const research = Boolean(this.retrieval && this.indexPermission && this.anchors && this.turnRecords);
+    return {
+      tier: r.tier,
+      capabilities: [...r.policy.capabilities].filter((c) => typeof c === 'string').sort(),
+      features: { researchTurns: research, streaming: research, cancellation: research && Boolean(this.cancels), history: Boolean(this.turnRecords) },
+      limits: { maxBooks: r.limits.maxBooks, questionMaxCodePoints: TURN_QUESTION_MAX_CODE_POINTS, historyPageMax: TURN_HISTORY_PAGE_MAX },
+    };
+  }
+
   /** History page (owner only), newest first; expired provisional rows are finalized before anything is returned. */
   async history(userId: string, sessionId: string, limit = 20): Promise<TurnView[]> {
     if (!this.turnRecords) throw new IntelligenceDenied('feature_disabled');
     await this.assertOwned(userId, sessionId);
-    const n = Math.min(Math.max(Math.floor(limit) || 20, 1), 50);
+    const n = Math.min(Math.max(Math.floor(limit) || 20, 1), TURN_HISTORY_PAGE_MAX);
     let rows = await this.turnRecords.listBySession(sessionId, n);
     const provisional = rows.filter((x) => x.status === 'accepted').map((x) => x.id);
     if (provisional.length > 0) {

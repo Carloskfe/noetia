@@ -1,10 +1,12 @@
-import { Body, Controller, DefaultValuePipe, Delete, Get, HttpCode, Param, ParseIntPipe, ParseUUIDPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, DefaultValuePipe, Delete, Get, HttpCode, Param, ParseIntPipe, ParseUUIDPipe, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CapabilityGuard, DeclareCapability } from '../entitlement/capability.guard';
 import { RESEARCH_SESSION } from '../knowledge.types';
 import { AddBookDto, CancelTurnDto, CreateSessionDto, ForkSessionDto, TurnDto } from './sessions.dto';
 import { SessionsService } from './sessions.service';
 import { TurnService } from './turn.service';
+import { streamTurn } from './turn-stream';
 
 type AuthedRequest = { user: { id: string } };
 
@@ -19,6 +21,14 @@ export class SessionsController {
     private readonly sessions: SessionsService,
     private readonly turns: TurnService,
   ) {}
+
+  // NEM-024 Checkpoint C: capability probe. Static route declared BEFORE every `:id` route, so `ParseUUIDPipe` never
+  // sees "capabilities". Deny-first through the CapabilityGuard (`use`); tier, capability keys, and limits only.
+  @Get('capabilities')
+  @DeclareCapability(RESEARCH_SESSION, 'use')
+  capabilities(@Req() req: AuthedRequest) {
+    return this.turns.capabilities(req.user.id);
+  }
 
   @Post()
   @DeclareCapability(RESEARCH_SESSION, 'use')
@@ -78,6 +88,15 @@ export class SessionsController {
   @DeclareCapability(RESEARCH_SESSION, 'use')
   cancel(@Req() req: AuthedRequest, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CancelTurnDto) {
     return this.turns.cancel(req.user.id, id, dto.idempotencyKey);
+  }
+
+  // NEM-024 Checkpoint C: SSE transport for the same turn (guards and pipes run first, so auth, capability, UUID, and
+  // body errors stay ordinary HTTP errors; once the stream opens, every outcome is a `terminal` event). Closing the
+  // connection never cancels the turn (D-9 a).
+  @Post(':id/turns/stream')
+  @DeclareCapability(RESEARCH_SESSION, 'use')
+  async stream(@Req() req: AuthedRequest, @Param('id', ParseUUIDPipe) id: string, @Body() dto: TurnDto, @Res() res: Response): Promise<void> {
+    await streamTurn(res, (onStage) => this.turns.run(req.user.id, id, dto.idempotencyKey, dto.question, { onStage }));
   }
 
   @Post(':id/turns')
