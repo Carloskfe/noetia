@@ -1,8 +1,8 @@
 # NEM-021 — Phase 2 Report: Cost-Aware Ledger
 
-**Status:** **REVIEW FINDINGS F-8, F-9, R-1 ADDRESSED — RETURNED FOR PRODUCT ARCHITECTURE RE-REVIEW.** Every §5 item 7–15 is implemented. Every Phase 2 acceptance criterion (§11, AC-4 to AC-13) is proven by tests run on a disposable database. The response to the review is **§18** (revision 3). **NEM-021 is not accepted**: that needs the Product Architecture re-review and a separate Product Owner decision.
-**Delivery state:** Not merged · Not deployed · NEM-022 not started.
-**Revision:** 3 (2026-11-09). Adds §18: the response to Product Architecture review findings F-8, F-9, and R-1, plus F-9b, found while analysing F-9. **Current results (revision 3, HEAD `484f6ac` for code):** contract 212/212 · api unit 1,521/1,521 · integration 93/93 (NEM-019 56/56, Phase 2 37/37) · tsc 0 · eslint 0 errors. Sections 1–17 are the revision 2 record; where §18 changes a statement, §18 wins. Revision 2 superseded revision 1, the pre-execution BLOCKED state (kept as history in §14).
+**Status:** **COMPLETED — ACCEPTED (2026-11-09).** Product Architecture approved Phase 2, including corrections F-8, F-9, and F-9b and resolution R-1, and the Product Owner accepted NEM-021 Phases 1 and 2 (§19). Accepted commit `bbd7c99`. Not merged, not deployed, not production-authorized.
+**Delivery state:** Accepted · Not merged · Not deployed · NEM-022 not started (not authorized).
+**Revision:** 3 (2026-11-09), plus the acceptance record in §19. Adds §18: the response to Product Architecture review findings F-8, F-9, and R-1, plus F-9b, found while analysing F-9. **Current results (revision 3, HEAD `484f6ac` for code):** contract 212/212 · api unit 1,521/1,521 · integration 93/93 (NEM-019 56/56, Phase 2 37/37) · tsc 0 · eslint 0 errors. Sections 1–17 are the revision 2 record; where §18 changes a statement, §18 wins. Revision 2 superseded revision 1, the pre-execution BLOCKED state (kept as history in §14).
 
 ---
 
@@ -575,4 +575,53 @@ eslint → 0 errors, 68 warnings (no-explicit-any in test files; migration files
 ### 18.6 Status and next step
 
 F-8 and F-9 are fixed with additive changes and proven on real PostgreSQL. R-1 is answered with a before/after explanation and one added test. F-9b is fixed and offered for separate review. The legacy-`compensate` residual is noted. **Returned for independent Product Architecture re-review.** Not merged, not deployed; NEM-022 not started; no provider, credential, or AI cost.
+
+---
+
+## 19. Acceptance record (2026-11-09)
+
+**Product Architecture decision.** The independent re-review of Draft PR #50 (head `bbd7c99`) **approved**:
+- frozen provider-neutral contract v1;
+- the cost-aware ledger and global spending controls;
+- migrations 073 and 074;
+- corrections F-8 (compensation idempotency), F-9 (policy activation serialized with admission), and F-9b (pinned pricing schema re-checked under the lock);
+- the NEM-019 compatibility resolution R-1.
+
+**Product Owner decision.** *"NEM-021 Final Acceptance and Documentation Closure"*: **NEM-021 Phase 1 and Phase 2 are accepted.** The authorization is limited to documentation closure and acceptance recording.
+
+| Record | Value |
+|---|---|
+| Accepted commit (reviewed head) | `bbd7c99c0e3150c73bcdcbde0de0a1804e68472b` |
+| Last code commit | `484f6ac`. `git diff 484f6ac bbd7c99 -- services` is empty: `bbd7c99` changed documentation only |
+| Frozen contract source tree | `services/api/src/knowledge/ai/contract` = `634266826c934e3d615a7342a04a5e7458c6a84d` (unchanged since the v1 freeze at `697f8ea`) |
+| Approved contract test tree | `services/api/tests/unit/knowledge/ai/contract` = `d8de089995b57b0e86298d9a2609f5dbee08c980` (D-2) |
+| `CONTRACT_VERSION` / `SCHEMA_VERSION` | `1.0.0` / `1` |
+| Migrations | `1748300000073-CreateCostAwareLedger`, `1748300000074-AddCompensationAdjustmentKey` (additive; disposable databases only) |
+| Results at the accepted head (§18.5) | contract 212/212 · api unit 1,521/1,521 · integration 93/93 (NEM-019 56/56, Phase 2 37/37) · tsc 0 · eslint 0 errors |
+
+**Hashes re-verified at acceptance** with `git rev-parse bbd7c99:<path>`. Both match the values above.
+
+**Accepted residuals** (documented, no action required by the acceptance):
+- in-flight overrun exposure (§9 R-2);
+- legacy turn reservations carry no micro-USD until NEM-022 (R-3);
+- micro-USD Prometheus counters are observability only (R-5);
+- legacy units-only `compensate` is unfiltered and has no production caller (§18.3).
+
+**Change control from here.**
+- Contract v1 stays frozen. Any change needs Product Architecture review (additive changes are v1.x; breaking changes need `schemaVersion 2`).
+- Migrations 073–074 must not be edited once deployed; corrections go in new migrations.
+
+**Not authorized by this acceptance:**
+- merge of PR #50 or any stacked PR;
+- staging or production deployment;
+- AI providers, credentials, paid services, or AI costs;
+- infrastructure or CI/CD changes;
+- **NEM-022**. Its PO-032 precondition (NEM-021 accepted) is now met, but execution needs a separate, explicit PO instruction.
+
+**This closure commit** changes documentation only:
+- this section;
+- the mission status and acceptance record;
+- the register.
+
+No application code, test, migration, dependency, infrastructure, or CI/CD file changed.
 

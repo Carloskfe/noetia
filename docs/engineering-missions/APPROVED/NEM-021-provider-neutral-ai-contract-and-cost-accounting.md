@@ -1,10 +1,10 @@
 # NOETIA ENGINEERING MISSION — NEM-021 (E1)
 ## Provider-Neutral AI Contract and Cost Accounting
 
-**Status:** **PHASE 2 — REVIEW FINDINGS F-8, F-9, R-1 ADDRESSED; RETURNED FOR PRODUCT ARCHITECTURE RE-REVIEW (2026-11-09).** Phase 1 accepted; contract v1 frozen at baseline `697f8ea` ([Phase 1 report §12](../../reports/2026-11-09-NEM-021-phase-1-contract-v1-report.md)). Phase 2 (§5 items 7–15) is implemented on Draft PR #50 after decisions D-1 (PO) and D-2 (PA); all Phase 2 acceptance criteria are proven by tests run on a disposable database ([Phase 2 report, revision 3, §18](../../reports/2026-11-09-NEM-021-phase-2-cost-aware-ledger-report.md)). **Not accepted**: the final review (§19) and PO acceptance are pending. Not merged, not deployed; NEM-022 not authorized. Specification: Revision 3, including corrections F-1…F-4. Approved by the Product Owner on **2026-11-09** ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)). Drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md).
+**Status:** **COMPLETED — ACCEPTED (2026-11-09).** Product Architecture approved Phase 1 and Phase 2, and the Product Owner accepted NEM-021 (record below). Accepted commit `bbd7c99`; contract v1 frozen (source tree `6342668…`, approved test tree `d8de089…`). **Not merged, not deployed, not production-authorized.** NEM-022 is not authorized (it needs its own PO instruction). Report: [Phase 2 report §19](../../reports/2026-11-09-NEM-021-phase-2-cost-aware-ledger-report.md). Specification: Revision 3 (F-1…F-4), approved by the PO on 2026-11-09 ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)). Drafted under [PO-031](../../operating-framework/decisions/product-owner/PO-031-development-planning-baseline-and-e1-e2-drafting.md).
 **Identifier:** `NEM-021`, reserved by the PO on 2026-11-09 ([PO-032](../../operating-framework/decisions/product-owner/PO-032-approval-of-nem-021-and-nem-022-specifications.md)).
 **Mission type:** IMPLEMENTATION
-**Implementation authorization:** Phase 1 (items 1–6), **active since 2026-11-09** and completed (accepted). Phase 2 (items 7–15), **authorized since 2026-11-09** (PO instruction below), executed and **awaiting review**. D-1 and D-2 approved as narrow exceptions (record below)
+**Implementation authorization:** Phase 1 (items 1–6) and Phase 2 (items 7–15) **executed and accepted (2026-11-09)**. No further implementation is authorized under this mission
 **Schema changes:** ADDITIVE ONLY (new migrations ≥ 073), applied to disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED
 **Production deployment:** NOT AUTHORIZED (staging also NOT AUTHORIZED; merge to `main` NOT AUTHORIZED)
@@ -28,6 +28,24 @@
 > - **PO recovery instruction (2026-11-09):** recover and verify the existing work, complete only the missing authorized work, then STOP for Product Architecture review. D-1 and D-2 remain valid.
 > - **Result:** contract 212/212, api unit 1,511/1,511, integration 85/85 (NEM-019 56/56, Phase 2 29/29), tsc 0, eslint 0 errors.
 > - **Open for review:** R-1, a `budget-ledger.service.ts` change limiting legacy paths to rows where `attemptNumber IS NULL` ([report §9–§10](../../reports/2026-11-09-NEM-021-phase-2-cost-aware-ledger-report.md)).
+
+> **FINAL ACCEPTANCE (2026-11-09).** Product Architecture's independent review **approved**:
+> - frozen provider-neutral contract v1;
+> - the cost-aware ledger and global spending controls;
+> - migrations 073 and 074;
+> - corrections F-8, F-9, and F-9b;
+> - the NEM-019 compatibility resolution R-1.
+>
+> The **Product Owner accepted NEM-021 Phase 1 and Phase 2** (*"NEM-021 Final Acceptance and Documentation Closure"*).
+>
+> | Record | Value |
+> |---|---|
+> | Accepted commit (reviewed head) | `bbd7c99c0e3150c73bcdcbde0de0a1804e68472b`; its code is identical to `484f6ac` (`bbd7c99` changed documentation only) |
+> | Frozen contract source tree (`services/api/src/knowledge/ai/contract`) | `634266826c934e3d615a7342a04a5e7458c6a84d` (unchanged since the v1 freeze at `697f8ea`) |
+> | Approved contract test tree (`services/api/tests/unit/knowledge/ai/contract`) | `d8de089995b57b0e86298d9a2609f5dbee08c980` (D-2) |
+> | Verified results at acceptance | contract 212/212 · api unit 1,521/1,521 · integration 93/93 (NEM-019 56/56, Phase 2 37/37) · tsc 0 · eslint 0 errors |
+>
+> **Acceptance is not deployment authorization.** Still not authorized: merge of PR #50 or any stacked PR, staging or production deployment, AI providers, credentials, paid services, AI costs, infrastructure, CI/CD, and **NEM-022** (now eligible under PO-032 sequencing, but needs its own explicit PO execution instruction).
 
 > **Phase 2 review response (2026-11-09, report revision 3 §18).** Product Architecture review findings on PR #50:
 > - **F-8 (HIGH):** compensation idempotency, fixed. Migration 074 adds an adjustment key with a partial unique index and a CHECK.
