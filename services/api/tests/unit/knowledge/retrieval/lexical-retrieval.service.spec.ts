@@ -11,7 +11,7 @@ const H1 = computeTextHash(Buffer.from(T1));
 const H2 = computeTextHash(Buffer.from(T2));
 const id = (n: number) => `20000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
-function setup(o: { rows?: any[]; status?: any[]; objects?: Record<string, Uint8Array | 'throw'>; keys?: Record<string, string | null>; rankFails?: boolean } = {}) {
+function setup(o: { rows?: any[]; status?: any[]; objects?: Record<string, Uint8Array | 'throw'>; keys?: Record<string, string | null>; rankFails?: boolean; cacheBytes?: number } = {}) {
   const db = new FakeDb();
   db.on(/EXISTS \(SELECT 1 FROM ai_book_chunks/, (p) => o.status ?? p[0].map((b: string) => ({ bookId: b, current: true, indexed: true })));
   db.on(/ts_rank_cd/, () => { if (o.rankFails) throw new Error('statement timeout'); return o.rows ?? []; });
@@ -19,7 +19,7 @@ function setup(o: { rows?: any[]; status?: any[]; objects?: Record<string, Uint8
   const objects: Record<string, Uint8Array | 'throw'> = { [`texts/${B1}.txt`]: Buffer.from(T1), [`texts/${B2}.txt`]: Buffer.from(T2), ...o.objects };
   const text = { read: jest.fn(async (k: string) => { const v = objects[k]; if (!v || v === 'throw') throw new Error('minio'); return v; }) };
   const metrics = { retrievalInc: jest.fn(), passagesObserve: jest.fn(), excludedInc: jest.fn() };
-  return { svc: new LexicalRetrievalService(db as any, text, metrics as any, DEFAULT_RETRIEVAL_CONFIG), db, text, metrics };
+  return { svc: new LexicalRetrievalService(db as any, text, metrics as any, { ...DEFAULT_RETRIEVAL_CONFIG, verifiedTextCacheBytes: o.cacheBytes ?? 0 }), db, text, metrics, objects };
 }
 const req = (over: Partial<RetrievalRequest> = {}): RetrievalRequest => ({ allowed: [{ bookId: B1, textHash: H1 }, { bookId: B2, textHash: H2 }], query: 'canción', topK: 8, budgetTokens: 6000, ...over });
 const row = (n: number, bookId: string, textHash: string, charStart: number, charEnd: number, rank: number, language = 'es') =>
@@ -47,6 +47,28 @@ describe('LexicalRetrievalService (§5.5, §9.2, §9.3)', () => {
     const r = await svc.retrieve(req());
     expect(r.passages.map((p) => p.text)).toEqual(['Érase', 'una', 'vez']);
     expect(text.read).toHaveBeenCalledTimes(1);
+  });
+
+  it('default (cache off): every retrieval re-reads and re-verifies the object', async () => {
+    const { svc, text } = setup({ rows: [row(1, B1, H1, 0, 5, 0.9)] });
+    await svc.retrieve(req());
+    await svc.retrieve(req());
+    expect(text.read).toHaveBeenCalledTimes(2);
+    expect(DEFAULT_RETRIEVAL_CONFIG.verifiedTextCacheBytes).toBe(0);
+  });
+
+  it('optional cache: a verified text is reused only for the same hash; a different hash re-reads and re-verifies', async () => {
+    const s = setup({ rows: [row(1, B1, H1, 0, 5, 0.9)], cacheBytes: 1_000_000 });
+    await s.svc.retrieve(req());
+    expect((await s.svc.retrieve(req())).passages.map((p) => p.text)).toEqual(['Érase']);
+    expect(s.text.read).toHaveBeenCalledTimes(1);
+    const T1b = `${T1} v2`;
+    const H1b = computeTextHash(Buffer.from(T1b));
+    s.objects[`texts/${B1}.txt`] = Buffer.from(T1b);
+    s.db.on(/ts_rank_cd/, () => [row(2, B1, H1b, 0, 5, 0.9)]);
+    const r = await s.svc.retrieve(req({ allowed: [{ bookId: B1, textHash: H1b }] }));
+    expect(r.passages.map((p) => p.textHash)).toEqual([H1b]);
+    expect(s.text.read).toHaveBeenCalledTimes(2);
   });
 
   it('reports unindexed and stale books from SQL status', async () => {
