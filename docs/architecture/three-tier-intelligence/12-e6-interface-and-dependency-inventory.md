@@ -1,6 +1,6 @@
 # 12 — E6 Interface and Dependency Inventory (DISCOVERY, DRAFT)
 
-**Status:** DRAFT, documentation-only. Verified against source on branch `docs/e6-turn-orchestration-discovery` (base `6c4b08e`). Paths are relative to `services/api` unless noted.
+**Status:** DRAFT, documentation-only — **revision 2** (PA review R-1…R-5). Verified against source on branch `docs/e6-turn-orchestration-discovery` (base `6c4b08e`). Paths are relative to `services/api` unless noted.
 
 ## 1. Reusable as is (no change proposed)
 
@@ -32,18 +32,21 @@
 | `ContextSourcePort.candidates(userId, sessionId, allowed)` | No query | Option A: add `query` (port change). Option B: `TurnService` calls `QueryContextSource` directly and leaves the port bound to `EmptyContextSource` | NEM-019 interface; NEM-019 F-12 test pins `CONTEXT_SOURCE_PORT → EmptyContextSource` |
 | `TurnResult` | `segments: {origin, text, bookId?}[]`, `excludedBookIds`, `settlement` | v2: `turnId`, `segments[].citations[] {ref, kind, bookId, anchor, excerpt}`, `exclusions {ineligible, unindexed, stale, unavailable, indexNotPermitted}` | Dark response contract |
 | `MODEL_PATHS` | `research_session.turn` only | `+ highlights.answer` (Ask My Highlights) with its invariant and test (when D-1 includes it) | AC-12a registry (an additive entry is the designed extension path) |
-| NEM-019 `architecture.spec.ts` AC-10/17 and AC-16/17 | No knowledge SQL on, or import of, `fragments` | One narrowly scoped, test-asserted read route (D-2) | **Accepted protected test** |
+| NEM-019 `architecture.spec.ts` AC-10/17 and AC-16/17 | No knowledge SQL on, or import of, `fragments` | **Unchanged under D-2 C (recommended first implementation).** Only a later, separately authorized step (D-2 A/B) would add one test-asserted read route | **Accepted protected test** |
 
 ## 3. Missing components (to be built)
 
 | Component | Kind | Notes |
 |---|---|---|
-| `ai_turns` table | Additive migration (≥ 076) | Columns:<br>• `id`<br>• `sessionId` (FK `ai_conversations`, CASCADE)<br>• `turnIndex`<br>• `keyHash` (unique per session)<br>• `question` (user content)<br>• `segments` jsonb (validated output + citations)<br>• `exclusions` jsonb<br>• `outcome`, `settlement`<br>• `createdAt`<br>No provider or model names. Deletion cascades via the session → user (ADR-005 B-2). **The NEM-021 AC-13 and NEM-019 AC-19 tests are already position-independent (B-3, D-1)** |
-| Turn persistence and replay | Service in `knowledge/sessions/` | The same client key returns the stored turn instead of `duplicate_turn` |
+| `ai_turns` table | Additive migration (≥ 076) | Columns:<br>• `id`<br>• `sessionId` (FK `ai_conversations`, CASCADE)<br>• `turnIndex`<br>• `keyHash` (UNIQUE with session)<br>• `question` (user content)<br>• `segments` jsonb (validated output; citations as **refs + anchors only, no excerpt text**, keeping S2's "no verbatim book text in PostgreSQL")<br>• `exclusions` jsonb<br>• `status` (`accepted` / `completed` / `failed` / `cancelled` / `interrupted`), `settlement`<br>• `createdAt`, `completedAt`<br>No provider or model names. Deletion cascades via the session → user (ADR-005 B-2). **The NEM-021 AC-13 and NEM-019 AC-19 tests are already position-independent (B-3, D-1)** |
+| Turn record, durable completion, replay, recovery | Service in `knowledge/sessions/` + `@Interval` sweep | Per mission §9.2: ledger attempt-1 uniqueness = no second reservation or provider call; `ai_turns` uniqueness = no second record; replay after completion; `interrupted` by recovery; never writes ledger rows |
+| Explicit cancel | `POST …/turns/cancel` + in-process `AbortController` registry | Mission §9.3; disconnect is not a cancel (D-9 a) |
+| History excerpt re-materialization | `knowledge/sessions/` helper | Re-check eligibility + S2 fetch per cited book on history reads; `sourceState` for revoked, stale, unavailable (D-10 a) |
+| Concurrency guard | `knowledge/sessions/` | Weighted by selected books in flight (W = 10 proposed, measured; D-11) |
 | History endpoint | `GET /knowledge/sessions/:id/turns` | `history` capability declaration exists (`get`) |
 | Streaming endpoint | `POST /knowledge/sessions/:id/turns/stream` (SSE body over `fetch`) | Events: `stage` (preflight / retrieving / composing), Gateway `segment` + `delta` (per attempt, after validation), `terminal` (`TurnResult` v2). Client disconnect → `AbortSignal` |
 | Citation enrichment | `knowledge/sessions/` helper | Join Gateway citations with E5 passages (excerpt = the verified passage text already in context) and `AnchorResolver` |
-| User-content source | `knowledge/user-content/` (route per D-2) | Own highlights and notes for the eligible selected books; mandatory `userId` and `bookId` predicates; row and token caps; items `kind: 'highlight' \| 'note'` with `userId` |
+| User-content source | **Deferred (D-2 C).** Later: `knowledge/user-content/` per an approved D-2 A/B | Own highlights and notes for eligible selected books only; isolation tests first (13 §3.5) |
 | Context budget allocator | `knowledge/sessions/` | Splits the turn context budget (passages vs highlights) before `prepare` |
 | Retrieval-stage metrics | Separate service (pattern of `RetrievalMetricsService`) | Turn stage durations (histograms) without content labels; needed to measure E-1's end-to-end impact |
 | Web UI | `services/web/app/(research)/…` + components | See [14](14-e6-minimal-ux-proposal.md); scope per D-1 (E6 vs E9) |
@@ -56,7 +59,7 @@
 |---|---|---|
 | NEM-019 (control plane) | **COMPLETED — PO-accepted** (register); Draft PR #46, not merged | Foundation |
 | NEM-021 (contract v1, cost ledger) | **COMPLETED — ACCEPTED**; Draft PR #50, not merged | Accounting |
-| **NEM-022 (Gateway v2, simulator v2)** | Register and mission say **"PA re-review F-3 addressed — returned for re-review"**; **no acceptance record in the repository**; Draft PR #51 | **Blocker B-A:** E6 builds on Gateway v2 behaviour. Its acceptance must be recorded (or re-review completed) before E6 execution |
+| **NEM-022 (Gateway v2, simulator v2)** | **Not accepted per every repository record** (mission, register, report §19 "NEM-022 is not accepted", PR #51 with no reviews, branch head `f6a5cb7` "returned for re-review"). NEM-023 docs call it "accepted" from `4018ce3` without a decision record (packet §0) | **P-0:** a recorded PA re-review outcome + PO acceptance, **or** an explicit PO authorization to build on the unaccepted head |
 | NEM-023 (retrieval) | **ACCEPTED WITH OPEN EXCEPTIONS E-1, E-2**; Draft PR #53 | Retrieval; latency inherits E-1 |
 | E3 (text identity + verification authority adapters) | Not started; ports unbound | With the unbound ports every book is denied in the real module. E6 can be built and tested dark on fixture ports (the E5 precedent) **if the PO accepts that sequencing** (D-7) |
 | E4 (qualifying-plan adapter, TT-15) | Not started | Same: fixture port in tests |

@@ -1,6 +1,6 @@
 # 11 — E6 Turn Lifecycle and Component Boundaries (DISCOVERY, DRAFT)
 
-**Status:** DRAFT — documentation-only discovery under PO *"E6 Turn Orchestration Discovery — documentation-only"* (2026-11-10). Authorizes no implementation.
+**Status:** DRAFT (revision 2, PA review R-1…R-5) — documentation-only discovery under PO *"E6 Turn Orchestration Discovery — documentation-only"* (2026-11-10). Authorizes no implementation.
 **Baseline:** branch `docs/e6-turn-orchestration-discovery`, from NEM-023 head `6c4b08e`. The ancestry includes the NEM-019, NEM-021, and NEM-022 branches. **None of these is merged into `main`** (Draft PRs #46, #50, #51, #53).
 **Companion documents:**
 - [12 — interfaces and dependencies](12-e6-interface-and-dependency-inventory.md)
@@ -24,14 +24,14 @@ Legend: **IMPL** = implemented (dark, on the unmerged branch stack) · **PART** 
  [3] Per-book eligibility  RightsService.eligibility(user, book, 'research_analysis') → TextIdentityPort, book_ai_rights,
                           authority, OwnershipPort                                                                                 IMPL (ports unbound → deny)
  [4] Retrieval ────────── QueryContextSource.candidatesFor(user, eligible, question) → IndexingPermission → LexicalRetrieval (S2)   IMPL in E5, NOT WIRED
- [5] My Knowledge ─────── own highlights and notes on eligible selected books                                                     MISSING (blocked: D-2)
+ [5] My Knowledge ─────── own highlights and notes on eligible selected books                                                     NOT IN FIRST IMPLEMENTATION (D-2 C); later, separately authorized
  [6] Context ──────────── ContextBuilderService.build (research_session_context invariant) → sealed VerifiedContext                IMPL
  [7] Prepare ──────────── AiGatewayService.prepare: negotiate → count → reserve attempt 1 (NEM-021 cost ledger)                     IMPL
- [8] Lock tx ──────────── SELECT … FOR UPDATE; first-turn lock; set-hash check                                                     IMPL
+ [8] Lock tx ──────────── SELECT … FOR UPDATE; first-turn lock; set-hash check  + INSERT ai_turns(status='accepted')              IMPL (+ record: E6)
  [9] Provider call ────── gateway.invoke (today) | gateway.stream (per-attempt release; F-1/F-3)                                  IMPL (HTTP streaming MISSING)
 [10] Settlement ───────── per attempt in the Gateway; held when unknown; reconciliation every 60 s                                IMPL
 [11] Citations ────────── enforceCitations (scope + origin rules) → AnchorResolver (E5)                                           PART (TurnResult drops citations)
-[12] Persist turn ─────── question, validated segments + citations, exclusions, outcome                                           MISSING (E6, additive migration)
+[12] Complete turn ────── UPDATE ai_turns SET status='completed' (refs + anchors, no excerpt text) — durable completion point      MISSING (E6; mission §9.2)
 [13] Respond ──────────── JSON (and per-attempt stream events)                                                                     PART
    ▼
  Client: render segments with origin labels, citation chips → excerpt panel / open book                                            MISSING (UX: see 14)
@@ -51,7 +51,7 @@ Order invariant (ADR-006 B-5, unchanged): **[1]–[7] preflight with no lock and
 | 3 | Book-level rights and user-level eligibility | `rights.service.ts` | `eligibility(user, book, op)`; ports `TextIdentityPort`, `RightsVerificationAuthorityPort`, `OwnershipPort` | IMPL (dark) | Production adapters are *E3* (text identity, authority) and *ADR-002 ownership mission*. E6 binds fixtures in tests |
 | 4 | Retrieval (book passages) | `retrieval/query-context-source.service.ts` (E5) | `candidatesFor(userId, allowedBookIds, query)` / `resolve()` | IMPL, unwired | Wire into the turn: `ContextSourcePort.candidates(userId, sessionId, allowed)` has **no query parameter** (D-3). The module binding `CONTEXT_SOURCE_PORT → EmptyContextSource` is pinned by NEM-019 test F-12 (D-3) |
 | 4b | Index permission re-check | `retrieval/indexing-permission.ts` | `check(bookId)` | IMPL | None |
-| 5 | My Knowledge (own highlights and notes, selected books) | None | — | MISSING | A read route to `fragments` is **blocked by NEM-019 AC-10/17 and AC-16/17** (D-2). Proposal: [13 §3](13-e6-security-rights-and-failure-modes.md#3-user-knowledge-highlights-and-notes) |
+| 5 | My Knowledge (own highlights and notes, selected books) | None | — | MISSING | **Not in the first implementation (D-2 C recommended)**: a read route to `fragments` would need an exception to NEM-019 AC-10/17 / AC-16/17. Later path: [13 §3.5](13-e6-security-rights-and-failure-modes.md#35-adding-user-knowledge-later-without-weakening-isolation) |
 | 6 | Context construction | `context-builder.service.ts` | `build(userId, allowed, items)` → sealed context | IMPL | Budget split between passages and highlights; no conversation-history item kind exists (D-4) |
 | 7 | Reservation | `ai-gateway.service.ts` `prepare` → `cost-ledger.service.ts` `reserveAttempt` | `GatewayRequest`, `PreparedCall` | IMPL | None |
 | 8 | Lock transaction | `turn.service.ts` step 4 | — | IMPL | None |
@@ -59,9 +59,9 @@ Order invariant (ADR-006 B-5, unchanged): **[1]–[7] preflight with no lock and
 | 9b | Streaming | `gateway.stream` → events `delta`, `segment`, `usage`, `retry`, `terminal` | AsyncGenerator | IMPL in Gateway; not exposed | HTTP transport (SSE over `fetch`), client-disconnect → `AbortSignal`. **Release is per attempt, after validation and settlement (F-1/F-3)**, so there is no token-by-token text |
 | 10 | Settlement, compensation, reconciliation | `cost-ledger.service.ts`; `cost-reconciliation-job.service.ts` (`@Interval` 60 s) | Ledger entries keyed by attempt | IMPL | None. Compensation is an operator action (adjustment key), never a turn path |
 | 10b | Retry | Gateway (`maxProviderAttempts`, default 1; no retry once streamed) | Config | IMPL | Client retry semantics: the same key currently yields **`duplicate_turn` 409**, with no stored result to return (E6: replay returns the persisted turn) |
-| 10c | Cancellation and timeout | Gateway (`AbortSignal`, `providerTimeoutMs`) | `client_abort` / `timeout` → **held** at the reserved amount | IMPL | Propagate request close to the `AbortSignal`; disclose that a cancelled turn may still count until reconciliation |
+| 10c | Cancellation and timeout | Gateway (`AbortSignal`, `providerTimeoutMs`) | `client_abort` / `timeout` → **held** at the reserved amount | IMPL | Explicit cancel endpoint and in-process registry. **Client disconnect is not a cancellation** (D-9 a). Per-stage matrix: [13 §5.1](13-e6-security-rights-and-failure-modes.md#51-cancellation-matrix-r-4-the-gateway-streaming-contract-is-unchanged) |
 | 11 | Citation validation | `citation-policy.ts` (`enforceCitations`) | Scope violation drops the answer; origin relabelling | IMPL | `TurnResult` keeps only `{origin, text, bookId}` (`toAnswerSegment`), so **citations are dropped**. E6 returns citations `{ref, kind, bookId, anchor, excerpt?}` via `AnchorResolver` and E5 passages |
-| 12 | Conversation persistence | None (`ai_conversations` holds session metadata only) | — | MISSING | Additive table, e.g. `ai_turns` (FK session CASCADE; unique per session + key hash) |
+| 12 | Conversation persistence and durable completion | None (`ai_conversations` holds session metadata only) | — | MISSING | `ai_turns` (FK session CASCADE; UNIQUE session + key hash). Row inserted `accepted` in the step-4 lock transaction; `completed` when the completion update commits; `unrecorded` delivery on write failure (D-8); recovery → `interrupted`. The ledger stays the sole charge authority (mission §9.2) |
 | 13 | Response and presentation | Controller JSON | `TurnResult` | PART | Response schema v2 (D-3); web UI; mobile per D-6 |
 
 ## 3. Parallel paths that E6 must keep separate (PO-028, ADR-006)

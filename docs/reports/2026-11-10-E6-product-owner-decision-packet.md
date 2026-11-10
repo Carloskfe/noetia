@@ -1,51 +1,69 @@
-# E6 — Product Owner Decision Packet (Turn Orchestration and User Experience)
+# E6 — Product Owner Decision Packet (Turn Orchestration) — revision 2
 
-**Status:** DRAFT — for PO / PA decision. Prepared under PO *"E6 Turn Orchestration Discovery — documentation-only"* (2026-11-10). **No decision below is taken by this document.**
-**Evidence:** [discovery report](2026-11-10-E6-turn-orchestration-discovery-report.md) · [11 lifecycle](../architecture/three-tier-intelligence/11-e6-turn-lifecycle-and-boundaries.md) · [12 inventory](../architecture/three-tier-intelligence/12-e6-interface-and-dependency-inventory.md) · [13 security](../architecture/three-tier-intelligence/13-e6-security-rights-and-failure-modes.md) · [14 UX](../architecture/three-tier-intelligence/14-e6-minimal-ux-proposal.md) · [DRAFT mission](../engineering-missions/DRAFT/E6-turn-orchestration-and-user-experience.md)
+**Status:** DRAFT — for PO / PA decision. Prepared under PO *"E6 Turn Orchestration Discovery — documentation-only"* (2026-11-10). Revised after the PA review of PR #54 (`e73c277`). **No decision below is taken by this document.**
 
-This packet lists only what is **genuinely required before implementation** (§1). Items needed before **launch** are listed separately (§3) and need no decision now.
+**Evidence:**
+- [discovery report](2026-11-10-E6-turn-orchestration-discovery-report.md) (§11: revision responses)
+- [11 lifecycle](../architecture/three-tier-intelligence/11-e6-turn-lifecycle-and-boundaries.md)
+- [12 inventory](../architecture/three-tier-intelligence/12-e6-interface-and-dependency-inventory.md)
+- [13 security](../architecture/three-tier-intelligence/13-e6-security-rights-and-failure-modes.md)
+- [14 UX](../architecture/three-tier-intelligence/14-e6-minimal-ux-proposal.md)
+- [DRAFT mission rev 2](../engineering-missions/DRAFT/E6-turn-orchestration-and-user-experience.md)
+
+Only decisions **genuinely required before implementation** are in §1. Launch-time items are in §3.
 
 ---
 
-## 0. Prerequisite action (not a decision): record NEM-022's status
+## 0. Prerequisite P-0: NEM-022 status (evidence, not a decision by this document)
 
-**B-A — NEM-022 acceptance is not recorded.**
-- The register and mission state "PA re-review F-3 addressed — returned for re-review" (2026-11-09). No acceptance record exists in the repository.
-- E6 builds directly on Gateway v2 behaviour: per-attempt reservation, fail-closed streaming, and citation policy.
-- **Before E6 execution:** record the PA re-review outcome and PO acceptance of NEM-022 (or its corrections).
+| Evidence | Says |
+|---|---|
+| NEM-022 mission status line | "PA re-review finding F-3 addressed — **returned for Product Architecture re-review** (2026-11-09)" |
+| Register row (README) | Same; "Not accepted; not merged, not deployed" |
+| NEM-022 report §19 (last line) | "**NEM-022 is not accepted.** Not merged, not deployed" |
+| Branch `feat/nem-022-gateway-simulator-v2` | Head `f6a5cb7` "report revision 4; F-3 response; returned for re-review"; no later commit |
+| PR #51 | Draft; title "(RE-REVIEW; DO NOT MERGE)"; **no reviews, no comments** |
+| PO decision records | PO-032 approves the NEM-022 *specification*; **no PO record accepts the implementation** |
+| E5/NEM-023 documents | Describe NEM-022 as "accepted" from commit `4018ce3` (E5 discovery, 2026-11-09) onward. The session notes of the agent attribute this to the wording of the PO's E5 discovery instruction, **which is not stored in the repository**. No decision record backs it |
+
+**Conclusion:**
+- The repository contains **no evidence that acceptance was granted**.
+- Whether the PO accepted NEM-022 outside the repository (as the E5 instruction wording suggested) **cannot be verified here**. It is not inferred.
+- The NEM-023 "accepted NEM-022" wording is an unbacked description and should be corrected, or backed by a record, when P-0 is resolved.
+
+**Exact prerequisite for E6:** one of
+- (i) the PA re-review outcome of NEM-022 (`f6a5cb7`) **and** a PO acceptance record in the repository; or
+- (ii) an explicit PO authorization for E6 to build on the unaccepted NEM-022 head, acknowledging that E6 inherits any later NEM-022 corrections.
 
 ## 1. Decisions required before implementation
 
-| ID | Decision | Owner | Options | Recommendation | If not decided |
-|---|---|---|---|---|---|
-| **D-1** | **E6 scope boundary** (P0 packet assigns UI to E9; this discovery covers UX) | PO | **(a)** E6 = research-turn backend (question input, retrieval wiring, persistence, replay, streaming transport, citations v2) **+ one minimal web Q&A screen behind the existing flag**. Ask My Highlights is a later step (E6b, after TT-27); full UI is E9. **(b)** E6 backend only; all UI in E9. **(c)** E6 = everything in P0 E6 + E9 for Noetia+ (largest) | **(a)**: delivers a testable end-to-end slice with the smallest surface; keeps AMH (open TT-27) and E9 breadth out | Mission scope cannot be fixed |
-| **D-2** | **Route for in-session highlights and notes** (protected-test exception) | **PA + PO** | **A:** one named, test-asserted `SELECT` on `fragments` (own rows, eligible selected books, capped) in `knowledge/user-content/`; the NEM-019 AC-10/17 test is amended to allow exactly that file, with a new positive test. **B:** read function exported by the fragments module and injected via `knowledge.registration` (changes two tests and the registration contract). **C:** defer My Knowledge; the MVP uses book passages only | **A**: smallest, preserves intent (no writes, no cross-user path, no reader coupling). **C** if the PO prefers zero protected-test changes now | E6 must use option C (no user knowledge) |
-| **D-3** | **Authorize the accepted-surface amendments E6 needs** | **PA + PO** | Explicit authorization to change, in dark code only:<br>(1) `TurnDto` gains `question`;<br>(2) `TurnService` wires retrieval (+ D-2 source), persistence, and replay, **with the turn order unchanged**;<br>(3) `TurnResult` v2 (citations, exclusions, `turnId`);<br>(4) new routes `GET …/turns`, `POST …/turns/stream`, `GET /knowledge/me`;<br>(5) retrieval wiring by **direct injection of `QueryContextSource` into `TurnService`**, leaving `CONTEXT_SOURCE_PORT → EmptyContextSource` and NEM-019 test F-12 unchanged (alternative: extend the port with `query`, which changes the pinned binding test);<br>(6) register E5 providers in `KnowledgeModule` with **unbound** text-identity/authority ports (no production adapter) | Authorize (1)–(6) with direct injection | E6 stops at its first protected-surface change (stop condition) |
-| **D-4** | **Conversation memory in model context** | PA (product effect: PO) | **(a)** Stateless turns: each question is answered from retrieval (+ highlights) only; history is persisted and displayed but not sent to the model. **(b)** Include bounded prior turns, which needs a new `ContextItem` kind and Context Builder invariant (accepted contract change) | **(a)** for the MVP; (b) as a later, separately approved change | Follow-up questions cannot rely on earlier turns |
-| **D-5** | **Mission identifier** | PO | Reserve **NEM-024** (verified unused across the register, all branches, and PRs #24–#53) | Reserve NEM-024 | Draft keeps `NEM-0XX` |
-| **D-6** | **Mobile in the MVP (TT-20)** | PO | (a) web first, mobile later; (b) parity; (c) mobile read-only history | **(a)**: React Native 0.74 has no streaming fetch, store billing is a separate risk, and E9 owns breadth | Mobile excluded by default from E6 (a) |
-| **D-7** | **Sequencing relative to E3/E4** (P0: E6 depends on E1, E2, E3, E5) | PO | (a) build E6 dark now on fixture ports (the E5 precedent; production stays denied by unbound ports); (b) wait for E3 (text identity, authority) and E4 (qualifying plan) | **(a)**. Note for E3's design: the text-identity adapter must not re-hash the full object on every call (§2, R-2) | E6 waits for E3/E4 |
+| ID | Decision | Owner | Options | Recommendation |
+|---|---|---|---|---|
+| **D-1** | E6 delivery scope | PO | **(a)** backend + one minimal web Q&A screen behind the existing flag; **(b)** backend only (API, persistence, streaming transport); all UI in E9 (P0 packet); **(c)** P0 E6 + E9 for Noetia+ | **(b)** if the priority is the smallest reviewable change and P0 alignment; **(a)** if an end-to-end visible slice is wanted now. *Both remain open; the mission marks the D-1(a)-only items (scope 13, AC 14, Checkpoint C)* |
+| **D-2** | User knowledge (highlights and notes) in the first implementation | **PA + PO** | **C (revised recommendation):** book passages only; no `fragments` access; NEM-019 protections unchanged. **A:** one named, test-asserted `SELECT` of own rows on eligible selected books (amends NEM-019 AC-10/17). **B:** read function from the fragments module injected via registration (changes two tests + the registration contract) | **C** for the first implementation. It avoids any change to accepted NEM-019 protections. A or B remain available as a **later**, separately authorized step with the isolation-first sequence in [13 §3.5](../architecture/three-tier-intelligence/13-e6-security-rights-and-failure-modes.md#35-adding-user-knowledge-later-without-weakening-isolation) |
+| **D-3** | Authorize the accepted-surface amendments | **PA + PO** | In dark code only:<br>(1) `TurnDto.question`;<br>(2) `TurnService` wiring (retrieval, turn record, replay, cancel) with the turn order unchanged;<br>(3) `TurnResult` v2;<br>(4) routes: history, single turn, stream, cancel, `me`;<br>(5) direct injection of `QueryContextSource` (no binding or F-12 change);<br>(6) E5 providers registered with unbound ports | Authorize (1)–(6) |
+| **D-4** | Conversation memory in model context | PA (product effect: PO) | (a) stateless; (b) bounded prior turns (needs a new `ContextItem` kind) | (a) |
+| **D-5** | Identifier | PO | Reserve NEM-024 (verified unused) | Reserve |
+| **D-6** | Mobile in the MVP (TT-20) | PO | (a) web first; (b) parity; (c) read-only history | (a). Moot under D-1(b) |
+| **D-7** | Build before E3/E4 adapters | PO | (a) dark on fixture ports; (b) wait | (a); E3 design note R-2 (hash once per text version) |
+| **D-8** *(new, R-3)* | Answer delivery when the turn record cannot be written after settlement | **PA** (product effect: PO) | **(a)** return the answer marked `unrecorded`; replay → `result_unavailable`. **(b)** withhold the answer and return an error (the user is charged with no answer) | **(a)**: the charge stands either way (NEM-021 authority); (a) avoids charging for an unseen answer |
+| **D-9** *(new, R-4)* | Client disconnect vs explicit cancel | **PO + PA** | **(a)** disconnect continues to completion (persisted; same-key replay returns it); only explicit cancel aborts. **(b)** disconnect aborts like cancel (the attempt is held at the reserved amount, no answer) | **(a)**: mobile and network blips do not cost an unseen answer; explicit cancel stays available |
+| **D-10** *(new, R-4)* | Historical excerpts after revocation (dark-build default; the final policy is TT-14) | **PO** | **(a)** hide excerpts (`source no longer available`); keep the generated answer text. **(b)** keep showing the excerpts. **(c)** hide the whole answer | **(a)**: the most conservative choice that needs no deletion; `ai_turns` stores no excerpt text, so (a) needs no data change if TT-14 later chooses otherwise |
+| **D-11** *(new, R-5)* | Concurrency weight `W` and the acceptable reader-latency impact | **PA** | `W` = Σ selected books in flight per process. Measured: W=10 → lag p99 ~85 ms (one 10-book turn) or ~96 ms (three 3-book turns); W=20 → ~169 ms | **W = 10**. The PA sets the acceptable reader p95 delta, verified on the production image under the cap in Checkpoint D. If unmet, stop (no in-scope remedy) |
 
 ## 2. Carried exceptions (no waiver requested)
 
-| ID | From | E6 handling |
-|---|---|---|
-| **E-1** | NEM-023: retrieval p95 594 ms vs 150 ms | **Not waived.** E6 adds per-stage latency histograms and reports end-to-end turn latency (excluding and including the simulated provider). E6 makes no ranking change and adds no cache. Closure needs the NEM-023 §17.5 benchmark plus a separate decision |
-| **E-2** | NEM-023: global API branch coverage 78.75% vs 80% | **Not waived.** E6 acceptance requires its own new and changed code ≥ 80% branches and **no decrease** of the global figure. Closing E-2 needs a separate evidence-based decision |
-
-## 3. Needed before launch, not before implementation (no decision now)
-
-| Item | Why it can wait for a dark build |
+| ID | E6 handling |
 |---|---|
-| TT-11 behaviour at the limit | The `budget_exhausted` copy is configurable; the provisional P0 text (hard stop + upgrade prompt) is used in drafts |
-| TT-13 quotation and reconstruction thresholds (F-2) | E6 can **record** per-(user, book) excerpt spans without content and enforce nothing until values exist (thresholds configurable, default "measure only"). Whether even recording is wanted is a PA question within the mission |
-| TT-14 retention; answers citing revoked books | The dark build keeps history and shows "source no longer available"; deletion policy before launch |
-| TT-10 capacity wording · TT-19 names | Copy only |
-| TT-18 Expand | `broader` stays off |
-| TT-22 Terms/Privacy for AI | Blocks any **real** provider; the simulator only until then |
-| TT-27 saved quotations in Ask My Highlights | Blocks AMH (E6b), not the research turn |
-| TT-25 semantic highlight search | Out of scope (no embeddings) |
+| **E-1** retrieval p95 594 ms vs 150 ms | Not waived. Stage histograms; end-to-end tables for 3 and 10 books; no ranking change, cap, or cache. The guard (D-11) limits interference; it does not improve E-1 |
+| **E-2** global branches 78.75% vs 80% | Not waived. New and changed code ≥ 80% branches; no global decrease |
+
+## 3. Needed before launch, not before implementation
+
+TT-11 (limit behaviour) · TT-13 (thresholds) · TT-14 (retention; D-10 is only the dark default) · TT-10/TT-19 (copy) · TT-18 (Expand) · TT-22 (Terms before any real provider) · TT-27 (Ask My Highlights) · TT-25 (semantic search) · the multi-instance cancel channel (only if the API is scaled out).
 
 ## 4. Recommended package
 
-Approve **D-1(a), D-2 A, D-3 (1)–(6) with direct injection, D-4(a), D-5 NEM-024, D-6(a), D-7(a)**. Record B-A first. Then review the DRAFT mission for approval.
+1. Resolve **P-0**.
+2. Decide **D-1 ((a) or (b))**, **D-2 C**, **D-3 (1)–(6)**, **D-4(a)**, **D-5 NEM-024**, **D-6(a)**, **D-7(a)**, **D-8(a)**, **D-9(a)**, **D-10(a)**, **D-11 W=10** (plus the PA threshold).
+3. Then PA review of mission revision 2 → PO approval.

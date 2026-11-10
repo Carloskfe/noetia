@@ -1,6 +1,6 @@
 # 14 — E6 Minimal Web/Mobile UX Proposal (DISCOVERY, DRAFT)
 
-**Status:** DRAFT, documentation-only. No UI code exists for intelligence today: web and mobile contain no research, session, or Ask My Highlights screens; only marketing copy mentions Noetia+. This is a proposal for the **minimum viable Noetia+ question-and-answer experience**.
+**Status:** DRAFT, documentation-only — **revision 2** (PA review R-2, R-4, R-5). No UI code exists for intelligence today: web and mobile contain no research, session, or Ask My Highlights screens; only marketing copy mentions Noetia+. This is a proposal for the **minimum viable Noetia+ question-and-answer experience**.
 
 Constraints:
 - no new UI framework, no new service;
@@ -11,8 +11,14 @@ Constraints:
 ## 1. Scope: who builds it
 
 The P0 packet (Draft PR #48) assigns the frontend to **E9**, while this discovery was asked to cover UX. **D-1** decides between:
-- (a) E6 delivers the backend plus a minimal web Q&A screen behind the existing flag; E9 completes the rest (recommended);
-- (b) E6 backend only, with all UI in E9.
+- (a) E6 delivers the backend plus a minimal web Q&A screen behind the existing flag; E9 completes the rest;
+- (b) E6 backend only (API, persistence, streaming transport), with all UI in E9 (P0 packet).
+
+Both remain open. **This document applies only if D-1(a) is chosen.** Otherwise it is input to E9.
+
+**Revision 2 (R-2, D-2 C):** the first implementation has **no user knowledge**:
+- the "Tus notas" (`user_content`) segment in the mock-up below appears only after a later, separately authorized step;
+- the first slice shows book passages and synthesis only.
 
 Mobile follows **D-6 (TT-20)**. Provisional P0 recommendation: web first.
 
@@ -61,7 +67,10 @@ Mobile follows **D-6 (TT-20)**. Provisional P0 recommendation: web first.
 | Submitting | POST sent | Input disabled; "Preparando…" (voice guide: verb + `…`) |
 | Stages (web stream) | SSE `stage` events: `checking`, `searching`, `composing` | Step text: "Comprobando tus libros…", "Buscando pasajes…", "Redactando respuesta…" |
 | Answer arrives | `segment` events (per attempt, after validation) or JSON | Render all segments at once. **There is no token-by-token typing**: NEM-022 F-1/F-3 release text only after validation and settlement, an accepted guarantee. The UI must not fake typing that implies partial unvalidated text |
-| Cancelled | User presses "Cancelar" | Request aborted; turn shown as "Cancelada". Note: "Puede contar en tu capacidad mientras se confirma." |
+| Cancelled | User presses "Cancelar" (explicit cancel endpoint) | Turn shown as "Cancelada". If the provider had started: "Puede contar en tu capacidad mientras se confirma." (held until reconciliation) |
+| Connection lost | Tab closed / network drop / app backgrounded | **Not a cancellation** (D-9 a). On return, the client fetches the turn (same key / `GET …/turns/:turnId`) and shows the answer |
+| Unrecorded | `status: 'unrecorded'` | Show the answer with a small note: "No pudimos guardar esta respuesta en tu historial." |
+| Interrupted | History shows `interrupted` | "Esta pregunta se interrumpió. Vuelve a preguntar." (new key) |
 | Error | `code` | Mapped copy (below); a retry button only where retry is meaningful |
 | Read-only session | `session_read_only` | Input replaced by "Esta sesión es de solo lectura. Bifúrcala para continuar." |
 | Budget exhausted | `budget_exhausted` | Input disabled until reset; TT-11 copy (hard stop + upgrade if eligible; no token language, `BOOK TOKEN ≠ AI USAGE`) |
@@ -82,7 +91,8 @@ All strings go through `lib/i18n/{en,es}.ts` (web parity test). Mobile strings a
 ## 4. Rights revocation during a session
 
 - New turn: the excluded book's chip turns grey; the banner discloses it; answers come from the remaining books.
-- Earlier answers: citations to the revoked book show "Fuente no disponible" instead of the excerpt (render-time). The retention decision is TT-14 (before launch).
+- Earlier answers: excerpts are re-materialized on every history read; for a revoked, changed, or purged source the citation shows "Fuente no disponible" (`sourceState`), and the answer text stays (D-10 a default; final policy TT-14).
+- At answer time, if a citation's position cannot be resolved: show the verified excerpt without the "Open book" position hint ("Posición no disponible").
 
 ## 5. Retries and idempotency
 

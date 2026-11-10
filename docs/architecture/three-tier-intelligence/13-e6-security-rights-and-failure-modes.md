@@ -1,6 +1,6 @@
 # 13 — E6 Security, Rights, and Failure-Mode Assessment (DISCOVERY, DRAFT)
 
-**Status:** DRAFT, documentation-only. No protected system is changed by this document. Conflicts with accepted architecture are recorded with options and are not resolved here.
+**Status:** DRAFT, documentation-only — **revision 2** (PA review of PR #54: R-2, R-3, R-4). No protected system is changed by this document. Conflicts with accepted architecture are recorded with options and are not resolved here.
 
 ## 1. Authorization layers per turn (all must pass; most restrictive wins)
 
@@ -20,16 +20,15 @@
 
 E6 adds **no new authority**. It wires existing layers in order and adds user content under the existing Context Builder invariant.
 
-## 2. Rights during a session (ADR-006 "rights revoked" row)
+## 2. Rights during a session (ADR-006 "rights revoked" row) — revised (R-4)
 
-- Eligibility and index permission are evaluated **at every turn**.
-  - A book revoked mid-session is excluded from new turns, and the exclusion is **disclosed** (`exclusions.ineligible` / `indexNotPermitted`).
-  - The locked set is unchanged; the session continues if at least one book remains, otherwise `no_eligible_books`.
-- **Earlier answers:**
-  - Earlier answers already persisted in `ai_turns` contain excerpts of the revoked book. Whether they remain viewable, are redacted, or are tombstoned is **TT-14 (retention / revocation)**, which is not decided.
-  - Recommendation for the dark build: keep them, and mark the citation as "source no longer available" at render time; no deletion.
-  - A production decision is required before launch (packet D-8, *before launch*, not before implementation).
-- Revocation also requires `purge` of the index (NEM-023 runbook); E6 does not change that.
+| Situation | Behaviour |
+|---|---|
+| Revoked **before** a turn's step 2 | The book is excluded from that turn and the exclusion is disclosed (`exclusions.ineligible` / `indexNotPermitted`). The locked set is unchanged. With no eligible book → `no_eligible_books` (no charge, no record) |
+| Revoked **between step 2 and the provider call** | Not re-checked inside the turn (window = lock + provider time). Accepted residual, disclosed; the next turn excludes the book |
+| Revoked **after an answer was stored** | `ai_turns` keeps **refs and anchors only, never excerpt text**. On each history read the book's eligibility is re-checked and the excerpt is re-materialized through S2 (current hash = anchor hash). If it is ineligible, stale, unavailable, or purged → `excerpt: null`, `sourceState: revoked \| stale \| unavailable`, and the UI shows "source no longer available" |
+| Historical excerpts visible after revocation? | **Default: no** (D-10 a). The generated answer text remains (generated content, ADR-006) pending **TT-14**. No deletion. Because no excerpt text is stored, any later TT-14 policy needs no data migration |
+| Index purge after revocation | Unchanged (NEM-023 runbook). A history read for a purged chunk falls under `unavailable` |
 
 ## 3. User knowledge: highlights and notes
 
@@ -50,9 +49,14 @@ E6 adds **no new authority**. It wires existing layers in order and adds user co
 
 | Option | Description | Pros | Cons |
 |---|---|---|---|
-| **A (recommended)** | **Named, test-asserted read exception.** One file, `knowledge/user-content/user-highlight-source.ts`, may run **one** `SELECT` on `fragments`. The NEM-019 architecture test is amended to allow exactly that file, and a new test asserts: SELECT only; columns limited to `id, bookId, text, note, createdAt`; a mandatory `"userId" = $1` predicate **and** `"bookId" = ANY($2)` (in a session, the eligible selected books); `LIMIT` ≤ cap; no join to any other user table; no write anywhere | Smallest; keeps the intent (no writes, no cross-user path, no reader coupling); enforceable by test | Amends an accepted protected test (needs explicit authorization) |
+| **A** | **Named, test-asserted read exception.** One file, `knowledge/user-content/user-highlight-source.ts`, may run **one** `SELECT` on `fragments`. The NEM-019 architecture test is amended to allow exactly that file, and a new test asserts: SELECT only; columns limited to `id, bookId, text, note, createdAt`; a mandatory `"userId" = $1` predicate **and** `"bookId" = ANY($2)` (in a session, the eligible selected books); `LIMIT` ≤ cap; no join to any other user table; no write anywhere | Smallest; keeps the intent (no writes, no cross-user path, no reader coupling); enforceable by test | Amends an accepted protected test (needs explicit authorization) |
 | B | **Owned read port in the fragments module, injected through `knowledge.registration`.** Fragments exports a narrow read function; registration passes it as a factory argument | Keeps SQL with the owner module | Changes the registration contract ("imports nothing") **and** two architecture tests; more moving parts |
-| C | **Defer user knowledge.** The E6 MVP answers from book passages only; My Knowledge in session follows later | No protected-test change | The MVP lacks "My Knowledge"; PO-028 / ADR-003 mode distinction is visible only later |
+| **C (recommended for the first implementation, revision 2)** | **Book passages only.** No `fragments` access in E6. My Knowledge and Ask My Highlights follow as later, separately authorized steps (§3.5) | **No change to any accepted NEM-019 protection**; smallest attack surface; isolation is proven before user data enters any context | My Knowledge (ADR-003 mode) is not available in the first slice; answers cannot draw on the user's notes |
+
+**Reassessment (R-2):**
+- A is technically narrow, but it still amends an accepted protected test in the same mission that first wires turns.
+- C lets the turn path, persistence, and citation behaviour be reviewed and accepted **before** any user-content route exists. User isolation then becomes the sole subject of its own change.
+- **Recommendation: C now; A (or B) later.** All three remain open for the PO.
 
 ### 3.4 Trust rules (independent of the option)
 
@@ -63,6 +67,32 @@ E6 adds **no new authority**. It wires existing layers in order and adds user co
 5. **Ask My Highlights (library-wide)** is a **separate model path** with the Highlight Context Builder invariant (no chunks, no stored book text, own capability budget). Saved-quotation permissions there are **TT-27 (open)**. It is not part of the research turn and is gated on TT-27 (D-1).
 6. **Highlight search** (lexical, no model) is not an AI path. If built, it belongs in the fragments or books module (outside `knowledge/`) with the user predicate. It is not proposed for the E6 MVP.
 7. Privacy: no question, highlight, note, or answer text in logs, metrics, or errors (existing architecture test pattern), and no cross-user or household visibility (PO-026 rule 6).
+
+### 3.5 Adding user knowledge later without weakening isolation
+
+Proposed sequence, each step separately authorized; no step may be folded silently into another mission:
+
+1. **Isolation tests first:** in the later mission's first commit, write the adversarial tests before any read route exists:
+   - another user's rows;
+   - a household member's rows;
+   - rows on unselected or ineligible books;
+   - edited quotations;
+   - very large notes;
+   - rows of a deleted user.
+2. **Explicit exception, not relocation.** The route is approved as an amendment to the NEM-019 architecture tests (option A or B) by PA + PO. It is **never** created by moving SQL to a module the tests don't scan.
+3. **Positive constraints in the test itself:**
+   - SELECT only;
+   - listed columns;
+   - mandatory `"userId" = $1` and `"bookId" = ANY($2)`;
+   - `LIMIT`;
+   - no joins to other users' tables;
+   - one file.
+4. **Context Builder unchanged:** user items enter only as `highlight`/`note` with `userId` = requester; the existing invariant already aborts anything else.
+5. **Origin rules unchanged:** user items are `user_content` and never `library` (Gateway citation policy). Optional "verified highlight" linking points the citation at the chunk, never at the highlight (§3.4 rule 4).
+6. **My Knowledge before Ask My Highlights:**
+   - My Knowledge (in session, selected eligible books only) can follow D-2 A/B directly.
+   - Ask My Highlights is a **separate model path** registered in `MODEL_PATHS` with the Highlight Context Builder invariant (no chunks or book text), its own capability budget, and **TT-27 decided first**.
+7. **No cross-path reuse of conversations:** an AMH conversation is never readable from a session and vice versa (ADR-006).
 
 ## 4. Threats and mitigations
 
@@ -94,10 +124,35 @@ E6 adds **no new authority**. It wires existing layers in order and adds user co
 | Context too large | 7 | None | No | `context_too_large` | Should not occur (budget allocator); internal alert |
 | Set changed between preflight and lock | 8 | Released | No | `set_changed` | Auto-retry once with a new key, or ask the user |
 | Provider timeout / unavailable | 9 | **Held** at the reserved amount until reconciliation | Yes | `turn_failed` | "Try again"; a new key creates a new reservation; disclose that capacity may be briefly reserved |
-| Client cancels | 9 | **Held** (`client_abort`, partial usage) | Yes | Cancelled state | No partial text shown (F-1); persist the turn as `cancelled` |
+| Explicit cancel (see §5.1) | any | Depends on stage (§5.1) | — | Cancelled state | No partial text (F-1) |
+| Client disconnect | any | As normal | — | — | **Not a cancellation** (D-9 a): the turn completes and is persisted; a same-key replay returns it |
 | Scope violation (bad citation) | 11 | Settled | Yes | `scope_violation` | Generic error; no text released; alert metric |
 | Malformed output / refusal | 9–11 | Settled | Yes | `turn_failed` | Generic error |
-| Persistence write fails after a successful answer | 12 | Settled | Yes | Answer returned | Return the answer and log a content-free event. A replay with the same key cannot return it (documented gap; packet item) |
+| Completion write fails after settlement | 7 (complete) | Settled or held (ledger authority; E6 never compensates) | Yes | Answer returned with `status: 'unrecorded'` (D-8 a) | The row stays `accepted` and recovery marks it `interrupted`. A same-key replay → `result_unavailable` (no provider call, no charge). Metric `intelligence_turn_unrecorded_total` |
+| Process crash after lock, before completion | 5–7 | Held until NEM-021 reconciliation | Yes | Client sees a network error | Same-key replay → `409 duplicate_turn {status: accepted}` until recovery marks `interrupted`, then the stored status; ask again with a new key |
+| Duplicate request (same key) | any | Never a second reservation (ledger attempt-1 uniqueness) | — | Per the mission §9.2 duplicate table | One record (UNIQUE `sessionId`, `keyHash`) |
+
+### 5.1 Cancellation matrix (R-4; the Gateway streaming contract is unchanged)
+
+| When | Server action | Charge | Lock | Record |
+|---|---|---|---|---|
+| Before reservation | Stop at the next stage boundary | None | None | None |
+| After reservation, before the lock commits | `gateway.release(prepared)` (held if the release cannot be written) | None | None | None |
+| After the lock, before the provider call | Do not invoke; `gateway.release(prepared)` | None | Stands | `cancelled` |
+| During a provider attempt | `AbortSignal` → `client_abort`; no text released | **Held** at the reserved amount until reconciliation | Stands | `cancelled` |
+| After settlement | No effect | As settled | Stands | `completed` |
+| Client disconnect (any time) | Continue (D-9 a) | As normal | — | As normal |
+
+- Explicit cancel uses `POST …/turns/cancel {idempotencyKey}` through an in-process registry. A multi-instance deployment would need a shared channel (not built).
+
+### 5.2 Citation resolution failures
+
+| Case | Safe behaviour |
+|---|---|
+| A Gateway citation to a ref outside the sealed context | Never reaches the user: the whole answer is dropped (F-1), `scope_violation` |
+| `AnchorResolver` returns null at answer time (purge or text change race) | Keep the in-context (already verified) excerpt; `anchor: null`, `sourceState: position_unavailable` |
+| History read: book ineligible, text changed, object missing, chunk purged | `excerpt: null`, `sourceState` = `revoked` / `stale` / `unavailable`; "source no longer available" |
+| Any failure | Never fabricate, re-point, or silently drop a citation; segment origin labels stay as validated |
 
 ## 6. Open items affecting security (not decided here)
 
