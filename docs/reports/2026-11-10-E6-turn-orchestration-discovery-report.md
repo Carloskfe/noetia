@@ -170,7 +170,7 @@ NEM-021 reserves the **worst case** before the call, so the allocator must cap c
 | ID | Decision |
 |---|---|
 | P-0 | NEM-022 status: **satisfied 2026-11-10** (packet §0) |
-| D-1 | Scope: **(a)** backend + minimal web **or** **(b)** backend only (both open, kept distinct) |
+| D-1 | Scope: **APPROVED (a), PO 2026-11-10**: backend + one minimal web Q&A interface (E9 keeps the broader UX) |
 | D-2 | User knowledge: **C recommended now** (passages only); A/B later |
 | D-3 | Authorize the accepted-surface amendments (direct injection; no binding change) |
 | D-4 | Stateless turns (a) |
@@ -264,5 +264,17 @@ Documentation only. No application code, tests, migrations, CI/CD, or infrastruc
 ### Update 2026-11-10 — P-0 satisfied
 
 The PO recorded NEM-022's acceptance at `f6a5cb7` after PA re-review (NEM-022 report §20). R-1's remaining decision is therefore **resolved**. NEM-023's wording was reconciled without changing its status. **No E6 decision and no E6 mission approval follows from this update.**
+
+### Update 2026-11-10 — D-1(a) approved; final PA review package
+
+The PO approved **D-1(a)**. D-2(C), D-4(a), D-6(a), D-7(a), and D-9(a) are **proposed baselines, not approved**. The final PA review package ([2026-11-10-E6-pa-final-review-package.md](2026-11-10-E6-pa-final-review-package.md)) covers:
+- D-3 (precise, additive amendments; **no protected-test amendment under the baseline design**);
+- D-8, D-10, D-11;
+- cancellation consistency;
+- revocation during an active turn;
+- checkpoints A–E;
+- PA questions Q-1 to Q-10.
+
+NEM-022 acceptance and NEM-023 E-1/E-2 are preserved.
 
 **STOP for independent Product Architecture re-review before any implementation authorization.**

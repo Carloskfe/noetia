@@ -14,7 +14,7 @@ The P0 packet (Draft PR #48) assigns the frontend to **E9**, while this discover
 - (a) E6 delivers the backend plus a minimal web Q&A screen behind the existing flag; E9 completes the rest;
 - (b) E6 backend only (API, persistence, streaming transport), with all UI in E9 (P0 packet).
 
-Both remain open. **This document applies only if D-1(a) is chosen.** Otherwise it is input to E9.
+**D-1(a) was APPROVED by the PO on 2026-11-10.** This document therefore defines E6's required minimal interface. The E6/E9 boundary is in the mission §5.1; everything beyond it is E9.
 
 **Revision 2 (R-2, D-2 C):** the first implementation has **no user knowledge**:
 - the "Tus notas" (`user_content`) segment in the mock-up below appears only after a later, separately authorized step;

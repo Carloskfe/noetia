@@ -1,5 +1,5 @@
 # NOETIA ENGINEERING MISSION — NEM-0XX (proposed NEM-024) (E6)
-## Research-Turn Orchestration (dark, simulated provider only) — revision 2
+## Research-Turn Orchestration and Minimal Web Q&A Interface (dark, simulated provider only) — revision 3
 
 **Status:** DRAFT — **never executable** (`DRAFT/`). It becomes executable only after:
 1. prerequisite P-0 (NEM-022 status) — **satisfied 2026-11-10** (§3);
@@ -15,6 +15,11 @@
 **Production deployment:** NOT AUTHORIZED (staging and merge to `main` also not authorized)
 **Product Owner approval:** REQUIRED
 
+> **Revision 3** (PO *"E6 Final Mission Review Preparation"*, 2026-11-10):
+> - **D-1(a) APPROVED** by the PO: backend plus **one minimal web Q&A interface**. The web interface is now an explicit requirement (§5 item 13, §5.1, AC 14, checkpoint D), and the E6/E9 separation is explicit (§5.1).
+> - **Proposed baselines (not approved):** D-2(C) book passages only, D-4(a) stateless model context with persistent history, D-6(a) web first, D-7(a) simulator and fixture-based dark development, D-9(a) disconnect does not cancel. The mission is written on these baselines; each still needs its decision.
+> - The precise D-3 amendments, D-8, D-10, D-11, cancellation consistency, revocation during a turn, and the checkpoint plan are in the [PA final review package](../../reports/2026-11-10-E6-pa-final-review-package.md).
+>
 > **Revision 2** (PA review of PR #54 at `e73c277`, *"direction supported — revisions required"*):
 > - R-1: the NEM-022 prerequisite is restated from evidence (§3).
 > - R-2: the first implementation uses **book passages only** (D-2 C); user knowledge is a later, separately authorized step (§5.3, §6).
@@ -46,6 +51,7 @@ A (fixture) entitled user asks a question in a session with eligible books. The 
 3. is answered through Gateway v2 + simulator;
 4. returns validated segments with origin labels and citations;
 5. is **durably recorded** with replay-safe idempotency.
+6. is asked and read through **one minimal web Q&A interface** (D-1(a), approved), with E9 keeping all broader UX (§5.1).
 
 All of this is dark, with default deny everywhere in the real module.
 
@@ -69,7 +75,7 @@ All of this is dark, with default deny everywhere in the real module.
 
 **Other dependencies:**
 - Code: the NEM-019/021/022/023 branch stack (not `main`).
-- Decisions: D-1 to D-11 (packet §1).
+- Decisions: **D-1(a) approved**. Baselines D-2(C), D-4(a), D-6(a), D-7(a), D-9(a) proposed, not approved. Open: D-3, D-5, D-8, D-10, D-11 (packet §1).
 - Not required: E3/E4 production adapters (fixture ports, D-7); paid providers; staging; CI changes.
 - Test environment: local disposable PostgreSQL 16 / Redis / MinIO-compatible fixture; VM limits (`--maxWorkers=2`); for §9.5, the locally built production API image under `--cpus=1 --memory=512m`.
 
@@ -103,13 +109,35 @@ ADR-003, ADR-005, ADR-006 · PO-026, PO-027, PO-028, PO-033 · NEM-019 technical
 10. **Concurrency guard** (§9.5).
 11. **Recovery sweep** for interrupted turns, using the existing `@Interval` pattern (§9.2). No new infrastructure.
 12. **Metrics (no content labels):** stage histograms (`entitlement`, `eligibility`, `retrieval`, `prepare`, `lock`, `provider`, `complete`), outcomes, replays, cancellations, guard rejections, event-loop lag.
-13. **Web MVP — only under D-1(a):** `/research/[sessionId]` per [14](../../architecture/three-tier-intelligence/14-e6-minimal-ux-proposal.md). **Under D-1(b) this item is removed** and the mission ends at the API (Checkpoint C is dropped).
+13. **Minimal web Q&A interface (required; D-1(a) approved):** one route `app/(research)/research/[sessionId]` in `services/web`, per [14](../../architecture/three-tier-intelligence/14-e6-minimal-ux-proposal.md) and §5.1:
+    - **Ask:** a question input; one persisted conversation per session, loaded from the history route.
+    - **Session context:** selected-book chips with the lock indicator and exclusion disclosures.
+    - **Turn states:** content-free stage states while the turn runs (no token-by-token text); explicit cancel, plus same-key recovery after a reload or disconnect; read-only and fork notices.
+    - **Answers:** origin labels in text; a citation dialog with the verified excerpt or `sourceState`, plus an "Open book" link (link only; reader untouched).
+    - **Errors:** each `code` mapped to en/es copy.
+    - **Platform:** shown only when the capability probe allows it. Web only (D-6 a baseline). No new UI framework or service; reuses `apiFetch`, Tailwind, and the i18n providers.
 14. Tests, technical-note section, migration entry, completion report.
+
+### 5.1 E6 minimal interface vs E9 broader UX (boundary)
+
+| Capability | E6 (this mission) | E9 (later) |
+|---|---|---|
+| Research Q&A screen for **one existing session** | ✅ Minimal: ask, states, answer, citations, cancel, errors | Polish, design system, advanced layouts |
+| Session creation and book selection UI (3/10 picker, library multi-select) | ❌ Sessions are created through the API or a single "Research with Noetia+" entry from the book page *only if* PA allows a minimal entry (review package Q-10); otherwise a test fixture | ✅ |
+| Session list, fork UI, session management | ❌ Only a fork **notice** with a link to the existing API action | ✅ |
+| My Knowledge, Ask My Highlights, highlight search | ❌ (D-2 C baseline) | ✅ (after their own approvals) |
+| Research Brief view and export | ❌ | ✅ (E7 + E9) |
+| Capacity indicator, at-limit upsell | ❌ Only the `budget_exhausted` message | ✅ (TT-10, TT-11) |
+| NoetiaX depth screens | ❌ | ✅ (E8 + E9) |
+| Mobile | ❌ (D-6 a baseline) | ✅ if TT-20 approves |
+| Reader deep links to exact positions | ❌ (link to the book only) | Later, with an approved `sync_maps` path |
+
+E6 ships no navigation entry in the global app chrome unless the PA allows the minimal book-page entry. The screen is reachable by URL for a session created through the API, and is hidden when the capability probe denies.
 
 ## 6. Out of scope
 
 - **User knowledge in any form:** My Knowledge highlights and notes in a session (later step after D-2 A/B authorization), Ask My Highlights (E6b, after TT-27), highlight search.
-- Research Brief (E7) · NoetiaX depth (E8) · remaining UI (E9) · mobile (D-6) · Expand/`broader` (TT-18).
+- Research Brief (E7) · NoetiaX depth (E8) · **all UX beyond the §5.1 minimal interface (E9)** · mobile (D-6 a baseline) · Expand/`broader` (TT-18).
 - Conversation memory in model context (D-4 b).
 - Reconstruction threshold enforcement (TT-13).
 - Production adapters (E3, E4, ownership) · real or paid providers (TT-22) · embeddings, pgvector, caches · ranking changes (E-1 open) · reader changes or exact deep links · `fragments`/`sync_maps` access · staging, CI/CD, infrastructure, merge, deployment.
@@ -249,7 +277,7 @@ Measurement (2026-11-10, discovery report §5.4):
 - A per-process **weighted** limit on in-flight retrieval work: `Σ selectedBooks of in-flight turns ≤ W`.
 - Proposed `W = 10`: one NoetiaX 10-book turn **or** up to three Noetia+ 3-book turns. Measured lag p99 ≤ ~96 ms.
 - Over the limit → `503` (`budget_unavailable` class, `Retry-After`), **before reservation** (no charge).
-- The value is PA-reviewed (D-11) and must be re-measured in Checkpoint D.
+- The value is PA-reviewed (D-11) and must be re-measured in Checkpoint E.
 
 **Acceptance:** E6 measures reader-endpoint latency (book list and text chunk) on the production image under the cap, with and without concurrent turns at W. The acceptable delta is a PA decision (D-11).
 
@@ -258,7 +286,21 @@ Not addressed here (out of scope; recorded for later approval):
 - worker threads;
 - a separate API container (an infrastructure change).
 
-### 9.6 Other
+### 9.6 Checkpoints
+
+The checkpoints are independently reviewable, A → E, as specified in the [PA final review package §7](../../reports/2026-11-10-E6-pa-final-review-package.md#7-implementation-sequence--independently-reviewable-checkpoints):
+
+| Checkpoint | Content |
+|---|---|
+| A | Turn wiring + record |
+| B | Resilience: cancel, recovery, history, guard |
+| C | Transport (SSE) + capability probe |
+| D | **Minimal web Q&A (required)** |
+| E | Verification: reader latency, E-1 tables, E-2 coverage, report |
+
+Each ends green and PA-reviewed before the next starts.
+
+### 9.7 Other
 
 - **Streaming:** no text event before the Gateway's validated `segment` (F-1/F-3). `stage` events carry no content.
 - **Privacy:** no question or answer text in logs, metrics, or errors.
@@ -288,7 +330,13 @@ Excerpts only; no verbatim book text stored in `ai_turns`; no full-text export.
 11. **Concurrency guard:** a request over W is rejected before reservation. The reader-latency delta at W is measured on the production image under the cap and reported against the D-11 threshold.
 12. **Performance (E-1 carried, not waived):** stage histograms; end-to-end turn latency with the simulator on the NEM-023 sized fixture (3 and 10 books). No ranking change, no cache.
 13. **Coverage (E-2 carried, not waived):** new and changed code ≥ 80% branches; the global API branch figure does not decrease.
-14. **Web MVP — only under D-1(a):** simulated end-to-end flow (Jest + Playwright on the local stack); accessibility checks; en/es parity; reader suites unchanged with the flag on and off.
+14. **Minimal web Q&A interface (required):**
+    - **Simulated end to end:** one Playwright flow on the local simulated stack (ask → stages → answer with citations → open the excerpt → cancel → reload recovery).
+    - **Unit coverage:** Jest component tests for each state in [14 §3](../../architecture/three-tier-intelligence/14-e6-minimal-ux-proposal.md#3-states).
+    - **Accessibility:** a `role="log"` region with polite announcements without partial text; the dialog focus trap; labels not colour-only.
+    - **i18n:** en/es parity (the web i18n test).
+    - **Visibility:** hidden when the probe denies.
+    - **E9 boundary:** no E9-scope screen is introduced (§5.1). Reader suites are unchanged.
 15. **Regression:** all NEM-019/021/022/023 suites pass unchanged (except D-3-authorized amendments, each in its own commit, verified green first).
 
 ## 12. Required tests
@@ -319,7 +367,7 @@ Technical-note §14 (E6), migration entry, runbook notes (replay, cancellation, 
 
 ## 16. Open decisions
 
-D-1 to D-11 (packet §1). Launch-time items (packet §3) are not required for this mission.
+**D-1(a) approved (2026-11-10).** All others are open (baselines proposed; packet §1; PA questions Q-1 to Q-9 in the review package). Launch-time items (packet §3) are not required for this mission.
 
 ## 17. Stop conditions
 
