@@ -1,7 +1,7 @@
 # NOETIA ENGINEERING MISSION — NEM-024
 ## Research-Turn Orchestration and Minimal Bilingual Web Q&A (dark, simulated provider only)
 
-**Status:** **APPROVED (PO, 2026-11-10; [PO-035](../../operating-framework/decisions/product-owner/PO-035-nem-024-specification-approval-and-checkpoint-a-authorization.md)) — CHECKPOINT A EXECUTION AUTHORIZED — RESUMED** after PO approval of B-1 (Option A) and B-2 (Option ii), recorded as **Amendment 1** below ([Checkpoint A report](../../reports/2026-11-10-NEM-024-checkpoint-a-report.md)). Checkpoints B–E **not authorized**.
+**Status:** **APPROVED (PO-035) — CHECKPOINT A IMPLEMENTED — AWAITING PRODUCT ARCHITECTURE REVIEW (2026-11-10).** Executed under Amendment 1 (B-1, B-2). Draft PR #55 ([Checkpoint A report](../../reports/2026-11-10-NEM-024-checkpoint-a-report.md) §9). Checkpoints B–E **not authorized**; not merged, not deployed.
 **Identifier:** `NEM-024`, assigned by the PO on 2026-11-10 (PO-034 D-5). Verified unused on all remote branches, PR titles, and the register.
 **Mission type:** IMPLEMENTATION
 **Implementation authorization:** **Checkpoint A only** (PO-035), as amended by Amendment 1 (B-1, B-2). Checkpoints B, C, D, E, merge, deployment, production providers, production indexing, and infrastructure are NOT authorized
@@ -121,6 +121,7 @@ ADR-003, ADR-005, ADR-006 · PO-026, PO-027, PO-028, PO-033 · NEM-019 technical
 5. **Turn record:** additive migration `ai_turns`:
    - **Identity:** `id`, `sessionId` (FK `ai_conversations` ON DELETE CASCADE), `turnIndex`, `keyHash` (UNIQUE with `sessionId`).
    - **Content:** `question` (user content), `segments` (jsonb: validated segments with citations as **refs + anchors only, no excerpt text**), `exclusions` (jsonb).
+   - **Amendment 1 (B-2) columns:** `failureReason` (step-4 or owner denial code), `reservationRelease` (`released` | `unconfirmed`); `turnIndex` is **nullable** (NULL for step-4 failure records). CHECK constraints: status set, question 1–500 characters, release values, `turnIndex ≥ 1`, and completed ⇒ segments + `completedAt` + `turnIndex`.
    - **State:** `status`, `settlement`, `createdAt`, `completedAt`, **`attemptToken`** (uuid per request), **`fenceAt`** (database time at or after which no owner or cancel transition may **start** successfully, and from which finalization may start; §9.2 items 7 and 7a). Indexes: UNIQUE (`sessionId`, `keyHash`); **partial UNIQUE (`sessionId`) WHERE `status = 'accepted'`** (one provisional turn per session).
    - No provider or model names. **No verbatim book text** (S2 principle preserved).
 6. **Durable completion and idempotency** (§9.2).
