@@ -403,21 +403,42 @@ export class CostLedgerService {
     return this.appendRelease(attemptKey, true);
   }
 
-  /** A correction is a separate signed entry (micro-USD and units) — never an edit, never a second settlement. */
-  async compensateAttempt(attemptKey: string, microUsd: bigint, units = 0): Promise<void> {
+  /**
+   * A correction is a separate signed entry (micro-USD and units) — never an edit, never a second settlement.
+   *
+   * F-8 idempotency: `adjustmentKey` identifies ONE intended adjustment (e.g. a provider-invoice correction id).
+   * Distinct adjustments use distinct keys and each is recorded. A retry or concurrent duplicate of the same key is
+   * decided by the partial unique index `UQ_ai_budget_ledger_adjustment` (migration 074): exactly one row is
+   * written and the others return `duplicate`. Reusing a key with a different amount is refused (a caller bug).
+   */
+  async compensateAttempt(attemptKey: string, adjustmentKey: string, microUsd: bigint, units = 0): Promise<'recorded' | 'duplicate'> {
+    if (typeof adjustmentKey !== 'string' || adjustmentKey.length === 0 || adjustmentKey.length > 128 || /\s/.test(adjustmentKey)) {
+      throw new CostLedgerError('adjustment key must be a non-empty string of at most 128 characters without whitespace');
+    }
     if (typeof microUsd !== 'bigint' || microUsd > MAX_BIGINT_COLUMN || -microUsd > MAX_BIGINT_COLUMN) {
       throw new CostLedgerError('compensation must be a bigint within the column range');
     }
     if (!Number.isSafeInteger(units)) throw new CostLedgerError('units must be an integer');
     const rows = await this.db.query(
       `INSERT INTO ai_budget_ledger ("userId", "sessionId", "policyId", tier, capability, "idempotencyKey", "entryType", units,
-         "compensatedMicroUsd", "pricingSchemaId", "attemptNumber", "turnKey")
-       SELECT ${FROM_RESERVATION}, 'compensation', $2, $3, r."pricingSchemaId", r."attemptNumber", r."turnKey"
+         "compensatedMicroUsd", "pricingSchemaId", "attemptNumber", "turnKey", "adjustmentKey")
+       SELECT ${FROM_RESERVATION}, 'compensation', $2, $3, r."pricingSchemaId", r."attemptNumber", r."turnKey", $4
          FROM ai_budget_ledger r WHERE r."idempotencyKey" = $1 AND r."entryType" = 'reservation' AND r."attemptNumber" IS NOT NULL
+       ON CONFLICT DO NOTHING
        RETURNING id`,
-      [attemptKey, units, microUsd.toString()],
+      [attemptKey, units, microUsd.toString(), adjustmentKey],
     );
-    if (rows.length === 0) throw new CostLedgerError('no attempt reservation for key');
+    if (rows.length > 0) return 'recorded';
+    const [existing] = await this.db.query<{ microUsd: string; units: string }>(
+      `SELECT "compensatedMicroUsd"::text AS "microUsd", units::text AS units FROM ai_budget_ledger
+        WHERE "idempotencyKey" = $1 AND "entryType" = 'compensation' AND "adjustmentKey" = $2`,
+      [attemptKey, adjustmentKey],
+    );
+    if (!existing) throw new CostLedgerError('no attempt reservation for key');
+    if (BigInt(existing.microUsd) !== microUsd || BigInt(existing.units) !== BigInt(units)) {
+      throw new CostLedgerError('adjustment key already recorded with a different amount');
+    }
+    return 'duplicate';
   }
 
   // ── Reconciliation ─────────────────────────────────────────────────────────────────────────

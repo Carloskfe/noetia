@@ -4,14 +4,16 @@ import { UsersService } from '../../../src/users/users.service';
 import { openDataSource } from './support/it-env';
 import { attempt, newUser, resetCostState, standardSetup, usage, wireCost } from './support/cost-env';
 
-/** NEM-021 Phase 2: migration 073 up/down (§11 AC-13) and account deletion over the new tables (§11 AC-11, B-2). */
+/** NEM-021 Phase 2: migrations 073–074 up/down (§11 AC-13) and account deletion over the new tables (§11 AC-11, B-2). */
 
-const MIGRATION = 'CreateCostAwareLedger1748300000073';
+/** NEM-021's migrations, oldest first. 074 (review finding F-8) adds the compensation adjustment key. */
+const NEM021_MIGRATIONS = ['CreateCostAwareLedger1748300000073', 'AddCompensationAdjustmentKey1748300000074'];
+const MIGRATION = NEM021_MIGRATIONS[NEM021_MIGRATIONS.length - 1];
 const COST_TABLES = ['ai_pricing_schemas', 'ai_unit_weight_schemas', 'ai_global_budget_policies', 'ai_partial_settlements',
   'ai_cost_overruns', 'ai_overrun_breakers'];
 const LEDGER_COLUMNS = ['reservedMicroUsd', 'settledMicroUsd', 'compensatedMicroUsd', 'pricingSchemaId', 'unitWeightSchemaId',
   'globalPolicyId', 'attemptNumber', 'turnKey', 'pricingModifiers', 'noChargeDeclarations', 'normalizedUsage', 'contractOutcome',
-  'errorCategory', 'usageCompleteness'];
+  'errorCategory', 'usageCompleteness', /* 074 */ 'adjustmentKey'];
 const USAGE_COLUMNS = ['contractOutcome', 'errorCategory', 'usageCompleteness', 'zeroUsageEvidence', 'normalizedUsage',
   'attemptNumber', 'pricingSchemaId', 'settledMicroUsd'];
 const ADDED: Record<string, string[]> = { ai_budget_ledger: LEDGER_COLUMNS, ai_usage_events: USAGE_COLUMNS };
@@ -50,12 +52,12 @@ const addedColumnsPresent = async (ds: DataSource) =>
   )).filter((c: any) => isAdded(c.table_name, c.column_name));
 const lastMigration = async (ds: DataSource) => (await ds.query(`SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 1`))[0].name;
 
-describe('NEM-021 migration 073 on a disposable database', () => {
+describe('NEM-021 migrations 073–074 on a disposable database', () => {
   let ds: DataSource;
   beforeAll(async () => { ds = await openDataSource(); });
   afterAll(async () => ds?.destroy());
 
-  it('AC-13: 073 runs down and up; it only adds; no other table, column, constraint, or index is altered; no value is seeded', async () => {
+  it('AC-13: 074 and 073 run down and up; they only add; no other table, column, constraint, or index is altered; no value is seeded', async () => {
     expect(await lastMigration(ds)).toBe(MIGRATION);
     await resetCostState(ds);
     expect(await costTablesPresent(ds)).toBe(6);
@@ -64,7 +66,10 @@ describe('NEM-021 migration 073 on a disposable database', () => {
     expect(added.every((c: any) => c.is_nullable === 'YES')).toBe(true); // NEM-019 rows stay valid (legacy = NULL)
     const withMigration = await schemaOutside073(ds);
 
-    await ds.undoLastMigration({ transaction: 'each' });
+    for (const name of [...NEM021_MIGRATIONS].reverse()) {
+      expect(await lastMigration(ds)).toBe(name); // revert by name, newest first
+      await ds.undoLastMigration({ transaction: 'each' });
+    }
     expect(await lastMigration(ds)).toBe('CreateIntelligenceMetering1748300000072');
     expect(await costTablesPresent(ds)).toBe(0);
     expect(await addedColumnsPresent(ds)).toEqual([]);
@@ -79,6 +84,15 @@ describe('NEM-021 migration 073 on a disposable database', () => {
     for (const t of ['ai_pricing_schemas', 'ai_unit_weight_schemas', 'ai_global_budget_policies']) {
       expect({ t, n: Number((await ds.query(`SELECT count(*) FROM ${t}`))[0].count) }).toEqual({ t, n: 0 });
     }
+    // Partial down: reverting only 074 removes exactly the adjustment key, its index, and its CHECK.
+    await ds.undoLastMigration({ transaction: 'each' });
+    expect(await lastMigration(ds)).toBe(NEM021_MIGRATIONS[0]);
+    expect((await addedColumnsPresent(ds)).map((c: any) => c.column_name)).not.toContain('adjustmentKey');
+    expect(await ds.query(`SELECT indexname FROM pg_indexes WHERE indexname = 'UQ_ai_budget_ledger_adjustment'`)).toEqual([]);
+    expect(await ds.query(`SELECT conname FROM pg_constraint WHERE conname = 'CK_ai_budget_ledger_cost_compensation_key'`)).toEqual([]);
+    expect(await schemaOutside073(ds)).toBe(withMigration);
+    await ds.runMigrations({ transaction: 'each' });
+    expect(await lastMigration(ds)).toBe(MIGRATION);
     // NEM-019's legacy outcome CHECK is untouched (also covered by the snapshot).
     const [check] = await ds.query(
       `SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conrelid = 'ai_usage_events'::regclass AND contype = 'c' AND pg_get_constraintdef(oid) LIKE '%outcome%' AND pg_get_constraintdef(oid) NOT LIKE '%contractOutcome%'`,

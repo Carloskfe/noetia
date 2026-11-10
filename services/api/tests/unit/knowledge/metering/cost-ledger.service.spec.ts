@@ -400,20 +400,45 @@ describe('CostLedgerService.releaseAttempt (provider never called)', () => {
 });
 
 describe('CostLedgerService.compensateAttempt', () => {
-  it('writes a separate signed compensating entry', async () => {
-    const { svc, db } = setup();
-    db.on(/'compensation', \$2, \$3/, () => [{ id: '1' }]);
-    await svc.compensateAttempt('turn:abc:a1', -250n, -2);
-    expect(db.ran(/'compensation'/)[0].params).toEqual(['turn:abc:a1', -2, '-250']);
+  const EXISTING = /^SELECT "compensatedMicroUsd"::text AS "microUsd"/;
+  const compSetup = (o: { inserted: boolean; existing?: { microUsd: string; units: string } | null }) => {
+    const ctx = setup();
+    ctx.db.on(/'compensation', \$2, \$3/, () => (o.inserted ? [{ id: '1' }] : []));
+    ctx.db.on(EXISTING, () => (o.existing ? [o.existing] : []));
+    return ctx;
+  };
+
+  it('writes a separate signed compensating entry carrying its adjustment key; duplicates are absorbed by the database', async () => {
+    const { svc, db } = compSetup({ inserted: true });
+    expect(await svc.compensateAttempt('turn:abc:a1', 'invoice-corr-1', -250n, -2)).toBe('recorded');
+    const insert = db.ran(/'compensation'/)[0];
+    expect(insert.params).toEqual(['turn:abc:a1', -2, '-250', 'invoice-corr-1']);
+    expect(insert.sql).toMatch(/"adjustmentKey"/);
+    expect(insert.sql).toMatch(/ON CONFLICT DO NOTHING/); // the partial unique index decides retries and races
+    expect(db.ran(EXISTING)).toHaveLength(0);
   });
 
-  it('requires an attempt reservation, an in-range bigint, and integer units', async () => {
-    const { svc, db } = setup();
-    db.on(/'compensation', \$2, \$3/, () => []);
-    await expect(svc.compensateAttempt('nope', 1n)).rejects.toThrow('no attempt reservation');
-    await expect(svc.compensateAttempt('k', 1 as any)).rejects.toThrow('bigint');
-    await expect(svc.compensateAttempt('k', 2n ** 63n)).rejects.toThrow('bigint');
-    await expect(svc.compensateAttempt('k', 1n, 0.5)).rejects.toThrow('integer');
+  it('a retry of the same adjustment (same key and amount) is a duplicate, not a second entry', async () => {
+    const { svc } = compSetup({ inserted: false, existing: { microUsd: '-250', units: '-2' } });
+    expect(await svc.compensateAttempt('turn:abc:a1', 'invoice-corr-1', -250n, -2)).toBe('duplicate');
+  });
+
+  it('reusing an adjustment key with a different amount is refused (caller bug), never silently merged', async () => {
+    await expect(compSetup({ inserted: false, existing: { microUsd: '-250', units: '0' } }).svc
+      .compensateAttempt('turn:abc:a1', 'invoice-corr-1', -300n)).rejects.toThrow('different amount');
+    await expect(compSetup({ inserted: false, existing: { microUsd: '-250', units: '0' } }).svc
+      .compensateAttempt('turn:abc:a1', 'invoice-corr-1', -250n, 1)).rejects.toThrow('different amount');
+  });
+
+  it('requires an attempt reservation, a valid adjustment key, an in-range bigint, and integer units', async () => {
+    const { svc } = compSetup({ inserted: false, existing: null });
+    await expect(svc.compensateAttempt('nope', 'adj-1', 1n)).rejects.toThrow('no attempt reservation');
+    for (const bad of ['', 'has space', 'x'.repeat(129), 7 as any, null as any]) {
+      await expect(svc.compensateAttempt('k', bad, 1n)).rejects.toThrow('adjustment key');
+    }
+    await expect(svc.compensateAttempt('k', 'adj-1', 1 as any)).rejects.toThrow('bigint');
+    await expect(svc.compensateAttempt('k', 'adj-1', 2n ** 63n)).rejects.toThrow('bigint');
+    await expect(svc.compensateAttempt('k', 'adj-1', 1n, 0.5)).rejects.toThrow('integer');
   });
 });
 

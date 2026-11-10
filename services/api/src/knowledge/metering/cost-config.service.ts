@@ -3,6 +3,7 @@ import {
   assertPricingSchema, assertUnitWeightSchema, MAX_BIGINT_COLUMN, ValidatedPricingSchema, ValidatedUnitWeightSchema,
 } from '../ai/contract';
 import { KnowledgeDbService } from '../common/knowledge-db.service';
+import { GLOBAL_ADMISSION_LOCK } from './budget-ledger.service';
 
 export interface GlobalBudgetPolicy {
   id: string;
@@ -201,6 +202,13 @@ export class CostConfigService {
 
   private async activateSingleton(table: 'ai_unit_weight_schemas' | 'ai_global_budget_policies', id: string): Promise<void> {
     await this.db.transaction(async (m) => {
+      if (table === 'ai_global_budget_policies') {
+        // F-9: serialize with admission. Every cost-aware admission holds this B-6 lock while it reads the active
+        // policy, checks the invariant, and inserts its reservation. Taking it here (first, so the lock order is
+        // always global → other) means a policy change commits strictly before or strictly after each admission:
+        // an admission never commits against an allowance that has already been replaced.
+        await m.query(`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, [GLOBAL_ADMISSION_LOCK]);
+      }
       await m.query(`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, [SINGLETON_LOCK(table)]);
       const [exists] = await m.query(`SELECT 1 AS ok FROM ${table} WHERE id = $1`, [id]);
       if (!exists) throw new CostConfigError('unknown configuration row');

@@ -146,3 +146,50 @@ export function failNextQuery(w: CostWiring, re: RegExp) {
   }
   return restore;
 }
+
+/**
+ * Pause the next transaction statement matching `re` (inside `w.db.transaction`) until `release()` is called.
+ * `reached` resolves once the statement is about to run, so the test can act while that transaction is still
+ * open and holding its locks. Used for deterministic interleavings (F-9).
+ */
+export function pauseAt(w: CostWiring, re: RegExp) {
+  let release!: () => void;
+  let markReached!: () => void;
+  const gate = new Promise<void>((res) => { release = res; });
+  const reached = new Promise<void>((res) => { markReached = res; });
+  let armed = true;
+  const originalTx = w.db.transaction.bind(w.db);
+  const spy = jest.spyOn(w.db, 'transaction').mockImplementation(async (fn) => originalTx(async (m) => fn({
+    ...m,
+    query: async (sql: string, params?: unknown[]) => {
+      if (armed && re.test(sql)) {
+        armed = false;
+        markReached();
+        await gate;
+      }
+      return m.query(sql, params);
+    },
+  } as any)));
+  let released = false;
+  return {
+    reached,
+    /** Idempotent: safe to call from both the test body and a cleanup path. */
+    release: () => {
+      if (released) return;
+      released = true;
+      release();
+      spy.mockRestore();
+    },
+  };
+}
+
+/** Resolve once some session is blocked waiting for an advisory lock (proves the interleaving, not just timing). */
+export async function waitForAdvisoryLockWaiter(ds: DataSource, timeoutMs = 10_000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const [{ n }] = await ds.query(`SELECT count(*)::int AS n FROM pg_locks WHERE locktype = 'advisory' AND NOT granted`);
+    if (n > 0) return true;
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  return false;
+}

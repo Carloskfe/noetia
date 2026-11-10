@@ -4,7 +4,7 @@ import { DataSource } from 'typeorm';
 import { budgetPolicy, openDataSource } from './support/it-env';
 import {
   addActivePricing, attempt, attemptB, CAP, CostWiring, denialCause, failNextQuery, goldenPricing, newUser, resetCostState,
-  rowCount, sealedGolden, setGlobalPolicy, standardSetup, usage, wireCost,
+  pauseAt, rowCount, sealedGolden, setGlobalPolicy, standardSetup, usage, waitForAdvisoryLockWaiter, wireCost,
 } from './support/cost-env';
 
 /** NEM-021 Phase 2 acceptance on real PostgreSQL (§11 AC-4 … AC-10; §12). Fixture values only. */
@@ -331,11 +331,164 @@ describe('NEM-021 cost-aware ledger on real PostgreSQL', () => {
     expect(await denialCause(tight.costLedger.reserveAttempt(attempt(u, 1_000)))).toBe('overall_unresolved_units');
   });
 
-  it('compensation is a separate signed entry counted once in committed', async () => {
-    const r = await w.costLedger.reserveAttempt(attempt(await newUser(ds), 10_000));
-    await w.costLedger.settleAttempt(usage(r.attemptKey, { inputUncached: 10_000 }));
-    await w.costLedger.compensateAttempt(r.attemptKey, -2_500n);
-    expect(await state()).toMatchObject({ settled: 10_000n, compensated: -2_500n, committed: 7_500n });
-    expect(await rowCount(ds, `SELECT count(*) AS n FROM ai_budget_ledger WHERE "idempotencyKey" = $1 AND "entryType" = 'settlement'`, [r.attemptKey])).toBe(1);
+  describe('F-8: compensation idempotency (adjustment key, migration 074)', () => {
+    const comps = (key: string) => rowCount(ds, `SELECT count(*) AS n FROM ai_budget_ledger WHERE "idempotencyKey" = $1 AND "entryType" = 'compensation'`, [key]);
+    const settled = async (input = 10_000) => {
+      const r = await w.costLedger.reserveAttempt(attempt(await newUser(ds), input));
+      await w.costLedger.settleAttempt(usage(r.attemptKey, { inputUncached: input }));
+      return r;
+    };
+
+    it('distinct adjustments are separate entries; a replay of one is a duplicate; committed counts each once', async () => {
+      const r = await settled();
+      expect(await w.costLedger.compensateAttempt(r.attemptKey, 'invoice-corr-1', -2_500n)).toBe('recorded');
+      expect(await w.costLedger.compensateAttempt(r.attemptKey, 'invoice-corr-2', 1_000n)).toBe('recorded');
+      expect(await w.costLedger.compensateAttempt(r.attemptKey, 'invoice-corr-1', -2_500n)).toBe('duplicate'); // retry
+      expect(await w.costLedger.compensateAttempt(r.attemptKey, 'invoice-corr-1', -2_500n)).toBe('duplicate'); // retry again
+      expect(await comps(r.attemptKey)).toBe(2);
+      expect(await state()).toMatchObject({ settled: 10_000n, compensated: -1_500n, committed: 8_500n });
+      expect(await rowCount(ds, `SELECT count(*) AS n FROM ai_budget_ledger WHERE "idempotencyKey" = $1 AND "entryType" = 'settlement'`, [r.attemptKey])).toBe(1);
+    });
+
+    it('concurrent duplicate submissions of one adjustment write exactly one entry; concurrent distinct adjustments all land', async () => {
+      const r = await settled();
+      const same = await Promise.all(Array.from({ length: 10 }, () => w.costLedger.compensateAttempt(r.attemptKey, 'invoice-corr-7', -700n)));
+      expect(same.filter((x) => x === 'recorded')).toHaveLength(1);
+      expect(same.filter((x) => x === 'duplicate')).toHaveLength(9);
+      expect(await comps(r.attemptKey)).toBe(1);
+      const distinct = await Promise.all([1, 2, 3, 4, 5].map((i) => w.costLedger.compensateAttempt(r.attemptKey, `invoice-line-${i}`, -100n)));
+      expect(distinct.every((x) => x === 'recorded')).toBe(true);
+      expect(await comps(r.attemptKey)).toBe(6);
+      expect((await state()).compensated).toBe(-1_200n);
+    });
+
+    it('reusing an adjustment key with a different amount is refused and changes nothing', async () => {
+      const r = await settled();
+      await w.costLedger.compensateAttempt(r.attemptKey, 'invoice-corr-1', -2_500n);
+      await expect(w.costLedger.compensateAttempt(r.attemptKey, 'invoice-corr-1', -3_000n)).rejects.toThrow('different amount');
+      expect(await comps(r.attemptKey)).toBe(1);
+      expect((await state()).compensated).toBe(-2_500n);
+      // The same adjustment key on ANOTHER attempt is a different adjustment.
+      const other = await settled();
+      expect(await w.costLedger.compensateAttempt(other.attemptKey, 'invoice-corr-1', -3_000n)).toBe('recorded');
+    });
+
+    it('the database enforces it: a duplicate keyed row and a key-less micro-USD compensation are refused; NEM-019 units-only compensation is unaffected', async () => {
+      const r = await settled();
+      await w.costLedger.compensateAttempt(r.attemptKey, 'invoice-corr-1', -2_500n);
+      const raw = (adj: string | null) => ds.query(
+        `INSERT INTO ai_budget_ledger ("userId", tier, capability, "idempotencyKey", "entryType", units, "compensatedMicroUsd", "adjustmentKey")
+         SELECT "userId", tier, capability, "idempotencyKey", 'compensation', 0, -1, $2 FROM ai_budget_ledger WHERE "idempotencyKey" = $1 AND "entryType" = 'reservation'`,
+        [r.attemptKey, adj]);
+      await expect(raw('invoice-corr-1')).rejects.toThrow(/UQ_ai_budget_ledger_adjustment/);
+      await expect(raw(null)).rejects.toThrow(/CK_ai_budget_ledger_cost_compensation_key/);
+      // NEM-019's legacy compensate (units only, no micro-USD, no key) still works unchanged.
+      await budgetPolicy(ds, 'noetia_plus', CAP, { allowanceUnits: 1_000_000_000, maxUnresolvedUnits: 1_000_000_000, reserveUnitsPerTurn: 10 });
+      const u = await newUser(ds);
+      await w.ledger.reserve({ userId: u, tier: 'noetia_plus', capability: CAP, sessionId: null, idempotencyKey: 'legacy-comp-1' });
+      await expect(w.ledger.compensate('legacy-comp-1', 3)).resolves.toBeUndefined();
+      await expect(w.ledger.compensate('legacy-comp-1', 3)).resolves.toBeUndefined(); // NEM-019 semantics unchanged
+      expect(await comps('legacy-comp-1')).toBe(2);
+    });
+  });
+
+  describe('F-9: global policy activation is serialized with admission (same B-6 lock)', () => {
+    const policy = (allowance: bigint) =>
+      w.costConfig.addGlobalPolicy({ periodDays: 30, allowanceMicroUsd: allowance, maxUnresolvedMicroUsd: 1_000_000_000_000n, isTestFixture: true });
+
+    it('an admission in flight (lock held, old policy read) makes a concurrent activation WAIT; the change commits after it', async () => {
+      await setGlobalPolicy(w, 1_000_000n);
+      const p1 = (await w.costConfig.activeGlobalPolicy())!.id;
+      const pause = pauseAt(w, /WITH open_attempts/); // inside admission, after the lock and the policy re-read
+      const order: string[] = [];
+      const admission = w.costLedger.reserveAttempt(attempt(await newUser(ds), 800_000)).then((r) => { order.push('admission'); return r; });
+      await pause.reached;
+      const p2 = await policy(100_000n);
+      const activation = w.costConfig.activateGlobalPolicy(p2).then(() => { order.push('activation'); });
+      // Observe first, release always, assert after: a failure can never leave the paused transaction open.
+      const blocked = await waitForAdvisoryLockWaiter(ds, 3_000);
+      const orderWhilePaused = [...order];
+      pause.release();
+      expect(blocked).toBe(true); // the activation is blocked on the global admission lock
+      expect(orderWhilePaused).toEqual([]);
+      const r = await admission;
+      await activation;
+      expect(order).toEqual(['admission', 'activation']);
+      // The admission committed while P1 was still the active policy: the invariant held at that moment.
+      expect(r).toMatchObject({ globalPolicyId: p1, allowanceMicroUsd: 1_000_000n, committedBeforeMicroUsd: 0n, reservedMicroUsd: 800_000n });
+      // After the reduction, capacity is negative and admissions stop (fail closed), as for an overrun.
+      expect((await state())).toMatchObject({ allowance: 100_000n, committed: 800_000n, capacity: -700_000n });
+      expect(await denialCause(w.costLedger.reserveAttempt(attempt(await newUser(ds), 1)))).toBe('global_allowance');
+    });
+
+    it('an activation in flight makes a concurrent admission WAIT; the admission then re-reads and uses the NEW policy', async () => {
+      await setGlobalPolicy(w, 1_000_000n);
+      const p2 = await policy(100_000n);
+      const pause = pauseAt(w, /UPDATE ai_global_budget_policies SET active = true/); // inside activation, lock held
+      const order: string[] = [];
+      const activation = w.costConfig.activateGlobalPolicy(p2).then(() => { order.push('activation'); });
+      await pause.reached;
+      const admission = denialCause(w.costLedger.reserveAttempt(attempt(await newUser(ds), 800_000))).then((c) => { order.push('admission'); return c; });
+      const blocked = await waitForAdvisoryLockWaiter(ds, 3_000);
+      const orderWhilePaused = [...order];
+      pause.release();
+      expect(blocked).toBe(true); // the admission is blocked on the global admission lock
+      expect(orderWhilePaused).toEqual([]);
+      await activation;
+      expect(await admission).toBe('global_allowance'); // 800,000 > 100,000 under the newly active policy
+      expect(order).toEqual(['activation', 'admission']);
+      expect(await reservations()).toBe(0);
+    });
+
+    it('parallel admissions interleaved with repeated activations: no deadlock, and every admission fits the policy it committed under', async () => {
+      await setGlobalPolicy(w, 1_000_000n);
+      const allowances = [300_000n, 900_000n, 200_000n, 700_000n, 1_000_000n];
+      const ids = [];
+      for (const a of allowances) ids.push(await policy(a));
+      const users = await Promise.all(Array.from({ length: 24 }, () => newUser(ds)));
+      const results = await Promise.all([
+        ...users.map((u, i) => w.costLedger.reserveAttempt(attempt(u, 20_000 + (i % 5) * 10_000)).then((ok) => ({ ok }), (e) => ({ e }))),
+        ...ids.map((id) => w.costConfig.activateGlobalPolicy(id).then(() => ({ activated: id }))),
+      ]);
+      const admitted = results.flatMap((r: any) => (r.ok ? [r.ok] : []));
+      expect(results.filter((r: any) => r.e && r.e.cause !== 'global_allowance')).toEqual([]);
+      expect(admitted.length).toBeGreaterThan(0);
+      for (const a of admitted) expect(a.committedBeforeMicroUsd + a.reservedMicroUsd <= a.allowanceMicroUsd).toBe(true);
+      expect((await w.costConfig.activeGlobalPolicy())).not.toBeNull();
+    });
+  });
+
+  it('R-1: legacy settle, release, and reconcile never resolve an attempt, even when evidence the legacy path would act on exists', async () => {
+    await budgetPolicy(ds, 'noetia_plus', CAP, { allowanceUnits: 1_000_000_000, maxUnresolvedUnits: 1_000_000_000, reserveUnitsPerTurn: 10 });
+    const u = await newUser(ds);
+    // Legacy control: a NEM-019 reservation with legacy evidence; legacy reconciliation must still settle it.
+    await w.ledger.reserve({ userId: u, tier: 'noetia_plus', capability: CAP, sessionId: null, idempotencyKey: 'legacy-r1' });
+    await ds.query(`INSERT INTO ai_usage_events ("userId", capability, "idempotencyKey", provider, "modelKey", outcome, "unitsReported")
+                    VALUES ($1, $2, 'legacy-r1', 'simulated', 'sim', 'success', 3)`, [u, CAP]);
+    // A1: settlement outage after evidence was written → ai_usage_events has unitsReported (legacy would SETTLE it).
+    const a1 = await w.costLedger.reserveAttempt(attempt(u, 40_000));
+    failNextQuery(w, /'settlement', \$2, \$3/);
+    await expect(w.costLedger.settleAttempt(usage(a1.attemptKey, { inputUncached: 30_000 }))).rejects.toThrow('simulated ledger outage');
+    // A2: never-sent release interrupted after the no-provider evidence → legacy would RELEASE it.
+    const a2 = await w.costLedger.reserveAttempt(attempt(u, 5_000));
+    failNextQuery(w, /'release', 0, 0/);
+    await expect(w.costLedger.releaseAttempt(a2.attemptKey)).rejects.toThrow('simulated ledger outage');
+    // A3: a held attempt, targeted directly by the legacy API.
+    const a3 = await w.costLedger.reserveAttempt(attempt(u, 7_000));
+    expect(await w.ledger.settle(a3.attemptKey, 5, null)).toBe('already_resolved');
+    expect(await w.ledger.release(a3.attemptKey)).toBe('already_resolved');
+    expect(await w.ledger.settle(a1.attemptKey, 5, null)).toBe('already_resolved');
+
+    const legacy = await w.ledger.reconcile();
+    expect(legacy).toEqual({ settled: 1, released: 0, flaggedExpired: 0, held: 0 }); // only the legacy reservation
+    const resolutions = (k: string) => rowCount(ds, `SELECT count(*) AS n FROM ai_budget_ledger WHERE "idempotencyKey" = $1 AND "entryType" IN ('settlement', 'release')`, [k]);
+    for (const k of [a1.attemptKey, a2.attemptKey, a3.attemptKey]) expect(await resolutions(k)).toBe(0);
+    expect(await ds.query(`SELECT units::int AS units, "costMicroUsd" FROM ai_budget_ledger WHERE "idempotencyKey" = 'legacy-r1' AND "entryType" = 'settlement'`))
+      .toEqual([{ units: 3, costMicroUsd: null }]);
+    expect((await state()).held).toBe(52_000n); // all three attempts still held at their reservations
+
+    // Only the cost ledger resolves them, from the same evidence, in micro-USD with the pinned schema.
+    expect(await w.costLedger.reconcileAttempts()).toEqual({ settled: 1, released: 1, flaggedExpired: 0, held: 1 });
+    expect(await state()).toMatchObject({ held: 7_000n, settled: 30_000n });
   });
 });

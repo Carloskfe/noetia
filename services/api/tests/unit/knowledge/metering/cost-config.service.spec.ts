@@ -1,6 +1,7 @@
 import { isValidated, MAX_RATE } from '../../../../src/knowledge/ai/contract';
 import { RAW_FIXTURE_PRICING_A, RAW_FIXTURE_UNIT_WEIGHTS } from '../../../../src/knowledge/ai/contract/fixtures';
 import { CostConfigError, CostConfigService } from '../../../../src/knowledge/metering/cost-config.service';
+import { GLOBAL_ADMISSION_LOCK } from '../../../../src/knowledge/metering/budget-ledger.service';
 import { FakeDb } from '../support/fixtures';
 
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -173,13 +174,26 @@ describe('CostConfigService — global budget policies (D14)', () => {
     expect(await svc.activeGlobalPolicy()).toBeNull();
   });
 
-  it('activateGlobalPolicy deactivates the previous policy under a lock', async () => {
+  it('activateGlobalPolicy takes the B-6 global admission lock FIRST (F-9), then its own lock, in one transaction', async () => {
     const { db, svc } = setup();
     db.on(/pg_advisory_xact_lock/, () => [{}]);
     db.on(/SELECT 1 AS ok FROM ai_global_budget_policies/, () => [{ ok: 1 }]);
     db.on(/UPDATE ai_global_budget_policies SET active/, () => []);
     await svc.activateGlobalPolicy('g-2');
-    expect(db.ran(/pg_advisory_xact_lock/)[0].params).toEqual(['intelligence:ai_global_budget_policies-activation:v1']);
+    expect(db.ran(/pg_advisory_xact_lock/).map((c) => c.params[0]))
+      .toEqual([GLOBAL_ADMISSION_LOCK, 'intelligence:ai_global_budget_policies-activation:v1']);
+    expect(db.transaction).toHaveBeenCalledTimes(1);
+    const sqls = db.calls.map((c) => c.sql);
+    expect(sqls.findIndex((q) => /pg_advisory_xact_lock/.test(q))).toBeLessThan(sqls.findIndex((q) => /UPDATE ai_global_budget_policies/.test(q)));
     expect(db.ran(/SET active = true WHERE id = \$1/)[0].params).toEqual(['g-2']);
+  });
+
+  it('unit-weight activation does not take the global admission lock (weights are pinned per reservation, not part of D14)', async () => {
+    const { db, svc } = setup();
+    db.on(/pg_advisory_xact_lock/, () => [{}]);
+    db.on(/SELECT 1 AS ok FROM ai_unit_weight_schemas/, () => [{ ok: 1 }]);
+    db.on(/UPDATE ai_unit_weight_schemas SET active/, () => []);
+    await svc.activateUnitWeightSchema('uw-1');
+    expect(db.ran(/pg_advisory_xact_lock/).map((c) => c.params[0])).toEqual(['intelligence:ai_unit_weight_schemas-activation:v1']);
   });
 });
