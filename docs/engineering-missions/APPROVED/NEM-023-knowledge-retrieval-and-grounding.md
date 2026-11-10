@@ -88,7 +88,7 @@ Provide **dark, unwired** retrieval components that, given an allowed set alread
 ## 3. Dependencies
 
 - **Decisions before approval:** D-1 (TT-25) to D-9 (§16).
-- **Code:** NEM-022 accepted (Gateway v2), NEM-021 (ledger), NEM-019 (rights, Context Builder). Built on the NEM-022 branch stack, not `main`.
+- **Code:** NEM-022 (Gateway v2), NEM-021 (ledger), NEM-019 (rights, Context Builder). Built on the NEM-022 branch stack, not `main`. *Reconciliation (2026-11-10):* when this specification was written, NEM-022 was described as "accepted" without a recorded decision (it was then returned for PA re-review). The PO **recorded NEM-022's acceptance on 2026-11-10 at commit `f6a5cb7`** after PA re-review ([NEM-022 report §20](../../reports/2026-11-09-NEM-022-gateway-simulator-v2-report.md#20-product-architecture-re-review-outcome-and-product-owner-acceptance-2026-11-10)). NEM-023 was built on exactly that commit (`f6a5cb7` is an ancestor of `6c4b08e`; no `services/` change between `f6a5cb7` and the NEM-023 base `54ad768`), so references below to the "accepted" Gateway now match the record. NEM-023's own status (accepted with open exceptions E-1, E-2) is unchanged.
 - **E3:** E5 adds or reuses the single `computeTextHash` function. **Binding the real `TextIdentityPort` adapter in the module is E3's step**, not E5's (§9.1).
 - **E6:** consumes `QueryContextSource` (§9.2).
 - **PO decisions:** [PO-033](../../operating-framework/decisions/product-owner/PO-033-e5-knowledge-retrieval-decisions-and-nem-023-reservation.md).

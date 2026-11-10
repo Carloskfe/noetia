@@ -336,3 +336,16 @@ Unchanged from §15: R-3 (websearch AND semantics), R-4 (Jest flag for the opt-i
 | Not authorized | Merge, deployment, production indexing, paid AI services, E6 implementation |
 
 This record is documentation only: no application code, tests, migrations, CI/CD, or infrastructure changed.
+
+## 19. Reconciliation note — NEM-022 acceptance (2026-11-10)
+
+Earlier NEM-023 and E5 documents (from commit `4018ce3`) described NEM-022 as "accepted" before any acceptance was recorded. NEM-022 was then still returned for Product Architecture re-review.
+
+The Product Owner **recorded NEM-022's acceptance on 2026-11-10 at commit `f6a5cb7`**, following PA re-review; F-1, F-2, and F-3 were accepted as resolved ([NEM-022 report §20](2026-11-09-NEM-022-gateway-simulator-v2-report.md#20-product-architecture-re-review-outcome-and-product-owner-acceptance-2026-11-10)).
+
+**Verification:**
+- `f6a5cb7` is an ancestor of the NEM-023 head reviewed for acceptance (`c5153ed` / `6c4b08e`).
+- `git diff f6a5cb7 54ad768 -- services` is empty: there is no code change between the accepted NEM-022 commit and the NEM-023 base.
+- NEM-023 therefore integrated exactly the accepted Gateway.
+
+**NEM-023's own acceptance status is unchanged:** accepted with open exceptions E-1 and E-2 (§18). Documentation only.
