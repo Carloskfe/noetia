@@ -211,3 +211,101 @@ Stream events, in order: per answered and validated attempt, each segment's `del
 4. Run the integration variant (`gateway-e2e.int-spec.ts` pattern) through the E1 ledger.
 
 Registering a non-simulated adapter stays refused by the router until the launch-readiness gate.
+
+## 13. NEM-023 — Knowledge retrieval, Stage 1 (lexical, S2) (Draft PR, dark)
+
+Mission: [NEM-023](../../engineering-missions/APPROVED/NEM-023-knowledge-retrieval-and-grounding.md), as amended by **Amendment 1**: book passages only, so highlights and notes are E6; no `sync_maps` input; and the B-3 test amendment. Report: [2026-11-10 NEM-023 report](../../reports/2026-11-10-NEM-023-knowledge-retrieval-report.md).
+
+### 13.1 Shape (all under `src/knowledge/retrieval/`, plus `rights/text-hash.ts`)
+
+| Component | Role |
+|---|---|
+| `retrieval.types.ts` | `RetrievalPort` (technology-neutral, ADR-004), `BookTextPort`, request/result types, D-8 defaults, ref and anchor helpers |
+| `rights/text-hash.ts` | **The single** `computeTextHash(bytes) = "sha256:" + hex(SHA-256(exact MinIO bytes))` |
+| `chunker.ts` | Pure, deterministic code-point chunker (paragraph > sentence > space; never splits a word; no edge whitespace) |
+| `indexing-permission.ts` | Book-level `retrieval_indexing` check, using NEM-019's exported validators; **no user identity**; default deny |
+| `book-indexer.service.ts` | Offline indexer: permission → read object → hash must match → chunk → **one set, one transaction** (advisory lock); limits; `prune`, `purge` |
+| `lexical-retrieval.service.ts` | `RetrievalPort` adapter: the allowed pairs are a SQL join; constant per-language configurations; `ts_rank_cd(tsv, q, 32)` then `bookId`, `chunkIndex`; S2 fetch with hash check; budget |
+| `query-context-source.service.ts` | E6 boundary: re-checks `IndexingPermission` per request (current hash via `TextIdentityPort`) and emits `chunk` `ContextItem`s |
+| `anchor-resolver.ts` | `chunk:<uuid>` → `textHash:charStart-charEnd`, only while the hash is current |
+| `verified-text-cache.ts` | Optional bounded LRU of hash-verified texts, keyed by (object key, hash). **Off by default** |
+| `storage-book-text.ts` | Runtime `BookTextPort` over the new `StorageService.getBytes` (byte-exact) |
+| `index-command.ts` | Operator command `index <bookId\|all>`, `prune`, `purge <bookId>` |
+| `retrieval-metrics.service.ts` | `intelligence_retrieval_total{outcome}`, `intelligence_retrieval_passages`, `intelligence_retrieval_excluded_total{reason}`, `intelligence_index_books_total{outcome}`; fixed labels only |
+
+**Dark:**
+- Nothing is bound in `KnowledgeModule`.
+- `TurnService`, `ContextSourcePort` (still `EmptyContextSource`), the `TEXT_IDENTITY_PORT → UnboundTextIdentityPort` binding, and `app.module.ts` are unchanged (architecture test).
+- With the unbound ports, `IndexingPermission` denies every book.
+
+### 13.2 Schema (migration 075, additive)
+
+- `unaccent` (trusted; a non-superuser database owner can create it, as verified by test).
+- `noetia_es`, `noetia_en`, and `noetia_simple` are copies of `spanish`, `english`, and `simple`. Their `word`, `hword`, and `hword_part` token types go through `unaccent` and then the language dictionary.
+- `ai_book_chunks`:
+  - columns: `id`, `bookId` (FK `books`, ON DELETE CASCADE), `textHash` (CHECK `^sha256:[0-9a-f]{64}$`), `chunkIndex`, `charStart`, `charEnd` (code points, CHECK `start < end`), `phraseIndexStart`, `phraseIndexEnd`, `chapterLabel` (all three nullable and **NULL in Stage 1**), `language` (`es`, `en`, `simple`), `tsv`, `createdAt`;
+  - UNIQUE (`bookId`, `textHash`, `chunkIndex`); partial GIN on `tsv` per language;
+  - **no verbatim text column and no user column.**
+- The UNIQUE index's leading columns serve as the (`bookId`, `textHash`) btree, so no separate index is created (§13.6 deviation D-A).
+
+### 13.3 Hash and authorization
+
+- The current hash always comes from `TextIdentityPort`; chunks only record the hash they were built from.
+- `QueryContextSource` passes only permitted books with their current hash. `LexicalRetrievalService` then verifies the MinIO object against the chunk hash before slicing. A mismatch counts as `stale`, and a read failure as `unavailable`; both fail closed.
+- Revocation takes effect at query time, while the chunks are still present: the record is no longer `verified` with `retrieval_indexing`, so no passages are returned. `purge` then removes the rows.
+
+### 13.4 Runbook (index / prune / purge)
+
+> **Production indexing is NOT authorized** (mission §14: RB-1..RB-7, E3 adapters, legal). The commands below are for disposable environments until then.
+
+```bash
+# inside the api container (or with DB_* env pointing at a DISPOSABLE database)
+npx ts-node -r tsconfig-paths/register src/knowledge/retrieval/index-command.ts index <bookId>   # or: index all
+npx ts-node -r tsconfig-paths/register src/knowledge/retrieval/index-command.ts prune            # superseded sets past the grace window (≤ 30 days)
+npx ts-node -r tsconfig-paths/register src/knowledge/retrieval/index-command.ts purge <bookId>   # revocation: every set for the book
+```
+
+- Output is JSON outcomes and counts only.
+- `index` exit codes: 0 = ok or skipped; 1 = failed; 2 = usage error.
+- The command builds its wiring with the **unbound** ports, so until E3 binds real adapters `index` reports `skipped_scope` / `text_identity_unknown` for every book.
+- Run manually and off-peak; concurrency is 1.
+- **Retention:**
+  - At most the current set plus one previous set.
+  - The indexer refuses a third set (`retention_previous_set_pending`).
+  - `prune` deletes any set older than its book's newest set once the newest set is `previousSetGraceHours` old (default 24, clamped to the non-configurable 30-day cap).
+- **Revocation procedure:**
+  1. The rights record changes (retrieval is already blocked).
+  2. Run `purge <bookId>`.
+  3. Verify zero rows with `SELECT count(*) FROM ai_book_chunks WHERE "bookId" = $1`.
+- **Backups (RB-7):** after a purge, the `tsvector` derivative remains in on-server PostgreSQL dumps until they rotate out (7 daily + 4 weekly, about 28 days). **Offsite copies have no automatic pruning and may persist indefinitely.**
+
+### 13.5 Limits (D-8 defaults, `DEFAULT_RETRIEVAL_CONFIG`)
+
+| Limit | Default | Enforcement |
+|---|---|---|
+| Chunk size / overlap | 1,500 code points / 10% | Configuration |
+| Chunks per book | ≤ 2,000 | Over → `skipped_limit` |
+| Index size | ≤ 250 MB | Checked before reading, and **after the insert inside the transaction** (over → rollback) |
+| Indexing | `statement_timeout` 60 s per book, one transaction | Transaction-local |
+| Retrieval | `statement_timeout` 2 s | Transaction-local |
+| Query / topK / budget | ≤ 500 code points / 1–20 / 1–8,000 tokens (defaults 8 / 6,000) | Validation (`RetrievalRequestInvalid`, field name only) |
+| Allowed books | ≤ 10, one text version per book | Validation |
+| Token estimate | `ceil(utf8 bytes / 3)` | More conservative than the simulator's 4 bytes per token |
+| Verified-text cache | 0 (off) | Configuration (PA decision) |
+
+### 13.6 Behaviour notes and deviations
+
+- **D-A:** no separate btree on (`bookId`, `textHash`); the UNIQUE index serves it.
+- **D-B:** `RetrievalResult.excluded` adds `unavailable` (object read failure) to the specified `unindexed` and `stale`; metric reason `unavailable`. `IndexOutcome` adds `failed`.
+- **D-C:** the ranking query always issues the three per-language sub-queries; a language absent from the allowed set costs an empty index probe. The spec described issuing only the languages present.
+- **D-D:** `StorageService.getBytes` was added outside `knowledge/`, because the hash is byte-exact and `getText` decodes.
+- **`websearch_to_tsquery` semantics:** bare terms are ANDed, `or` widens, and quotes require a phrase. A natural-language question with many terms matches only chunks containing all of them (tested). E6 may need to construct `or` queries.
+- **Cross-language:** a Spanish query over an English book matches only shared tokens (tested).
+
+### 13.7 Stage 2 extension points
+
+- A second `RetrievalPort` adapter (pgvector) behind the same interface.
+- Hybrid fusion in a composite adapter.
+- `chapterLabel` and phrase ranges filled through an approved `sync_maps` path.
+- E3 binds `TextIdentityPort` and the verification authority (and may reuse `computeTextHash`).
+- E6 calls `QueryContextSource.candidatesFor` after eligibility and adds highlight and note retrieval.
