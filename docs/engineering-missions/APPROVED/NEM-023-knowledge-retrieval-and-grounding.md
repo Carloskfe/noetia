@@ -1,10 +1,10 @@
 # NOETIA ENGINEERING MISSION — NEM-023 (E5)
 ## Knowledge Retrieval and Grounding (Stage 1: lexical, provider-independent)
 
-**Status:** DRAFT — **FINAL SPECIFICATION (revision 5)**, for Product Architecture review, then PO approval of the specification. **Not executable** (governance README: a DRAFT mission is never executed)
+**Status:** **APPROVED — EXECUTION AUTHORIZED (PO, 2026-11-10) — BLOCKED AT PRE-EXECUTION CHECK.** Three stop conditions are triggered (B-1 `fragments`, B-2 `sync_maps`, B-3 NEM-021 migration test); no implementation code written ([pre-execution report](../../reports/2026-11-10-NEM-023-knowledge-retrieval-report.md)).
 **Identifier:** `NEM-023`, reserved by the PO on 2026-11-10 ([PO-033](../../operating-framework/decisions/product-owner/PO-033-e5-knowledge-retrieval-decisions-and-nem-023-reservation.md))
 **Mission type:** IMPLEMENTATION (proposed)
-**Implementation authorization:** NONE (requires PO approval of this specification **and** a separate execution instruction naming NEM-023; product decisions D-1, D-4, D-6, D-7, D-9 are already decided in PO-033)
+**Implementation authorization:** **GRANTED 2026-11-10** (PO *"EXECUTE NEM-023"*, reviewed specification `54ad768`): checkpoints A–C within the exact scope and stop conditions. **Execution BLOCKED** pending decisions B-1 to B-3
 **Schema changes:** ADDITIVE ONLY (proposed: one table **without verbatim text** (S2), three text-search configurations, and the `unaccent` contrib extension if D-5 is approved), on disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED (none needed: no image change, no new service, no background job)
 **Production deployment:** NOT AUTHORIZED (staging and merge to `main` also NOT AUTHORIZED)
@@ -20,6 +20,19 @@
 > 6. invariants (§8, §11);
 > 7. PO decisions (§16).
 >
+> **Execution authorization (2026-11-10):** PO *"EXECUTE NEM-023 — Product Owner Authorization: GRANTED"*.
+> - Execute **NEM-023** under the exact scope, checkpoints (A, B, C), restrictions, and stop conditions; reviewed specification commit `54ad768`.
+> - Not authorized: merge, staging or production deployment, production indexing, production or staging credentials or data, paid or external AI, infrastructure or CI/CD, changes to protected NEM-019/021/022 contracts or behaviour, E6, scope expansion.
+> - *"If any approved stop condition is triggered, stop immediately and report the blocker."*
+> - Branch: `feat/nem-023-knowledge-retrieval`.
+>
+> **Pre-execution result (2026-11-10): BLOCKED** (all three verified by probes):
+> - **B-1:** §5.6 needs `fragments`; NEM-019 architecture tests forbid it.
+> - **B-2:** §5.2 needs `sync_maps`; same test.
+> - **B-3:** any migration ≥ 075 fails the NEM-021 `cost-migration` AC-13 test.
+>
+> Options and recommendations: [report §6](../../reports/2026-11-10-NEM-023-knowledge-retrieval-report.md).
+
 > **Revision 5 — final specification** (2026-11-10, PO *"NEM-023 Product Owner Approval and Mission Finalization"*):
 > - Product decisions D-1, D-4, D-6, D-7, D-9 recorded as **DECIDED** ([PO-033](../../operating-framework/decisions/product-owner/PO-033-e5-knowledge-retrieval-decisions-and-nem-023-reservation.md)); identifier NEM-023 reserved.
 > - D-7 made concrete: at most one previous set, a hard 30-day maximum, removed sooner (§9.4); revocation blocks retrieval immediately, plus active-index purge.
