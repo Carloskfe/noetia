@@ -1,10 +1,10 @@
 # NOETIA ENGINEERING MISSION — NEM-024
 ## Research-Turn Orchestration and Minimal Bilingual Web Q&A (dark, simulated provider only)
 
-**Status:** **APPROVED (PO-035) — CHECKPOINT A IMPLEMENTED — AWAITING PRODUCT ARCHITECTURE REVIEW (2026-11-10).** Executed under Amendment 1 (B-1, B-2). Draft PR #55 ([Checkpoint A report](../../reports/2026-11-10-NEM-024-checkpoint-a-report.md) §9). Checkpoints B–E **not authorized**; not merged, not deployed.
+**Status:** **APPROVED — Checkpoint A ACCEPTED (conditional) — CHECKPOINT B EXECUTION AUTHORIZED (PO-036, 2026-11-10)**, with a mandatory release condition: stranded `accepted` turns must be recovered and recovery verified before any user-facing release. Checkpoints C–E **not authorized**; not merged, not deployed.
 **Identifier:** `NEM-024`, assigned by the PO on 2026-11-10 (PO-034 D-5). Verified unused on all remote branches, PR titles, and the register.
 **Mission type:** IMPLEMENTATION
-**Implementation authorization:** **Checkpoint A only** (PO-035), as amended by Amendment 1 (B-1, B-2). Checkpoints B, C, D, E, merge, deployment, production providers, production indexing, and infrastructure are NOT authorized
+**Implementation authorization:** Checkpoint A (PO-035, accepted conditionally by PO-036) and **Checkpoint B** (PO-036). Checkpoints C, D, E, merge, deployment, production providers or activation, and infrastructure are NOT authorized
 **Schema changes:** ADDITIVE ONLY: one table, `ai_turns` (with a partial unique index); disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED (none needed)
 **Production deployment:** NOT AUTHORIZED (staging and merge to `main` also not authorized). Provider usage **simulated only**; every production integration **disabled**
