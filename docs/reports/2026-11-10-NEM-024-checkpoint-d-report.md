@@ -1,6 +1,6 @@
 # NEM-024 Checkpoint D — Completion Report: Minimal Bilingual Web Q&A
 
-**Status:** **CHECKPOINT D IMPLEMENTED — AWAITING INDEPENDENT PRODUCT ARCHITECTURE REVIEW (2026-11-10).** Checkpoint E not started; not merged, not deployed, not activated.
+**Status:** **CHECKPOINT D IMPLEMENTED — PA corrections F-D1 to F-D3 applied (§10) — AWAITING PA RE-REVIEW (2026-11-10).** Checkpoint E not started; not merged, not deployed, not activated.
 **Authorization:** [PO-041](../operating-framework/decisions/product-owner/PO-041-nem-024-checkpoint-d-authorization.md) · **Checkpoint C acceptance:** [PO-040](../operating-framework/decisions/product-owner/PO-040-nem-024-checkpoint-c-formal-acceptance.md) · **Baseline:** `0c629d3` · **Mission:** [NEM-024](../engineering-missions/APPROVED/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md) §5 item 13, §5.1, §5.2, AC-14 · **UX:** [doc 14](../architecture/three-tier-intelligence/14-e6-minimal-ux-proposal.md)
 
 ## 1. Commits and PR
@@ -85,7 +85,7 @@ Nothing was added in these categories:
 
 | Id | Item | Rationale |
 |---|---|---|
-| **D-D1** | The in-flight `{key, question}` is stored **in browser `localStorage`** per session until a terminal outcome | Required for "same-key replay after reload". It is a per-browser recovery aid, **not** conversation memory and **not** server persistence. If storage is unavailable, reload recovery is skipped and the turn still appears in history |
+| **D-D1** | ~~The in-flight `{key, question}` is stored in browser `localStorage`~~ **Superseded by F-D1 (§10.1):** tab-scoped `sessionStorage`, bound to the account, expiring, cleared on logout | Required for "same-key replay after reload". It is a recovery aid, **not** conversation memory and **not** server persistence |
 | **D-D2** | Fork: **notice only**, no fork button | Forking needs a book selection (excluded by PO-041). The notice shows the fork limit from `forkOffer` |
 | **D-D3** | The excluded-book chip state comes from the **latest answer's `exclusions`** | There is no session-level eligibility field. Using the latest answer avoids a backend change |
 | **D-D4** | **One automatic same-key recovery** after a lost stream, then a manual "Check again". Provisional turns poll every 3 s | Bounded retries; never a new key |
@@ -128,4 +128,111 @@ Not done:
 - no provider, paid AI, activation, merge, or deployment;
 - no backend or protected-contract change.
 
-**STOP: submitted for independent Product Architecture review of Checkpoint D.**
+---
+
+## 10. PA correction request (reviewed `3178e40`): F-D1 to F-D3
+
+**Commit:** `3035d7b` (web only: `lib/api.ts`, `lib/research.ts`, `components/research/ResearchSession.tsx`, the three test files, and the e2e spec). No backend change, no new endpoint, no new dependency.
+
+### 10.1 F-D1: recovery storage privacy (corrected)
+
+**Before:**
+- `{key, question}` lived in `localStorage` with no owner and no expiry.
+- It survived logout, account switching, and closing the browser.
+
+**Now, the lifecycle (`lib/research.ts`):**
+
+| Aspect | Behaviour |
+|---|---|
+| Where | **`sessionStorage`**, this tab only: it survives a reload and is gone when the tab or window closes. Never `localStorage` |
+| What | `{ v: 1, key, question, owner, savedAt }`. `owner` is the access token's `sub`, decoded without verification, for scoping only (existing auth infrastructure, `currentAccountId()` in `lib/api.ts`). No email or other claim is stored |
+| When written | When a question is sent or replayed, **only if an account is signed in** (otherwise nothing is written; fail closed) |
+| When removed | <br>• Any terminal outcome except `unknown`.<br>• `clearPending`.<br>• **Logout:** the existing `clearToken()` now calls `clearResearchRecovery()`, which sweeps every `noetia_research_pending:*` entry from both storages. Account deletion already calls `clearToken()` and `localStorage.clear()` |
+| When discarded on read (and purged) | <br>• The owner differs from the current account (**account switch**).<br>• No signed-in account.<br>• Older than **`RECOVERY_TTL_MS` = 15 min** (longer than any turn's server fence; afterwards history is the source of truth).<br>• A future `savedAt` beyond 60 s of clock skew.<br>• Wrong version, invalid key, or malformed JSON |
+| Legacy | A `localStorage` copy from pre-F-D1 builds is never read and is purged on load |
+
+**Limitations (disclosed):**
+
+- **Tab-scoped by design:** a question sent in one tab is not recovered from another tab. The other tab still shows the turn through history, as processing, completed, or interrupted.
+- **Logout through another route:** a logout that only expires the token server-side, without `clearToken`, leaves the entry until the tab closes, the TTL passes, or an account mismatch is detected on read.
+- **Unknown-turn recovery after reload:** only the latest pending question is stored. If the user asks a newer question after an `unknown` outcome, recovering the older one after a reload relies on history; in-page "Check again" still works (F-D2).
+- **Signature not checked:** the token's `sub` is not verified client-side. This only scopes local data; the server authorizes every request.
+
+**Tests:**
+
+- **`research.spec.ts`** (8 F-D1 tests):
+  - sessionStorage only, never localStorage, and no email stored;
+  - nothing written without an account;
+  - account switch and signed-out → not recovered and purged;
+  - TTL boundary (exactly 15 min allowed, +1 ms rejected) and future skew;
+  - legacy entry purged;
+  - malformed, version, and key → purged;
+  - **logout sweep** removes only prefixed entries in both storages;
+  - storage failures never throw.
+- **`api.spec.ts`** (2 tests): `currentAccountId` with the base64url alphabet and the invalid, missing-`sub`, and absent cases; the sweep tolerates unusable storage.
+- **Component** (3 tests, en and es):
+  - another account's entry → not replayed and purged;
+  - expired entry and legacy entry → not replayed and purged;
+  - signed out → nothing stored, and the turn still runs.
+- **Playwright:** after the reload-recovery flow, no recovery entry remains in `localStorage` or `sessionStorage`.
+
+### 10.2 F-D2: unknown-outcome recovery (defect found and corrected)
+
+**Verified behaviour before the fix:**
+- After `unknown`, the pending key was kept, so an immediate "Check again" or a reload replayed the same key.
+- **Defect:** "Check again" used whichever pending question was *latest*. After a newer question was asked, it would have replayed the newer key, not the unknown turn's own key.
+
+**Fix:**
+- `terminalAction(…, key)` attaches `recovery: {key, question}` to the `unknown` turn.
+- "Check again" on that turn replays **its own key and question**.
+- The pending entry is kept for a reload, which auto-replays the same key.
+- **No new key, no reservation:** the server replays by key, as accepted in Checkpoints A and B.
+
+**Tests (component, en and es):**
+
+| Test | What it proves |
+|---|---|
+| Immediate replay, even after a newer completed question | "Check again" sends `calls[0].key` and `'primera'`. The replayed result replaces the same turn id; no cancel call |
+| **Reload after `unknown`** | Automatic replay with the same key and question ("Recovering…") |
+| Lib | `unknown` carries `recovery` only when a key is known |
+
+### 10.3 F-D3: cancellation during recovery (defect found and corrected)
+
+**Defect:** while polling a provisional turn, a cancel answered `cancel_requested`, or one lacking a `turnId`, **returned after clearing the poll timer**. The UI stayed in "Cancelling…" indefinitely.
+
+**Fix:** `resume()` always returns to a recoverable state for the same key.
+
+| Situation | New behaviour |
+|---|---|
+| Polling + `cancel_requested` or no `turnId` | Back to "Processing…"; polling of the known turn resumes, or with no known id the same key is replayed |
+| Polling + cancel request fails | Mapped notice; polling resumes; Cancel remains available |
+| Polling + `turnId` | Load the turn; if still `accepted`, keep polling; otherwise show the outcome |
+| Stream open + cancel request fails | Notice; phase restored; the stream's terminal decides |
+| **Stream open and no terminal ever arrives** | A **watchdog** (`CANCEL_WATCHDOG_MS` = 15 s) aborts delivery only, **never a cancel**. The lost-connection path replays the **same key**, whose terminal shows the real outcome. If the automatic retry is exhausted: idle with "Check again" |
+
+**Tests (component, en and es):**
+
+| Test | What it proves |
+|---|---|
+| Polling + `cancel_requested` | Processing (not Cancelling); `getTurn` called again; then the cancelled outcome |
+| Polling + no `turnId` | Same as above |
+| Polling + cancel failure | Notice, processing, Cancel still present |
+| **Watchdog** | Stream aborted after the timeout; replay with the same key; `cancelTurn` called exactly once; cancelled outcome shown |
+| Terminal in time | The watchdog never fires; no replay |
+
+**Negative control:** run against the pre-fix component, all 10 F-D2/F-D3 component tests fail as expected. With the fix, they pass.
+
+### 10.4 Regression
+
+| Check | Result |
+|---|---|
+| Web unit (full) | **21 suites, 448/448** (previously 420 + 28) |
+| Coverage | `research.ts` 98.7% statements / **95.75% branches**; `api.ts` 95.23 / 87.5. Global web 80.0 / 76.25 / 58.92 / 78.88 (the gate is still pre-existing red; it was 75.16% branches at `3178e40`) |
+| `tsc` (app, tests) · `next lint` | 0 errors · no warnings |
+| Playwright (en, es) against local `next dev`, API simulated | **2/2, run twice**. Includes reload recovery under the new storage |
+| API | No API file changed. Unit last run at `3178e40`: 1,956/1,956 |
+
+**Not done:** no Checkpoint E, no merge, no deployment, no backend or accepted-contract change.
+
+**STOP: returned for PA re-review of Checkpoint D.**
+
