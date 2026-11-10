@@ -51,6 +51,26 @@ const addedColumnsPresent = async (ds: DataSource) =>
       WHERE table_schema = 'public' AND table_name IN ('ai_budget_ledger', 'ai_usage_events')`,
   )).filter((c: any) => isAdded(c.table_name, c.column_name));
 const lastMigration = async (ds: DataSource) => (await ds.query(`SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 1`))[0].name;
+/** Timestamp of 074, parsed from its name. */
+const LAST_NEM021_TIMESTAMP = MIGRATION.slice(-13);
+
+/**
+ * B-3 (NEM-023, PO-approved 2026-11-10; the NEM-021 D-1 / NEM-019 AC-19 pattern): revert every migration newer
+ * than 074, so the assertions below run at the "074 is latest" state they describe, however many migrations follow.
+ */
+async function revertMigrationsAfter074(ds: DataSource) {
+  for (let guard = 0; guard < 100; guard++) {
+    const [last] = await ds.query(`SELECT timestamp::bigint::text AS ts FROM migrations ORDER BY timestamp DESC LIMIT 1`);
+    if (BigInt(last.ts) <= BigInt(LAST_NEM021_TIMESTAMP)) return;
+    await ds.undoLastMigration({ transaction: 'each' });
+  }
+  throw new Error('more than 100 migrations after 074; refusing to continue');
+}
+/** Re-apply every pending migration, then return to the "074 is latest" state. */
+async function upThenBackTo074(ds: DataSource) {
+  await ds.runMigrations({ transaction: 'each' });
+  await revertMigrationsAfter074(ds);
+}
 
 describe('NEM-021 migrations 073–074 on a disposable database', () => {
   let ds: DataSource;
@@ -58,6 +78,7 @@ describe('NEM-021 migrations 073–074 on a disposable database', () => {
   afterAll(async () => ds?.destroy());
 
   it('AC-13: 074 and 073 run down and up; they only add; no other table, column, constraint, or index is altered; no value is seeded', async () => {
+    await revertMigrationsAfter074(ds); // B-3: newer migrations first
     expect(await lastMigration(ds)).toBe(MIGRATION);
     await resetCostState(ds);
     expect(await costTablesPresent(ds)).toBe(6);
@@ -75,7 +96,7 @@ describe('NEM-021 migrations 073–074 on a disposable database', () => {
     expect(await addedColumnsPresent(ds)).toEqual([]);
     expect(await schemaOutside073(ds)).toBe(withMigration); // revert leaves no residue and 073 changed nothing else
 
-    await ds.runMigrations({ transaction: 'each' });
+    await upThenBackTo074(ds);
     expect(await lastMigration(ds)).toBe(MIGRATION);
     expect(await costTablesPresent(ds)).toBe(6);
     expect(await addedColumnsPresent(ds)).toHaveLength(LEDGER_COLUMNS.length + USAGE_COLUMNS.length);
@@ -91,13 +112,16 @@ describe('NEM-021 migrations 073–074 on a disposable database', () => {
     expect(await ds.query(`SELECT indexname FROM pg_indexes WHERE indexname = 'UQ_ai_budget_ledger_adjustment'`)).toEqual([]);
     expect(await ds.query(`SELECT conname FROM pg_constraint WHERE conname = 'CK_ai_budget_ledger_cost_compensation_key'`)).toEqual([]);
     expect(await schemaOutside073(ds)).toBe(withMigration);
-    await ds.runMigrations({ transaction: 'each' });
+    await upThenBackTo074(ds);
     expect(await lastMigration(ds)).toBe(MIGRATION);
     // NEM-019's legacy outcome CHECK is untouched (also covered by the snapshot).
     const [check] = await ds.query(
       `SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conrelid = 'ai_usage_events'::regclass AND contype = 'c' AND pg_get_constraintdef(oid) LIKE '%outcome%' AND pg_get_constraintdef(oid) NOT LIKE '%contractOutcome%'`,
     );
     expect(check.def).toMatch(/success.*failure.*timeout.*aborted/);
+    // B-3: restore the full schema (every migration applied) for the remaining tests.
+    await ds.runMigrations({ transaction: 'each' });
+    expect(await ds.showMigrations()).toBe(false);
   });
 
   it('AC-11 (B-2): every FK to users from 073 is ON DELETE CASCADE; every other new FK is CASCADE or SET NULL', async () => {

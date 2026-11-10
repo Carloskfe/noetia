@@ -1,0 +1,351 @@
+# NEM-023 — Report: Knowledge Retrieval and Grounding (Stage 1)
+
+**Status:** **COMPLETED — ACCEPTED WITH OPEN EXCEPTIONS (PO, 2026-11-10; §18).** Checkpoints A–C done under Amendment 1 (PO: B-1, B-2, B-3 Option A, §9); PA follow-up applied (§17). **Open exceptions E-1 and E-2** (§18) — not waived, relaxed, or satisfied.
+**Delivery state:** Draft PR #53 · Not merged · Not deployed · No production indexing · No staging · No paid or external AI.
+
+> **Historical record:** §1–§8 are the pre-execution check exactly as reported while BLOCKED (including its statement that no implementation PR existed at that time). They are kept as evidence and are superseded by §9 onward.
+
+---
+
+## 1. Mission and authorization
+
+| Item | Value |
+|---|---|
+| Mission | NEM-023 — Knowledge Retrieval and Grounding (E5, Stage 1: lexical, S2), specification at reviewed commit `54ad768` (PR #52); product decisions in PO-033 |
+| Authorization | PO *"EXECUTE NEM-023 — Product Owner Authorization: GRANTED"* (2026-11-10): execute under the exact scope, checkpoints (A: schema, S2 indexing, chunking, text identity, book-level indexing authorization; B: retrieval, user isolation, citations, rights, budgets; C: integration, regression, performance, documentation), restrictions, and stop conditions. **"If any approved stop condition is triggered, stop immediately and report the blocker rather than improvising a workaround."** |
+| Branch | `feat/nem-023-knowledge-retrieval`, created from `54ad768` (ancestry: E5 docs PR #52 → NEM-022 `f6a5cb7` → NEM-021 → …). `main` untouched |
+
+## 2. Pre-execution verification
+
+| Check | Result |
+|---|---|
+| Repository state | Clean; `docs/e5-retrieval-discovery` = origin = `54ad768`; NEM-022 head `f6a5cb7` is an ancestor |
+| PO-033 and specification | Present and consistent: D-1, D-4 (S2), D-6, D-7, D-9 |
+| `retrieval_indexing` compatibility (spec §9.7) | Still holds (operations validated by form; no column constraint) |
+| Schema additions (`ai_book_chunks`, text-search configurations, `unaccent`) vs the NEM-021 D-2 guard | Pass: additive only; no historical migration touched |
+| Indexer command location | Must live inside `knowledge/` (the NEM-019 test allows only `app.module.ts` to reference `knowledge/*` from outside); feasible |
+| **User content search (§5.6) vs NEM-019 architecture tests** | **FAIL — B-1** |
+| **Chapter labels and phrase ranges (§5.2) vs NEM-019 architecture tests** | **FAIL — B-2** |
+| **Any migration ≥ 075 vs the NEM-021 migration test** | **FAIL — B-3** |
+
+## 3. Blockers (verified with temporary probes; nothing committed)
+
+### B-1 — §5.6 user highlight and note search cannot be built without changing an accepted NEM-019 test
+
+§5.6 requires reading the requesting user's `fragments` (`text`, `note`). Every route is closed by accepted NEM-019 architecture tests (`tests/unit/knowledge/architecture.spec.ts`):
+
+| Route | Blocking test |
+|---|---|
+| SQL on `fragments` from `knowledge/*` | *AC-10/17* — the table regex includes `fragments` (line 50) |
+| Import `FragmentsService` from `knowledge/*` | *AC-16/17* — the forbidden-import regex includes `fragments/` (line 43) |
+| An adapter outside `knowledge/` implementing a knowledge port | *"only app.module.ts references knowledge/\* outside the module"* (line 31) |
+
+**Probe** (a temporary `src/knowledge/retrieval/zz-probe.ts` holding the §5.6 query; deleted):
+
+```
+✕ AC-10/17: knowledge SQL touches no token, plan, subscription, user_books, or fragments table …
+    + "src/knowledge/retrieval/zz-probe.ts"
+Tests: 1 failed, 17 passed, 18 total
+```
+
+Stop condition hit: *"A NEM-019, NEM-021, or NEM-022 test must change to pass"*; `fragments` is a protected system (spec §8).
+
+### B-2 — §5.2 chapter labels and phrase ranges from `sync_maps`
+
+The chunker derives chapter labels from heading phrases and phrase ranges from `sync_maps` (read-only). The same AC-10/17 regex includes `sync_maps`, so the same probe failed on its `sync_maps` query. Reading it through the books module would evade the check's text but break its intent (no shared path with reader data). Not pursued.
+
+### B-3 — Any migration ≥ 075 fails the accepted NEM-021 migration test
+
+`tests/integration/knowledge/cost-migration.int-spec.ts` (NEM-021 AC-13) pins `AddCompensationAdjustmentKey1748300000074` as the latest migration (lines 61, 79, 95) and reverts 074, then 073, by position. E5's table needs migration 075.
+
+**Probe** (a temporary one-table `1748300000075-ZzProbe.ts`, disposable PostgreSQL 16; deleted, containers removed):
+
+```
+✕ AC-13: 074 and 073 run down and up; …
+    Expected: "AddCompensationAdjustmentKey1748300000074"
+    Received: "ZzProbe1748300000075"
+✓ AC-19 (NEM-019, already made position-independent by the approved NEM-021 D-1) …
+Tests: 1 failed, 8 passed, 9 total
+```
+
+This is the same class of issue as NEM-021's pre-execution B-1, resolved then by an approved intent-preserving amendment.
+
+## 4. Work completed
+
+1. Verified state, ancestry, PO-033, and the specification.
+2. Ran the three probes above. Every probe file was deleted, and the probe containers were removed.
+3. Created branch `feat/nem-023-knowledge-retrieval`.
+4. Recorded the execution authorization and the BLOCKED status: mission file moved to `APPROVED/` per the PO's statement that the specification is approved; register; this report.
+
+**No application code, tests, migrations, extensions, configuration, CI/CD, or infrastructure changed.** No production or staging access; no provider; no cost.
+
+## 5. Risks
+
+| ID | Rating | Risk |
+|---|---|---|
+| R-1 | High (schedule) | Checkpoints A–C cannot start until B-1 to B-3 are decided |
+| R-2 | Medium | Workarounds would evade the accepted guards' intent and are not pursued: reading `fragments` or `sync_maps` through other modules, renaming SQL, or placing adapters outside `knowledge/` |
+
+## 6. Decisions required
+
+| ID | Decision | Options | Recommendation |
+|---|---|---|---|
+| **B-1** | §5.6 user highlight and note search | **A:** Move §5.6 to **E6**, which already owns highlights (PO-028 Ask My Highlights) and turn wiring. E5 retrieves book chunks only; `QueryContextSource` returns `chunk` items. *Specification amendment (scope reduction); no protected-test change.* **B:** An exception to NEM-019 AC-10/17 permitting read-only, user-scoped `SELECT` on `fragments` from one named E5 file (PO + PA) | **A** — smallest, keeps NEM-019 guards intact, matches the E5/E6 boundary |
+| **B-2** | §5.2 chapter labels and phrase ranges | **A:** Stage 1 stores `chapterLabel` and `phraseIndexStart/End` as **null**; they are derived and optional. The X-3 anchor (`textHash` + offsets) is unaffected; fill them later through an approved path. *Specification amendment.* **B:** An exception permitting a read-only `SELECT` on `sync_maps` from the indexer file. **C:** Heading heuristics on the MinIO text (new behaviour; not recommended) | **A** |
+| **B-3** | NEM-021 AC-13 migration test | **A:** Approve one **intent-preserving amendment** of `cost-migration.int-spec.ts` AC-13: revert migrations newer than 074 first, then 074 and 073 **by name**, with every assertion kept (the NEM-021 D-1 pattern). Applied as a separate commit, shown green before any E5 code. **B:** None viable (E5 needs a table) | **A** (PO + PA, as a test exception) |
+
+If A is approved for all three, implementation proceeds from this branch:
+1. the B-3 test amendment as its own commit, with suites green;
+2. then Checkpoints A, B, and C under the amended scope.
+
+## 7. Protected-systems confirmation
+
+Not modified: NEM-019 (code, tests, module bindings), NEM-021 (frozen contract v1, ledger, tests), NEM-022 (Gateway, tests), `fragments`, `sync_maps`, the reader, migrations, `main`, CI/CD, infrastructure, staging, production. No E6 work.
+
+## 8. Next recommended action
+
+PO decisions on B-1 and B-2 (specification amendments), and PO + PA approval of the B-3 test amendment. *(Recommendation only.)*
+
+---
+
+## 9. PO decision on B-1 to B-3 (2026-11-10)
+
+PO *"NEM-023 RESUME AUTHORIZATION — PRODUCT OWNER DECISION: APPROVED"* approves **Option A** for all three blockers. It is recorded in the mission as **Amendment 1**.
+
+| ID | Decision | Effect |
+|---|---|---|
+| B-1 | **A** | User highlight and note retrieval moves to **E6's** future scope. E5 returns **book passages only** (`chunk` items). NEM-019's protections for `fragments` are unchanged. E6 is not implemented |
+| B-2 | **A** | `chapterLabel`, `phraseIndexStart`, and `phraseIndexEnd` stay nullable and **unpopulated** in Stage 1. `textHash`, code-point offsets, and citation correctness are preserved. `sync_maps` is neither read nor modified |
+| B-3 | **A** | Exactly one intent-preserving amendment of `tests/integration/knowledge/cost-migration.int-spec.ts`: revert newer-than-074 migrations first, then 074 and 073 by name, keeping every NEM-021 assertion; separate commit; verified on disposable PostgreSQL with the NEM-021 regression suites **before** Checkpoint A. No other protected test may change |
+
+The restrictions are unchanged: no merge, no deployment, no production indexing or data, no paid or external AI, no infrastructure or CI/CD changes, no E6, and no change to protected NEM-019/021/022 behaviour.
+
+## 10. Phase 2 — B-3 verification checkpoint (passed before any E5 code)
+
+| Item | Value |
+|---|---|
+| Amendment commit | **`49ecace`** `test: NEM-023 B-3 — NEM-021 AC-13 reverts migrations newer than 074 first (intent-preserving)` (file: `tests/integration/knowledge/cost-migration.int-spec.ts` only) |
+| What changed | `revertMigrationsAfter074()` runs before the AC-13 assertions. 074 and 073 are still reverted **by name** (the existing per-step name assertions). Snapshot comparisons run at the "074 is latest" state; the full schema is restored at the end (`showMigrations() === false`). **Every existing assertion is kept**; no production code, contract v1, ledger, or historical migration changed |
+| Disposable database | `postgres:16-alpine` (16.13) at `127.0.0.1:55432`, database `nem019_test`; Redis 7 at `127.0.0.1:56379`. Both containers were created for the run |
+| Amended test, no newer migration | `npx jest -c jest.integration.config.js --runInBand tests/integration/knowledge/cost-migration.int-spec.ts` → **3 passed / 3** |
+| Amended test with a **temporary** `ZzProbe1748300000075` migration (the probe that failed in §3 B-3; deleted afterwards, never committed) | **3 passed / 3**; the database ended fully migrated (075 applied) |
+| NEM-021 regression (+ every other integration suite) | `npx jest -c jest.integration.config.js --runInBand` → **7 suites, 111 passed / 111** |
+| Knowledge unit regression | `npx jest --maxWorkers=2 tests/unit/knowledge` → **37 suites, 713 passed / 713** |
+
+Environment for every integration command: `NEM019_DISPOSABLE_DB=1 DB_HOST=127.0.0.1 DB_PORT=55432 DB_NAME=nem019_test DB_USER=noetia DB_PASS=test NEM019_REDIS_URL=redis://127.0.0.1:56379`.
+
+## 11. Checkpoints
+
+| Checkpoint | Commit | Content |
+|---|---|---|
+| Phase 1 | `d45acdc` | Amendment 1 (B-1, B-2, B-3) recorded in the mission, register, and this report |
+| B-3 | `49ecace` | The single authorized protected-test amendment (§10) |
+| **A** | `539e031` | Migration 075 (`unaccent`, `noetia_es/en/simple`, `ai_book_chunks` S2); `computeTextHash`; chunker; `IndexingPermission`; `BookIndexer` (transactional, limits, prune, purge); `StorageService.getBytes` + `StorageBookText`; metrics; operator command; unit tests |
+| **B** | `370f6cc` | `LexicalRetrievalService` (SQL-level allowed pairs, constant per-language configurations, deterministic ranking, budget, S2 hash-checked fetch); `QueryContextSource`; `AnchorResolver`; NEM-023 architecture tests |
+| **C** | `e52ad23`, `39156f7`, `df8d2dd` | Integration suites (A + B, end to end, performance); technical-note §13; migration entry 075; this report. (`e52ad23` added an optional verified-text cache, off by default; **removed** in the PA follow-up, §17) |
+
+Design, runbook, limits, and deviations: [technical note §13](../architecture/three-tier-intelligence/09-nem-019-control-plane-technical-note.md#13-nem-023--knowledge-retrieval-stage-1-lexical-s2-draft-pr-dark).
+
+## 12. Test commands and results (final, fresh disposable containers)
+
+| Suite | Command | Result |
+|---|---|---|
+| All integration suites (NEM-019, NEM-021, NEM-022, NEM-023) | `npx jest -c jest.integration.config.js --runInBand` (env as in §10) | **9 passed, 1 skipped (performance, opt-in); 146 passed / 146** |
+| NEM-023 integration A + B | `… tests/integration/knowledge/retrieval.int-spec.ts` | **31 / 31** |
+| NEM-023 end to end | `… tests/integration/knowledge/retrieval-e2e.int-spec.ts` | **4 / 4** |
+| NEM-023 performance | `NODE_OPTIONS=--experimental-vm-modules NEM023_PERF=1 NEM023_MINIO_ENDPOINT=127.0.0.1 NEM023_MINIO_PORT=59000 NEM023_MINIO_ACCESS_KEY=… NEM023_MINIO_SECRET_KEY=… npx jest -c jest.integration.config.js --runInBand tests/integration/knowledge/retrieval-performance.int-spec.ts` (disposable local `minio/minio` container) | **1 / 1** (§13) |
+| Full API unit suite | `npx jest --maxWorkers=2 --coverage` | **125 suites, 1,823 passed / 1,823** |
+| Coverage, `src/knowledge/retrieval/**` | (same run) | **100% statements, 96.6% branches, 100% functions, 100% lines** |
+| Coverage, global | (same run) | Statements 93.92%, branches **78.76%** (the global 80% branch gate fails; it is pre-existing and has never passed on `main`; 77.49% at NEM-022, so this branch improves it), functions 91.8%, lines 95.08% |
+| Lint | `npx eslint src/knowledge/retrieval src/knowledge/rights/text-hash.ts src/storage/storage.service.ts` | 0 errors |
+| Typecheck | `NODE_OPTIONS=--max-old-space-size=1536 npx tsc --noEmit -p tsconfig.json` | 0 errors |
+
+**Unchanged and passing:** NEM-019 `architecture.spec.ts` (including the `fragments`/`sync_maps` table guard and port bindings), NEM-021 contract and ledger suites, the NEM-022 gateway and provider-contract suites, and NEM-019/021/022 integration (`a-schema-migrations` AC-19, `cost-migration` AC-13 with migration 075 present, `cost-ledger`, `ledger`, `sessions`, `gateway-e2e`, `account-deletion`).
+
+## 13. Measurements (§9.4, §13) — original run at `df8d2dd`; the re-run after the cache removal is in §17.3
+
+**Fixture:** 10 invented books × 2,000,000 code points each (≈ the largest dev book, ~500k tokens); production defaults (1,500 code points, 10% overlap). The vocabulary is Zipf-like and deterministic. S2 reads go through the **real `StorageService` against a disposable local MinIO**.
+
+| Measure | Result |
+|---|---|
+| Chunks | 17,780 (1,778 per book; limit 2,000) |
+| **Index size** | **66.3 MB** total (heap 7.3 MB, indexes 16.0 MB, TOAST 43.1 MB) — 26% of the 250 MB budget |
+| **Indexing time** | **1.35 s per book** median (min 1.03 s, max 1.69 s); 13.7 s for 10 books |
+| GIN use | `Bitmap Index Scan on "IDX_ai_book_chunks_tsv_es"` (EXPLAIN, unforced, on the sized fixture) |
+| Ranking SQL alone | p50 1.9 ms |
+| Per object (2 MB) | MinIO GET 8.1 ms median; SHA-256 + strict UTF-8 decode 11.3 ms median |
+| **Retrieval, default configuration** (no cache; fetch + verify on every call) | **p50 163 ms, p95 540 ms, max 648 ms** (30 calls, 10 books, topK 8, budget 6,000) |
+| Retrieval with the optional 64 MiB verified-text cache | p50 88 ms, p95 459 ms, max 496 ms (100 calls) |
+| Hard bound | Every call < 2 s `statement_timeout` |
+
+**Per query** (matching chunks out of 17,780 → median cold / cached ms): 0 → 8/8 · 42 → 112/100 · 415 → 99/43 · 590 → 179/60 · 629 → 132/62 · 1,145 → 110/79 · 2,322 → 304/216 · 3,399 → 168/156 · 4,224 → 399/264 · 9,855 → 518/415.
+
+**Target p95 ≤ 150 ms: NOT MET.** Diagnosis by `EXPLAIN ANALYZE` on the fixture:
+- `ts_rank_cd` cost is proportional to the number of matching chunks (≈ 18 µs per row). A term in 96% of chunks takes 650 ms ranked, against 63 ms for the same join unranked.
+- Recompressing `tsv` with lz4, or storing it uncompressed, did **not** help (≈ 300 ms vs ≈ 330 ms).
+- Selective queries are dominated by S2: fetch + hash + decode ≈ 20 ms per book.
+- The synthetic vocabulary has very frequent non-stop-words; real Spanish/English stop words are removed by the configurations, so real frequency curves are likely kinder. Re-measuring on real, rights-verified texts is not possible yet (no verified records).
+
+## 14. Rights enforcement and migration evidence
+
+| Criterion | Evidence (integration test) |
+|---|---|
+| AC-1 allowed set only (SQL level) | The captured ranking rows contain only allowed (`bookId`, `textHash`) pairs. A wrong hash for an allowed book → nothing. Adversarial SQL/tsquery syntax never errors, leaks, or widens scope |
+| AC-2 stale never served | After a text replacement: no items, `stale` reported, old ref unresolvable. A caller passing the old hash gets nothing (S2 object mismatch) |
+| AC-3 hash authority | Tampered chunk rows claiming the current hash for an unpermitted version → nothing (`indexNotPermitted`). Single `computeTextHash` (architecture test); module binding unchanged |
+| AC-4 two authorizations | Every `IndexingPermission` denial creates no chunks (unbound identity, `research_analysis` only, not attested, `pending_review`, incomplete, review expired). Parity test with `RightsService` (13 variants). An index-only book is never usable; a research-only book is not indexed and is reported. Revocation → nothing immediately (chunks present), `purge` → 0 rows. The indexer uses no user identity (architecture test) |
+| AC-5 (Amendment 1) | Results are `chunk` items with no `userId`. The `fragments`, `sync_maps`, `user_books`, and `book_ai_rights` checksums are unchanged by indexing and retrieval |
+| AC-6 anchors | Every passage equals `codePointSlice(source, charStart, charEnd)`; the resolver returns `textHash:charStart-charEnd`; chapter/phrase metadata is NULL |
+| AC-7 full text | Accent folding beyond the core configurations (`niño`/`nino`, `café`/`cafe`), stemming, stop words; partial GIN used; cross-language limitation and `websearch` AND semantics documented by test |
+| AC-8 end to end (test code) | eligibility → `QueryContextSource` → unchanged Context Builder → Gateway v2 + simulator v2: library segments cite only retrieved chunk refs and are settled once; a non-retrieved citation → scope violation, no text; ineligible books never reach retrieval |
+| AC-9 budgets | Passage tokens ≤ budget for 1 / 40 / 200 / 8,000; NEM-021 reservations are monotonic in the context budget |
+| AC-10 limits | Chunks per book; index size checked after the insert inside the transaction → rollback; simulated crash before commit → 0 rows, then resumable; idempotent; retention (third set refused; prune respects the 24 h window and the 30-day hard cap; the current set is never pruned); delete cascades |
+| AC-11 S2 | No text or user column (schema tests, unit and integration); object fault → `unavailable`, mismatch → `stale`; latency measured with real MinIO fetches |
+| Migration 075 | Down and up by name with a whole-schema snapshot outside `ai_book_chunks` (no residue; configurations and extension removed on down); no row seeded; FK CASCADE; constraints enforced; `unaccent` created by a **non-superuser** database owner |
+| AC-12 | All NEM-019/021/022 suites pass unchanged (§12). Only local disposable PostgreSQL, Redis, and MinIO; no credentials of any shared environment; no provider; no cost |
+
+## 15. Remaining blockers, risks, deviations
+
+**Decisions requested at `df8d2dd`** (both **resolved by the PA follow-up, §17**: P-1 stays recorded as unmet, with no cap and no ranking change; P-2 cache removed):
+
+| ID | Decision | Options |
+|---|---|---|
+| **P-1** | Retrieval p95 target not met (§13) | (a) accept for Stage 1 with the 2 s hard bound and re-measure on real verified texts; (b) add a deterministic candidate cap before ranking (bounded latency; lower ranking quality for very frequent terms); (c) enable the verified-text cache (P-2); (d) a combination |
+| **P-2** | Optional verified-text cache (implemented, **off**) | With the cache on, a direct `RetrievalPort` caller that passes a **stale** hash is served cached text verified earlier for that hash, instead of failing the per-request MinIO check. The composed path (`QueryContextSource`) always uses the current hash, so it is unaffected. Turning it on trades that defence in depth for about 20 ms per book per call |
+
+**Risks:**
+- R-3 (medium): `websearch_to_tsquery` ANDs bare terms, so recall for natural-language questions depends on E6 building `or` queries.
+- R-4 (low): the AWS SDK under Jest needs `NODE_OPTIONS=--experimental-vm-modules` for the opt-in MinIO performance run only (no config change).
+- R-5: production indexing remains blocked by mission §14 (RB-1 to RB-7, E3 adapters, legal).
+
+**Deviations** (technical note §13.6):
+- D-A: no separate btree (the UNIQUE index covers it).
+- D-B: the additional `unavailable` exclusion and `failed` index outcome.
+- D-C: all three language sub-queries are always issued.
+- D-D: `StorageService.getBytes` added (byte-exact hashing), with tests (`storage.service.ts` now 100% lines).
+
+**Protected systems:** NEM-019 code, tests, and bindings; NEM-021 contract v1, ledger, and tests (apart from the single authorized B-3 amendment); NEM-022 Gateway and tests; `TurnService`; `ContextSourcePort`; `app.module.ts`; `fragments`; `sync_maps`; reader; historical migrations; CI/CD; infrastructure — **all unchanged**. No E6 work.
+
+## 16. Next action
+
+Superseded by §17.5.
+
+## 17. Product Architecture follow-up (2026-11-10)
+
+The PA review of PR #53 at `df8d2dd` returned **CONDITIONAL — corrections and verification required**. The limited work below was performed. No merge, deployment, or production indexing.
+
+### 17.1 P-1 — performance target stays unmet; no ranking change
+
+- **The p95 ≤ 150 ms target is NOT met, and it is recorded as an open acceptance exception.** No candidate cap was introduced, and ranking is unchanged (`ts_rank_cd(tsv, q, 32)`, then `bookId`, `chunkIndex`).
+- **The 2-second timeout is not an end-to-end latency guarantee.**
+  - `statement_timeout = 2000` is PostgreSQL's **per-statement** limit, set `LOCAL` on the retrieval transaction. It bounds each of the three SQL statements (status, ranking, key lookup) separately, not their sum.
+  - It does **not** bound the S2 work that happens after the transaction:
+    - the MinIO GETs (one per distinct result book, ≤ 10, in parallel);
+    - SHA-256 and strict UTF-8 decoding of every fetched object, which is synchronous CPU work on the event loop;
+    - code-point slicing;
+    - budget trimming.
+  - There is no request-level deadline in `LexicalRetrievalService`, and none was added (no behaviour change). An end-to-end deadline, if required, belongs to E6's turn path.
+  - In the measured runs every call finished in < 0.7 s. That is an observation on one fixture, not a bound.
+
+### 17.2 P-2 — verified-text cache removed
+
+**Examination:**
+- The cache was optional, off by default, and used by no required path. Its only consumer was the opt-in performance test.
+- With it enabled, a direct `RetrievalPort` caller passing a stale hash would receive cached text instead of failing the per-request MinIO hash check, which weakens AC-11's defence in depth.
+- Retaining it adds a class, a configuration field, a branch in the S2 path, and two test files for no required function.
+
+**Action:** removed. `e52ad23` was reverted (`git revert`), and the performance test was simplified to the single default path. Every retrieval again **always** re-reads and re-verifies the object. A new unit test pins this: after an object replacement, the same caller-supplied hash yields `stale` and no passages on the very next call. Required functionality is unaffected: every NEM-023 suite passes (§17.4).
+
+### 17.3 Re-measurement after the removal (default and only path)
+
+The fixture and disposable local MinIO are the same as in §13.
+
+| Measure | Result |
+|---|---|
+| Index size | 66.4 MB (heap 7.3 MB, indexes 16.1 MB, TOAST 43.1 MB) |
+| Indexing | median 0.95 s per book (min 0.86 s, max 1.10 s); 9.8 s for 10 books |
+| **Retrieval** (100 calls, 10 books, topK 8, budget 6,000) | **p50 187 ms, p95 594 ms, max 669 ms** — target **not met** |
+| Per query (matches → p50 ms) | 0 → 6 · 42 → 99 · 415 → 92 · 590 → 138 · 629 → 99 · 1,145 → 113 · 2,322 → 234 · 3,399 → 195 · 4,224 → 338 · 9,855 → 400 |
+| Per object | MinIO GET 7.1 ms; hash + decode 8.5 ms; ranking SQL alone p50 1.6 ms |
+| GIN | `Bitmap Index Scan on "IDX_ai_book_chunks_tsv_es"` |
+
+Run-to-run variance against §13 (p95 540 → 594 ms; indexing 1.35 → 0.95 s per book) reflects the shared development VM.
+
+### 17.4 Regression after the change (fresh disposable containers, removed afterwards)
+
+| Suite | Command | Result |
+|---|---|---|
+| Knowledge + storage unit | `npx jest --maxWorkers=2 tests/unit/knowledge tests/unit/storage` | **50 suites, 852 / 852** |
+| Full API unit, with coverage | `npx jest --maxWorkers=2 --coverage` | **124 suites, 1,819 / 1,819**. `src/knowledge/retrieval`: 100% statements, lines, and functions; 97.59% branches. Global branches 78.75% (pre-existing 80% gate miss, unchanged in kind) |
+| All integration suites | `npx jest -c jest.integration.config.js --runInBand` (env as in §10) | **9 passed, 1 skipped (opt-in performance); 146 / 146** |
+| Performance (opt-in) | as in §12 (disposable local MinIO) | **1 / 1** (§17.3) |
+| Typecheck | `NODE_OPTIONS=--max-old-space-size=1536 npx tsc --noEmit -p tsconfig.test.json` | 0 errors |
+
+No accepted contract, protected test, or approved scope changed. Only NEM-023's own code and tests were touched.
+
+### 17.5 Bounded, reproducible benchmark plan for a rights-verified corpus (not executed)
+
+**Preconditions** (all required; none hold today):
+- E3 binds the production `TextIdentityPort` and verification authority.
+- Verified, attested `book_ai_rights` records grant `retrieval_indexing` for exact text versions.
+- RB-1 to RB-7 are resolved enough to authorize a **non-production** benchmark (mission §14).
+- A separate PO/PA instruction names this benchmark.
+
+**Plan:**
+
+1. **Environment:** disposable PostgreSQL 16 (`postgres:16-alpine`, same minor version as production), disposable MinIO, and a pinned host profile (vCPU, RAM, disk recorded in the report). Never production or staging. Verified texts are copied in **only** as the authorization permits, then destroyed with the containers.
+2. **Corpus (bounded):** at most 10 verified books — the largest available plus a size spread (small, median, largest), Spanish and English. Each book is identified by `textHash` (book ids and titles appear in the report only if authorized).
+3. **Indexing:** production defaults (`DEFAULT_RETRIEVAL_CONFIG` at the PR commit); one cold run plus two repeats. Record chunks per book, index size by component, and time per book.
+4. **Query set (fixed and versioned):** 50 queries, frozen in a file committed with the benchmark. They are stratified by measured match fraction (0, < 1%, 1–5%, 5–20%, > 20% of chunks) and by form (1 term, 2–3 ANDed terms, `or`, quoted phrase). Queries are written by the team from public topics, never from user data.
+5. **Allowed-set shapes:** 1, 3 (Noetia+), and 10 (NoetiaX) books.
+6. **Protocol:** warm-up of one pass, discarded; then 5 passes × 50 queries × 3 shapes, sequential with concurrency 1, with `ANALYZE` after indexing.
+7. **Measurements, reported per stratum and shape:**
+   - end-to-end `retrieve()` p50/p95/max;
+   - split timings: SQL (status, ranking), MinIO GETs, hash + decode, slicing;
+   - `EXPLAIN (ANALYZE, BUFFERS)` for one query per stratum;
+   - process RSS.
+8. **Acceptance read-out:** p95 against the 150 ms target, per stratum, plus any SQL statement that comes within 50% of the 2 s timeout. Results are compared with this report's synthetic numbers.
+9. **Reproducibility:** benchmark-harness commit SHA, query-file hash, image digests, and raw output attached; repeatable via the same opt-in Jest entry point (`NEM023_PERF`-style flag) pointed at the verified corpus loader.
+10. **Out of scope:** production books or databases, staging, paid or external AI, and changing ranking or caps during the benchmark (any optimisation is a separate, approved change).
+
+### 17.6 Remaining acceptance exceptions
+
+| ID | Exception | Status |
+|---|---|---|
+| E-1 | Retrieval p95 ≤ 150 ms (10 × the largest book) **not met**: measured p95 594 ms | Open; recorded as unmet per the PA. To be re-evaluated by the §17.5 benchmark |
+| E-2 | Global API branch-coverage gate (80%) fails at 78.75% | Pre-existing on `main`; this branch improves it (77.49% at NEM-022) |
+
+Unchanged from §15: R-3 (websearch AND semantics), R-4 (Jest flag for the opt-in MinIO run), R-5 (production indexing blocked); deviations D-A to D-D.
+
+**STOP for Product Architecture review.** No merge, deployment, or production indexing.
+
+## 18. Product Owner acceptance record (2026-11-10)
+
+**PO decision: ACCEPTED WITH OPEN EXCEPTIONS** (*"NEM-023 Product Owner Acceptance Record"*).
+
+| Item | Record |
+|---|---|
+| Accepted | NEM-023 as a **completed, disconnected development implementation**, for its approved development scope only (as amended by Amendment 1) |
+| Reviewed implementation | PR #53, commit `c5153ed` |
+| **E-1 — retrieval performance** | p95 **594 ms** vs the **150 ms** target (§17.3). **OPEN** |
+| **E-2 — global API branch coverage** | **78.75%** vs the **80%** threshold (§17.4). **OPEN** |
+| Status of E-1 / E-2 | Neither waived, relaxed, nor considered satisfied; not to be closed without new evidence (e.g. the §17.5 benchmark for E-1) and a separate decision |
+| Verified-text cache | Removed (`cf64287`, PA follow-up P-2) and **remains absent**; every retrieval re-reads and re-verifies the MinIO object |
+| Production-indexing blockers (mission §14), preserved | RB-1 PO-029 eligible corpus · RB-2 TT-26 legal evidence standard / Named Verifier · RB-3 E3 production `TextIdentityPort` + verification-authority adapters and verified, attested `retrieval_indexing` records for exact text versions · RB-5 author/publisher opt-in terms (D6) · RB-6 legal position on storing the `tsvector` derivative · RB-7 offsite backup retention · governance: merge, deployment, `unaccent` enablement under ADR-004 safety steps, server snapshot |
+| Delivery state | PR #53 remains **Draft**. Not merged, not deployed |
+| Not authorized | Merge, deployment, production indexing, paid AI services, E6 implementation |
+
+This record is documentation only: no application code, tests, migrations, CI/CD, or infrastructure changed.
+
+## 19. Reconciliation note — NEM-022 acceptance (2026-11-10)
+
+Earlier NEM-023 and E5 documents (from commit `4018ce3`) described NEM-022 as "accepted" before any acceptance was recorded. NEM-022 was then still returned for Product Architecture re-review.
+
+The Product Owner **recorded NEM-022's acceptance on 2026-11-10 at commit `f6a5cb7`**, following PA re-review; F-1, F-2, and F-3 were accepted as resolved ([NEM-022 report §20](2026-11-09-NEM-022-gateway-simulator-v2-report.md#20-product-architecture-re-review-outcome-and-product-owner-acceptance-2026-11-10)).
+
+**Verification:**
+- `f6a5cb7` is an ancestor of the NEM-023 head reviewed for acceptance (`c5153ed` / `6c4b08e`).
+- `git diff f6a5cb7 54ad768 -- services` is empty: there is no code change between the accepted NEM-022 commit and the NEM-023 base.
+- NEM-023 therefore integrated exactly the accepted Gateway.
+
+**NEM-023's own acceptance status is unchanged:** accepted with open exceptions E-1 and E-2 (§18). Documentation only.

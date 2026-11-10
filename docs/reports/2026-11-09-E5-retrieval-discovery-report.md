@@ -1,8 +1,8 @@
 # E5 — Knowledge Retrieval and Grounding: Discovery Report
 
-**Status:** REVISION 4 (read-only analysis). **Superseded for decisions by [PO-033](../operating-framework/decisions/product-owner/PO-033-e5-knowledge-retrieval-decisions-and-nem-023-reservation.md) and the [NEM-023 final specification](../engineering-missions/DRAFT/NEM-023-knowledge-retrieval-and-grounding.md).** Kept as the analysis record. **PO direction (2026-11-10): S2 selected in principle, subject to rights verification** (see the [decision packet](2026-11-10-E5-product-owner-decision-packet.md)).
+**Status:** REVISION 4 (read-only analysis). **Superseded for decisions by [PO-033](../operating-framework/decisions/product-owner/PO-033-e5-knowledge-retrieval-decisions-and-nem-023-reservation.md) and the [NEM-023 final specification](../engineering-missions/APPROVED/NEM-023-knowledge-retrieval-and-grounding.md).** Kept as the analysis record. **PO direction (2026-11-10): S2 selected in principle, subject to rights verification** (see the [decision packet](2026-11-10-E5-product-owner-decision-packet.md)).
 **Authorization:** Product Owner, *"E5 Discovery and Engineering Mission Draft"* (2026-11-09), and the Product Architecture review response on PR #52 (*"Architectural direction supported — changes required before mission approval"*). Documentation only.
-**Changes made:** this report and the DRAFT mission ([`DRAFT/NEM-023-knowledge-retrieval-and-grounding.md`](../engineering-missions/DRAFT/NEM-023-knowledge-retrieval-and-grounding.md)). No code, migrations, database changes, extensions, dependencies, infrastructure, CI/CD, merges, deployments, or provider activity.
+**Changes made:** this report and the DRAFT mission ([`APPROVED/NEM-023-knowledge-retrieval-and-grounding.md`](../engineering-missions/APPROVED/NEM-023-knowledge-retrieval-and-grounding.md)). No code, migrations, database changes, extensions, dependencies, infrastructure, CI/CD, merges, deployments, or provider activity.
 
 Legend: **[F]** verified repository fact (with source) · **[M]** measured (local dev database, read-only) · **[A]** assumption · **[D]** Product Owner decision (§9).
 

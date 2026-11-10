@@ -1,10 +1,19 @@
 # NOETIA ENGINEERING MISSION — NEM-023 (E5)
 ## Knowledge Retrieval and Grounding (Stage 1: lexical, provider-independent)
 
-**Status:** DRAFT — **FINAL SPECIFICATION (revision 5)**, for Product Architecture review, then PO approval of the specification. **Not executable** (governance README: a DRAFT mission is never executed)
+**Status:** **COMPLETED — ACCEPTED WITH OPEN EXCEPTIONS (PO, 2026-11-10)** as a completed, disconnected development implementation (PR #53, reviewed commit `c5153ed`). **Open exceptions E-1 (retrieval p95 594 ms vs 150 ms) and E-2 (global API branch coverage 78.75% vs 80%) — not waived, relaxed, or satisfied.** Not merged, not deployed; production indexing blocked ([report §18](../../reports/2026-11-10-NEM-023-knowledge-retrieval-report.md#18-product-owner-acceptance-record-2026-11-10)).
+
+> **Product Owner acceptance (2026-11-10):** *"NEM-023 Product Owner Acceptance Record — ACCEPTED WITH OPEN EXCEPTIONS"*.
+> - **Accepted:** the approved development scope only (as amended by Amendment 1), at PR #53 commit `c5153ed`. Dark, disconnected: no module binding, no turn wiring.
+> - **E-1 — retrieval performance:** p95 **594 ms** against the **150 ms** target (§9.4). **Open.**
+> - **E-2 — global API branch coverage:** **78.75%** against the **80%** threshold. **Open.**
+> - Neither requirement is waived, relaxed, or considered satisfied. Neither may be closed without new evidence and a separate decision.
+> - **Verified-text cache:** removed after the PA follow-up (`cf64287`) and **remains absent**; every retrieval re-reads and re-verifies the MinIO object.
+> - **Production-indexing blockers preserved (§14):** RB-1 (PO-029 corpus), RB-2 (TT-26 legal evidence standard), RB-3 (E3 adapters; verified, attested `retrieval_indexing` records), RB-5 (author opt-in / D6), RB-6 (legal position on the `tsvector` derivative), RB-7 (offsite backup retention), plus governance (merge, deployment, `unaccent` enablement, snapshot).
+> - **Not authorized:** merge, deployment, production indexing, paid AI services, E6.
 **Identifier:** `NEM-023`, reserved by the PO on 2026-11-10 ([PO-033](../../operating-framework/decisions/product-owner/PO-033-e5-knowledge-retrieval-decisions-and-nem-023-reservation.md))
 **Mission type:** IMPLEMENTATION (proposed)
-**Implementation authorization:** NONE (requires PO approval of this specification **and** a separate execution instruction naming NEM-023; product decisions D-1, D-4, D-6, D-7, D-9 are already decided in PO-033)
+**Implementation authorization:** **GRANTED 2026-11-10** (PO *"EXECUTE NEM-023"*, reviewed specification `54ad768`): checkpoints A–C within the exact scope and stop conditions, **as amended by Amendment 1** (B-1, B-2) and the B-3 test exception
 **Schema changes:** ADDITIVE ONLY (proposed: one table **without verbatim text** (S2), three text-search configurations, and the `unaccent` contrib extension if D-5 is approved), on disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED (none needed: no image change, no new service, no background job)
 **Production deployment:** NOT AUTHORIZED (staging and merge to `main` also NOT AUTHORIZED)
@@ -20,6 +29,25 @@
 > 6. invariants (§8, §11);
 > 7. PO decisions (§16).
 >
+> **Execution authorization (2026-11-10):** PO *"EXECUTE NEM-023 — Product Owner Authorization: GRANTED"*.
+> - Execute **NEM-023** under the exact scope, checkpoints (A, B, C), restrictions, and stop conditions; reviewed specification commit `54ad768`.
+> - Not authorized: merge, staging or production deployment, production indexing, production or staging credentials or data, paid or external AI, infrastructure or CI/CD, changes to protected NEM-019/021/022 contracts or behaviour, E6, scope expansion.
+> - *"If any approved stop condition is triggered, stop immediately and report the blocker."*
+> - Branch: `feat/nem-023-knowledge-retrieval`.
+>
+> **Amendment 1 (PO *"NEM-023 RESUME AUTHORIZATION — APPROVED"*, 2026-11-10): B-1, B-2, and B-3 Option A.**
+> - **B-1 — user highlights and notes move to E6.** E5 returns **book passages only**. §5.6 is removed from E5 scope; `QueryContextSource` emits `chunk` items only. NEM-019's protections for `fragments` (architecture tests AC-10/17, AC-16/17) are **unchanged**. E6 is not implemented here.
+> - **B-2 — no `sync_maps` input in Stage 1.** `chapterLabel`, `phraseIndexStart`, and `phraseIndexEnd` stay **nullable and unpopulated (NULL)**. `textHash`, Unicode code-point offsets, and citation correctness are preserved. E5 neither reads nor modifies `sync_maps`; filling these columns later needs its own approved path.
+> - **B-3 — one intent-preserving amendment** of `tests/integration/knowledge/cost-migration.int-spec.ts` (NEM-021 AC-13): revert migrations newer than 074 first, then 074 and 073 **by name**, every existing assertion preserved; committed separately from E5 code and verified green on disposable PostgreSQL **before** Checkpoint A. No other protected test may change.
+> - Sections changed by this amendment are marked *(Amendment 1)*.
+>
+> **Pre-execution result (2026-11-10): BLOCKED** (all three verified by probes; resolved by Amendment 1):
+> - **B-1:** §5.6 needs `fragments`; NEM-019 architecture tests forbid it.
+> - **B-2:** §5.2 needs `sync_maps`; same test.
+> - **B-3:** any migration ≥ 075 fails the NEM-021 `cost-migration` AC-13 test.
+>
+> Options and recommendations: [report §6](../../reports/2026-11-10-NEM-023-knowledge-retrieval-report.md).
+
 > **Revision 5 — final specification** (2026-11-10, PO *"NEM-023 Product Owner Approval and Mission Finalization"*):
 > - Product decisions D-1, D-4, D-6, D-7, D-9 recorded as **DECIDED** ([PO-033](../../operating-framework/decisions/product-owner/PO-033-e5-knowledge-retrieval-decisions-and-nem-023-reservation.md)); identifier NEM-023 reserved.
 > - D-7 made concrete: at most one previous set, a hard 30-day maximum, removed sooner (§9.4); revocation blocks retrieval immediately, plus active-index purge.
@@ -53,14 +81,14 @@ ADR-004 approves pgvector as the future vector store, behind a mandatory, techno
 
 ## 2. Objective
 
-Provide **dark, unwired** retrieval components that, given an allowed set already produced by the existing eligibility step and a query, return ranked, budget-bounded, citable passages and the user's own highlights and notes. E6 will wire these components into turns through the unchanged Context Builder and the accepted NEM-022 Gateway.
+Provide **dark, unwired** retrieval components that, given an allowed set already produced by the existing eligibility step and a query, return ranked, budget-bounded, citable **book passages** *(Amendment 1: the user's own highlights and notes are E6 scope)*. E6 will wire these components into turns through the unchanged Context Builder and the accepted NEM-022 Gateway.
 
 **Done** = every §11 criterion proven on disposable databases with fixture texts.
 
 ## 3. Dependencies
 
 - **Decisions before approval:** D-1 (TT-25) to D-9 (§16).
-- **Code:** NEM-022 accepted (Gateway v2), NEM-021 (ledger), NEM-019 (rights, Context Builder). Built on the NEM-022 branch stack, not `main`.
+- **Code:** NEM-022 (Gateway v2), NEM-021 (ledger), NEM-019 (rights, Context Builder). Built on the NEM-022 branch stack, not `main`. *Reconciliation (2026-11-10):* when this specification was written, NEM-022 was described as "accepted" without a recorded decision (it was then returned for PA re-review). The PO **recorded NEM-022's acceptance on 2026-11-10 at commit `f6a5cb7`** after PA re-review ([NEM-022 report §20](../../reports/2026-11-09-NEM-022-gateway-simulator-v2-report.md#20-product-architecture-re-review-outcome-and-product-owner-acceptance-2026-11-10)). NEM-023 was built on exactly that commit (`f6a5cb7` is an ancestor of `6c4b08e`; no `services/` change between `f6a5cb7` and the NEM-023 base `54ad768`), so references below to the "accepted" Gateway now match the record. NEM-023's own status (accepted with open exceptions E-1, E-2) is unchanged.
 - **E3:** E5 adds or reuses the single `computeTextHash` function. **Binding the real `TextIdentityPort` adapter in the module is E3's step**, not E5's (§9.1).
 - **E6:** consumes `QueryContextSource` (§9.2).
 - **PO decisions:** [PO-033](../../operating-framework/decisions/product-owner/PO-033-e5-knowledge-retrieval-decisions-and-nem-023-reservation.md).
@@ -86,15 +114,15 @@ Only under `services/api` (plus tests and docs):
    - Table **`ai_book_chunks`**:
      - **Identity:** `id` uuid; `bookId` (FK `books` `ON DELETE CASCADE`); `chunkIndex`.
      - **Anchor:** `textHash`, `charStart`, `charEnd` (code points).
-     - **Metadata:** `phraseIndexStart` and `phraseIndexEnd` (derived, nullable); `chapterLabel` (nullable); `language` (`es` | `en` | `simple`).
+     - **Metadata:** `phraseIndexStart` and `phraseIndexEnd` (nullable); `chapterLabel` (nullable) — **all three NULL in Stage 1** *(Amendment 1, B-2)*; `language` (`es` | `en` | `simple`).
      - **Search:** `tsv` tsvector.
      - **Constraints:** UNIQUE (`bookId`, `textHash`, `chunkIndex`); CHECK `charStart < charEnd`.
      - **Indexes:** partial GIN on `tsv` per language; btree (`bookId`, `textHash`). No user columns.
    - **Storage: S2 (selected, §5.1).** No verbatim chunk text column; `tsv` is computed by the indexer from the MinIO text and stored.
 2. **Chunker (pure, deterministic):**
-   - book text plus optional sync phrases → chunks;
+   - book text → chunks *(Amendment 1, B-2: no sync-phrase input; no chapter labels or phrase ranges in Stage 1)*;
    - configurable size and overlap (D-8); prefers paragraph and sentence boundaries; never splits a word;
-   - exact code-point offsets; headings → chapter labels; phrase ranges derived from sync maps (read-only).
+   - exact code-point offsets.
 3. **Indexer (explicit command, offline):**
    - per book: **establish book-level index permission (§9.6; default deny)**; read the MinIO text; `textHash = computeTextHash(bytes)`, which must equal the hash the permission was granted for; chunk; write **one complete set in one transaction**;
    - idempotent (skips an existing set), resumable, concurrency 1, enforces the §9.4 limits;
@@ -102,12 +130,9 @@ Only under `services/api` (plus tests and docs):
    - Commands: `index <bookId|all>`, `prune` (non-current sets past grace), `purge <bookId>` (immediate).
 4. **`computeTextHash`:** one shared pure function under `knowledge/rights/` (§9.1), with unit tests, if not already added by E3.
 5. **`RetrievalPort` + lexical implementation** (§9.2, §9.3): per-language sub-queries with constant configurations, the allowed `(bookId, textHash)` pairs as SQL predicates, `ts_rank_cd` with deterministic tie-breaks, top-k, and budget trimming.
-6. **User content search:**
-   - lexical search over the **requesting user's** `fragments.text` and `fragments.note`, for allowed books only;
-   - the language comes from the fragment's book; `to_tsvector` is computed at query time; row cap per §9.4;
-   - **no index or schema change on `fragments`.**
-7. **`QueryContextSource`** (§9.2): resolves current hashes through `TextIdentityPort`, calls `RetrievalPort` and the user content search, and maps the results to NEM-019 `ContextItem`s (`chunk` / `highlight` / `note`, with `text`) under a total context-token budget. **It is not bound to `ContextSourcePort`, and `TurnService` is unchanged.**
-8. **Anchor resolver:** chunk ref → `{ bookId, textHash, charStart, charEnd, chapterLabel, phraseRange }`. It verifies the hash still equals the current text hash (otherwise the ref is unresolvable). Gateway citation anchors carry `textHash:charStart-charEnd`.
+6. ~~**User content search**~~ — **moved to E6** *(Amendment 1, B-1)*. E5 does not read `fragments`.
+7. **`QueryContextSource`** (§9.2): resolves current hashes through `TextIdentityPort`, calls `RetrievalPort`, and maps the results to NEM-019 `ContextItem`s (`chunk` only, with `text`) under a total context-token budget. **It is not bound to `ContextSourcePort`, and `TurnService` is unchanged.**
+8. **Anchor resolver:** chunk ref → `{ bookId, textHash, charStart, charEnd, chapterLabel, phraseRange }` (`chapterLabel` and `phraseRange` are `null` in Stage 1, *Amendment 1*). It verifies the hash still equals the current text hash (otherwise the ref is unresolvable). Gateway citation anchors carry `textHash:charStart-charEnd`.
 9. **Metrics (no content labels):** `intelligence_retrieval_total{outcome}`, `intelligence_retrieval_passages` (histogram), `intelligence_retrieval_excluded_total{reason}` (`stale` | `unindexed`), `intelligence_index_books_total{outcome}` (`indexed` | `skipped_scope` | `skipped_limit` | `exists`).
 10. **Tests (§12), technical-note section, migration entries, completion report.**
 
@@ -134,7 +159,8 @@ Exposure, latency, and storage comparison: discovery report §6.
 
 - pgvector, embeddings, hybrid fusion, any provider (Stage 2).
 - Meilisearch indexing of chunks.
-- Wiring `TurnService` or `ContextSourcePort` (E6); conversations; library-wide Ask My Highlights; Briefs; reconstruction accounting (E6).
+- Wiring `TurnService` or `ContextSourcePort` (E6); conversations; library-wide Ask My Highlights; **user highlight and note retrieval** *(Amendment 1, B-1)*; Briefs; reconstruction accounting (E6).
+- Populating `chapterLabel` / phrase ranges; any read of `sync_maps` *(Amendment 1, B-2)*.
 - **Binding the real `TextIdentityPort`** (E3).
 - Reader deep links (protected); any frontend.
 - Background or scheduled indexing jobs; production indexing.
@@ -152,7 +178,7 @@ Exposure, latency, and storage comparison: discovery report §6.
 
 ## 8. Protected systems
 
-Reader, Escucha Activa, **`sync_maps`** (read-only input), ownership, `user_books`, **`fragments`** (read-only; no schema change), tokens, Stripe, subscriptions, production data. NEM-019 guarantees (Context Builder invariant, turn order, F-12, default deny, **module bindings including `TEXT_IDENTITY_PORT → UnboundTextIdentityPort`**), NEM-021 frozen contract v1 and ledger, NEM-022 accepted Gateway behaviour. `app.module.ts` unchanged. Any need to touch these is a stop condition.
+Reader, Escucha Activa, **`sync_maps`** (not read in Stage 1, *Amendment 1*), ownership, `user_books`, **`fragments`** (not read by E5, *Amendment 1*), tokens, Stripe, subscriptions, production data. NEM-019 guarantees (Context Builder invariant, turn order, F-12, default deny, **module bindings including `TEXT_IDENTITY_PORT → UnboundTextIdentityPort`**), NEM-021 frozen contract v1 and ledger, NEM-022 accepted Gateway behaviour. `app.module.ts` unchanged. Any need to touch these is a stop condition.
 
 ## 9. Technical requirements
 
@@ -203,7 +229,7 @@ Reader, Escucha Activa, **`sync_maps`** (read-only input), ownership, `user_book
 | Indexing | Concurrency 1; per-book transaction; per-book `statement_timeout` 60 s; manual, off-peak | Command |
 | Retrieval | `statement_timeout` 2 s; target p95 ≤ 150 ms for ≤ 10 books on a fixture of 10 × the largest book | Transaction-local timeout; integration measurement |
 | Query / topK / budget | ≤ 500 code points / ≤ 20 / ≤ 8,000 tokens (default top-k 8, budget 6,000) | Validation |
-| User fragments scanned | ≤ 5,000 rows per query | SQL `LIMIT` |
+| ~~User fragments scanned~~ | E6 scope *(Amendment 1)* | — |
 
 ### 9.5 General
 
@@ -271,7 +297,7 @@ If implementation finds that any of these facts no longer holds (for example, a 
   The runbook records this.
 - Fixtures: invented or public-domain text only.
 - Retrieved text reaches the Gateway only as delimited context data (accepted NEM-022 rule).
-- Deletion: chunks are book-level (cascade); user content is read from `fragments` at query time; revocation → `purge`.
+- Deletion: chunks are book-level (cascade); E5 holds no user content *(Amendment 1)*; revocation → `purge`.
 
 ## 11. Acceptance criteria (proposed)
 
@@ -283,8 +309,8 @@ If implementation finds that any of these facts no longer holds (for example, a 
    - The indexer never calls `RightsService.eligibility` or `OwnershipPort` and uses no user identity (architecture test).
    - The parity test with `RightsService` book-level denials passes.
    - At query time, books failing user-level eligibility (unchanged `RightsService`) or current index permission return no passages.
-5. **User isolation.** Highlight and note results contain only the requesting user's rows for allowed books. The `fragments` schema is unchanged.
-6. **Anchors.** For every passage, `codePointSlice(sourceText, charStart, charEnd) == passage.text` under the recorded hash. Derived phrase ranges are consistent when a sync map exists.
+5. **User isolation** *(Amendment 1)*: E5 stores and returns no user content; chunk tables have no user column; `fragments` is neither read nor changed. (Highlight/note isolation is E6's criterion.)
+6. **Anchors.** For every passage, `codePointSlice(sourceText, charStart, charEnd) == passage.text` under the recorded hash. `chapterLabel` and phrase ranges are NULL in Stage 1 *(Amendment 1)*.
 7. **Full-text quality.** Accent-insensitive Spanish and English matching (with D-5), stemming, and stop words on fixtures. The partial GIN indexes are used. The cross-language limitation is documented by test.
 8. **End to end (test code):** eligibility → `QueryContextSource` → unchanged Context Builder → accepted Gateway and simulator. `library` segments cite retrieved chunk refs and pass NEM-022's citation policy; a citation to a non-retrieved ref is a scope violation. **No `TurnService` or `ContextSourcePort` change.**
 9. **Budgets and cost:** the context budget is never exceeded; NEM-021 reservations reflect the budgeted context.
@@ -300,8 +326,8 @@ If implementation finds that any of these facts no longer holds (for example, a 
 ## 12. Required tests
 
 - **Unit (≥ 80%):** chunker (boundaries, code-point offsets, Unicode, headings, overlap), `computeTextHash`, indexer (mocks; scope; limits; idempotency), retrieval (validation, budget), `QueryContextSource`, anchor resolver.
-- **Integration (local disposable PostgreSQL 16 + Redis + MinIO-compatible fixture; §9.5):** allowed-pair and stale SQL filters, user isolation, eligibility, `unaccent` and language-configuration lexemes, `EXPLAIN` GIN index use, migration up/down, crash safety, prune/purge, end-to-end citation flow, latency on a sized fixture, and the S2 tests (MinIO fault and hash mismatch fail closed).
-- **Architecture and security:** retrieval-technology isolation, single `computeTextHash`, no turn or port wiring, no content logging, no provider/HTTP/SDK, `sync_maps` and `fragments` read-only.
+- **Integration (local disposable PostgreSQL 16 + Redis + MinIO-compatible fixture; §9.5):** allowed-pair and stale SQL filters, eligibility, `unaccent` and language-configuration lexemes, `EXPLAIN` GIN index use, migration up/down, crash safety, prune/purge, end-to-end citation flow, latency on a sized fixture, and the S2 tests (MinIO fault and hash mismatch fail closed).
+- **Architecture and security:** retrieval-technology isolation, single `computeTextHash`, no turn or port wiring, no content logging, no provider/HTTP/SDK, `sync_maps` and `fragments` not accessed (*Amendment 1*).
 - **Regression:** NEM-019, NEM-021 (contract, ledger), NEM-022.
 
 ## 13. Observability

@@ -2,7 +2,7 @@
 
 **Status:** **Outcome (2026-11-10): the PO decided D-1, D-4, D-6, D-7, and D-9 — see [PO-033](../operating-framework/decisions/product-owner/PO-033-e5-knowledge-retrieval-decisions-and-nem-023-reservation.md).** RB-4 is resolved (`retrieval_indexing` adopted). RB-1 to RB-3 and RB-5 to RB-7 still gate production indexing. The rest of this packet is the pre-decision record. Documentation only.
 **Authorization:** PO *"E5 Product Owner Direction and Final Rights Review"* (2026-11-10): the PO selected **S2 in principle**; final specification preparation only.
-**Related:** [discovery report, revision 4](2026-11-09-E5-retrieval-discovery-report.md) · [DRAFT mission, revision 4](../engineering-missions/DRAFT/NEM-023-knowledge-retrieval-and-grounding.md).
+**Related:** [discovery report, revision 4](2026-11-09-E5-retrieval-discovery-report.md) · [DRAFT mission, revision 4](../engineering-missions/APPROVED/NEM-023-knowledge-retrieval-and-grounding.md).
 **Not legal advice.** This packet reports what the repository's rights decisions and licensing documents say. It does not determine copyright status.
 
 ---

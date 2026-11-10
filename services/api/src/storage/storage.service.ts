@@ -60,6 +60,18 @@ export class StorageService {
     return Buffer.concat(chunks).toString('utf-8');
   }
 
+  /**
+   * Exact object bytes (no decoding). NEM-023: the book text identity hash is byte-exact, so it cannot be computed
+   * from `getText`'s decoded string.
+   */
+  async getBytes(key: string, bucket = 'books'): Promise<Buffer> {
+    const res = await this.client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    const stream = res.Body as Readable;
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    return Buffer.concat(chunks);
+  }
+
   /** Returns a permanent public URL — requires the bucket to allow public reads (set in prod). */
   publicUrl(bucket: string, key: string): string {
     const base = process.env.MINIO_PUBLIC_URL ?? `http://storage:9000`;
