@@ -296,22 +296,116 @@ describe('NEM-024 Checkpoint B — recovery, cancellation, history (real Postgre
       expect(await ds.query(`SELECT 1 FROM ai_turns WHERE "sessionId" = $1`, [s])).toEqual([]);
     });
 
-    it('after reservation, before the lock → recorded at the lock, released, cancelled (deviation N-B1: the lock stands)', async () => {
+    const conv = async (s: string) => (await ds.query(`SELECT "lockedAt", "bookSetHash", "turnCount" FROM ai_conversations WHERE id = $1`, [s]))[0];
+    const turns = async (s: string) => ds.query(`SELECT status, "turnIndex", "reservationRelease", "failureReason" FROM ai_turns WHERE "sessionId" = $1 ORDER BY "createdAt"`, [s]);
+
+    /** Amendment 2 (PO-037): cancel observed before the lock commits. */
+    async function cancelBeforeLock(key: string, o: { releaseFails?: boolean; recordFails?: boolean } = {}) {
       const { u, s } = await session();
       const g = gate();
       const entered = gate();
       const real = t.gateway.prepare.bind(t.gateway);
       jest.spyOn(t.gateway, 'prepare').mockImplementationOnce(async (req) => { const p = await real(req); entered.open(); await g.p; return p; });
-      const run = caught(t.qturns.run(u, s, 'cx-prelock-001', Q));
-      await entered.p;
-      expect(await t.qturns.cancel(u, s, 'cx-prelock-001')).toEqual({ status: 'cancel_requested' });
+      if (o.releaseFails) jest.spyOn(t.gateway, 'release').mockRejectedValueOnce(new Error('ledger unavailable'));
+      if (o.recordFails) jest.spyOn(t.records, 'recordStep4Failure').mockRejectedValueOnce(new Error('db write failed'));
+      const spy = jest.spyOn(t.sim, 'invoke');
+      const run = caught(t.qturns.run(u, s, key, Q));
+      await entered.p; // reserved; the lock transaction has not started
+      expect(await t.qturns.cancel(u, s, key)).toEqual({ status: 'cancel_requested' });
       g.open();
       const r = await run;
-      expect((r as any).e.detail).toMatchObject({ status: 'cancelled', reservationRelease: 'released' });
-      expect(await ledgerEntries(ds, `${turnIdempotencyKey(u, s, 'cx-prelock-001')}:a1`)).toEqual(['reservation', 'release']);
-      const [row] = await ds.query(`SELECT status FROM ai_turns WHERE "sessionId" = $1`, [s]);
-      expect(row.status).toBe('cancelled');
+      return { u, s, r, spy, attemptKey: `${turnIdempotencyKey(u, s, key)}:a1` };
+    }
+
+    it('Amendment 2: after reservation, before the lock → no lock, no turn count, released, terminal cancelled (turnIndex NULL); replay and repeated cancel → cancelled with no new reservation or provider call', async () => {
+      const x = await cancelBeforeLock('cx-prelock-001');
+      expect((x.r as any).e.detail).toEqual({ status: 'cancelled', reservationRelease: 'released', recorded: true, turnId: expect.any(String) });
+      expect(x.spy).not.toHaveBeenCalled();
+      expect(await conv(x.s)).toEqual({ lockedAt: null, bookSetHash: null, turnCount: 0 }); // original unlocked state preserved
+      expect(await turns(x.s)).toEqual([{ status: 'cancelled', turnIndex: null, reservationRelease: 'released', failureReason: null }]);
+      expect(await ledgerEntries(ds, x.attemptKey)).toEqual(['reservation', 'release']);
+      const replay = await caught(t.qturns.run(x.u, x.s, 'cx-prelock-001', Q));
+      expect((replay as any).e.detail).toMatchObject({ status: 'cancelled', reservationRelease: 'released' });
+      const again = [await t.qturns.cancel(x.u, x.s, 'cx-prelock-001'), await t.qturns.cancel(x.u, x.s, 'cx-prelock-001')];
+      expect(again.map((a) => a.status)).toEqual(['cancelled', 'cancelled']);
+      expect(await ledgerEntries(ds, x.attemptKey)).toEqual(['reservation', 'release']); // no duplicate reservation
+      expect(x.spy).not.toHaveBeenCalled();
+      // The session is still selectable/unlocked: a new question in it is accepted normally.
+      expect(await t.qturns.run(x.u, x.s, 'cx-prelock-002', Q)).toMatchObject({ status: 'completed' });
+      expect((await conv(x.s)).turnCount).toBe(1);
     });
+
+    it('Amendment 2: release failure → unconfirmed recorded and reported; the ledger keeps the attempt held (no release claimed)', async () => {
+      const x = await cancelBeforeLock('cx-prelock-uf1', { releaseFails: true });
+      expect((x.r as any).e.detail).toMatchObject({ status: 'cancelled', reservationRelease: 'unconfirmed', recorded: true });
+      expect(await turns(x.s)).toEqual([{ status: 'cancelled', turnIndex: null, reservationRelease: 'unconfirmed', failureReason: null }]);
+      expect(await ledgerEntries(ds, x.attemptKey)).toEqual(['reservation']);
+      expect(await conv(x.s)).toEqual({ lockedAt: null, bookSetHash: null, turnCount: 0 });
+    });
+
+    it('Amendment 2: terminal-record persistence failure → recorded:false; released first (no charge); no lock; replay answers pending (documented residual)', async () => {
+      const x = await cancelBeforeLock('cx-prelock-pf1', { recordFails: true });
+      expect((x.r as any).e.detail).toEqual({ status: 'cancelled', reservationRelease: 'released', recorded: false });
+      expect(await turns(x.s)).toEqual([]);
+      expect(await ledgerEntries(ds, x.attemptKey)).toEqual(['reservation', 'release']);
+      expect(await conv(x.s)).toEqual({ lockedAt: null, bookSetHash: null, turnCount: 0 });
+      const replay = await caught(t.qturns.run(x.u, x.s, 'cx-prelock-pf1', Q));
+      expect([(replay as any).e.reason, (replay as any).e.detail]).toEqual(['duplicate_turn', { status: 'pending' }]);
+    });
+
+    it('Amendment 2: cancel arriving WHILE the lock transaction executes (blocked on the session row) → the transaction rolls back atomically', async () => {
+      const { u, s } = await session();
+      const qr = ds.createQueryRunner();
+      await qr.connect();
+      await qr.startTransaction();
+      await qr.query(`SELECT id FROM ai_conversations WHERE id = $1 FOR UPDATE`, [s]); // the owner's lockOwned will wait here
+      const run = caught(t.qturns.run(u, s, 'cx-intx-00001', Q));
+      for (let i = 0; i < 200; i++) { // deterministic: wait until PostgreSQL reports the owner waiting on the row lock
+        const [w] = await ds.query(`SELECT count(*)::int AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()`);
+        if (w.n > 0) break;
+        await sleep(10);
+      }
+      expect(await t.qturns.cancel(u, s, 'cx-intx-00001')).toEqual({ status: 'cancel_requested' }); // row not committed: invisible
+      await qr.commitTransaction();
+      await qr.release();
+      const r = await run;
+      expect((r as any).e.detail).toMatchObject({ status: 'cancelled', reservationRelease: 'released', recorded: true });
+      expect(await conv(s)).toEqual({ lockedAt: null, bookSetHash: null, turnCount: 0 });
+      expect(await turns(s)).toEqual([{ status: 'cancelled', turnIndex: null, reservationRelease: 'released', failureReason: null }]);
+      expect(await ledgerEntries(ds, `${turnIdempotencyKey(u, s, 'cx-intx-00001')}:a1`)).toEqual(['reservation', 'release']);
+    });
+
+    it('Amendment 2 race property: 25 seeded cancel-vs-lock-commit timings — every outcome is either (no lock, count 0, cancelled NULL index, released) or (locked, count 1, index 1); never a duplicate reservation or a second provider call', async () => {
+      let seed = 0xa2;
+      const rnd = () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return (seed >>> 0) / 4294967296; };
+      for (let i = 0; i < 25; i++) {
+        const { u, s } = await session();
+        const key = `cx-race-${String(i).padStart(5, '0')}`;
+        const spy = jest.spyOn(t.sim, 'invoke');
+        const run = caught(t.qturns.run(u, s, key, Q));
+        await sleep(Math.floor(rnd() * 40));
+        await caught(t.qturns.cancel(u, s, key));
+        await run;
+        const c = await conv(s);
+        const rows = await turns(s);
+        const entries = await ledgerEntries(ds, `${turnIdempotencyKey(u, s, key)}:a1`);
+        expect({ i, reservations: entries.filter((e: string) => e === 'reservation').length <= 1 }).toEqual({ i, reservations: true });
+        expect({ i, calls: spy.mock.calls.length <= 1 }).toEqual({ i, calls: true });
+        spy.mockRestore();
+        if (rows.length === 0) { // cancelled before any reservation, or before the turn started
+          expect({ i, c }).toEqual({ i, c: { lockedAt: null, bookSetHash: null, turnCount: 0 } });
+          continue;
+        }
+        expect({ i, one: rows.length }).toEqual({ i, one: 1 });
+        if (c.turnCount === 0) {
+          expect({ i, c: c.lockedAt, row: rows[0] }).toEqual({ i, c: null, row: { status: 'cancelled', turnIndex: null, reservationRelease: 'released', failureReason: null } });
+          expect({ i, entries }).toEqual({ i, entries: ['reservation', 'release'] });
+        } else {
+          expect({ i, count: c.turnCount, locked: c.lockedAt !== null, index: rows[0].turnIndex }).toEqual({ i, count: 1, locked: true, index: 1 });
+          expect({ i, terminal: ['cancelled', 'completed'].includes(rows[0].status) }).toEqual({ i, terminal: true });
+        }
+      }
+    }, 120_000);
 
     it('after the lock, before the provider call → T3 by the endpoint; owner releases; no provider call', async () => {
       const { u, s } = await session();
@@ -332,6 +426,10 @@ describe('NEM-024 Checkpoint B — recovery, cancellation, history (real Postgre
       expect((r as any).e.detail).toMatchObject({ status: 'cancelled', reservationRelease: 'released' });
       expect(spy).not.toHaveBeenCalled();
       expect(await ledgerEntries(ds, `${turnIdempotencyKey(u, s, 'cx-postlock-01')}:a1`)).toEqual(['reservation', 'release']);
+      // Post-lock semantics are unchanged: the accepted turn keeps its lock and turn count (never retroactively unlocked).
+      expect((await conv(s)).turnCount).toBe(1);
+      expect((await conv(s)).lockedAt).not.toBeNull();
+      expect(await turns(s)).toEqual([{ status: 'cancelled', turnIndex: 1, reservationRelease: null, failureReason: null }]);
     });
 
     it('during the provider attempt → client_abort; attempt held by the ledger (no release by E6); record cancelled', async () => {

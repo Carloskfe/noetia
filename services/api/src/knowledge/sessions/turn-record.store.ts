@@ -192,17 +192,25 @@ export class TurnRecordStore {
   }
 
   /**
-   * Amendment 1 (B-2): a terminal `failed` record after a step-4 failure and the Gateway release. Idempotent
+   * Amendment 1 (B-2), extended by Amendment 2 (PO-037): a terminal `failed` record after a step-4 failure, or a terminal
+   * `cancelled` record after an explicit cancellation observed before the lock committed — in both cases after the
+   * Gateway release. Idempotent
    * (`ON CONFLICT DO NOTHING`; an existing record for the key is kept). Not a research turn: no lock, no turn count,
    * `turnIndex` NULL. Written with no Gateway call, so it can never reserve or charge. Returns the record's id.
    */
-  async recordStep4Failure(a: { sessionId: string; keyHash: string; question: string; reason: string; release: ReservationRelease }): Promise<string> {
+  async recordStep4Failure(a: {
+    sessionId: string; keyHash: string; question: string; reason: string | null; release: ReservationRelease;
+    /** Amendment 2 (PO-037): `cancelled` for an explicit cancellation observed before the lock committed. */
+    status?: 'failed' | 'cancelled';
+  }): Promise<string> {
+    const status = a.status ?? 'failed';
+    if (status !== 'failed' && status !== 'cancelled') throw new Error('terminal record status must be failed or cancelled');
     const inserted = await this.db.query<{ id: string }>(
       `INSERT INTO ai_turns ("sessionId", "turnIndex", "keyHash", question, status, "failureReason", "reservationRelease", "attemptToken", "fenceAt")
-       VALUES ($1, NULL, $2, $3, 'failed', $4, $5, $6, statement_timestamp())
+       VALUES ($1, NULL, $2, $3, $7, $4, $5, $6, statement_timestamp())
        ON CONFLICT ("sessionId", "keyHash") DO NOTHING
        RETURNING id`,
-      [a.sessionId, a.keyHash, a.question, a.reason, a.release, randomUUID()],
+      [a.sessionId, a.keyHash, a.question, a.reason, a.release, randomUUID(), status],
     );
     if (inserted[0]) return inserted[0].id;
     const existing = await this.findByKey(a.sessionId, a.keyHash);

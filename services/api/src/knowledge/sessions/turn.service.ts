@@ -116,6 +116,9 @@ export function normalizeTurnQuestion(raw: unknown): string {
   return q;
 }
 
+/** Amendment 2 (PO-037): thrown inside the step-4 transaction so PostgreSQL rolls the lock back atomically. */
+class CancelledBeforeLockCommit extends Error {}
+
 const DENIAL_CODES = new Set<string>([
   'turn_failed', 'session_read_only', 'set_changed', 'duplicate_turn', 'book_ineligible', 'scope_violation', 'no_eligible_books',
 ]);
@@ -374,7 +377,7 @@ export class TurnService {
     }
 
     // 4. Short lock transaction: lock, set check, turn count, and the provisional record (T0), atomically.
-    type Lock = { outcome: 'ok'; id: string; attemptToken: string } | { outcome: 'session_read_only' | 'set_changed' | 'duplicate_turn' | 'turn_failed' };
+    type Lock = { outcome: 'ok'; id: string; attemptToken: string } | { outcome: 'session_read_only' | 'set_changed' | 'duplicate_turn' | 'turn_failed' | 'cancelled' };
     let lock: Lock;
     try {
       lock = await this.db.transaction(async (m): Promise<Lock> => {
@@ -393,11 +396,17 @@ export class TurnService {
           [sessionId, hash],
         );
         const rec = await turnRecords.insertAccepted(m, { sessionId, keyHash: key, question, turnIndex: Number(u.turnCount) });
+        // Amendment 2 (PO-037) — THE decision point: the last action before COMMIT. An explicit cancel observed here
+        // aborts the transaction, so the lock, the turn count, and the provisional row all roll back atomically. A
+        // cancel arriving after this check finds the transaction committing and follows the post-lock semantics.
+        if (signal?.aborted) throw new CancelledBeforeLockCommit();
         return { outcome: 'ok', ...rec };
       });
     } catch (e) {
-      lock = { outcome: isUniqueViolation(e, 'UQ_ai_turns_one_provisional') || isUniqueViolation(e, 'UQ_ai_turns_session_key') ? 'duplicate_turn' : 'turn_failed' };
+      lock = e instanceof CancelledBeforeLockCommit ? { outcome: 'cancelled' }
+        : { outcome: isUniqueViolation(e, 'UQ_ai_turns_one_provisional') || isUniqueViolation(e, 'UQ_ai_turns_session_key') ? 'duplicate_turn' : 'turn_failed' };
     }
+    if (lock.outcome === 'cancelled') return this.step4Failure(sessionId, key, question, prepared, 'turn_failed', 'cancelled');
     if (lock.outcome !== 'ok') return this.step4Failure(sessionId, key, question, prepared, lock.outcome);
     const { id: turnId, attemptToken } = lock;
 
@@ -505,7 +514,10 @@ export class TurnService {
     if (row.status === 'failed') {
       return new TurnStatusDenied(asDenial(row.failureReason), { turnId, status: 'failed', ...(row.reservationRelease ? { reservationRelease: row.reservationRelease } : {}) });
     }
-    return new TurnStatusDenied('turn_failed', { turnId, status: row.status === 'completed' ? 'unknown' : row.status });
+    return new TurnStatusDenied('turn_failed', {
+      turnId, status: row.status === 'completed' ? 'unknown' : row.status,
+      ...(row.status === 'cancelled' && row.reservationRelease ? { reservationRelease: row.reservationRelease } : {}),
+    });
   }
 
   /**
@@ -513,11 +525,15 @@ export class TurnService {
    * terminal `failed` record (no lock, no turn count, no Gateway call). Release is reported as `released` only when
    * the Gateway call completed without error; otherwise `unconfirmed` (held for NEM-021 reconciliation).
    */
-  private async step4Failure(sessionId: string, keyHash: string, question: string, prepared: PreparedCall, reason: DenialReason): Promise<never> {
-    const release = await this.releaseObserved(prepared);
-    const detail: TurnStatusDetail = { status: 'failed', reservationRelease: release, recorded: true };
+  private async step4Failure(
+    sessionId: string, keyHash: string, question: string, prepared: PreparedCall, reason: DenialReason, status: 'failed' | 'cancelled' = 'failed',
+  ): Promise<never> {
+    const release = await this.releaseObserved(prepared); // never-sent attempt; `released` only when the Gateway confirms
+    const detail: TurnStatusDetail = { status, reservationRelease: release, recorded: true };
     try {
-      detail.turnId = await this.turnRecords!.recordStep4Failure({ sessionId, keyHash, question, reason, release });
+      detail.turnId = await this.turnRecords!.recordStep4Failure({
+        sessionId, keyHash, question, reason: status === 'cancelled' ? null : reason, release, status,
+      });
     } catch {
       detail.recorded = false;
     }

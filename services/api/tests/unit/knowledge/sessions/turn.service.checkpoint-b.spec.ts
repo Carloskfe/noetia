@@ -125,6 +125,46 @@ describe('NEM-024 Checkpoint B — TurnService', () => {
       expect(h.log.slice(-1)).toEqual(['release']);
       expect(h.records.cancel).toHaveBeenCalledWith(TURN);
     });
+    describe('Amendment 2 (PO-037): cancel observed before the lock commits', () => {
+      /** Abort while the step-4 transaction is executing (inside the turn-count update); the mock transaction propagates the
+       *  sentinel exactly as PostgreSQL would roll back. */
+      function abortInsideLock(h: ReturnType<typeof harness>) {
+        (h as any).turns['db'].transaction = jest.fn(async (fn: any) => fn({
+          query: jest.fn(async () => { h.cancels.abort(turnIdempotencyKey(USER_A, S, KEY)); return [{ turnCount: 1 }]; }),
+        }));
+      }
+      it('rolls back (no lock, no turn count): Gateway release, terminal cancelled record (turnIndex NULL, no reason), no provider call', async () => {
+        const h = harness();
+        abortInsideLock(h);
+        const e = await caught(h.turns.run(USER_A, S, KEY, 'faro'));
+        expect([e.reason, e.detail]).toEqual(['turn_failed', { status: 'cancelled', reservationRelease: 'released', recorded: true, turnId: 'f' }]);
+        expect(h.records.recordStep4Failure).toHaveBeenCalledWith({ sessionId: S, keyHash: turnIdempotencyKey(USER_A, S, KEY), question: 'faro', reason: null, release: 'released', status: 'cancelled' });
+        expect(h.gateway.release).toHaveBeenCalledWith(h.prepared);
+        expect(h.gateway.invoke).not.toHaveBeenCalled();
+        expect(h.records.cancel).not.toHaveBeenCalled(); // no post-lock T3: nothing was committed
+      });
+      it('release failure → unconfirmed is recorded and reported (never a confirmed release)', async () => {
+        const h = harness();
+        abortInsideLock(h);
+        h.gateway.release.mockRejectedValueOnce(new Error('ledger down'));
+        const e = await caught(h.turns.run(USER_A, S, KEY, 'faro'));
+        expect(e.detail).toMatchObject({ status: 'cancelled', reservationRelease: 'unconfirmed' });
+        expect(h.records.recordStep4Failure).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled', release: 'unconfirmed' }));
+      });
+      it('record write failure → recorded:false (residual: replay answers pending; the release already ran)', async () => {
+        const h = harness();
+        abortInsideLock(h);
+        h.records.recordStep4Failure.mockRejectedValueOnce(new Error('db write failed'));
+        expect((await caught(h.turns.run(USER_A, S, KEY, 'faro')))?.detail).toEqual({ status: 'cancelled', reservationRelease: 'released', recorded: false });
+        expect(h.gateway.release).toHaveBeenCalled();
+      });
+      it('replay of the terminal cancelled record → cancelled with its release outcome; no Gateway call', async () => {
+        const h = harness({ byKey: { id: 'f', status: 'cancelled', reservationRelease: 'released', turnIndex: null } });
+        expect((await caught(h.turns.run(USER_A, S, KEY, 'faro')))?.detail).toEqual({ turnId: 'f', status: 'cancelled', reservationRelease: 'released' });
+        expect(h.gateway.prepare).not.toHaveBeenCalled();
+      });
+    });
+
     it('cancel during the provider attempt → signal passed to the Gateway; aborted outcome → T3 cancelled (no T2)', async () => {
       const h = harness();
       h.gateway.invoke.mockImplementationOnce(async (_p: any, opts: any) => {

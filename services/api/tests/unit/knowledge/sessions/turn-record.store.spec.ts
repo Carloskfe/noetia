@@ -51,8 +51,9 @@ describe('TurnRecordStore (NEM-024 Checkpoint A)', () => {
     expect(await store.recordStep4Failure({ sessionId: S, keyHash: 'turn:k', question: 'q', reason: 'set_changed', release: 'released' })).toBe('new-id');
     const [c] = db.ran(/INSERT INTO ai_turns/);
     expect(c.sql).toMatch(/ON CONFLICT \("sessionId", "keyHash"\) DO NOTHING/);
-    expect(c.sql).toMatch(/VALUES \(\$1, NULL, \$2, \$3, 'failed'/); // turnIndex NULL: not a research turn
+    expect(c.sql).toMatch(/VALUES \(\$1, NULL, \$2, \$3, \$7/); // turnIndex NULL: not a research turn
     expect(c.params.slice(0, 5)).toEqual([S, 'turn:k', 'q', 'set_changed', 'released']);
+    expect(c.params[6]).toBe('failed'); // default status
     const kept = setup([[/INSERT INTO ai_turns/, () => []], [/FROM ai_turns WHERE "sessionId" = \$1 AND "keyHash"/, () => [{ id: 'existing' }]]]);
     expect(await kept.store.recordStep4Failure({ sessionId: S, keyHash: 'turn:k', question: 'q', reason: 'x', release: 'unconfirmed' })).toBe('existing');
     const broken = setup([[/INSERT INTO ai_turns/, () => []], [/FROM ai_turns WHERE "sessionId" = \$1 AND "keyHash"/, () => []]]);
@@ -105,5 +106,13 @@ describe('TurnRecordStore (NEM-024 Checkpoint A)', () => {
     expect(await store.listBySession(S, 5)).toEqual([{ id: T }]);
     expect(db.ran(/ORDER BY "createdAt" DESC/)[0].params).toEqual([S, 5]);
     expect(await store.findHistoryRow(S, T)).toBeNull();
+  });
+
+  it('Amendment 2: the terminal record may be cancelled (turnIndex NULL, no reason); only failed | cancelled are accepted', async () => {
+    const { db, store } = setup([[/INSERT INTO ai_turns/, () => [{ id: 'c-id' }]]]);
+    expect(await store.recordStep4Failure({ sessionId: S, keyHash: 'turn:c', question: 'q', reason: null, release: 'unconfirmed', status: 'cancelled' })).toBe('c-id');
+    const [c] = db.ran(/INSERT INTO ai_turns/);
+    expect([c.params[3], c.params[4], c.params[6]]).toEqual([null, 'unconfirmed', 'cancelled']);
+    await expect(store.recordStep4Failure({ sessionId: S, keyHash: 'turn:c', question: 'q', reason: null, release: 'released', status: 'completed' as any })).rejects.toThrow(/failed or cancelled/);
   });
 });

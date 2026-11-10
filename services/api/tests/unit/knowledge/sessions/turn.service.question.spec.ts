@@ -233,7 +233,7 @@ describe('NEM-024 TurnService — question turn (Checkpoint A)', () => {
       expect(e.reason).toBe(code);
       expect(e.detail).toEqual({ status: 'failed', reservationRelease: 'released', recorded: true, turnId: 'failrow-1' });
       expect(t.log.indexOf('release')).toBeGreaterThan(t.log.indexOf('lock.tx'));
-      expect(t.turnRecords.recordStep4Failure).toHaveBeenCalledWith({ sessionId: S, keyHash: turnIdempotencyKey(USER_A, S, KEY), question: 'q', reason: code, release: 'released' });
+      expect(t.turnRecords.recordStep4Failure).toHaveBeenCalledWith({ sessionId: S, keyHash: turnIdempotencyKey(USER_A, S, KEY), question: 'q', reason: code, release: 'released', status: 'failed' });
       expect(t.gateway.invoke).not.toHaveBeenCalled();
     });
 
