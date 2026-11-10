@@ -1,10 +1,10 @@
-# NOETIA ENGINEERING MISSION — NEM-### (E5) — identifier pending PO reservation
+# NOETIA ENGINEERING MISSION — NEM-023 (E5) — *proposed identifier, pending PO reservation*
 ## Knowledge Retrieval and Grounding (Stage 1: lexical, provider-independent)
 
-**Status:** DRAFT — REVISION 3 — **not executable** (governance README: a DRAFT mission is never executed)
+**Status:** DRAFT — REVISION 4 — **not executable** (governance README: a DRAFT mission is never executed)
 **Mission type:** IMPLEMENTATION (proposed)
 **Implementation authorization:** NONE (requires PO approval of this specification, decisions D-1 to D-9, **and** a separate execution instruction)
-**Schema changes:** ADDITIVE ONLY (proposed: one table, three text-search configurations, and the `unaccent` contrib extension if D-5 is approved), on disposable test databases only
+**Schema changes:** ADDITIVE ONLY (proposed: one table **without verbatim text** (S2), three text-search configurations, and the `unaccent` contrib extension if D-5 is approved), on disposable test databases only
 **Infrastructure changes:** NOT AUTHORIZED (none needed: no image change, no new service, no background job)
 **Production deployment:** NOT AUTHORIZED (staging and merge to `main` also NOT AUTHORIZED)
 **Product Owner approval:** REQUIRED
@@ -18,6 +18,15 @@
 > 5. scope, retention, and limits (§9.4);
 > 6. invariants (§8, §11);
 > 7. PO decisions (§16).
+>
+> **Revision 4** (2026-11-10, PO direction *"E5 Product Owner Direction and Final Rights Review"*):
+> - **D-4: S2 selected in principle, subject to rights verification.** Original text stays in MinIO; PostgreSQL holds ids, offsets, hashes, metadata, and `tsvector`; S1 is out of scope.
+> - `retrieval_indexing` is confirmed as an explicit book-level permission.
+> - Rights blockers RB-1 to RB-7 gate **production indexing**.
+> - Backup implications: purge does not reach offsite copies.
+> - Decision classification; identifier **NEM-023** proposed.
+>
+> Packet: [E5 Product Owner decision packet](../../reports/2026-11-10-E5-product-owner-decision-packet.md).
 >
 > **Revision 3** answers the final clarifications on revision 2 (`53fc73f`):
 > - **C-1:** book-level index permission is separated from user-level query-time eligibility; the indexer uses no user identity and denies by default (§9.6).
@@ -47,6 +56,7 @@ Provide **dark, unwired** retrieval components that, given an allowed set alread
 - **Code:** NEM-022 accepted (Gateway v2), NEM-021 (ledger), NEM-019 (rights, Context Builder). Built on the NEM-022 branch stack, not `main`.
 - **E3:** E5 adds or reuses the single `computeTextHash` function. **Binding the real `TextIdentityPort` adapter in the module is E3's step**, not E5's (§9.1).
 - **E6:** consumes `QueryContextSource` (§9.2).
+- **Rights blockers (decision packet §3, RB-1 to RB-7)** gate **production indexing**, not fixture implementation: PO-029 undecided, TT-26 open, no verified records, `retrieval_indexing` vocabulary adoption, author opt-in and D6, legal treatment of the `tsvector` derivative for licensed titles, offsite backup retention.
 - **Not required:** pgvector, an embedding provider, staging, CI changes, any paid service.
 - **Test environment:** the existing disposable `postgres:16-alpine` + Redis harness; VM limits (`--maxWorkers=2`, one heavy job at a time).
 
@@ -68,7 +78,7 @@ Only under `services/api` (plus tests and docs):
      - **Search:** `tsv` tsvector.
      - **Constraints:** UNIQUE (`bookId`, `textHash`, `chunkIndex`); CHECK `charStart < charEnd`.
      - **Indexes:** partial GIN on `tsv` per language; btree (`bookId`, `textHash`). No user columns.
-   - **Storage variant per D-4 (§5.1).** Only the approved variant is built.
+   - **Storage: S2 (selected, §5.1).** No verbatim chunk text column; `tsv` is computed by the indexer from the MinIO text and stored.
 2. **Chunker (pure, deterministic):**
    - book text plus optional sync phrases → chunks;
    - configurable size and overlap (D-8); prefers paragraph and sentence boundaries; never splits a word;
@@ -89,9 +99,11 @@ Only under `services/api` (plus tests and docs):
 9. **Metrics (no content labels):** `intelligence_retrieval_total{outcome}`, `intelligence_retrieval_passages` (histogram), `intelligence_retrieval_excluded_total{reason}` (`stale` | `unindexed`), `intelligence_index_books_total{outcome}` (`indexed` | `skipped_scope` | `skipped_limit` | `exists`).
 10. **Tests (§12), technical-note section, migration entries, completion report.**
 
-### 5.1 Storage variants (D-4 — the PO chooses; the mission builds only the approved one)
+### 5.1 Storage (D-4 — **S2 selected in principle by the PO, subject to rights verification**)
 
-| | **S1 — chunk text in PostgreSQL** | **S2 — offsets + `tsvector` only; text from MinIO** |
+Only S2 is built. S1 is shown for the record and is **out of scope**.
+
+| | S1 — chunk text in PostgreSQL (**not selected**) | **S2 — offsets + `tsvector` only; text from MinIO (selected)** |
 |---|---|---|
 | Columns | `text` + generated stored `tsv` (CASE on `language`) | No `text`; `tsv` computed by the indexer and stored |
 | Retrieval | One SQL query returns ranked passages with text; snippets via `ts_headline` | SQL ranking, then MinIO GET per distinct result book (≤ 10), verify the object hash, slice by offsets; optional bounded in-memory LRU (no persistence) |
@@ -151,7 +163,7 @@ Reader, Escucha Activa, **`sync_maps`** (read-only input), ownership, `user_book
 ### 9.3 Spanish/English full-text search
 
 - Configurations `noetia_es`, `noetia_en`, and `noetia_simple`, with `unaccent` followed by the stemmer (`simple` for the fallback). `language` comes from `books.language`; unknown values map to `simple`.
-- **`tsv`:** S1 uses a generated stored column, `CASE language … to_tsvector('<config>'::regconfig, text) … END`. S2 computes it in the indexer.
+- **`tsv`** (S2): the indexer computes `to_tsvector('<config>'::regconfig, <chunk text read from MinIO>)` and stores it. There is no generated column, because there is no text column.
 - **Partial GIN per language.** The query issues one sub-query per language present in the allowed set, each with a constant configuration (index-usable), combined with `UNION ALL`.
 - **Ranking:** `ts_rank_cd(tsv, q, 32)`, then `bookId`, `chunkIndex`.
 - **Verified in E5 on the disposable database** before use: `unaccent` creatable by the database owner (trusted extension); generated column accepted; partial GIN indexes used (`EXPLAIN`).
@@ -200,7 +212,12 @@ Reader, Escucha Activa, **`sync_maps`** (read-only input), ownership, `user_book
 
 ## 10. Security / privacy / copyright
 
-- Chunk text storage per D-4; exposure trade-offs in discovery report §6. The runbook records the backup implication of the approved variant.
+- **S2 (selected):** verbatim text only in MinIO. PostgreSQL holds the lexical derivative (`tsvector`) and offsets.
+- **Backups after a purge:**
+  - on-server PostgreSQL dumps keep the derivative until rotation (up to about 28 days);
+  - **offsite PostgreSQL copies keep it indefinitely**, because there is no offsite retention or pruning today (RB-7).
+
+  The runbook records this.
 - Fixtures: invented or public-domain text only.
 - Retrieved text reaches the Gateway only as delimited context data (accepted NEM-022 rule).
 - Deletion: chunks are book-level (cascade); user content is read from `fragments` at query time; revocation → `purge`.
@@ -221,7 +238,12 @@ Reader, Escucha Activa, **`sync_maps`** (read-only input), ownership, `user_book
 8. **End to end (test code):** eligibility → `QueryContextSource` → unchanged Context Builder → accepted Gateway and simulator. `library` segments cite retrieved chunk refs and pass NEM-022's citation policy; a citation to a non-retrieved ref is a scope violation. **No `TurnService` or `ContextSourcePort` change.**
 9. **Budgets and cost:** the context budget is never exceeded; NEM-021 reservations reflect the budgeted context.
 10. **Limits:** every §9.4 limit is enforced fail-closed and measured; indexing is idempotent and transactional (a crash leaves no partial set); `sync_maps`, reader data, and `fragments` are byte-unchanged; `prune` and `purge` behave as specified.
-11. **Storage variant (D-4):** the variant's extra criteria in §5.1 pass. Under either variant, `purge` removes all `tsvector` (and S1 text) rows for the book, and the runbook records that PostgreSQL dumps retain the lexical derivative until rotation.
+11. **Storage S2 (D-4):**
+    - no verbatim chunk text is stored in PostgreSQL (schema test);
+    - snippets come from the MinIO object only after its hash equals the chunk's and the current `textHash`; a MinIO fault or mismatch fails closed (tests);
+    - latency is measured including the fetch;
+    - `purge` removes all of a book's chunk rows;
+    - the runbook records the on-server (≈ 28 days) and offsite (indefinite) retention of the derivative.
 12. **Regression:** all NEM-019, NEM-021, and NEM-022 suites pass unchanged; migrations run up and down; architecture and privacy tests pass; no provider, network, or credential use.
 
 ## 12. Required tests
@@ -250,12 +272,17 @@ Technical-note section (architecture, schema, hash mechanism, full-text configur
 | D-1 | TT-25 | Lexical at launch, vector-ready interface | Semantic now needs an image change and an embedding provider |
 | D-2 | E5/E6 boundary | E5 dark components; E6 wires turns | E5 needs authority for NEM-019 changes |
 | D-3 | Text-hash mechanism | SHA-256 of MinIO bytes; shared function; E3 binds | E5 binds (NEM-019 test exception) |
-| D-4 | Chunk text storage | **No default: PO (with legal input if wanted).** Both S1 and S2 store a lexical derivative (`tsvector`) in PostgreSQL and its dumps; S1 adds verbatim text | — |
+| D-4 | Chunk text storage | **S2 — selected in principle by the PO, subject to rights verification** (RB-6, RB-7 for licensed titles) | — |
 | D-5 | `unaccent` extension | Yes | Accent-sensitive matching |
 | D-6 | Indexing scope and permission | Book-level `IndexingPermission` with an explicit `retrieval_indexing` grant; default deny | Reuse `research_analysis` (no separate grant to store an index), or index all published books (derived content stored for uncleared books) |
 | D-7 | Retention | Current + previous, 30 days; purge on revocation | More storage and exposure |
 | D-8 | Limits and defaults | §9.4 | Other values |
-| D-9 | Identifier | PO reserves | — |
+| D-9 | Identifier | **NEM-023 proposed**; PO reserves | — |
+
+**Who decides (decision packet §5):**
+- **PO approval:** D-1, D-6 (with RB-4), D-7, D-9; D-4 is recorded.
+- **Product Architecture with the mission:** D-2, D-3, D-5.
+- **Engineering configuration:** D-8.
 
 ## 17. Stop conditions
 

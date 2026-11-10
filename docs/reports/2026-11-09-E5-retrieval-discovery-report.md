@@ -1,6 +1,6 @@
 # E5 — Knowledge Retrieval and Grounding: Discovery Report
 
-**Status:** REVISION 3 (read-only analysis) — returned for Product Architecture review.
+**Status:** REVISION 4 (read-only analysis) — returned for Product Architecture review. **PO direction (2026-11-10): S2 selected in principle, subject to rights verification** (see the [decision packet](2026-11-10-E5-product-owner-decision-packet.md)).
 **Authorization:** Product Owner, *"E5 Discovery and Engineering Mission Draft"* (2026-11-09), and the Product Architecture review response on PR #52 (*"Architectural direction supported — changes required before mission approval"*). Documentation only.
 **Changes made:** this report and the DRAFT mission ([`DRAFT/E5-knowledge-retrieval-and-grounding.md`](../engineering-missions/DRAFT/E5-knowledge-retrieval-and-grounding.md)). No code, migrations, database changes, extensions, dependencies, infrastructure, CI/CD, merges, deployments, or provider activity.
 
@@ -153,7 +153,9 @@ S2 therefore does **not** keep book content solely in MinIO. It keeps only the *
 | Snippets and highlighting | `ts_headline` on stored text | Must slice fetched text by offsets |
 | Engineering effort | Lower | Moderately higher (fetch, cache, and slice path; MinIO fault tests) |
 
-Neither option avoids storing content-derived data in PostgreSQL and its backups. S2 avoids only the verbatim duplicate. This is legally sensitive, so **the PO decides (D-4), with legal input if wanted. The draft mission does not choose.** It specifies the schema and acceptance criteria for both variants, and implementation builds only the approved one.
+Neither option avoids storing content-derived data in PostgreSQL and its backups. S2 avoids only the verbatim duplicate.
+
+**PO decision (2026-11-10): S2, in principle, subject to rights verification.** One further backup fact: **offsite PostgreSQL copies are never pruned today** (`offsite-backups.md`, known gap 4). A derivative purged from the database therefore persists offsite indefinitely (decision packet RB-7). It specifies the schema and acceptance criteria for both variants, and implementation builds only the approved one.
 
 ## 7. Spanish/English full-text search and accent handling (review item 4)
 
@@ -249,7 +251,7 @@ Neither option avoids storing content-derived data in PostgreSQL and its backups
 | **D-1** | TT-25: lexical or semantic at launch (the P0 packet requires it closed before E5) | **Lexical at launch**, vector-ready interface | No paraphrase or cross-language matching at launch; no provider or cost | Semantic now needs a production image change and an embedding provider before the gate |
 | **D-2** | E5/E6 boundary | **E5 delivers dark components; E6 wires turns** (§5) | No grounded turns until E6; zero change to NEM-019 turn behaviour | E5 would need authority to change `ContextSourcePort`/`TurnService` (NEM-019 test exceptions) |
 | **D-3** | Text-hash mechanism | **SHA-256 of MinIO bytes, one shared function; E3 binds the port** (§4) | Production retrieval stays empty until E3 binds the adapter | E5 binds it, which needs a NEM-019 architecture-test exception |
-| **D-4** | Chunk text storage (legal sensitivity) | **No default: PO decision, with legal input if wanted** (§6) | — | S1: verbatim text **and** lexical derivative in PostgreSQL and its dumps; simpler and faster. S2: **lexical derivative** in PostgreSQL and its dumps, verbatim text only in MinIO; MinIO in the retrieval path. **Neither avoids content-derived data in PostgreSQL** |
+| **D-4** | Chunk text storage (legal sensitivity) | **S2 — selected in principle by the PO (2026-11-10), subject to rights verification**: verbatim text only in MinIO; PostgreSQL holds the lexical derivative and offsets | Final for licensed titles once legal answers RB-6 (the derivative) and RB-7 (offsite retention); see the decision packet | S1 is no longer in scope | S1: verbatim text **and** lexical derivative in PostgreSQL and its dumps; simpler and faster. S2: **lexical derivative** in PostgreSQL and its dumps, verbatim text only in MinIO; MinIO in the retrieval path. **Neither avoids content-derived data in PostgreSQL** |
 | **D-5** | Install `unaccent` (contrib) | **Yes**, in the additive E5 migration | Accent-insensitive Spanish and English | Core only: accent-sensitive misses |
 | **D-6** | Indexing scope and permission | **Book-level `IndexingPermission` (§8.1) with an explicit `retrieval_indexing` operation; default deny** | Empty production index until E3 and attested rights grant `retrieval_indexing` | Reuse `research_analysis` as the indexing grant (no separate consent to store an index); or index all published books (derived content stored for uncleared books) |
 | **D-7** | Retention | **Current + previous set, 30-day grace; explicit purge on revocation** | Bounded storage; anchors survive one re-ingestion | Longer retention: more storage and exposure |
