@@ -1,6 +1,6 @@
 # NEM-024 — Checkpoint B Report (cancellation, recovery, history, guard)
 
-**Status:** **CHECKPOINT B IMPLEMENTED — PA targeted verification F-1 to F-4 answered (§12); AWAITING FINAL INDEPENDENT CHECKPOINT B REVIEW (2026-11-10).** The fenced recovery design is provisionally accepted by the PA.
+**Status:** **CHECKPOINT B IMPLEMENTED — F-1 to F-4 answered (§12) — Amendment 2 (PO-037) implemented (§13); AWAITING FINAL INDEPENDENT CHECKPOINT B REVIEW (2026-11-10).** The fenced recovery design is provisionally accepted by the PA.
 **Authorization:** [PO-036](../operating-framework/decisions/product-owner/PO-036-nem-024-checkpoint-a-conditional-acceptance-and-checkpoint-b-authorization.md): Checkpoint A accepted conditionally; Checkpoint B authorized with a **mandatory release condition** (stranded `accepted` turns recovered and verified before any user-facing release).
 **Delivery state:** Branch `feat/nem-024-checkpoint-b` (stacked on PR #55) · Draft PR (see §1) · not merged · not deployed · simulated provider only · no user-facing functionality activated.
 
@@ -227,3 +227,78 @@ Unit: owner T3 losing to finalization reports the stored status; registry entrie
 No Checkpoint C, D, or E work; no merge; no deployment; no production activation; no new protected-contract exception applied.
 
 **STOP for final independent Checkpoint B review.**
+
+---
+
+## 13. Amendment 2 (PO-037, Option B): cancellation before lock commit
+
+### 13.1 Commits and files
+
+| Commit | Content |
+|---|---|
+| `99f5d5c` | Implementation and tests |
+| see the PR head | PO-037 record, mission Amendment 2, this section |
+
+| File | Change |
+|---|---|
+| `src/knowledge/sessions/turn.service.ts` | Sentinel `CancelledBeforeLockCommit`; synchronous `signal.aborted` check as the **last action inside** the step-4 transaction; `cancelled` lock outcome routed to `step4Failure(…, 'cancelled')`; replay of a `cancelled` record includes its release outcome |
+| `src/knowledge/sessions/turn-record.store.ts` | `recordStep4Failure` accepts `status: 'failed' \| 'cancelled'` (validated; default `failed`); the reason is NULL for `cancelled` |
+| `tests/unit/knowledge/sessions/turn.service.checkpoint-b.spec.ts` | +4 (in-transaction abort, release failure, record failure, replay) |
+| `tests/unit/knowledge/sessions/turn-record.store.spec.ts` | +1 (cancelled record; status validation); existing assertions updated for the explicit `status` |
+| `tests/unit/knowledge/sessions/turn.service.question.spec.ts` | One assertion updated (the explicit `status: 'failed'` argument) |
+| `tests/integration/knowledge/turn-recovery.int-spec.ts` | The N-B1 test replaced by Amendment 2 behaviour; +4 integration tests; post-lock assertions added |
+| `docs/operating-framework/decisions/product-owner/PO-037-…md`, mission | Decision record; Amendment 2 in the mission (§9.2 item 1a, §9.3 row and boundary note) |
+
+### 13.2 Race resolution
+
+- **Single decision point:** a synchronous `signal.aborted` check **inside** the step-4 transaction, after `lockOwned` (`FOR UPDATE`), the set check, `turnCount + 1`, and the T0 insert, immediately before the transaction function returns (COMMIT).
+- **Abort seen there:** the sentinel is thrown, and PostgreSQL rolls back the session lock, the turn count, and the provisional row **atomically**; none were ever visible to other transactions. Then the Gateway release runs, then the idempotent terminal `cancelled` record (`ON CONFLICT DO NOTHING`; `turnIndex` NULL; `reservationRelease` = `released` only if the Gateway call completed, else `unconfirmed`). There is no provider call, and the ledger is untouched by E6.
+- **Abort arriving after that check:** the transaction is already committing, so the turn is accepted and the **existing post-lock semantics** apply (owner release + T3, or endpoint T3). Lock and count stand; nothing is retroactively unlocked.
+- **No third state:** the check is synchronous and the commit is a single transaction outcome, so every cancel resolves to one of the two branches.
+- **Concurrent endpoint:** while the transaction is uncommitted, the provisional row is invisible to the cancel endpoint, so it returns `cancel_requested` and only signals; the owner makes the decision. Once committed, the endpoint can commit T3 itself (fenced, conditional); the owner's later T3 then affects 0 rows and reports the stored status.
+- **Constraints preserved:**
+  - UNIQUE (`sessionId`, `keyHash`) gives one record per key;
+  - the one-provisional-turn index is unaffected (`cancelled` is not `accepted`);
+  - the fence semantics are unchanged (the record is terminal at insert);
+  - terminal monotonicity is unchanged.
+
+### 13.3 PostgreSQL evidence (real database)
+
+| Test | Result |
+|---|---|
+| After reservation, before the lock → `lockedAt` NULL, `bookSetHash` NULL, `turnCount` 0; record `cancelled` / `turnIndex` NULL / `released`; ledger `reservation`, `release`; replay → `cancelled`; 2 repeated cancels → `cancelled`; no new reservation, **no provider call**; the session then accepts a new question normally (count → 1) | ✓ |
+| **Cancel while the lock transaction executes** (the owner blocked on the session row held `FOR UPDATE` by another connection, confirmed through `pg_stat_activity`; cancel → `cancel_requested`; lock released) → transaction rolled back; no lock; count 0; `cancelled` NULL index; ledger `reservation`, `release` | ✓ |
+| Release failure → `unconfirmed` recorded and reported; ledger `reservation` only (held; no release claimed) | ✓ |
+| Terminal-record persistence failure → `recorded: false`; released first (no charge); no lock; replay → `409 pending` (the documented B-2-class residual) | ✓ |
+| After lock commit (post-lock) → lock stands; `turnCount` 1; record `cancelled` with `turnIndex` 1; released; no provider call | ✓ |
+| **Race property:** 25 seeded cancel-vs-lock-commit timings. Each outcome is exactly one of: (no row, no lock); (no lock, count 0, `cancelled` NULL index, `reservation`/`release`); or (locked, count 1, index 1, terminal `cancelled`/`completed`). Never more than one reservation or provider call | ✓ |
+| Before reservation; during the provider attempt; after settlement (unchanged) | ✓ |
+
+Unit (deterministic): in-transaction abort (sentinel → rollback, Gateway release, `cancelled` record with `reason: null`, no provider call, no post-lock T3), release failure → `unconfirmed`, record failure → `recorded: false`, replay of the `cancelled` record (no Gateway call): **33/33** in the Checkpoint B spec.
+
+### 13.4 Regression (fresh disposable `postgres:16-alpine` + `redis:7-alpine`, removed afterwards)
+
+| Suite | Result |
+|---|---|
+| All integration suites (NEM-019, 021, 022, 023, 024 A and B) | **11 passed, 1 skipped (opt-in performance); 201/201** (R1–R12 and LW-1 to LW-10 coverage unchanged and passing) |
+| Full API unit suite | **135 suites, 1,917/1,917** |
+| Coverage | `knowledge/sessions` 98.87% / **89.52% branches**. **Global: 94.34% statements / 80.07% branches / 92.57% functions / 95.47% lines.** The 80% gate is met on this branch stack for the first time. *E-2 is not declared resolved:* closing it needs a separate decision based on this evidence |
+| Typecheck (source, tests) · ESLint | 0 errors · 0 problems |
+
+### 13.5 Remaining exceptions and risks
+
+- **E-1:** retrieval p95, not waived.
+- **E-2:** coverage evidence now at 80.07%; open pending decision.
+- NEM-022's coverage shortfall is a separate record; open.
+- **Residual:** if the terminal `cancelled` record cannot be written, a same-key replay answers `pending` (the same class as B-2; no charge, since the release ran first).
+- Single-instance cancel signalling (N-B5).
+- Q-11 is possible at Checkpoint E.
+- TT-14 is open.
+
+### 13.6 Authorization boundaries
+
+- **Only** Amendment 2 was implemented, extending the B-2 terminal-record exception to `cancelled`.
+- **Unchanged:** the Gateway and ledger and their authority, the unique key, the one-provisional index, fencing, terminal monotonicity, post-lock semantics, and every protected test.
+- **Not done:** no Checkpoint C, D, or E; no merge; no deployment; no production activation; no production providers; no infrastructure; no unrelated refactoring.
+
+**STOP after Amendment 2, for final independent Product Architecture review of Checkpoint B.**

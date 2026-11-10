@@ -10,6 +10,8 @@
 **Production deployment:** NOT AUTHORIZED (staging and merge to `main` also not authorized). Provider usage **simulated only**; every production integration **disabled**
 **Product Owner approval:** decisions approved (PO-034); specification approval pending the final PA sign-off
 
+> **Amendment 2 (PO-037, *"Checkpoint B — Amendment 2 — Option B"*, 2026-11-10; narrow scope):** an explicit cancellation observed **before the step-4 lock transaction commits** rolls that transaction back: no session lock, no `turnCount` increment, the Gateway releases the never-sent reservation, and an idempotent **terminal `cancelled` record** (`turnIndex = NULL`, observed `reservationRelease`) is written via the B-2 mechanism (extended from `failed` to `cancelled`). A cancellation observed **after** the lock commits keeps the post-lock semantics; an accepted turn is never retroactively unlocked. See §9.2 item 1a and §9.3.
+>
 > **Amendment 1 (PO *"NEM-024 Checkpoint A — Product Owner Approval of B-1 and B-2"*, 2026-11-10):**
 > - **B-1, Option A — one protected-test amendment.** The NEM-023 architecture test *"no turn or port wiring"* is amended, **in its own commit before any Checkpoint A code**, to:
 >   - permit only the approved retrieval-provider registration in `knowledge.module.ts` and the approved retrieval / indexing-permission dependencies in `sessions/turn.service.ts`;
@@ -235,7 +237,7 @@ Retrieval failure **before** reservation → `turn_failed`, with no lock, no cha
 
 **Lifecycle:**
 1. **Record creation:** the row is inserted with `status = 'accepted'`, a fresh `attemptToken`, and `fenceAt = statement_timestamp() + T_max + grace` (database time) **inside the existing step-4 lock transaction** (with the lock and `turnCount` update). Preflight failures and step-4 failures (attempt released by the existing `releaseOrHold`) create **no** row.
-1a. **Step-4 failure record (Amendment 1, B-2).** After a step-4 failure (lock-transaction error, set change, read-only, or the one-provisional-turn index) **and** the subsequent `gateway.release(prepared)` call:
+1a. **Step-4 failure record (Amendment 1, B-2; extended by Amendment 2 to `cancelled`).** After a step-4 failure (lock-transaction error, set change, read-only, or the one-provisional-turn index) **and** the subsequent `gateway.release(prepared)` call:
    - **Record:** a **terminal `failed`** row is inserted by `INSERT … ON CONFLICT ("sessionId", "keyHash") DO NOTHING` (**idempotent**: an existing row for the key is kept unchanged), with:
      - `failureReason` = the step-4 denial code;
      - `turnIndex = NULL`;
@@ -356,7 +358,7 @@ Retrieval failure **before** reservation → `turn_failed`, with no lock, no cha
 | When | Trigger | Server action | Charge | Lock | Record |
 |---|---|---|---|---|---|
 | Before reservation (preflight) | Explicit cancel | Stop at the next stage boundary | None | None | None |
-| After reservation, before the lock commits | Explicit cancel | `gateway.release(prepared)` (existing never-sent release; held if the release cannot be written) | None (released) | None | None |
+| After reservation, before the lock commits (**Amendment 2**) | Explicit cancel | The decision point is the last action inside the step-4 transaction: the abort rolls back the lock, turn count, and provisional row atomically; then `gateway.release(prepared)` (`released` only when the Gateway confirms, otherwise `unconfirmed`, held for reconciliation) | None (released) | **None** (original unlocked state, `turnCount` unchanged) | **Terminal `cancelled`**, `turnIndex` NULL, idempotent (B-2 mechanism); same-key replay → `cancelled` |
 | After the lock, before the provider call starts | Explicit cancel | Do not invoke; `gateway.release(prepared)` | None (released) | **Stands** (the turn was accepted; ADR-006) | T3 `accepted → cancelled` (fenced) |
 | During a provider attempt | Explicit cancel | `AbortSignal` → Gateway `client_abort`; no text released (F-1) | **Held** at the reserved amount until NEM-021 reconciliation settles it from evidence | Stands | T3 `accepted → cancelled` (fenced) |
 | After the fence | Explicit cancel | Lazy T4, then return `interrupted` | As per the ledger | Stands | `interrupted` |
@@ -364,7 +366,7 @@ Retrieval failure **before** reservation → `turn_failed`, with no lock, no cha
 | Any time, including preflight | **Client disconnect or stream close** (network loss, tab close, app background) | **Never a cancellation** (D-9 a, approved): the turn continues to completion and is persisted, so a same-key replay returns it | As normal | — | As normal |
 
 - Explicit cancel is `POST …/turns/cancel {idempotencyKey}`. It signals the in-flight request through an **in-process** registry (`Map<serverKey, AbortController>`).
-- **Implementation note (Checkpoint B, N-B1):** an abort arriving after reservation but before the lock commits is observed at the first post-lock boundary (record `cancelled`, reservation released, **lock stands**). This deviates from the row "after reservation, before the lock commits" above. **Proposed Amendment 2** (pending PO decision, not applied): Option B — check the signal inside the lock transaction (no lock, no turn count) and write a terminal `cancelled` record via the B-2 mechanism. See the [Checkpoint B report §12 F-2](../../reports/2026-11-10-NEM-024-checkpoint-b-report.md).
+- **Boundary (Amendment 2):** the cancel signal is checked synchronously inside the step-4 lock transaction, after the lock, `turnCount + 1`, and the T0 insert, as its last action before COMMIT. Abort seen there → sentinel → rollback → release → terminal `cancelled` record (no lock, no count). Abort arriving after that check → the transaction commits → post-lock semantics (endpoint or owner T3; lock and count stand). *(Supersedes the Checkpoint B N-B1 note.)*
 - **Deployment assumption (N-B5):** a single API instance with the knowledge module flag off (verified in `docker-compose.server.yml`). T3 is database-only and safe on any instance. Aborting a live provider call from another instance needs a separately approved shared channel before horizontal scaling.
 - With more than one API instance this would need a shared channel. That is a known limitation and is not built now (single instance; no new infrastructure).
 - The accepted Gateway streaming contract is unchanged.

@@ -127,6 +127,13 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Checkpoint A only** authorized; B–E, merge, deployment, production providers or indexing, and infrastructure are not.
 - Pre-execution check: **blocked** (B-1 protected NEM-023 test; B-2 specification gap).
 
+### PO-036 / PO-037 — NEM-024 Checkpoint A conditional acceptance, Checkpoint B authorization, Amendment 2 — decided 2026-11-10
+→ **[PO-036](../operating-framework/decisions/product-owner/PO-036-nem-024-checkpoint-a-conditional-acceptance-and-checkpoint-b-authorization.md)** · **[PO-037](../operating-framework/decisions/product-owner/PO-037-nem-024-checkpoint-b-amendment-2-cancellation-before-lock.md)**
+
+- Checkpoint A accepted (conditional). Checkpoint B authorized with a release condition: stranded turns recovered before any user-facing release.
+- Amendment 2 (Option B): a cancel before lock commit leaves no lock and no turn count, and writes a terminal `cancelled` record.
+- Not authorized: C–E, merge, deployment, activation.
+
 ### Still open in the three-tier package
 TT-01 purchased-token expiry · TT-12 verified AI-eligible launch corpus and rights · NoetiaX depth and evaluation criteria (TT-07) · AI budget values and resets (TT-09, TT-11) · premium pricing and Stripe architecture (TT-16) · quotation and anti-reconstruction thresholds (TT-13) · retention and export (TT-14) · legal disclosures and provider data handling (TT-22). **PO-025** (three-tier structure) was **decided on 2026-11-08** with TT-01 kept open; draft **PO-029** (eligible corpus) remains **not decided**. See [`05-open-decisions.md`](../architecture/three-tier-intelligence/05-open-decisions.md).
 
