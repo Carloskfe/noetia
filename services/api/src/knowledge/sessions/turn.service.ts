@@ -716,17 +716,20 @@ export class TurnService {
         }
       }
     }
-    const sliced = new Map<string, (string | null)[]>();
+    // F-1: excerpts are keyed by the citation's own key (turn | ref | anchor), never by occurrence order, so repeated
+    // citations, identical anchors in several turns, and interleaved books always map to their own range.
+    const excerptByKey = new Map<string, string | null>();
     for (const [b, t] of texts) {
       if (typeof t !== 'string' || t === 'unavailable' || t === 'stale') continue;
-      const mine = [...parsed.values()].filter((c): c is Cite => !!c && c.bookId === b && c.hash === state.get(b)!.hash);
-      sliced.set(b, sliceCodePoints(t, mine.map((c) => ({ start: c.start, end: c.end }))));
+      const mine = [...parsed.entries()].filter((e): e is [string, Cite] => !!e[1] && e[1].bookId === b && e[1].hash === state.get(b)!.hash);
+      const slices = sliceCodePoints(t, mine.map(([, c]) => ({ start: c.start, end: c.end })));
+      mine.forEach(([key], i) => excerptByKey.set(key, slices[i]));
     }
-    const cursor = new Map<string, number>();
     const views = rows.map((r): TurnView => {
       const completed = r.status === 'completed';
       const citations = completed ? (r.segments ?? []).map((seg) => seg.citations.map((c): TurnCitation => {
-        const cite = parsed.get(`${r.id}|${c.ref}|${c.anchor}`) ?? null;
+        const key = `${r.id}|${c.ref}|${c.anchor}`;
+        const cite = parsed.get(key) ?? null;
         const base = { ref: c.ref, kind: c.kind, bookId: c.bookId, anchor: c.anchor, excerpt: null as string | null };
         if (!cite) return { ...base, sourceState: c.kind === 'chunk' ? 'position_unavailable' : 'deferred' };
         const st = state.get(cite.bookId)!;
@@ -736,9 +739,7 @@ export class TurnService {
         const t = texts.get(cite.bookId);
         if (t === 'stale') return { ...base, sourceState: 'stale' };
         if (t === undefined || t === 'unavailable') return { ...base, sourceState: 'unavailable' };
-        const i = cursor.get(cite.bookId) ?? 0;
-        cursor.set(cite.bookId, i + 1);
-        const excerpt = sliced.get(cite.bookId)?.[i] ?? null;
+        const excerpt = excerptByKey.get(key) ?? null;
         return excerpt === null ? { ...base, sourceState: 'unavailable' } : { ...base, excerpt, sourceState: 'available' };
       })) : null;
       return {

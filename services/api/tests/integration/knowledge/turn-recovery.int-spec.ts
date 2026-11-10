@@ -402,6 +402,30 @@ describe('NEM-024 Checkpoint B — recovery, cancellation, history (real Postgre
       t.store.put(b.key, `${ES_TEXT}\n\nEdición para historial.`);
     });
 
+    it('F-1: repeated citations, identical anchors in two turns, and interleaved books map to their own excerpts (real S2 store)', async () => {
+      const { u, s } = await session();
+      const anchor = (h: string, a: number, e: number) => `${h}:${a}-${e}`;
+      const cite = (ref: string, b: { id: string; hash: string }, a: number, e: number) => ({ ref, kind: 'chunk', bookId: b.id, anchor: anchor(b.hash, a, e) });
+      const rep = cite('chunk:r', es, 0, 12);
+      const insert = (idx: number, segs: any[]) => ds.query(
+        `INSERT INTO ai_turns ("sessionId", "turnIndex", "keyHash", question, status, segments, exclusions, settlement, "attemptToken", "fenceAt", "completedAt", "createdAt")
+         VALUES ($1, $2::int, 'turn:f1-' || gen_random_uuid(), 'q', 'completed', $3::jsonb, '{}'::jsonb, 'settled', gen_random_uuid(), statement_timestamp(), statement_timestamp(), statement_timestamp() + make_interval(secs => $2::int))`,
+        [s, idx, JSON.stringify(segs)]);
+      await insert(1, [{ origin: 'library', text: 'a', bookId: es.id, citations: [rep, cite('chunk:e', en, 4, 15)] }]);
+      await insert(2, [
+        { origin: 'library', text: 'b', bookId: es.id, citations: [rep, rep] },
+        { origin: 'library', text: 'c', bookId: es.id, citations: [cite('chunk:x', en, 20, 30), rep, cite('chunk:z', es, 40, 55)] },
+      ]);
+      const views = await t.qturns.history(u, s);
+      const got = views.map((v) => v.citations!.map((seg) => seg.map((c) => c.excerpt)));
+      const esx = (a: number, e: number) => codePointSlice(ES_TEXT, a, e);
+      const enx = (a: number, e: number) => codePointSlice(EN_TEXT, a, e);
+      expect(got).toEqual([
+        [[esx(0, 12), esx(0, 12)], [enx(20, 30), esx(0, 12), esx(40, 55)]], // newest first (turn 2)
+        [[esx(0, 12), enx(4, 15)]],
+      ]);
+    });
+
     it('authorization: another user cannot read history, a single turn, or cancel in someone else\'s session', async () => {
       const { u, s } = await session();
       const r = await t.qturns.run(u, s, 'authz-key-0001', Q);

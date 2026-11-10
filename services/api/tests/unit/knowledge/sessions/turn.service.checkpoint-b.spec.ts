@@ -228,6 +228,77 @@ describe('NEM-024 Checkpoint B — TurnService', () => {
       const bare = new TurnService({} as any, {} as any, {} as any, {} as any, {} as any, TEST_CONFIG, {} as any);
       for (const call of [() => bare.history(USER_A, S), () => bare.turnView(USER_A, S, TURN), () => bare.cancel(USER_A, S, KEY)]) expect((await caught(call()))?.reason).toBe('feature_disabled');
     });
+    describe('F-1: citation → excerpt mapping (deterministic)', () => {
+      // Two invented texts with known code-point ranges (one astral character shifts UTF-16 vs code points).
+      const T1 = 'Uno 𝔘 dos tres cuatro cinco seis siete ocho nueve diez.';
+      const T2 = 'Alpha beta gamma delta epsilon zeta eta theta.';
+      const H1 = computeTextHash(Buffer.from(T1));
+      const H2 = computeTextHash(Buffer.from(T2));
+      const cps = (t: string, a: number, b: number) => [...t].slice(a, b).join('');
+      const c = (ref: string, b: string, h: string, a: number, e: number) => ({ ref, kind: 'chunk', bookId: b, anchor: `${h}:${a}-${e}` });
+      const turnRow = (id: string, segs: any[][]) => ({
+        ...completedRow([]), id,
+        segments: segs.map((cites, i) => ({ origin: 'library', text: `seg ${i}`, bookId: cites[0]?.bookId, citations: cites })),
+      });
+      function setupTwoBooks(rows: any[]) {
+        const h = harness({
+          rows,
+          index: { [B1]: { permitted: true, textHash: H1 }, [B2]: { permitted: true, textHash: H2 } },
+          bookText: { read: jest.fn(async (k: string) => Buffer.from(k === 'k1' ? T1 : T2)) },
+        });
+        return h;
+      }
+      const excerpts = (v: any) => v.citations.map((seg: any[]) => seg.map((x: any) => [x.ref, x.sourceState, x.excerpt]));
+
+      it('repeated identical citations (same ref + anchor) across segments and within one segment, then a later distinct range', async () => {
+        const rep = c('chunk:a', B1, H1, 0, 5);
+        const later = c('chunk:b', B1, H1, 10, 20);
+        const h = setupTwoBooks([turnRow('t1', [[rep, rep], [rep, later]])]);
+        const [v] = await h.turns.history(USER_A, S);
+        expect(excerpts(v)).toEqual([
+          [['chunk:a', 'available', cps(T1, 0, 5)], ['chunk:a', 'available', cps(T1, 0, 5)]],
+          [['chunk:a', 'available', cps(T1, 0, 5)], ['chunk:b', 'available', cps(T1, 10, 20)]],
+        ]);
+      });
+
+      it('multiple distinct ranges from the same book, out of order, interleaved with a second book and a stale citation', async () => {
+        const h = setupTwoBooks([turnRow('t1', [
+          [c('chunk:3', B1, H1, 30, 40), c('chunk:x', B2, H2, 6, 10)],
+          [c('chunk:old', B1, `sha256:${'7'.repeat(64)}`, 0, 3), c('chunk:1', B1, H1, 4, 9), c('chunk:y', B2, H2, 0, 5)],
+          [c('chunk:2', B1, H1, 10, 20)],
+        ])]);
+        const [v] = await h.turns.history(USER_A, S);
+        expect(excerpts(v)).toEqual([
+          [['chunk:3', 'available', cps(T1, 30, 40)], ['chunk:x', 'available', cps(T2, 6, 10)]],
+          [['chunk:old', 'stale', null], ['chunk:1', 'available', cps(T1, 4, 9)], ['chunk:y', 'available', cps(T2, 0, 5)]],
+          [['chunk:2', 'available', cps(T1, 10, 20)]],
+        ]);
+      });
+
+      it('identical anchors in multiple completed turns each receive the excerpt; a repeat in the newer turn does not shift the older turn', async () => {
+        const same = c('chunk:a', B1, H1, 4, 9);
+        const h = setupTwoBooks([
+          turnRow('t2', [[same, same, c('chunk:c', B1, H1, 20, 25)]]),
+          turnRow('t1', [[same, c('chunk:d', B1, H1, 26, 31)]]),
+        ]);
+        const [v2, v1] = await h.turns.history(USER_A, S);
+        expect(excerpts(v2)).toEqual([[['chunk:a', 'available', cps(T1, 4, 9)], ['chunk:a', 'available', cps(T1, 4, 9)], ['chunk:c', 'available', cps(T1, 20, 25)]]]);
+        expect(excerpts(v1)).toEqual([[['chunk:a', 'available', cps(T1, 4, 9)], ['chunk:d', 'available', cps(T1, 26, 31)]]]);
+      });
+
+      it('the same ref with two different anchors keeps each range distinct', async () => {
+        const h = setupTwoBooks([turnRow('t1', [[c('chunk:a', B1, H1, 0, 3), c('chunk:a', B1, H1, 14, 18)]])]);
+        const [v] = await h.turns.history(USER_A, S);
+        expect(excerpts(v)).toEqual([[['chunk:a', 'available', cps(T1, 0, 3)], ['chunk:a', 'available', cps(T1, 14, 18)]]]);
+      });
+
+      it('one fetch per book for the whole page', async () => {
+        const h = setupTwoBooks([turnRow('t2', [[c('chunk:1', B1, H1, 0, 3)]]), turnRow('t1', [[c('chunk:2', B1, H1, 4, 9), c('chunk:3', B2, H2, 0, 5)]])]);
+        await h.turns.history(USER_A, S);
+        expect(h.bookText.read).toHaveBeenCalledTimes(2);
+      });
+    });
+
     it('no S2 reader bound → excerpts deferred', async () => {
       const h = harness({ rows: [completedRow([cite(B1, H)])] });
       (h.turns as any).bookText = undefined;
