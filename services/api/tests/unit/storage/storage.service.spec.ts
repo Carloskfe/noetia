@@ -45,6 +45,46 @@ describe('StorageService', () => {
     });
   });
 
+  describe('getText', () => {
+    it('decodes the object as UTF-8 text', async () => {
+      async function* body() { yield Buffer.from('ni'); yield new Uint8Array([0xc3, 0xb1]); yield Buffer.from('o'); }
+      mockSend.mockResolvedValue({ Body: body() });
+      expect(await service.getText('texts/b.txt')).toBe('niño');
+      expect(GetObjectCommand).toHaveBeenCalledWith({ Bucket: 'books', Key: 'texts/b.txt' });
+    });
+  });
+
+  describe('publicUrl', () => {
+    const saved = process.env.MINIO_PUBLIC_URL;
+    afterEach(() => { if (saved === undefined) delete process.env.MINIO_PUBLIC_URL; else process.env.MINIO_PUBLIC_URL = saved; });
+    it('uses MINIO_PUBLIC_URL when set, else the internal host', () => {
+      process.env.MINIO_PUBLIC_URL = 'https://storage.example.invalid';
+      expect(service.publicUrl('images', 'a.png')).toBe('https://storage.example.invalid/images/a.png');
+      delete process.env.MINIO_PUBLIC_URL;
+      expect(service.publicUrl('images', 'a.png')).toBe('http://storage:9000/images/a.png');
+    });
+  });
+
+  describe('getBytes (NEM-023)', () => {
+    async function* body(...parts: (Buffer | Uint8Array)[]) { for (const p of parts) yield p; }
+
+    it('returns the exact object bytes, concatenated, without decoding', async () => {
+      const bom = Buffer.from([0xef, 0xbb, 0xbf]);
+      mockSend.mockResolvedValue({ Body: body(bom, new Uint8Array([0x61, 0xc3]), Buffer.from([0xa9])) });
+      const bytes = await service.getBytes('texts/book.txt');
+      expect(GetObjectCommand).toHaveBeenCalledWith({ Bucket: 'books', Key: 'texts/book.txt' });
+      expect([...bytes]).toEqual([0xef, 0xbb, 0xbf, 0x61, 0xc3, 0xa9]);
+    });
+
+    it('honours a bucket override and propagates S3 errors', async () => {
+      mockSend.mockResolvedValueOnce({ Body: body() });
+      expect((await service.getBytes('k', 'other')).length).toBe(0);
+      expect(GetObjectCommand).toHaveBeenCalledWith({ Bucket: 'other', Key: 'k' });
+      mockSend.mockRejectedValueOnce(new Error('NoSuchKey'));
+      await expect(service.getBytes('missing')).rejects.toThrow('NoSuchKey');
+    });
+  });
+
   describe('presign', () => {
     it('returns the signed URL from getSignedUrl', async () => {
       (getSignedUrl as jest.Mock).mockResolvedValue('https://minio.local/books/key?sig=abc');
