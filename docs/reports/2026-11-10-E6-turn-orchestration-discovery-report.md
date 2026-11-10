@@ -160,7 +160,7 @@ NEM-021 reserves the **worst case** before the call, so the allocator must cap c
 | R-5 | Medium | P0 packet scope (E6 backend, E9 UI) vs this instruction (E6 + UX) | D-1 |
 | R-6 | Medium | Revoked-book excerpts persisted in `ai_turns` | Render-time "source unavailable"; TT-14 before launch |
 | R-7 | Medium | Cancelled or failed provider attempts stay **held** at the reserved amount until reconciliation, so users may briefly see reduced capacity | Disclose in the UI; existing reconciliation |
-| R-8 | Low | A completion-write failure after settlement breaks replay for that key | D-8 (a): the answer is delivered as `unrecorded`; replay → `result_unavailable`; recovery → `interrupted`; ledger untouched |
+| R-8 | Low | A completion-write failure after settlement breaks replay for that key | D-8 (a): the answer is delivered best effort with the `unrecorded` marker; the row stays provisional until its fence, then `interrupted` (terminal); replay never reproduces the answer; ledger untouched (F-2, F-6) |
 | R-10 | Medium → reduced | Revocation between step 2 and the provider call | **Final eligibility check** immediately before invocation (review package §6, F-3). Remaining window: during the provider call only (history hides the excerpt) |
 | R-11 | Low | Explicit cancel uses an in-process registry, so it would not reach another API instance | Single instance today; a shared channel only if scaled out (launch item) |
 | R-9 | Low | The dev nginx proxy may buffer SSE | `X-Accel-Buffering: no` response header (no infrastructure change); Traefik streams |
@@ -239,7 +239,7 @@ Documentation only. No application code, tests, migrations, CI/CD, or infrastruc
 | Part | Content |
 |---|---|
 | Finding | Revision 1 left persistence failure as a "documented gap", did not define the completion point, and implied replay without a mechanism |
-| Correction | Mission §9.2 now specifies:<br>• the status set and the row insert inside the step-4 lock transaction;<br>• **durable completion = the commit of the completion update**;<br>• a persistence failure after settlement (charge stands; answer delivered as `unrecorded`; replay → `result_unavailable`; recovery → `interrupted`);<br>• a duplicate table for during-preflight, in-flight, completed, failed, and released cases;<br>• the two concrete gates: NEM-021 ledger attempt-1 uniqueness (no second reservation or provider call) and `ai_turns` UNIQUE (no second record);<br>• recovery via an `@Interval` sweep that never writes ledger rows;<br>• deletion cascade with a no-op late completion.<br>**No exactly-once claim** beyond those constraints, and each has a concurrency test (AC 5–6, 9). NEM-021 remains the sole settlement authority (AC 4 architecture test) |
+| Correction | *(Revision 2 text; superseded in part by F-2 and F-6: `result_unavailable` and the overwritable `interrupted` were replaced by best-effort delivery and the fenced terminal state machine, review package §2 and §7.)* Mission §9.2 now specifies:<br>• the status set and the row insert inside the step-4 lock transaction;<br>• **durable completion = the commit of the completion update**;<br>• a persistence failure after settlement (charge stands; answer delivered as `unrecorded`; replay → `result_unavailable`; recovery → `interrupted`);<br>• a duplicate table for during-preflight, in-flight, completed, failed, and released cases;<br>• the two concrete gates: NEM-021 ledger attempt-1 uniqueness (no second reservation or provider call) and `ai_turns` UNIQUE (no second record);<br>• recovery via an `@Interval` sweep that never writes ledger rows;<br>• deletion cascade with a no-op late completion.<br>**No exactly-once claim** beyond those constraints, and each has a concurrency test (AC 5–6, 9). NEM-021 remains the sole settlement authority (AC 4 architecture test) |
 | Evidence | `turn.service.ts` (`turnIdempotencyKey`, step 4 transaction, `releaseOrHold`); `cost-ledger.service.ts` (`duplicate_attempt` → `duplicate_turn`); `ai-gateway.service.ts` F-3 settle-before-yield; `cost-reconciliation-job.service.ts` `@Interval` 60 s; migration 070 cascades |
 | Remaining decision | D-8 (answer delivery when the record write fails after settlement) |
 
@@ -265,6 +265,16 @@ Documentation only. No application code, tests, migrations, CI/CD, or infrastruc
 
 The PO recorded NEM-022's acceptance at `f6a5cb7` after PA re-review (NEM-022 report §20). R-1's remaining decision is therefore **resolved**. NEM-023's wording was reconciled without changing its status. **No E6 decision and no E6 mission approval follows from this update.**
 
+### Update 2026-11-10 — PA finding F-6 (of `4e2c041`)
+
+- `interrupted` is **terminal**, and no terminal state ever changes.
+- Recovery is fenced by a database-time `fenceAt`: owner and cancel writes require `now() < fenceAt`, and finalization requires `now() >= fenceAt`.
+- Lazy finalization runs in every read.
+- One provisional turn per session (partial unique index).
+- Twelve deterministic race tests (R1–R12).
+- No new table or service.
+- See review package revision 3 §7, mission revision 5 §9.2, and packet revision 5.
+
 ### Update 2026-11-10 — PA review F-1 to F-5 (of `ccb3acc`)
 
 The corrections are recorded in review package revision 2 §9, mission revision 4, and packet revision 4:
@@ -272,7 +282,7 @@ The corrections are recorded in review package revision 2 §9, mission revision 
 - F-2: D-8 best-effort delivery, with no unseen-charge guarantee.
 - F-3: a final eligibility check before invocation.
 - F-4: W = 10 is a candidate, with reader p95 delta ≤ 50 ms as the criterion and the reduction 10 → 6 → 3.
-- F-5: lease-based race-safe recovery.
+- F-5: race-safe recovery (lease-based; replaced by the fence after F-6, see below).
 
 ### Update 2026-11-10 — D-1(a) approved; final PA review package
 

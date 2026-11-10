@@ -1,6 +1,6 @@
 # 13 — E6 Security, Rights, and Failure-Mode Assessment (DISCOVERY, DRAFT)
 
-**Status:** DRAFT, documentation-only — **revision 3** (PA reviews: R-2…R-4; F-2, F-3, F-5). No protected system is changed by this document. Conflicts with accepted architecture are recorded with options and are not resolved here.
+**Status:** DRAFT, documentation-only — **revision 4** (PA reviews: R-2…R-4; F-2, F-3, F-5, F-6). No protected system is changed by this document. Conflicts with accepted architecture are recorded with options and are not resolved here.
 
 ## 1. Authorization layers per turn (all must pass; most restrictive wins)
 
@@ -129,8 +129,9 @@ Proposed sequence, each step separately authorized; no step may be folded silent
 | Client disconnect | any | As normal | — | — | **Not a cancellation** (D-9 a): the turn completes and is persisted; a same-key replay returns it |
 | Scope violation (bad citation) | 11 | Settled | Yes | `scope_violation` | Generic error; no text released; alert metric |
 | Malformed output / refusal | 9–11 | Settled | Yes | `turn_failed` | Generic error |
-| Completion write fails after settlement | 7 (complete) | Settled or held (ledger authority; E6 never compensates) | Yes | Answer returned with `status: 'unrecorded'` **on a best-effort basis** (D-8 a): if the response is also lost, the answer is lost and the charge stands (an unseen charge) | The row stays `accepted` and recovery marks it `interrupted`. A same-key replay → `result_unavailable` (no provider call, no charge). Metric `intelligence_turn_unrecorded_total` |
-| Process crash after lock, before completion | 5–7 | Held until NEM-021 reconciliation | Yes | Client sees a network error | Lease stops renewing → the sweep marks `interrupted` within L + grace + interval (a live turn with a renewed lease is never swept). Same-key replay → `409 duplicate_turn {status: accepted}` until then, then the stored status; ask again with a new key |
+| Completion write fails after settlement | 7 (complete) | Settled or held (ledger authority; E6 never compensates) | Yes | Answer returned with the `unrecorded` marker **on a best-effort basis** (D-8 a): if the response is also lost, the answer is lost and the charge stands (an unseen charge) | The row stays `accepted` (provisional) until its fence, then T4 → `interrupted` (terminal; history shows "not saved"). A same-key replay → `409 {status: accepted}` before the fence, `interrupted` after it; never the answer. Metric `intelligence_turn_unrecorded_total` |
+| Process crash after lock, before completion | 5–7 | Held until NEM-021 reconciliation | Yes | Client sees a network error | The row stays provisional until `fenceAt` (≈ 60–75 s with today's defaults), then T4 → `interrupted` (sweep or lazy read). No reader sees `interrupted` before the fence. A same-key replay → `409 {status: accepted}`, then `interrupted`; asking again needs an explicit new question |
+| Owner finishes after its fence (frozen or overrun process) | 7 | Per the ledger | Yes | `interrupted` | T1 is fenced (0 rows); the owner returns `interrupted` and **releases no text**, so the outcome never contradicts what readers saw. Metric `intelligence_turn_fenced_total` |
 | Duplicate request (same key) | any | Never a second reservation (ledger attempt-1 uniqueness) | — | Per the mission §9.2 duplicate table | One record (UNIQUE `sessionId`, `keyHash`) |
 
 ### 5.1 Cancellation matrix (R-4; the Gateway streaming contract is unchanged)

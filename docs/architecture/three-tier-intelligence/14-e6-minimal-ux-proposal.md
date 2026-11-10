@@ -1,6 +1,6 @@
 # 14 — E6 Minimal Web/Mobile UX Proposal (DISCOVERY, DRAFT)
 
-**Status:** DRAFT, documentation-only — **revision 2** (PA review R-2, R-4, R-5). No UI code exists for intelligence today: web and mobile contain no research, session, or Ask My Highlights screens; only marketing copy mentions Noetia+. This is a proposal for the **minimum viable Noetia+ question-and-answer experience**.
+**Status:** DRAFT, documentation-only — **revision 3** (PA review R-2, R-4, R-5; F-6 client state rules). No UI code exists for intelligence today: web and mobile contain no research, session, or Ask My Highlights screens; only marketing copy mentions Noetia+. This is a proposal for the **minimum viable Noetia+ question-and-answer experience**.
 
 Constraints:
 - no new UI framework, no new service;
@@ -70,7 +70,9 @@ Mobile follows **D-6 (TT-20)**. Provisional P0 recommendation: web first.
 | Cancelled | User presses "Cancelar" (explicit cancel endpoint) | Turn shown as "Cancelada". If the provider had started: "Puede contar en tu capacidad mientras se confirma." (held until reconciliation) |
 | Connection lost | Tab closed / network drop / app backgrounded | **Not a cancellation** (D-9 a). On return, the client fetches the turn (same key / `GET …/turns/:turnId`) and shows the answer |
 | Unrecorded | `status: 'unrecorded'` | Show the answer with a small note: "No pudimos guardar esta respuesta en tu historial." |
-| Interrupted | History shows `interrupted` | "Esta pregunta se interrumpió. Vuelve a preguntar." (new key) |
+| Processing (provisional) | Replay or history returns `accepted` | "Todavía estamos procesando esta pregunta…"; poll with the **same key**. Never shown as failed, never re-asked automatically |
+| Interrupted (terminal) | `interrupted` | "Esta pregunta se interrumpió y no se guardó." plus a "Preguntar de nuevo" button (**explicit action only**; a new key, which is a new charge). A terminal status, once shown, never changes |
+| Another question in progress | `409 duplicate_turn {status: accepted}` on a new question | "Espera a que termine la pregunta anterior." Input disabled until that turn is terminal |
 | Error | `code` | Mapped copy (below); a retry button only where retry is meaningful |
 | Read-only session | `session_read_only` | Input replaced by "Esta sesión es de solo lectura. Bifúrcala para continuar." |
 | Budget exhausted | `budget_exhausted` | Input disabled until reset; TT-11 copy (hard stop + upgrade if eligible; no token language, `BOOK TOKEN ≠ AI USAGE`) |
@@ -98,7 +100,7 @@ All strings go through `lib/i18n/{en,es}.ts` (web parity test). Mobile strings a
 
 - The client generates one `idempotencyKey` per question (UUID-like, matches `^[A-Za-z0-9_-]{8,64}$`).
 - "Reintentar" after a network failure **reuses the same key**, so the server returns the stored turn and nothing is charged twice. This requires the E6 replay behaviour; today a reused key returns `duplicate_turn` 409.
-- "Preguntar de nuevo" after `turn_failed` uses a **new key** (new reservation).
+- "Preguntar de nuevo" after a **terminal** failure (`failed`, `interrupted`, `cancelled`) uses a **new key** (a new reservation) and is **only ever an explicit user action**. The client never auto-resubmits with a new key, and never while a turn is `accepted` (provisional).
 
 ## 6. Accessibility
 

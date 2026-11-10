@@ -1,6 +1,6 @@
-# E6 — Product Owner Decision Packet (Turn Orchestration) — revision 4
+# E6 — Product Owner Decision Packet (Turn Orchestration) — revision 5
 
-**Status:** DRAFT — for PO / PA decision. **Revision 4 (PA review F-1…F-5 of `ccb3acc`): D-8 best-effort wording, D-9 consistency, D-11 candidate W and 50 ms acceptance. Revision 3 (2026-11-10): D-1(a) APPROVED by the PO**; P-0 satisfied. Final PA questions: [PA final review package](2026-11-10-E6-pa-final-review-package.md). Prepared under PO *"E6 Turn Orchestration Discovery — documentation-only"* (2026-11-10). Revised after the PA review of PR #54 (`e73c277`). **No decision below is taken by this document.**
+**Status:** DRAFT — for PO / PA decision. **Revision 5 (PA F-6 of `4e2c041`): `interrupted` is terminal; recovery fenced by database time; one provisional turn per session. Revision 4 (PA review F-1…F-5 of `ccb3acc`): D-8 best-effort wording, D-9 consistency, D-11 candidate W and 50 ms acceptance. Revision 3 (2026-11-10): D-1(a) APPROVED by the PO**; P-0 satisfied. Final PA questions: [PA final review package](2026-11-10-E6-pa-final-review-package.md). Prepared under PO *"E6 Turn Orchestration Discovery — documentation-only"* (2026-11-10). Revised after the PA review of PR #54 (`e73c277`). **No decision below is taken by this document.**
 
 **Evidence:**
 - [discovery report](2026-11-10-E6-turn-orchestration-discovery-report.md) (§11: revision responses)
@@ -49,7 +49,7 @@ Only decisions **genuinely required before implementation** are in §1. Launch-t
 |---|---|
 | **Approved (PO, 2026-11-10)** | **D-1(a)**: backend plus one minimal web Q&A interface. E9 keeps all broader UX (mission §5.1) |
 | **Proposed baselines** (named by the PO; **not approved**; the mission is written on them) | D-2(C) book passages only · D-4(a) stateless model context with persistent conversation history · D-6(a) web first · D-7(a) simulator and fixture-based dark development · D-9(a) disconnect does not cancel a turn |
-| **Open: PA judgement** | D-3 (precise amendments, review package §1) · D-8 (§2) · D-10 (§3) · D-11 (§4) · cancellation consistency (§5) · revocation during an active turn, including the final eligibility check (§6) · race-safe recovery (§7) · Q-4 to Q-13 (§10; Q-1 to Q-3 closed or superseded) |
+| **Open: PA judgement** | D-3 (precise amendments, review package §1) · D-8 (§2) · D-10 (§3) · D-11 (§4) · cancellation consistency (§5) · revocation during an active turn, including the final eligibility check (§6) · fenced, terminal-safe recovery state machine (§7) · Q-4 to Q-12 and Q-14 (§10; Q-1 to Q-3 and Q-13 closed or superseded) |
 | **Open: PO** | D-5 identifier (NEM-024 verified unused) |
 
 
@@ -64,7 +64,7 @@ Only decisions **genuinely required before implementation** are in §1. Launch-t
 | **D-5** | Identifier | PO | Reserve NEM-024 (verified unused) | Reserve |
 | **D-6** — proposed baseline (not approved) | Mobile in the MVP (TT-20) | PO | (a) web first; (b) parity; (c) read-only history | (a). Moot under D-1(b) |
 | **D-7** — proposed baseline (not approved) | Build before E3/E4 adapters | PO | (a) dark on fixture ports; (b) wait | (a); E3 design note R-2 (hash once per text version) |
-| **D-8** *(new, R-3)* | Answer delivery when the turn record cannot be written after settlement | **PA** (product effect: PO) | **(a)** attempt to return the answer marked `unrecorded` (**best effort**); replay → `result_unavailable`. **(b)** withhold the answer and return an error | **(a)**, proposed. **Neither option prevents an unseen charge:** under (a), if the response is also lost (network failure, closed tab), the answer is lost and the charge stands; (b) makes the unseen charge certain. The charge always stands (NEM-021 authority). Review package §2 |
+| **D-8** *(new, R-3)* | Answer delivery when the turn record cannot be written after settlement | **PA** (product effect: PO) | **(a)** attempt to return the answer marked `unrecorded` (**best effort**); the row stays provisional until its fence, then becomes `interrupted` (terminal); replay never reproduces the answer. **(b)** withhold the answer and return an error | **(a)**, proposed. **Neither option prevents an unseen charge:** under (a), if the response is also lost (network failure, closed tab), the answer is lost and the charge stands; (b) makes the unseen charge certain. The charge always stands (NEM-021 authority). Review package §2 |
 | **D-9** *(new, R-4)* — proposed baseline (a) (not approved) | Client disconnect vs explicit cancel | **PO + PA** | **(a)** a disconnect or stream close **never** cancels (at any stage, including preflight); the turn continues and, once recorded, a same-key replay returns it. Only the explicit, authenticated cancel endpoint aborts. **(b)** disconnect aborts like cancel (held at the reserved amount, no answer) | **(a)**: a dropped connection does not by itself lose a **recorded** answer (an unrecorded one is covered by D-8) |
 | **D-10** *(new, R-4)* | Historical excerpts after revocation (dark-build default; the final policy is TT-14) | **PO** | **(a)** hide excerpts (`source no longer available`); keep the generated answer text. **(b)** keep showing the excerpts. **(c)** hide the whole answer | **(a)**: the most conservative choice that needs no deletion; `ai_turns` stores no excerpt text, so (a) needs no data change if TT-14 later chooses otherwise |
 | **D-11** *(new, R-5)* | Concurrency weight `W` and reader-latency acceptance | **PA** | **Candidate W = 10** (Σ selected books with S2 work in flight per process). **Acceptance (proposed): reader endpoint p95 delta ≤ 50 ms** under sustained permitted retrieval load, against idle, on the production API image (1 vCPU / 512 MB) | W = 10 is a **candidate, not accepted**. If the test fails, reduce W **10 → 6 → 3** and retest. If the accepted W < 10, 10-book turns cannot be admitted, a product conflict with PO-027, so escalate (review package Q-11) |
@@ -84,7 +84,7 @@ TT-11 (limit behaviour) · TT-13 (thresholds) · TT-14 (retention; D-10 is only 
 
 1. ~~Resolve P-0~~ (satisfied) · ~~D-1~~ (approved: (a)).
 2. **PO:** confirm or change the proposed baselines D-2(C), D-4(a), D-6(a), D-7(a), D-9(a); reserve D-5 (NEM-024).
-3. **PA:** judge D-3, D-8, D-10, D-11, the final eligibility check, recovery, and Q-4 to Q-13 in the [final review package](2026-11-10-E6-pa-final-review-package.md).
+3. **PA:** judge D-3, D-8, D-10, D-11, the final eligibility check, the fenced recovery state machine, and Q-4 to Q-12 / Q-14 in the [final review package](2026-11-10-E6-pa-final-review-package.md).
 4. PA review of mission revision 4 → PO approval → an explicit execution instruction naming the mission.
 
 *Revision 2 package text (superseded; D-1 is now approved (a)):* resolve P-0; decide D-1, D-2 C, D-3 (1)–(6), D-4(a), D-5 NEM-024, D-6(a), D-7(a), D-8(a), D-9(a), D-10(a), D-11 W=10 (plus the PA threshold); then PA review of mission revision 2 → PO approval.
