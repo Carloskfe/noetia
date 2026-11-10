@@ -13,7 +13,7 @@
 | 3 | [12 — interface and dependency inventory](../architecture/three-tier-intelligence/12-e6-interface-and-dependency-inventory.md) |
 | 4 | [13 — security, rights, and failure modes](../architecture/three-tier-intelligence/13-e6-security-rights-and-failure-modes.md) |
 | 5 | [14 — minimal web/mobile UX proposal](../architecture/three-tier-intelligence/14-e6-minimal-ux-proposal.md) |
-| 6 | [DRAFT mission — E6 research-turn orchestration](../engineering-missions/DRAFT/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md) |
+| 6 | [DRAFT mission — E6 research-turn orchestration](../engineering-missions/APPROVED/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md) |
 | 7 | [PO decision packet](2026-11-10-E6-product-owner-decision-packet.md) |
 
 ---
@@ -276,7 +276,7 @@ The PO recorded NEM-022's acceptance at `f6a5cb7` after PA re-review (NEM-022 re
 ### Update 2026-11-10 — NEM-024 finalization (PO-034)
 
 - The PO approved all E6 decisions in **PO-034** (documentation and final PA sign-off only).
-- The mission is finalized as **`DRAFT/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md`** (proposed, review-ready, not executable). It adds the bilingual interface requirement and PostgreSQL fence semantics under lock waits (`statement_timestamp()`; tests LW-1 to LW-6).
+- The mission is finalized as **`APPROVED/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md`** (proposed, review-ready, not executable). It adds the bilingual interface requirement and PostgreSQL fence semantics under lock waits (`statement_timestamp()`; tests LW-1 to LW-6).
 - **Implementation remains unauthorized.**
 
 ### Update 2026-11-10 — PA finding F-6 (of `4e2c041`)

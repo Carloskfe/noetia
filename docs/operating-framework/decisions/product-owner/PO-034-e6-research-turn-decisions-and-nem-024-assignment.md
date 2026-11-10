@@ -35,7 +35,7 @@
 
 ## Consequences recorded
 
-- The specification is finalized as [NEM-024](../../../engineering-missions/DRAFT/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md) (`DRAFT/`, status *proposed, review-ready*). It moves to `APPROVED/` only after the final PA sign-off and PO approval of the specification.
+- The specification is finalized as [NEM-024](../../../engineering-missions/APPROVED/NEM-024-research-turn-orchestration-and-minimal-bilingual-web-qa.md) (`DRAFT/`, status *proposed, review-ready*). It moves to `APPROVED/` only after the final PA sign-off and PO approval of the specification.
 - Accepted contracts of NEM-019, NEM-021, NEM-022 (accepted at `f6a5cb7`), and NEM-023 are preserved.
 - The NEM-023 exceptions **E-1** (retrieval p95 594 ms vs 150 ms) and **E-2** (global branch coverage 78.75% vs 80%) remain open and not waived. NEM-022's coverage shortfall (77.49%) also remains open.
 - Provider usage stays **simulated**; every production integration stays **disabled**.

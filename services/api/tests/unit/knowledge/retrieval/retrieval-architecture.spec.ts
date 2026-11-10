@@ -27,14 +27,43 @@ describe('NEM-023 architecture (§9.1, §9.2, §9.5, §9.6, §12)', () => {
     expect(literal.map(rel)).toEqual(['src/knowledge/rights/text-hash.ts']);
   });
 
-  it('no turn or port wiring: nothing outside retrieval/ imports it; the module, TurnService, and ContextSourcePort are untouched', () => {
+  // NEM-024 Amendment 1, B-1 (PO-approved 2026-11-10): the NEM-023 "dark until E6" boundary becomes "wired only at the
+  // approved E6 points". Only the module registers retrieval providers and only TurnService consumes the E6 facade;
+  // the indexer and the ranking service stay unreachable from turns; port bindings are unchanged.
+  it('wiring only at the approved E6 points (NEM-024 B-1): module registration + TurnService facade; bindings unchanged', () => {
+    const MODULE = 'src/knowledge/knowledge.module.ts';
+    const TURN = 'src/knowledge/sessions/turn.service.ts';
+    const ALLOWED: Record<string, string[]> = {
+      [MODULE]: ['./retrieval/indexing-permission', './retrieval/lexical-retrieval.service', './retrieval/query-context-source.service',
+        './retrieval/anchor-resolver', './retrieval/storage-book-text', './retrieval/retrieval-metrics.service', './retrieval/retrieval.types'],
+      [TURN]: ['../retrieval/query-context-source.service', '../retrieval/indexing-permission', '../retrieval/anchor-resolver', '../retrieval/retrieval.types'],
+    };
     const importers = all.filter((f) => !rel(f).startsWith('src/knowledge/retrieval/') && imports(f).some((i) => /retrieval\//.test(i)));
-    expect(importers.map(rel)).toEqual([]);
-    for (const f of ['knowledge/knowledge.module.ts', 'knowledge/sessions/turn.service.ts', 'knowledge/sessions/context-source.port.ts', 'app.module.ts']) {
+    // Only the two approved files may import from retrieval/, and only the listed modules, by their exact paths (no aliases or barrels).
+    expect(importers.map(rel).filter((f) => !(f in ALLOWED))).toEqual([]);
+    for (const f of importers) {
+      const used = imports(f).filter((i) => /retrieval\//.test(i));
+      expect({ f: rel(f), extra: used.filter((i) => !ALLOWED[rel(f)].includes(i)) }).toEqual({ f: rel(f), extra: [] });
+    }
+    // TurnService never reaches the indexer, the ranking service, or the raw RetrievalPort directly (only the facade).
+    const turn = read(join(SRC, 'knowledge/sessions/turn.service.ts')).replace(/^\s*(\*|\/\/).*$/gm, '');
+    expect(/\b(BookIndexer|LexicalRetrievalService|RetrievalPort|book-indexer|lexical-retrieval|index-command)\b/.test(turn)).toBe(false);
+    // The module never registers the offline indexer or its command.
+    expect(/\b(BookIndexer|book-indexer|index-command)\b/.test(read(join(SRC, 'knowledge/knowledge.module.ts')))).toBe(false);
+    // Unchanged from NEM-023: the context-source port and app.module never mention retrieval.
+    for (const f of ['knowledge/sessions/context-source.port.ts', 'app.module.ts']) {
       expect({ f, mentions: /retrieval\/|QueryContextSource|LexicalRetrieval|BookIndexer|IndexingPermission/.test(read(join(SRC, f))) }).toEqual({ f, mentions: false });
     }
+    // Unchanged from NEM-023: the pinned bindings.
     expect(read(join(SRC, 'knowledge/knowledge.module.ts'))).toMatch(/provide: CONTEXT_SOURCE_PORT, useClass: EmptyContextSource\b/);
     expect(read(join(SRC, 'knowledge/knowledge.module.ts'))).toMatch(/provide: TEXT_IDENTITY_PORT, useClass: UnboundTextIdentityPort\b/);
+  });
+
+  it('B-1 self-test: the allow-list rejects an unapproved importer and an unapproved retrieval module', () => {
+    const allowed = { 'src/knowledge/sessions/turn.service.ts': ['../retrieval/query-context-source.service'] } as Record<string, string[]>;
+    const offenders = ['src/knowledge/sessions/rogue.ts'].filter((f) => !(f in allowed));
+    expect(offenders).toEqual(['src/knowledge/sessions/rogue.ts']);
+    expect(['../retrieval/lexical-retrieval.service'].filter((i) => !allowed['src/knowledge/sessions/turn.service.ts'].includes(i))).toEqual(['../retrieval/lexical-retrieval.service']);
   });
 
   it('no Gateway call and no context sealing from retrieval (E6 owns turn wiring)', () => {
