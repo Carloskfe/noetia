@@ -442,3 +442,57 @@ describe('review F-2: the sealed context must belong to the budget user', () => 
     expect(ledger.reserveAttempt).not.toHaveBeenCalled();
   });
 });
+
+describe('review F-3: settlement is attempted before any consumer-visible event', () => {
+  /** Records whether settlement had been attempted at the moment the consumer saw each delta or segment. */
+  function tracking() {
+    const t = setup();
+    let settleAttempts = 0;
+    const original = t.ledger.settleAttempt.getMockImplementation()!;
+    t.ledger.settleAttempt.mockImplementation(async (u: any) => { settleAttempts++; return original(u); });
+    return { ...t, settled: () => settleAttempts };
+  }
+
+  it('a consumer that stops after the first delta cannot prevent settlement of a completed attempt', async () => {
+    const t = tracking();
+    for await (const e of t.gateway.stream(await t.gateway.prepare(request()))) if (e.type === 'delta') break; // early close
+    expect(t.ledger.settleAttempt).toHaveBeenCalledTimes(1);
+    expect(t.ledger.settleAttempt).toHaveBeenCalledWith(expect.objectContaining({ attemptKey: 'turn:test:a1', outcome: 'completed', usageCompleteness: 'complete' }));
+    expect(t.ledger.releaseAttempt).not.toHaveBeenCalled();
+  });
+
+  it('full consumption: settled exactly once, and before the first delta or segment reached the consumer', async () => {
+    const t = tracking();
+    const seenAt: number[] = [];
+    for await (const e of t.gateway.stream(await t.gateway.prepare(request()))) if (e.type === 'delta' || e.type === 'segment') seenAt.push(t.settled());
+    expect(seenAt.length).toBeGreaterThan(0);
+    expect(seenAt.every((n) => n === 1)).toBe(true);
+    expect(t.ledger.settleAttempt).toHaveBeenCalledTimes(1);
+  });
+
+  it('scope violation: settled exactly once, nothing released (F-1 preserved)', async () => {
+    const t = tracking();
+    t.sim.enqueue({ kind: 'citation_error' });
+    const events = await collect(t.gateway.stream(await t.gateway.prepare(request())));
+    expect(events.filter((e) => e.type === 'delta' || e.type === 'segment')).toEqual([]);
+    expect(t.ledger.settleAttempt).toHaveBeenCalledTimes(1);
+  });
+
+  it('ledger failure at settlement: attempted before the first delta, the attempt is held, and an early close changes nothing', async () => {
+    const t = tracking();
+    t.ledger.settleAttempt.mockImplementationOnce(async () => { throw new Error('ledger down'); });
+    let firstDeltaAfterAttempt = false;
+    for await (const e of t.gateway.stream(await t.gateway.prepare(request()))) {
+      if (e.type === 'delta') { firstDeltaAfterAttempt = t.ledger.settleAttempt.mock.calls.length === 1; break; }
+    }
+    expect(firstDeltaAfterAttempt).toBe(true);
+    expect(t.ledger.settleAttempt).toHaveBeenCalledTimes(1);
+    const full = tracking();
+    full.ledger.settleAttempt.mockImplementationOnce(async () => { throw new Error('ledger down'); });
+    const r = await full.gateway.invoke(await full.gateway.prepare(request()));
+    expect(r.attempts[0].settlement).toBe('ledger_error');
+    expect(r.settlement).toBe('held');
+    expect(r.segments.length).toBeGreaterThan(0); // the validated answer is still returned (unchanged behaviour)
+  });
+});
+

@@ -129,8 +129,10 @@ export async function runAdapter(
     }
     return true;
   })();
-  const deadline = new Promise<false>((r) => setTimeout(() => r(false), opts.deadlineMs ?? 2_000));
+  let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<false>((r) => { deadlineTimer = setTimeout(() => r(false), opts.deadlineMs ?? 2_000); });
   const terminated = await Promise.race([consume, deadline]);
+  clearTimeout(deadlineTimer); // never leave a pending timer behind (it kept Jest workers alive)
   if (timer) clearTimeout(timer);
   ctrl.abort();
   const finals = events.filter((e) => e.type === 'final') as Extract<AdapterEvent, { type: 'final' }>[];

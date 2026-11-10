@@ -131,6 +131,17 @@ describe('NEM-022 Gateway v2 end to end through the NEM-021 cost ledger (real Po
     expect(await entries('turn:e2e-leak:a1')).toEqual(['reservation', 'settlement']);
   });
 
+  it('review F-3: a consumer that closes the stream after the first delta still leaves the attempt settled in the ledger', async () => {
+    await configure();
+    const u = await newUser(ds);
+    const { gw } = gateway();
+    let sawDelta = false;
+    for await (const e of gw.stream(await gw.prepare(request(u, 'turn:e2e-early-close')))) if (e.type === 'delta') { sawDelta = true; break; }
+    expect(sawDelta).toBe(true);
+    expect(await entries('turn:e2e-early-close:a1')).toEqual(['reservation', 'settlement']);
+    expect((await state()).held).toBe(0n);
+  });
+
   it('review F-2: a context sealed for another user is rejected before any reservation', async () => {
     await configure();
     const [owner, payer] = [await newUser(ds), await newUser(ds)];

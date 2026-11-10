@@ -261,7 +261,15 @@ export class AiGatewayService {
     // attempts are released; structured output is never streamed (the validated object is in the terminal response).
     const answered = usage.outcome === 'completed' || usage.outcome === 'refused';
     const cite = enforceCitations(p.request.context, answered ? raw : [], toolCalls);
-    if (answered && !cite.scopeViolation && p.request.output.mode === 'text') {
+    const release = answered && !cite.scopeViolation && p.request.output.mode === 'text';
+
+    // Settlement on the terminal event — BEFORE any consumer-visible yield (review F-3). An async generator suspends
+    // at each yield, so a consumer that stops reading after the first delta would otherwise skip settlement and leave a
+    // completed provider attempt unresolved. A ledger failure leaves the attempt held for reconciliation.
+    let settlement: AttemptSettlement;
+    try { settlement = await this.costLedger.settleAttempt(usage); } catch { settlement = 'ledger_error'; }
+
+    if (release) {
       // F-1 release (fail closed): the buffered deltas, in their original chunks and order, then each segment's
       // validated origin and citations. Nothing reaches the caller from an attempt that failed validation.
       for (let i = 0; i < cite.segments.length; i++) {
@@ -269,11 +277,7 @@ export class AiGatewayService {
         yield { type: 'segment', segment: i, origin: cite.segments[i].origin, citations: cite.segments[i].citations };
       }
     }
-
-    // Settlement on the terminal event. A ledger failure leaves the attempt held for reconciliation.
-    let settlement: AttemptSettlement;
-    try { settlement = await this.costLedger.settleAttempt(usage); } catch { settlement = 'ledger_error'; }
-    const segments = answered && !cite.scopeViolation && p.request.output.mode === 'text' ? cite.segments : [];
+    const segments = release ? cite.segments : [];
     return this.result(res, usage, settlement, segments, cite.scopeViolation, structured, providerStreamed, final);
   }
 

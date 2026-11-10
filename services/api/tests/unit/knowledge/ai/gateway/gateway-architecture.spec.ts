@@ -61,6 +61,9 @@ describe('NEM-022 Gateway v2 architecture and security', () => {
     expect(gw.indexOf('enforceCitations(')).toBeGreaterThan(0);
     expect(yields[0]).toBeGreaterThan(gw.indexOf('enforceCitations('));
     expect(gw.indexOf('ctx.userId !== request.budget.userId')).toBeLessThan(gw.indexOf('this.reserve(request'));
+    // Review F-3: settlement is attempted before the only consumer-visible delta yield.
+    expect(gw.indexOf('this.costLedger.settleAttempt(usage)')).toBeGreaterThan(0);
+    expect(gw.indexOf('this.costLedger.settleAttempt(usage)')).toBeLessThan(yields[0]);
   });
 
   it('the Gateway never decides settle, hold, or release: no ledger action literals in gateway code', () => {
