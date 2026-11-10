@@ -1,8 +1,8 @@
 # NEM-021 — Phase 2 Report: Cost-Aware Ledger
 
-**Status:** **PHASE 2 IMPLEMENTED AND VERIFIED — AWAITING PRODUCT ARCHITECTURE REVIEW.** Every §5 item 7–15 is implemented. Every Phase 2 acceptance criterion (§11, AC-4 to AC-13) is proven by tests that ran in this session on a disposable database. **NEM-021 is not accepted**: that needs the final Product Architecture review (§19) and a separate Product Owner decision.
+**Status:** **REVIEW FINDINGS F-8, F-9, R-1 ADDRESSED — RETURNED FOR PRODUCT ARCHITECTURE RE-REVIEW.** Every §5 item 7–15 is implemented. Every Phase 2 acceptance criterion (§11, AC-4 to AC-13) is proven by tests run on a disposable database. The response to the review is **§18** (revision 3). **NEM-021 is not accepted**: that needs the Product Architecture re-review and a separate Product Owner decision.
 **Delivery state:** Not merged · Not deployed · NEM-022 not started.
-**Revision:** 2 (2026-11-09). Supersedes revision 1, which recorded the pre-execution BLOCKED state (kept as history in §14).
+**Revision:** 3 (2026-11-09). Adds §18: the response to Product Architecture review findings F-8, F-9, and R-1, plus F-9b, found while analysing F-9. **Current results (revision 3, HEAD `484f6ac` for code):** contract 212/212 · api unit 1,521/1,521 · integration 93/93 (NEM-019 56/56, Phase 2 37/37) · tsc 0 · eslint 0 errors. Sections 1–17 are the revision 2 record; where §18 changes a statement, §18 wins. Revision 2 superseded revision 1, the pre-execution BLOCKED state (kept as history in §14).
 
 ---
 
@@ -180,7 +180,7 @@ None. No provider documentation, price, or network resource was used. All prices
 
 | ID | Rating | Item |
 |---|---|---|
-| R-1 | Medium (review) | **NEM-019 runtime file touched.** `budget-ledger.service.ts` (+14/−3) exports `UNRESOLVED` and adds `attemptNumber IS NULL` to legacy settle and reconcile. For every row NEM-019 can create (`attemptNumber` is always NULL), behaviour is identical: all 56 NEM-019 integration tests and the unchanged NEM-019 unit tests pass. The filter prevents the legacy path from settling a cost-ledger attempt with units-only semantics. It is inside §5 (item 7 adds the columns to the NEM-019 ledger table, and the shared table requires both services to agree). It is not covered by D-1, so it is flagged for explicit PA confirmation (§10b) |
+| R-1 | Medium (review) → **answered in §18.3** | **NEM-019 runtime file touched.** `budget-ledger.service.ts` (+14/−3) exports `UNRESOLVED` and adds `attemptNumber IS NULL` to legacy settle and reconcile. For every row NEM-019 can create (`attemptNumber` is always NULL), behaviour is identical: all 56 NEM-019 integration tests and the unchanged NEM-019 unit tests pass. The filter prevents the legacy path from settling a cost-ledger attempt with units-only semantics. It is inside §5 (item 7 adds the columns to the NEM-019 ledger table, and the shared table requires both services to agree). It is not covered by D-1, so it is flagged for explicit PA confirmation (§10b) |
 | R-2 | Low (spec residual, §9.1) | In-flight attempts admitted before a breaker opens may still overrun. This is reported, not prevented |
 | R-3 | Low (design) | Legacy NEM-019 turn reservations carry no micro-USD, so they hold 0 in the global state until NEM-022 moves turns onto attempts. Their legacy settlement `costMicroUsd` does count in *settled* |
 | R-4 | Low (design) | Partial settlements are cumulative; the **maximum** recorded partial counts. A smaller later partial is ignored, so the count is never lower than the highest reported usage |
@@ -383,3 +383,196 @@ The only NEM-019 runtime change is R-1. No provider, credential, paid API, netwo
 ## 17. Next recommended action
 
 Independent **Product Architecture review** of Phase 2 (`REVIEW-CHECKLIST.md`), including R-1, then a separate **Product Owner acceptance decision**. NEM-022 stays not authorized until NEM-021 is accepted. *(Recommendation only; nothing is executed automatically. No merge or deployment has occurred.)*
+
+---
+
+## 18. Revision 3 — response to the Product Architecture review (2026-11-09)
+
+**Review:** independent Product Architecture review of Draft PR #50 (revision 2, head `f927473`). Findings: **F-8** (HIGH, compensation idempotency), **F-9** (MEDIUM, global policy activation concurrency), **R-1** (existing NEM-019 ledger change). Authority: the existing NEM-021 Phase 2 authorization; the review asked for the smallest additive corrections.
+
+**Commits in this revision:**
+
+| Commit | Content |
+|---|---|
+| `0478f1b` | F-8 fix (migration 074 + `compensateAttempt(attemptKey, adjustmentKey, …)`), F-9 fix (global admission lock in policy activation), R-1 integration test; unit tests for all three; the deterministic interleaving helpers (`pauseAt`, `waitForAdvisoryLockWaiter`), which always release the pause before asserting |
+| `484f6ac` | F-9b fix (pinned pricing schema re-checked under the lock) with unit and integration tests. *Correction:* its message also claims the "release before asserting" change, but that change is in `0478f1b`. The commit is pushed, so its message is left as is |
+| *(docs commit)* | This section, technical note §11, migration 074 entry, mission status, register |
+
+Frozen contract: source tree `634266826c934e3d615a7342a04a5e7458c6a84d` is **unchanged**; contract test tree is still the approved `d8de089995b57b0e86298d9a2609f5dbee08c980`. `budget-ledger.service.ts` is **not** modified in this revision.
+
+### 18.1 F-8 (HIGH) — compensation idempotency: confirmed and fixed
+
+**Finding confirmed.** `compensateAttempt(attemptKey, microUsd, units)` inserted a compensation row on every call. No unique index covered `entryType = 'compensation'`: NEM-019's three partial unique indexes cover reservation, resolution, and expiry flag only. There was **no way to tell a retry from an intended second adjustment**. A temporary probe (never committed) on the pre-fix code, real PostgreSQL:
+
+```
+F-8 PROBE: compensation rows for one adjustment = 5; compensated = -12500
+  (one −2,500 adjustment: 1 call + 1 retry + 3 concurrent duplicates → five entries; expected one, −2,500)
+```
+
+**Fix (smallest additive):** each compensation carries a caller-supplied **adjustment key**, which identifies one intended adjustment (e.g. a provider-invoice correction id).
+
+- **Migration `1748300000074-AddCompensationAdjustmentKey`** (new; 073 not edited):
+  - nullable `ai_budget_ledger."adjustmentKey" varchar(128)`;
+  - partial unique index `UQ_ai_budget_ledger_adjustment` on (`idempotencyKey`, `adjustmentKey`) `WHERE "entryType" = 'compensation' AND "adjustmentKey" IS NOT NULL`;
+  - CHECK `CK_ai_budget_ledger_cost_compensation_key`: `"entryType" <> 'compensation' OR "compensatedMicroUsd" IS NULL OR "adjustmentKey" IS NOT NULL`. Every micro-USD compensation must carry a key; NEM-019's units-only compensations (`compensatedMicroUsd` NULL) are unaffected.
+- **`compensateAttempt(attemptKey, adjustmentKey, microUsd, units = 0): 'recorded' | 'duplicate'`**:
+  - `INSERT … ON CONFLICT DO NOTHING`, so the unique index decides retries **and races**: exactly one row; the losers wait for the winner's commit, then skip;
+  - on no insert, the existing row is read back: same amount → `duplicate`; different amount → `CostLedgerError('adjustment key already recorded with a different amount')`; no reservation → error;
+  - the key is validated: non-empty, ≤ 128 characters, no whitespace.
+- **Legitimate separate adjustments stay allowed:** different keys on the same attempt are separate entries, and the same key on a different attempt is a different adjustment.
+- The only callers are tests: no production code calls `compensateAttempt`, and the Gateway is NEM-022.
+
+**Evidence (real PostgreSQL, `cost-ledger.int-spec.ts`):**
+- two distinct keys plus two replays → 2 rows, compensated −1,500, committed 8,500, settlement unchanged;
+- **10 concurrent identical submissions → exactly 1 `recorded` and 9 `duplicate`, 1 row**; 5 concurrent distinct keys → 5 rows;
+- key reuse with a different amount → refused, nothing changed;
+- the database itself refuses a duplicate keyed row (`UQ_ai_budget_ledger_adjustment`) and a key-less micro-USD compensation (`CK_…compensation_key`); NEM-019 `BudgetLedgerService.compensate` (units only) still works unchanged.
+
+Migration 074 down/up, including a partial down of 074 alone, is covered by the extended AC-13 test (§18.5). The unit suites cover 074 and the new `compensateAttempt` contract.
+
+### 18.2 F-9 (MEDIUM) — global policy activation vs. admission: confirmed and fixed
+
+**Finding confirmed.** Admission held `GLOBAL_ADMISSION_LOCK` (B-6) while it re-read the active policy, checked `committed + worstCaseCost ≤ allowance`, and inserted. `activateGlobalPolicy` took only `intelligence:ai_global_budget_policies-activation:v1`, so it **did not wait for in-flight admissions**. Reproduced on the pre-fix code by pausing an admission inside its critical section, after the lock and the policy re-read:
+
+```
+F-9 PROBE: commit order = activation → admission; admitted 800000 against allowance 1000000; active allowance after = 100000
+```
+
+The reduction to 100,000 committed first. The 800,000 admission then committed, checked against the replaced 1,000,000 allowance. At the admission's commit, `committed + reservation` exceeded the active allowance, so the §9.1 invariant ("at that moment, under the B-6 global lock") did not hold.
+
+**Fix (minimal; no infrastructure change):** `activateSingleton` takes `GLOBAL_ADMISSION_LOCK` **first** when activating a global policy, then its own lock, in the same transaction. Unit-weight activation is unchanged (weights are pinned per reservation and are not part of D14).
+
+**Transactional argument (after the fix).**
+1. **Mutual exclusion.** Admission `A` = one transaction: `lock(G)` → `lock(scope)` → `SELECT` active policy → duplicate, pin/breaker, and bound checks → `globalState` → invariant → `INSERT` → `COMMIT`. Activation `P` = one transaction: `lock(G)` → `lock(singleton)` → deactivate → activate → `COMMIT`. `G` is a transaction-scoped exclusive advisory lock held until commit. So for any `A` and `P`, one commits before the other acquires `G`.
+2. **`P` before `A`.** `A`'s policy read is a new statement executed after `A` acquires `G`, so after `P` committed. Under PostgreSQL's default READ COMMITTED (not overridden in `KnowledgeDbService`), each statement takes a fresh snapshot, so `A` sees the new policy and checks against it.
+3. **`A` before `P`.** `P` cannot commit until `A` has committed. Throughout `A`'s critical section, and at its commit, the policy `A` checked is the active one. The invariant holds at the moment of admission. A later reduction can make capacity negative; that is a configuration change after the fact, and subsequent admissions fail closed (as after an overrun, §9.1 rule 2).
+4. **No deadlock.** `G` is always the first lock: cost admission and NEM-019 admission take `G → scope`; activation takes `G → singleton`. Pricing and weight activation never take `G`. No transaction takes `scope` or `singleton` and then `G`, so there is no cycle.
+5. **Pre-lock read.** The policy read before the lock is only an early exit. The binding read is under `G` (unchanged).
+6. **Unchanged residual (§9.1).** Settlements do not take `G`; they move an attempt from held to settled. Only an overrun can raise `committed`, and that remains the documented, classified residual.
+
+**Evidence (real PostgreSQL, deterministic interleavings, observed through `pg_locks`, not timing):**
+
+| Test | Result with the fix | Result with the lock line removed (mutation check) |
+|---|---|---|
+| Admission paused in its critical section → activation **waits** (a waiter appears in `pg_locks`; nothing committed while paused); commit order admission → activation; admission recorded P1 (1,000,000), committedBefore 0; afterwards capacity −700,000 and the next admission is denied | ✓ | ✕ `Expected: true / Received: false` (no waiter) |
+| Activation paused after switching the policy → admission **waits**, then re-reads and is denied (`global_allowance`) under the new 100,000 allowance; no reservation written | ✓ | ✕ `Expected: true / Received: false` |
+| 24 parallel admissions interleaved with 5 activations: no deadlock; only `global_allowance` denials; every admission fits the policy it recorded | ✓ | ✓ (smoke test; the two deterministic tests are the proof) |
+
+The mutation check ran with a shell `trap` restoring the file, and the restore was verified. A first mutation attempt hung, because the test then asserted before releasing the pause. The tests were changed to observe, release, then assert, so a failure can never leave a paused transaction holding `G`.
+
+### 18.2b F-9b — found while analysing F-9: pinned pricing schema re-checked under the lock (fixed)
+
+The same race class exists for pricing. Admission looks up the active pricing schema **before** taking `G`, and pricing activation does not take `G`. A reviewed replacement that **closes the overrun breaker** could commit in between. The admission then found the old schema's breaker closed and was admitted, **pinned to the known-underpriced schema**. Reproduced with the fix reverted:
+
+```
+✕ F-9b: … Expected: "pricing_schema_missing"  Received: "allowed"
+```
+
+**Fix:** under `G`, one statement (one snapshot) returns both whether the pre-read schema is still the active, unexpired one and whether its breaker is open. Breaker open → `overrun_breaker_open`. Schema no longer current → `pricing_schema_missing` (fail closed; a retry prices with the new version). One statement matters: two separate statements could straddle the activation commit. AC-7 is unchanged: once admitted, settlement still uses the pinned version.
+
+**Evidence:** integration "F-9b" (breaker opened by an injected overrun; admission paused before `G`; reviewed replacement activated, `closedBreakers: 1`; admission denied and never pinned to v1; a retry pins v2) ✓. Unit rows: breaker-open wins, schema replaced, schema row gone.
+
+This goes beyond the literal F-9 request and is offered for review on its own; it can be reverted independently (`484f6ac`).
+
+### 18.3 R-1 — the NEM-019 ledger change, before and after
+
+The **whole** change to `budget-ledger.service.ts` (from `70a47bd`, +14/−3; the file's previous commit is NEM-019's accepted `dd5a49b`):
+
+| | Before (NEM-019 accepted) | After (NEM-021) |
+|---|---|---|
+| `UNRESOLVED` SQL fragment | module-private `const`; text: reservation with no settlement or release | **exported**; text **byte-identical** (no kind filter) |
+| `LEGACY_ONLY` | — | new private `const LEGACY_ONLY = r."attemptNumber" IS NULL` |
+| `appendResolution` (used by `settle` and `release`) | `WHERE r."idempotencyKey" = $1 AND ${UNRESOLVED}` | `… AND ${UNRESOLVED} AND ${LEGACY_ONLY}` |
+| `reconcile` scan | `WHERE ${UNRESOLVED}` | `WHERE ${UNRESOLVED} AND ${LEGACY_ONLY}` |
+| Everything else (`reserve`, admission bounds, B-6 lock, `compensate`, expiry flag, rate cards) | — | unchanged |
+
+**Why legacy behaviour is identical.** `attemptNumber` is added by migration 073 as a nullable column with no default. No NEM-019 statement names it (its INSERTs list their columns explicitly), so **every row NEM-019 writes has `attemptNumber` NULL**, and `LEGACY_ONLY` is true for every legacy reservation. Legacy settle, release, and reconcile therefore select exactly the rows they selected before, with otherwise identical SQL and parameters. The exported `UNRESOLVED` keeps its text, so NEM-019's per-scope and overall unresolved bounds compute the same values whenever no attempt exists. When attempts exist, those bounds also count attempt units: this is the intended shared bound (§9), covered by AC-5.
+
+**Why legacy paths cannot resolve an attempt.** Every attempt reservation has `attemptNumber ≥ 1` (CHECK in 073; `reserveAttempt` always sets it). The predicate excludes it from the only two legacy resolution statements. A legacy `settle`/`release` on an attempt key inserts nothing and returns `already_resolved`, because the reservation exists. Legacy `reconcile` never sees it.
+
+**Evidence:**
+- **Unchanged NEM-019 tests pass:**
+  - `tests/unit/knowledge/metering/budget-ledger.service.spec.ts` (29 tests), `reconciliation-job.service.spec.ts`, `tests/integration/knowledge/ledger.int-spec.ts` (24), and `support/it-env.ts` are byte-unchanged since the NEM-019 baseline (`git diff --numstat 57cc998 HEAD` lists none of them);
+  - full NEM-019 integration **56/56** and the full unit regression pass.
+- **Existing evidence** (`budget-ledger.legacy-scope.spec.ts`: the filter is present in both statements; integration AC-5: legacy `release` of an attempt key returns `already_resolved`, and legacy `reconcile` leaves it held) covered attempts **without** usage evidence only, which a legacy reconciler would skip anyway. That was insufficient, so one integration test was added:
+- **New `R-1` integration test** builds attempts with exactly the evidence legacy reconciliation acts on:
+  - A1: settlement interrupted after evidence, so `ai_usage_events.unitsReported` is set (legacy would **settle**);
+  - A2: never-sent release interrupted after the `provider = 'none'` evidence (legacy would **release**);
+  - A3: held, targeted directly with legacy `settle` and `release`;
+  - plus a legacy control reservation with legacy evidence.
+
+  Result: legacy `settle`/`release` on attempt keys → `already_resolved`. `reconcile()` → `{ settled: 1, released: 0, flaggedExpired: 0, held: 0 }`: **only** the legacy control is settled (3 units, `costMicroUsd` NULL, as before). There are 0 resolution rows for A1–A3, and all three stay held (52,000 µUSD). Then `reconcileAttempts()` settles A1 in micro-USD from the same evidence with the pinned schema, releases A2, and keeps A3 held.
+
+**Residual noted (no change made):** NEM-019's `compensate(key, units)` has no `LEGACY_ONLY` filter, so it could append a **units-only** compensation to an attempt key. This is not a resolution (attempts stay resolvable only by the cost ledger). It writes no micro-USD (`compensatedMicroUsd` NULL; allowed by the 074 CHECK), so the global micro-USD state is unaffected. It has **no production caller** (grep: tests only), and its effect on per-user units equals any NEM-019 compensation. It is left unchanged to avoid a further NEM-019 edit; Product Architecture may direct otherwise.
+
+### 18.4 Changed files in revision 3
+
+- **Source:**
+  - `src/migrations/1748300000074-AddCompensationAdjustmentKey.ts` (new);
+  - `src/knowledge/metering/cost-ledger.service.ts` (`compensateAttempt`; F-9b pin check);
+  - `src/knowledge/metering/cost-config.service.ts` (F-9 lock).
+- **Tests:**
+  - `tests/unit/migrations/1748300000074-…spec.ts` (new);
+  - `cost-ledger.service.spec.ts` and `cost-config.service.spec.ts` (updated or added cases);
+  - `cost-ledger.int-spec.ts` (F-8 ×4, F-9 ×3, F-9b, R-1; the old single compensation test is replaced by F-8);
+  - `cost-migration.int-spec.ts` (073–074 down/up by name, partial down of 074);
+  - `support/cost-env.ts` (`pauseAt`, `waitForAdvisoryLockWaiter`).
+- **Docs:** this section; technical note §11 (F-8, F-9, F-9b, lock map); `docs/database-migrations.md` (074); mission file; register.
+- **Not changed:** frozen contract source and tests, `budget-ledger.service.ts`, any NEM-019 migration or test, `app.module.ts`, users, sessions, Gateway, router, CI/CD, Docker, infrastructure, dependencies.
+
+### 18.5 Tests and validation, revision 3 (raw output, this session)
+
+Same commands and disposable containers as §13. The final integration run used a freshly created PostgreSQL 16 container at code HEAD `484f6ac`. Containers were removed afterwards.
+
+```
+# Pre-fix reproduction (temporary probe on code at f927473; probe file never committed)
+F-8 PROBE: compensation rows for one adjustment = 5; compensated = -12500
+F-9 PROBE: commit order = activation → admission; admitted 800000 against allowance 1000000; active allowance after = 100000
+
+# Mutation checks (fix line removed, file restored by trap, restore verified)
+F-9 lock removed:  ✕ admission in flight … WAIT (Expected: true, Received: false)
+                   ✕ activation in flight … WAIT (Expected: true, Received: false)
+                   ✓ parallel smoke test
+F-9b check removed: ✕ F-9b … Expected: "pricing_schema_missing", Received: "allowed"
+
+# Contract
+Tests:       212 passed, 212 total
+
+# Full api unit regression (+ knowledge coverage)
+Test Suites: 103 passed, 103 total
+Tests:       1521 passed, 1521 total
+All files                            |   98.55 |    94.04 |   96.87 |   99.51 |
+  budget-ledger.service.ts           |   99.09 |    97.77 |     100 |     100 | 335
+  cost-config.service.ts             |   98.16 |    93.47 |     100 |     100 | 63,223-235
+  cost-ledger.service.ts             |   98.79 |    94.26 |     100 |     100 | 274,502,519,536,633,659-663
+
+# Integration — fresh disposable PostgreSQL 16 + Redis 7
+ledger 24 · sessions 25 · a-schema-migrations 6 · account-deletion 1   (NEM-019: 56)
+cost-ledger 34 · cost-migration 3                                     (Phase 2: 37)
+Test Suites: 6 passed, 6 total
+Tests:       93 passed, 93 total
+    F-8: compensation idempotency (adjustment key, migration 074)
+      ✓ distinct adjustments are separate entries; a replay of one is a duplicate; committed counts each once
+      ✓ concurrent duplicate submissions of one adjustment write exactly one entry; concurrent distinct adjustments all land
+      ✓ reusing an adjustment key with a different amount is refused and changes nothing
+      ✓ the database enforces it: a duplicate keyed row and a key-less micro-USD compensation are refused; NEM-019 units-only compensation is unaffected
+    F-9: global policy activation is serialized with admission (same B-6 lock)
+      ✓ an admission in flight (lock held, old policy read) makes a concurrent activation WAIT; the change commits after it
+      ✓ an activation in flight makes a concurrent admission WAIT; the admission then re-reads and uses the NEW policy
+      ✓ F-9b: a replacement pricing schema activated between pre-check and lock cannot let an admission pin the broken schema
+      ✓ parallel admissions interleaved with repeated activations: no deadlock, and every admission fits the policy it committed under
+    ✓ R-1: legacy settle, release, and reconcile never resolve an attempt, even when evidence the legacy path would act on exists
+  NEM-021 migrations 073–074 on a disposable database
+    ✓ AC-13: 074 and 073 run down and up; they only add; no other table, column, constraint, or index is altered; no value is seeded
+
+# TypeScript / ESLint
+tsc -p tsconfig.test.json → 0 · tsc -p tsconfig.json → 0
+eslint → 0 errors, 68 warnings (no-explicit-any in test files; migration files ignored by the project pattern)
+```
+
+**Not executed:** CI (no PostgreSQL), staging, production, any provider or network call.
+
+### 18.6 Status and next step
+
+F-8 and F-9 are fixed with additive changes and proven on real PostgreSQL. R-1 is answered with a before/after explanation and one added test. F-9b is fixed and offered for separate review. The legacy-`compensate` residual is noted. **Returned for independent Product Architecture re-review.** Not merged, not deployed; NEM-022 not started; no provider, credential, or AI cost.
+
