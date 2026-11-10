@@ -56,6 +56,23 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<an
   return data;
 }
 
+/**
+ * Like `apiFetch`, but returns the raw `Response` so the caller can read a streamed body (SSE). Shares the same
+ * token header and the same de-duplicated 401 refresh; it never parses the body and never throws on non-2xx.
+ */
+export async function apiStream(path: string, init: RequestInit = {}): Promise<Response> {
+  let res = await fetchWithToken(path, init);
+  if (res.status === 401 && !path.startsWith('/auth/')) {
+    if (await refreshAccessToken()) {
+      res = await fetchWithToken(path, init);
+    } else {
+      if (typeof window !== 'undefined') window.location.href = '/login';
+      throw Object.assign(new Error('Session expired'), { status: 401 });
+    }
+  }
+  return res;
+}
+
 export function saveToken(token: string) {
   localStorage.setItem('access_token', token);
 }
