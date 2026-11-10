@@ -1,7 +1,7 @@
 # NEM-022 — Completion Report: Provider-Independent AI Gateway and Simulator v2
 
-**Status:** **RE-REVIEW FINDING F-3 ADDRESSED — RETURNED FOR PRODUCT ARCHITECTURE RE-REVIEW.** F-1/F-2 response in §18 (revision 3); F-3 response in **§19** (revision 4). §5 items 1–12 are implemented. Every acceptance criterion (§11, AC-1 to AC-11) is proven by tests run in this session, including a fresh disposable PostgreSQL run. **NEM-022 is not accepted**: that needs the independent Product Architecture review (§19) and a separate Product Owner decision.
-**Delivery state:** Not merged · Not deployed · **Draft PR #51** (stacked on NEM-021 PR #50).
+**Status:** **COMPLETED — ACCEPTED (PO, 2026-11-10)** as a completed, disconnected development implementation at commit `f6a5cb7`, following independent Product Architecture re-review. F-1, F-2, and F-3 accepted as resolved for the reviewed implementation (§20). **Open:** the global API branch-coverage shortfall (77.49% vs 80%) is **not waived**; the intermittent test failure disclosed in §19.3 stays a monitoring note. *Historical status (revision 4):* "Re-review finding F-3 addressed — returned for Product Architecture re-review." §1–§19 are preserved unchanged as the record.
+**Delivery state:** Accepted · Not merged · Not deployed · Not production-authorized · **Draft PR #51** (stacked on NEM-021 PR #50).
 **Revision:** 4 (2026-11-09). §18 answers the first Product Architecture review (F-1, F-2) and §19 the re-review (F-3). **Current results (code HEAD `58ec673`):** unit 1,687/1,687 (NEM-022 166) · contract 212/212 · integration 111/111 (NEM-019 56, NEM-021 37, NEM-022 18) · tsc 0 · eslint 0 errors. Sections 1–17 are the revision 2 record; where §18 changes a statement, §18 wins. Revision 1 was the pre-execution BLOCKED report (history in §14).
 
 ---
@@ -499,3 +499,20 @@ Tests:       111 passed, 111 total
 
 F-3 is fixed and proven at unit and PostgreSQL level, with F-1 and F-2 preserved. **Returned for independent Product Architecture re-review. NEM-022 is not accepted.** Not merged, not deployed.
 
+
+---
+
+## 20. Product Architecture re-review outcome and Product Owner acceptance (2026-11-10)
+
+**PO decision (2026-11-10):** *"Record Product Owner acceptance of NEM-022."* The Product Owner accepts NEM-022 as a **completed, disconnected development implementation at commit `f6a5cb7`**, following independent Product Architecture re-review.
+
+| Item | Record |
+|---|---|
+| Product Architecture re-review | Completed (outcome as stated in the PO decision). **F-1** (fail-closed streaming), **F-2** (context ownership), and **F-3** (settle before any consumer-visible event) accepted as **resolved** for the reviewed implementation |
+| Accepted implementation | Branch `feat/nem-022-gateway-simulator-v2`, commit `f6a5cb7` (code `58ec673`); Draft PR #51 |
+| **Open — global API branch coverage** | **77.49%** vs the **80%** requirement ([CI baseline investigation](2026-11-09-NEM-022-ci-baseline-investigation.md)). **Not waived** and not considered satisfied. Pre-existing gap on `main` (68.83%); NEM-022 raised it by +1.35 points |
+| **Monitoring note — intermittent test failure** | §19.3: one gateway-and-simulator run reported `1 failed, 165 passed`, with the test name not captured. It did not reproduce in 19 further runs or in the final regression. The likely candidates are the wall-clock-bounded abort/timeout tests under load. **If it recurs:** capture the test name and widen those bounds (a separate, authorized change) |
+| Not authorized by this acceptance | Merging, deployment, production use, paid AI activation, waiving any coverage requirement |
+| Delivery state | Draft PR #51 remains **draft**. Not merged, not deployed |
+
+This section is documentation only; no code, test, migration, contract, CI/CD, or infrastructure changed.
