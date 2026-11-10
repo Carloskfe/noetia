@@ -127,6 +127,12 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Checkpoint A only** authorized; B–E, merge, deployment, production providers or indexing, and infrastructure are not.
 - Pre-execution check: **blocked** (B-1 protected NEM-023 test; B-2 specification gap).
 
+### PO-039 — NEM-024 Checkpoint C authorization (SSE transport and capability probe) — decided 2026-11-10
+→ **[PO-039](../operating-framework/decisions/product-owner/PO-039-nem-024-checkpoint-c-authorization.md)**
+
+- Checkpoint C only: `POST …/turns/stream` (stage / segment+delta after validation / terminal; disconnect ≠ cancel; D-8 never shown as persisted) and `GET /knowledge/sessions/capabilities` (before `:id`; no monetary or provider values).
+- No exception waived. Not authorized: D–E, merge, deployment, activation, paid providers, infrastructure.
+
 ### PO-038 — NEM-024 Checkpoint B formal acceptance — decided 2026-11-10
 → **[PO-038](../operating-framework/decisions/product-owner/PO-038-nem-024-checkpoint-b-formal-acceptance.md)**
 
