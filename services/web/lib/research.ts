@@ -1,4 +1,4 @@
-import { apiFetch, apiStream } from './api';
+import { apiFetch, apiStream, currentAccountId, RESEARCH_RECOVERY_PREFIX } from './api';
 
 /**
  * NEM-024 Checkpoint D — client logic for the minimal research Q&A screen (`/research/[sessionId]`).
@@ -156,35 +156,73 @@ function defaultRandom(): string {
 
 export const codePointLength = (s: string): number => [...s].length;
 
-// ── Recovery of an in-flight question across reloads (per-browser convenience only; not conversation memory) ──
+// ── Recovery of an in-flight question across reloads (F-D1) ─────────────────────────────────────────────────────
+//
+// Lifecycle: the entry `{ key, question, owner, savedAt }` is written to **sessionStorage** (this tab only; gone when
+// the tab closes) when a question is sent, and removed on any terminal outcome except `unknown`. It is discarded when:
+// it is older than RECOVERY_TTL_MS; the signed-in account (`sub` of the access token) differs from `owner`; there is
+// no signed-in account; or on logout (`clearToken` → `clearResearchRecovery`). Without a signed-in account nothing is
+// written. It is a recovery aid for the same idempotency key, not conversation memory, and never sent anywhere except
+// back to the same stream route by the same account.
 
 export interface PendingQuestion { key: string; question: string }
-const pendingKey = (sessionId: string) => `noetia_research_pending:${sessionId}`;
+interface StoredPending extends PendingQuestion { v: 1; owner: string; savedAt: number }
+/** How long a pending question may be recovered after a reload; longer than any turn's server fence. */
+export const RECOVERY_TTL_MS = 15 * 60 * 1000;
+const pendingKey = (sessionId: string) => `${RESEARCH_RECOVERY_PREFIX}${sessionId}`;
 const KEY_RE = /^[A-Za-z0-9_-]{8,64}$/;
 
-export function savePending(sessionId: string, p: PendingQuestion): void {
+function removeEverywhere(k: string): void {
+  for (const getStore of [() => sessionStorage, () => localStorage]) {
+    try {
+      getStore().removeItem(k);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+export function savePending(sessionId: string, p: PendingQuestion, now: number = Date.now()): void {
+  const owner = currentAccountId();
+  if (!owner) return; // no account → nothing persisted (fail closed)
   try {
-    localStorage.setItem(pendingKey(sessionId), JSON.stringify(p));
+    const entry: StoredPending = { v: 1, key: p.key, question: p.question, owner, savedAt: now };
+    sessionStorage.setItem(pendingKey(sessionId), JSON.stringify(entry));
   } catch {
     // storage unavailable: recovery after reload is not possible, the turn itself is unaffected
   }
 }
-export function loadPending(sessionId: string): PendingQuestion | null {
+
+export function loadPending(sessionId: string, now: number = Date.now()): PendingQuestion | null {
+  const k = pendingKey(sessionId);
   try {
-    const raw = localStorage.getItem(pendingKey(sessionId));
-    if (!raw) return null;
-    const p = JSON.parse(raw) as Partial<PendingQuestion>;
-    return typeof p.key === 'string' && KEY_RE.test(p.key) && typeof p.question === 'string' ? { key: p.key, question: p.question } : null;
-  } catch {
-    return null;
-  }
-}
-export function clearPending(sessionId: string): void {
-  try {
-    localStorage.removeItem(pendingKey(sessionId));
+    localStorage.removeItem(k); // legacy location (pre-F-D1 builds): never read, always purged
   } catch {
     // ignore
   }
+  let raw: string | null = null;
+  try {
+    raw = sessionStorage.getItem(k);
+  } catch {
+    return null;
+  }
+  if (!raw) return null;
+  try {
+    const e = JSON.parse(raw) as Partial<StoredPending>;
+    const owner = currentAccountId();
+    const valid = e.v === 1 && typeof e.key === 'string' && KEY_RE.test(e.key) && typeof e.question === 'string'
+      && typeof e.owner === 'string' && owner !== null && e.owner === owner
+      && typeof e.savedAt === 'number' && now - e.savedAt <= RECOVERY_TTL_MS && e.savedAt <= now + 60_000;
+    if (valid) return { key: e.key as string, question: e.question as string };
+  } catch {
+    // malformed
+  }
+  removeEverywhere(k); // expired, foreign, or malformed: purge
+  return null;
+}
+
+export function clearPending(sessionId: string): void {
+  removeEverywhere(pendingKey(sessionId));
 }
 
 // ── Error mapping ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -218,6 +256,8 @@ export interface DisplayTurn {
   code: ErrorCode | null;
   /** Cancelled after the provider may have started, or release not confirmed: may count while it is confirmed. */
   mayCount: boolean;
+  /** F-D2: for an `unknown` outcome, the SAME key + question that "Check again" replays (never a new key). */
+  recovery?: PendingQuestion;
 }
 
 const EMPTY_EX: Exclusions = { ineligible: [], unindexed: [], stale: [], unavailable: [], indexNotPermitted: [] };
@@ -246,7 +286,7 @@ export type TerminalAction =
  * Maps the SSE `terminal` (or an equivalent JSON outcome) to what the screen does. `localId` names a turn that has no
  * server id (e.g. cancelled before reservation).
  */
-export function terminalAction(t: Terminal, question: string, localId: string): TerminalAction {
+export function terminalAction(t: Terminal, question: string, localId: string, key?: string): TerminalAction {
   const id = t.turnId ?? t.result?.turnId ?? localId;
   const code = errorCode(t.code);
   switch (t.outcome) {
@@ -275,7 +315,10 @@ export function terminalAction(t: Terminal, question: string, localId: string): 
       return { kind: 'poll', turnId: t.turnId ?? null };
     case 'unknown':
       // Nothing confirmed: keep the key so "Check again" replays it (same key, no new charge).
-      return { kind: 'turn', clearPending: false, turn: { id, question, status: 'unknown', segments: [], citations: [], exclusions: null, code: null, mayCount: false } };
+      return {
+        kind: 'turn', clearPending: false,
+        turn: { id, question, status: 'unknown', segments: [], citations: [], exclusions: null, code: null, mayCount: false, ...(key ? { recovery: { key, question } } : {}) },
+      };
     case 'denied':
     default:
       return { kind: 'notice', code, clearPending: true, readOnly: code === 'session_read_only', budgetExhausted: code === 'budget_exhausted' };

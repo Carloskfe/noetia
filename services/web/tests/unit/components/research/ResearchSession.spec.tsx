@@ -58,6 +58,13 @@ const RESULT = (over: Partial<research.TurnResult> = {}): research.TurnResult =>
   exclusions: { ineligible: [], unindexed: [], stale: [], unavailable: [], indexNotPermitted: [] }, ...over,
 });
 
+const jwt = (sub: string) => `h.${btoa(JSON.stringify({ sub })).replace(/=+$/, '')}.s`;
+const signIn = (sub: string) => localStorage.setItem('access_token', jwt(sub));
+const PKEY = `noetia_research_pending:${SID}`;
+const stored = () => { const raw = sessionStorage.getItem(PKEY); return raw ? JSON.parse(raw) : null; };
+const storePending = (p: { key: string; question: string }, over: Record<string, unknown> = {}) =>
+  sessionStorage.setItem(PKEY, JSON.stringify({ v: 1, owner: 'user-a', savedAt: Date.now(), ...p, ...over }));
+
 let container: HTMLDivElement;
 let root: Root;
 const flush = async (n = 4) => { for (let i = 0; i < n; i++) await act(async () => { await new Promise((r) => setTimeout(r, 0)); }); };
@@ -96,6 +103,8 @@ function controlledStream() {
 beforeEach(() => {
   jest.clearAllMocks();
   localStorage.clear();
+  sessionStorage.clear();
+  signIn('user-a');
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -226,7 +235,8 @@ describe.each(['en', 'es'] as const)('ResearchSession (%s)', (lang) => {
       expect(calls).toHaveLength(1);
       expect(calls[0].key).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
       expect(calls[0].question).toBe('¿Qué papel tiene el faro?');
-      expect(JSON.parse(localStorage.getItem(`noetia_research_pending:${SID}`)!)).toEqual({ key: calls[0].key, question: '¿Qué papel tiene el faro?' });
+      expect(stored()).toMatchObject({ v: 1, key: calls[0].key, question: '¿Qué papel tiene el faro?', owner: 'user-a' });
+      expect(localStorage.getItem(PKEY)).toBeNull(); // F-D1: never in localStorage
       expect(q('[data-testid="progress"]')?.textContent).toContain(T.stage.submitting);
       expect(q<HTMLTextAreaElement>('textarea')!.disabled).toBe(true);
       for (const s of ['checking', 'searching', 'composing'] as const) {
@@ -239,7 +249,7 @@ describe.each(['en', 'es'] as const)('ResearchSession (%s)', (lang) => {
       expect(text()).toContain('Respuesta nueva del libro.');
       expect(liveLog().textContent).toBe(T.status.answerReady);
       expect(liveLog().textContent).not.toContain('Respuesta nueva');
-      expect(localStorage.getItem(`noetia_research_pending:${SID}`)).toBeNull();
+      expect(stored()).toBeNull();
       expect(q<HTMLTextAreaElement>('textarea')!.value).toBe('');
       expect(m.getSession).toHaveBeenCalledTimes(2); // lock state refreshed from the server after the outcome
     });
@@ -337,13 +347,13 @@ describe.each(['en', 'es'] as const)('ResearchSession (%s)', (lang) => {
       await flush();
       await calls[0].terminal({ outcome: 'pending', statusCode: 409, code: 'duplicate_turn', status: 'accepted', turnId: 'tp' });
       expect(q('[data-testid="progress"]')?.textContent).toContain(T.stage.processing);
-      expect(localStorage.getItem(`noetia_research_pending:${SID}`)).not.toBeNull();
+      expect(stored()).not.toBeNull();
       await wait(150);
       await flush();
       expect(m.getTurn).toHaveBeenCalledWith(SID, 'tp');
       expect(text()).toContain('Resultado por sondeo.');
       expect(q('[data-testid="progress"]')).toBeNull();
-      expect(localStorage.getItem(`noetia_research_pending:${SID}`)).toBeNull();
+      expect(stored()).toBeNull();
       expect(calls).toHaveLength(1); // no re-ask
     });
   });
@@ -440,13 +450,13 @@ describe.each(['en', 'es'] as const)('ResearchSession (%s)', (lang) => {
       root = createRoot(container);
       expect(calls[0].signal?.aborted).toBe(true);
       expect(m.cancelTurn).not.toHaveBeenCalled();
-      expect(JSON.parse(localStorage.getItem(`noetia_research_pending:${SID}`)!).key).toBe(calls[0].key);
+      expect(stored().key).toBe(calls[0].key);
     });
   });
 
   describe('reload recovery (same key)', () => {
     it('a pending question in storage is replayed with its SAME key on load; a replay does not downgrade the history entry', async () => {
-      localStorage.setItem(`noetia_research_pending:${SID}`, JSON.stringify({ key: 'q_reloadkey1', question: '¿Qué es el faro?' }));
+      storePending({ key: 'q_reloadkey1', question: '¿Qué es el faro?' });
       const calls = controlledStream();
       await mount(lang);
       expect(calls).toHaveLength(1);
@@ -455,7 +465,156 @@ describe.each(['en', 'es'] as const)('ResearchSession (%s)', (lang) => {
       await calls[0].terminal({ outcome: 'completed', persisted: true, replayed: true, turnId: 't-old', result: RESULT({ turnId: 't-old', replayed: true, citations: [[cite({ excerpt: null, sourceState: 'deferred' })]] }) });
       expect(Array.from(container.querySelectorAll('article'))).toHaveLength(1);
       expect(text()).toContain(ANSWER); // the re-validated history entry is kept
-      expect(localStorage.getItem(`noetia_research_pending:${SID}`)).toBeNull();
+      expect(stored()).toBeNull();
+    });
+  });
+
+  describe('F-D1 — recovery storage lifecycle', () => {
+    it('a pending entry of ANOTHER account is not replayed and is purged', async () => {
+      storePending({ key: 'q_foreignkey', question: 'ajena' }, { owner: 'user-b' });
+      const calls = controlledStream();
+      await mount(lang);
+      expect(calls).toHaveLength(0);
+      expect(stored()).toBeNull();
+      expect(text()).not.toContain('ajena');
+    });
+    it('an EXPIRED entry is not replayed and is purged; a legacy localStorage entry is ignored and purged', async () => {
+      storePending({ key: 'q_expiredkey', question: 'vieja' }, { savedAt: Date.now() - research.RECOVERY_TTL_MS - 1000 });
+      localStorage.setItem(PKEY, JSON.stringify({ key: 'q_legacykey1', question: 'legado' }));
+      const calls = controlledStream();
+      await mount(lang);
+      expect(calls).toHaveLength(0);
+      expect(stored()).toBeNull();
+      expect(localStorage.getItem(PKEY)).toBeNull();
+    });
+    it('signed out → nothing is stored when asking (the turn still runs)', async () => {
+      localStorage.removeItem('access_token');
+      const calls = controlledStream();
+      await mount(lang);
+      type('faro');
+      key(q('textarea')!, 'Enter');
+      await flush();
+      expect(calls).toHaveLength(1);
+      expect(stored()).toBeNull();
+    });
+  });
+
+  describe('F-D2 — unknown outcome recovery (same key, no new key)', () => {
+    it('Check again replays the unknown turn\'s OWN key immediately — even after a newer question was asked', async () => {
+      const calls = controlledStream();
+      await mount(lang);
+      type('primera');
+      key(q('textarea')!, 'Enter');
+      await flush();
+      await calls[0].terminal({ outcome: 'unknown', statusCode: 502, code: 'turn_failed', status: 'unknown', turnId: 'tu' });
+      expect(stored()).toMatchObject({ key: calls[0].key }); // kept for reload recovery
+      // a newer question (new key) completes
+      type('segunda');
+      key(q('textarea')!, 'Enter');
+      await flush();
+      await calls[1].terminal({ outcome: 'completed', persisted: true, turnId: 't2', result: RESULT({ turnId: 't2' }) });
+      // Check again on the unknown turn → its own key and question
+      const unknownArticle = Array.from(container.querySelectorAll('article')).find((a) => a.getAttribute('data-status') === 'unknown')!;
+      await act(async () => (unknownArticle.querySelector('button') as HTMLButtonElement).click());
+      await flush();
+      expect(calls).toHaveLength(3);
+      expect([calls[2].key, calls[2].question]).toEqual([calls[0].key, 'primera']);
+      await calls[2].terminal({ outcome: 'completed', persisted: true, replayed: true, turnId: 'tu', result: RESULT({ turnId: 'tu', replayed: true, segments: [{ origin: 'synthesis', text: 'Recuperada.' }], citations: [[]] }) });
+      expect(text()).toContain('Recuperada.');
+      expect(container.querySelector('article[data-status="unknown"]')).toBeNull(); // the same turn id was replaced
+      expect(m.cancelTurn).not.toHaveBeenCalled();
+    });
+    it('after a reload, the unknown question is replayed with the SAME key automatically', async () => {
+      const calls = controlledStream();
+      await mount(lang);
+      type('primera');
+      key(q('textarea')!, 'Enter');
+      await flush();
+      await calls[0].terminal({ outcome: 'unknown', statusCode: 502, status: 'unknown', turnId: 'tu' });
+      await act(async () => root.unmount());
+      root = createRoot(container);
+      await mount(lang); // reload
+      expect(calls).toHaveLength(2);
+      expect([calls[1].key, calls[1].question]).toEqual([calls[0].key, 'primera']);
+      expect(q('[data-testid="progress"]')?.textContent).toContain(T.stage.recovering);
+    });
+  });
+
+  describe('F-D3 — cancellation during recovery never sticks in "Cancelling…"', () => {
+    async function polling(pollMs = 40) {
+      const calls = controlledStream();
+      m.getTurn.mockResolvedValue(view({ turnId: 'tp', status: 'accepted', segments: null, citations: null }));
+      await mount(lang, { pollMs });
+      type('faro');
+      key(q('textarea')!, 'Enter');
+      await flush();
+      await calls[0].terminal({ outcome: 'pending', statusCode: 409, status: 'accepted', turnId: 'tp' });
+      return calls;
+    }
+    it.each([
+      ['cancel_requested', { status: 'cancel_requested' }],
+      ['no turn id', { status: 'cancelled' }],
+    ])('while polling, cancel returns %s → back to processing and polling resumes, then the outcome shows', async (_n, res) => {
+      const calls = await polling();
+      m.cancelTurn.mockResolvedValue(res as any);
+      await act(async () => byText('button', T.cancel)!.click());
+      await flush();
+      expect(q('[data-testid="progress"]')?.textContent).toContain(T.stage.processing);
+      expect(q('[data-testid="progress"]')?.textContent).not.toContain(T.stage.cancelling);
+      const before = m.getTurn.mock.calls.length;
+      m.getTurn.mockResolvedValue(view({ turnId: 'tp', status: 'cancelled', segments: null, citations: null }));
+      await wait(120);
+      await flush();
+      expect(m.getTurn.mock.calls.length).toBeGreaterThan(before);
+      expect(text()).toContain(T.status.cancelled);
+      expect(q('[data-testid="progress"]')).toBeNull();
+      expect(calls).toHaveLength(1); // no new stream, no new key
+    });
+    it('cancel failure while polling → mapped notice and polling resumes (recoverable)', async () => {
+      await polling();
+      m.cancelTurn.mockRejectedValue(Object.assign(new Error('x'), { status: 503, data: { code: 'budget_unavailable' } }));
+      await act(async () => byText('button', T.cancel)!.click());
+      await flush();
+      expect(q('[data-testid="notice"]')?.textContent).toBe(T.errors.budget_unavailable);
+      expect(q('[data-testid="progress"]')?.textContent).toContain(T.stage.processing);
+      expect(byText('button', T.cancel)).toBeDefined(); // cancel can be retried
+    });
+    it('stream open, cancel_requested, but no terminal ever arrives → watchdog drops delivery (not a cancel) and replays the SAME key', async () => {
+      const calls = controlledStream();
+      m.cancelTurn.mockResolvedValue({ status: 'cancel_requested' });
+      await mount(lang, { cancelWatchdogMs: 40, recoveryDelayMs: 5 });
+      type('faro');
+      key(q('textarea')!, 'Enter');
+      await flush();
+      await calls[0].stage('composing');
+      await act(async () => byText('button', T.cancel)!.click());
+      await flush();
+      expect(q('[data-testid="progress"]')?.textContent).toContain(T.stage.cancelling);
+      await wait(60);
+      expect(calls[0].signal?.aborted).toBe(true); // delivery dropped
+      await calls[0].lose(); // the aborted fetch resolves as lost
+      await wait(30);
+      await flush();
+      expect(calls).toHaveLength(2);
+      expect(calls[1].key).toBe(calls[0].key);
+      expect(m.cancelTurn).toHaveBeenCalledTimes(1); // the watchdog itself never cancels
+      await calls[1].terminal({ outcome: 'cancelled', turnId: 'tc', reservationRelease: 'released', status: 'cancelled' });
+      expect(text()).toContain(T.status.cancelled);
+      expect(q('[data-testid="progress"]')).toBeNull();
+    });
+    it('stream open: when the terminal arrives in time, the watchdog never fires', async () => {
+      const calls = controlledStream();
+      m.cancelTurn.mockResolvedValue({ status: 'cancel_requested' });
+      await mount(lang, { cancelWatchdogMs: 40 });
+      type('faro');
+      key(q('textarea')!, 'Enter');
+      await flush();
+      await act(async () => byText('button', T.cancel)!.click());
+      await flush();
+      await calls[0].terminal({ outcome: 'cancelled', turnId: 'tc', reservationRelease: 'released', status: 'cancelled' });
+      await wait(60);
+      expect(calls[0].signal?.aborted).toBe(false);
+      expect(calls).toHaveLength(1);
     });
   });
 

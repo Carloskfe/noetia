@@ -3,14 +3,14 @@ import { TextDecoder as NodeTextDecoder, TextEncoder as NodeTextEncoder } from '
 // jsdom lacks TextEncoder/TextDecoder (browsers have both).
 Object.assign(global, { TextEncoder: NodeTextEncoder, TextDecoder: NodeTextDecoder });
 
-jest.mock('../../../lib/api', () => ({ apiFetch: jest.fn(), apiStream: jest.fn() }));
+jest.mock('../../../lib/api', () => ({ ...jest.requireActual('../../../lib/api'), apiFetch: jest.fn(), apiStream: jest.fn() }));
 
-import { apiFetch, apiStream } from '../../../lib/api';
+import { apiFetch, apiStream, clearToken as realClearToken, RESEARCH_RECOVERY_PREFIX } from '../../../lib/api';
 import { en } from '../../../lib/i18n/en';
 import { es } from '../../../lib/i18n/es';
 import {
   ACCESS_DENIAL_CODES, apiErrorCode, cancelTurn, clearPending, codePointLength, ERROR_CODES, errorCode, fromView, getCapabilities, getHistory,
-  getSession, getTurn, historyToTurns, loadPending, newIdempotencyKey, readerHref, runQuestionStream, savePending, SseParser, terminalAction,
+  getSession, getTurn, historyToTurns, loadPending, newIdempotencyKey, readerHref, RECOVERY_TTL_MS, runQuestionStream, savePending, SseParser, terminalAction,
   Terminal, TurnView,
 } from '../../../lib/research';
 
@@ -47,7 +47,7 @@ function sseResponse(chunks: string[], opts: { throwAt?: number; status?: number
 }
 const jsonResponse = (status: number, body: unknown) => ({ ok: status < 400, status, headers: { get: () => 'application/json' }, body: null, json: async () => body });
 
-beforeEach(() => { jest.clearAllMocks(); localStorage.clear(); });
+beforeEach(() => { jest.clearAllMocks(); localStorage.clear(); sessionStorage.clear(); });
 
 describe('SseParser', () => {
   it('parses complete frames, buffers partial ones across chunks (even mid-UTF-8 text), and keeps order', () => {
@@ -92,24 +92,80 @@ describe('newIdempotencyKey / codePointLength / readerHref', () => {
   });
 });
 
-describe('pending question storage (same-key recovery after reload)', () => {
-  it('round-trips per session; rejects invalid keys or shapes; clear removes it', () => {
-    savePending('s1', { key: 'q_abcdefgh', question: '¿Qué?' });
-    expect(loadPending('s1')).toEqual({ key: 'q_abcdefgh', question: '¿Qué?' });
-    expect(loadPending('s2')).toBeNull();
-    localStorage.setItem('noetia_research_pending:s3', JSON.stringify({ key: 'bad key', question: 'x' }));
-    expect(loadPending('s3')).toBeNull();
-    localStorage.setItem('noetia_research_pending:s4', '{not json');
-    expect(loadPending('s4')).toBeNull();
-    clearPending('s1');
+describe('pending question storage (F-D1: tab-scoped, account-bound, expiring)', () => {
+  const jwt = (sub: string) => `h.${btoa(JSON.stringify({ sub, email: 'x@example.invalid' })).replace(/=+$/, '')}.s`;
+  const signIn = (sub: string) => localStorage.setItem('access_token', jwt(sub));
+  const KEY = `${RESEARCH_RECOVERY_PREFIX}s1`;
+  beforeEach(() => { sessionStorage.clear(); signIn('user-a'); });
+
+  it('round-trips in sessionStorage only (never localStorage), per session, without the email', () => {
+    savePending('s1', { key: 'q_abcdefgh', question: '¿Qué?' }, 1000);
+    expect(loadPending('s1', 2000)).toEqual({ key: 'q_abcdefgh', question: '¿Qué?' });
+    expect(localStorage.getItem(KEY)).toBeNull();
+    const stored = JSON.parse(sessionStorage.getItem(KEY)!);
+    expect(stored).toEqual({ v: 1, key: 'q_abcdefgh', question: '¿Qué?', owner: 'user-a', savedAt: 1000 });
+    expect(loadPending('s2', 2000)).toBeNull();
+  });
+  it('no signed-in account → nothing is written', () => {
+    localStorage.removeItem('access_token');
+    savePending('s1', { key: 'q_abcdefgh', question: 'x' });
+    expect(sessionStorage.getItem(KEY)).toBeNull();
+  });
+  it('account switch → not recovered and purged; signed out → not recovered and purged', () => {
+    savePending('s1', { key: 'q_abcdefgh', question: 'x' }, 1000);
+    signIn('user-b');
+    expect(loadPending('s1', 2000)).toBeNull();
+    expect(sessionStorage.getItem(KEY)).toBeNull();
+    signIn('user-a');
+    savePending('s1', { key: 'q_abcdefgh', question: 'x' }, 1000);
+    localStorage.removeItem('access_token');
+    expect(loadPending('s1', 2000)).toBeNull();
+    expect(sessionStorage.getItem(KEY)).toBeNull();
+  });
+  it('expires after RECOVERY_TTL_MS (and rejects clock-skewed future entries); expired entries are purged', () => {
+    savePending('s1', { key: 'q_abcdefgh', question: 'x' }, 0);
+    expect(loadPending('s1', RECOVERY_TTL_MS)).not.toBeNull();
+    expect(loadPending('s1', RECOVERY_TTL_MS + 1)).toBeNull();
+    expect(sessionStorage.getItem(KEY)).toBeNull();
+    savePending('s1', { key: 'q_abcdefgh', question: 'x' }, 10_000_000);
+    expect(loadPending('s1', 1000)).toBeNull();
+    expect(RECOVERY_TTL_MS).toBe(15 * 60 * 1000);
+  });
+  it('legacy localStorage entries (pre-F-D1) are never read and are purged on load', () => {
+    localStorage.setItem(KEY, JSON.stringify({ key: 'q_legacykey', question: 'old' }));
     expect(loadPending('s1')).toBeNull();
+    expect(localStorage.getItem(KEY)).toBeNull();
+  });
+  it('malformed, wrong version, or invalid key → null and purged; clearPending removes both locations', () => {
+    for (const raw of ['{not json', JSON.stringify({ v: 2, key: 'q_abcdefgh', question: 'x', owner: 'user-a', savedAt: 0 }), JSON.stringify({ v: 1, key: 'bad key', question: 'x', owner: 'user-a', savedAt: 0 })]) {
+      sessionStorage.setItem(KEY, raw);
+      expect(loadPending('s1', 1)).toBeNull();
+      expect(sessionStorage.getItem(KEY)).toBeNull();
+    }
+    savePending('s1', { key: 'q_abcdefgh', question: 'x' });
+    localStorage.setItem(KEY, 'legacy');
+    clearPending('s1');
+    expect([sessionStorage.getItem(KEY), localStorage.getItem(KEY)]).toEqual([null, null]);
+  });
+  it('logout (clearToken) removes every research recovery entry in both storages and nothing else', () => {
+    savePending('s1', { key: 'q_abcdefgh', question: 'x' });
+    savePending('s2', { key: 'q_ijklmnop', question: 'y' });
+    localStorage.setItem(`${RESEARCH_RECOVERY_PREFIX}s3`, 'legacy');
+    sessionStorage.setItem('unrelated', '1');
+    localStorage.setItem('noetia_lang', 'es');
+    realClearToken();
+    expect(Object.keys(sessionStorage).filter((k) => k.startsWith(RESEARCH_RECOVERY_PREFIX))).toEqual([]);
+    expect(Object.keys(localStorage).filter((k) => k.startsWith(RESEARCH_RECOVERY_PREFIX))).toEqual([]);
+    expect([sessionStorage.getItem('unrelated'), localStorage.getItem('noetia_lang'), localStorage.getItem('access_token')]).toEqual(['1', 'es', null]);
   });
   it('storage failures never throw', () => {
     const spy = jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota'); });
     const spy2 = jest.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw new Error('blocked'); });
+    const spy3 = jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
     expect(() => savePending('s', { key: 'q_abcdefgh', question: 'x' })).not.toThrow();
     expect(() => clearPending('s')).not.toThrow();
-    spy.mockRestore(); spy2.mockRestore();
+    expect(loadPending('s')).toBeNull();
+    spy.mockRestore(); spy2.mockRestore(); spy3.mockRestore();
   });
 });
 
@@ -187,8 +243,10 @@ describe('terminalAction (D-C3: the terminal decides, not HTTP 200)', () => {
     expect(act({ outcome: 'pending', status: 'pending' })).toEqual({ kind: 'poll', turnId: null });
     expect(act({ outcome: 'pending', guard: 'over_limit', retryAfterSeconds: 1 })).toMatchObject({ kind: 'notice', code: 'budget_unavailable', clearPending: true });
   });
-  it('unknown → keeps the pending key (Check again replays the same key)', () => {
+  it('unknown → keeps the pending key and records the SAME key on the turn for "Check again" (F-D2)', () => {
     expect(act({ outcome: 'unknown', turnId: 't' })).toMatchObject({ kind: 'turn', clearPending: false, turn: { status: 'unknown' } });
+    expect((terminalAction({ outcome: 'unknown', statusCode: 502, turnId: 't' }, 'q', 'local-1', 'q_samekey01') as any).turn.recovery).toEqual({ key: 'q_samekey01', question: 'q' });
+    expect((act({ outcome: 'unknown' }) as any).turn.recovery).toBeUndefined();
   });
   it('denied → notice; read-only and budget-exhausted flags', () => {
     expect(act({ outcome: 'denied', code: 'session_read_only' })).toMatchObject({ kind: 'notice', readOnly: true, budgetExhausted: false });

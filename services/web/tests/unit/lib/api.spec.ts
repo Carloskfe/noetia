@@ -206,3 +206,32 @@ describe('apiStream', () => {
     await expect(apiStream('/x')).rejects.toMatchObject({ status: 401 });
   });
 });
+
+// NEM-024 F-D1: account scoping + logout sweep for research recovery entries.
+describe('currentAccountId / clearResearchRecovery', () => {
+  const b64url = (o: unknown) => btoa(JSON.stringify(o)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+  it('reads `sub` from the access token payload (base64url, unpadded); null when absent, malformed, or without sub', async () => {
+    const { currentAccountId } = await import('../../../lib/api');
+    localStorageMock.getItem.mockImplementation((k: string) => mockStorage[k] ?? null);
+    const sub = 'user-??>>~~1';
+    const payload = b64url({ sub, email: 'e' });
+    expect(payload).toMatch(/[-_]/); // exercises the base64url alphabet
+    mockStorage['access_token'] = `h.${payload}.s`;
+    expect(currentAccountId()).toBe(sub);
+    for (const tok of ['', 'not-a-jwt', `h.${b64url({ email: 'e' })}.s`, `h.${b64url({ sub: '' })}.s`, 'h.%%%.s']) {
+      mockStorage['access_token'] = tok;
+      expect(currentAccountId()).toBeNull();
+    }
+    delete mockStorage['access_token'];
+    expect(currentAccountId()).toBeNull();
+  });
+  it('clearResearchRecovery removes only prefixed entries from sessionStorage; tolerates an unusable localStorage', async () => {
+    const { clearResearchRecovery, RESEARCH_RECOVERY_PREFIX } = await import('../../../lib/api');
+    sessionStorage.setItem(`${RESEARCH_RECOVERY_PREFIX}a`, '1');
+    sessionStorage.setItem(`${RESEARCH_RECOVERY_PREFIX}b`, '2');
+    sessionStorage.setItem('keep', '3');
+    expect(() => clearResearchRecovery()).not.toThrow(); // the mocked localStorage has no key()/length
+    expect(Object.keys(sessionStorage)).toEqual(['keep']);
+    sessionStorage.clear();
+  });
+});

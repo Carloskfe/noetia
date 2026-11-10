@@ -38,7 +38,9 @@ interface Sim { streamBodies: { idempotencyKey: string; question: string }[]; ca
 
 async function simulate(page: Page, lang: 'en' | 'es'): Promise<Sim> {
   const sim: Sim = { streamBodies: [], cancels: [], hold: false };
-  await page.addInitScript((l) => { localStorage.setItem('access_token', 'e2e-fake-token'); localStorage.setItem('noetia_lang', l); }, lang);
+  // A JWT-shaped fake token: recovery storage is scoped to the token's `sub` (F-D1); the API is simulated, so no signature.
+  const token = `e2e.${Buffer.from(JSON.stringify({ sub: 'e2e-user' })).toString('base64url')}.sig`;
+  await page.addInitScript(([l, tok]) => { localStorage.setItem('access_token', tok); localStorage.setItem('noetia_lang', l); }, [lang, token] as const);
   await page.route('**/knowledge/sessions/**', async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -123,6 +125,9 @@ for (const lang of ['en', 'es'] as const) {
       await expect(page.getByText(`Respuesta t4 del libro.`)).toBeVisible();
       expect(sim.streamBodies[3]).toEqual({ idempotencyKey: heldKey, question: 'Pregunta recuperable' });
       expect(sim.cancels).toHaveLength(1); // the reload did not cancel
+      // F-D1: recovery data lives in this tab's sessionStorage only, and is gone after the terminal outcome
+      expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('noetia_research_pending:')))).toEqual([]);
+      expect(await page.evaluate(() => Object.keys(sessionStorage).filter((k) => k.startsWith('noetia_research_pending:')))).toEqual([]);
     });
   });
 }

@@ -34,8 +34,13 @@ interface InFlight { key: string; question: string }
 
 const POLL_MS = 3000;
 const MAX_AUTO_RECOVERY = 1;
+/** F-D3: an open stream that has not delivered its terminal this long after a cancel is dropped (delivery only, never a
+ * cancel) and the SAME key is replayed, so the screen can never stay in "Cancelling…". */
+const CANCEL_WATCHDOG_MS = 15_000;
 
-export default function ResearchSession({ sessionId, pollMs = POLL_MS, recoveryDelayMs = 2000 }: { sessionId: string; pollMs?: number; recoveryDelayMs?: number }) {
+export default function ResearchSession({ sessionId, pollMs = POLL_MS, recoveryDelayMs = 2000, cancelWatchdogMs = CANCEL_WATCHDOG_MS }: {
+  sessionId: string; pollMs?: number; recoveryDelayMs?: number; cancelWatchdogMs?: number;
+}) {
   const { t } = useTranslation();
   const r = t.research;
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -51,10 +56,15 @@ export default function ResearchSession({ sessionId, pollMs = POLL_MS, recoveryD
   const inFlight = useRef<InFlight | null>(null);
   const controller = useRef<AbortController | null>(null);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** F-D3: the provisional turn currently being polled (null when not polling). */
+  const pollingTurnId = useRef<string | null>(null);
+  const cancelWatch = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const phaseRef = useRef<Phase>({ kind: 'idle' });
   const mounted = useRef(true);
   const autoRecoveries = useRef(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  phaseRef.current = phase;
   const announce = useCallback((msg: string) => setAnnouncement(msg), []);
 
   const upsert = useCallback((turn: DisplayTurn) => {
@@ -76,9 +86,16 @@ export default function ResearchSession({ sessionId, pollMs = POLL_MS, recoveryD
     }).catch(() => undefined);
   }, [sessionId]);
 
+  const clearCancelWatch = () => {
+    if (cancelWatch.current) clearTimeout(cancelWatch.current);
+    cancelWatch.current = null;
+  };
+
   const finish = useCallback(() => {
     inFlight.current = null;
     controller.current = null;
+    pollingTurnId.current = null;
+    clearCancelWatch();
     setPhase({ kind: 'idle' });
   }, []);
 
@@ -96,6 +113,8 @@ export default function ResearchSession({ sessionId, pollMs = POLL_MS, recoveryD
   }, [r]);
 
   const pollTurn = useCallback((turnId: string | null, q: InFlight) => {
+    pollingTurnId.current = turnId;
+    clearCancelWatch();
     setPhase({ kind: 'processing' });
     announce(r.stage.processing);
     if (pollTimer.current) clearTimeout(pollTimer.current);
@@ -127,7 +146,7 @@ export default function ResearchSession({ sessionId, pollMs = POLL_MS, recoveryD
   }, [sessionId, pollMs, upsert, finish, refreshSession, announce, statusText, r]);
 
   const onTerminal = useCallback((term: Terminal, q: InFlight) => {
-    const a = terminalAction(term, q.question, `local-${q.key}`);
+    const a = terminalAction(term, q.question, `local-${q.key}`, q.key);
     if (a.kind === 'poll') {
       upsert({ id: a.turnId ?? `local-${q.key}`, question: q.question, status: 'processing', segments: [], citations: [], exclusions: null, code: null, mayCount: false });
       pollTurn(a.turnId, q);
@@ -162,6 +181,8 @@ export default function ResearchSession({ sessionId, pollMs = POLL_MS, recoveryD
   // ── Asking (new question or same-key recovery) ──────────────────────────────────────────────────────────────
   const ask = useCallback(async (q: InFlight, recovering: boolean) => {
     inFlight.current = q;
+    pollingTurnId.current = null;
+    clearCancelWatch();
     savePending(sessionId, q);
     setNotice(null);
     setLost(false);
@@ -234,40 +255,64 @@ export default function ResearchSession({ sessionId, pollMs = POLL_MS, recoveryD
       mounted.current = false;
       controller.current?.abort();
       if (pollTimer.current) clearTimeout(pollTimer.current);
+      if (cancelWatch.current) clearTimeout(cancelWatch.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
   // ── Explicit cancellation (the only path that cancels) ──────────────────────────────────────────────────────
   const busy = phase.kind !== 'idle';
+  /** F-D3: back to a recoverable state for the SAME key: poll the known provisional turn, or replay the key. */
+  const resume = useCallback((q: InFlight, turnId: string | null) => {
+    if (!mounted.current) return;
+    if (turnId) pollTurn(turnId, q);
+    else void ask(q, true);
+  }, [pollTurn, ask]);
+
   const cancel = useCallback(async () => {
     const q = inFlight.current;
     if (!q || phase.kind === 'cancelling') return;
+    const before = phase;
+    const pollingId = pollingTurnId.current;
+    const streaming = phase.kind !== 'processing' && controller.current !== null;
     setPhase({ kind: 'cancelling' });
     announce(r.stage.cancelling);
+    if (streaming) {
+      // The open stream's terminal decides; if it never arrives, drop delivery (not a cancel) and replay the same key.
+      clearCancelWatch();
+      cancelWatch.current = setTimeout(() => {
+        if (mounted.current && inFlight.current?.key === q.key && phaseRef.current.kind === 'cancelling') controller.current?.abort();
+      }, cancelWatchdogMs);
+    }
     try {
       const res = await cancelTurn(sessionId, q.key);
+      if (!mounted.current || inFlight.current?.key !== q.key) return;
+      if (streaming) return;
+      if (pollTimer.current) clearTimeout(pollTimer.current);
+      const id = res.status !== 'cancel_requested' && res.turnId ? res.turnId : null;
+      // cancel_requested or no turn id while polling: never stay in "Cancelling…" — resume polling or replay the key.
+      if (!id) { resume(q, pollingId); return; }
+      const v = await getTurn(sessionId, id);
       if (!mounted.current) return;
-      // While a stream is open its terminal decides. Without a stream (processing/polling), the response decides.
-      if (!controller.current || phase.kind === 'processing') {
-        if (pollTimer.current) clearTimeout(pollTimer.current);
-        if (res.status === 'cancel_requested' || !res.turnId) return; // the owner finishes; the pending key recovers it
-        const v = await getTurn(sessionId, res.turnId);
-        if (!mounted.current) return;
-        if (v.status === 'accepted') { pollTurn(res.turnId, q); return; }
-        const turn = fromView(v);
-        upsert(turn);
-        announce(statusText(turn));
-        clearPending(sessionId);
-        finish();
-        refreshSession();
-      }
+      if (v.status === 'accepted') { pollTurn(id, q); return; }
+      const turn = fromView(v);
+      upsert(turn);
+      announce(statusText(turn));
+      clearPending(sessionId);
+      finish();
+      refreshSession();
     } catch (e) {
-      if (!mounted.current) return;
+      if (!mounted.current || inFlight.current?.key !== q.key) return;
       setNotice(apiErrorCode(e).code);
-      setPhase((p) => (p.kind === 'cancelling' ? { kind: inFlight.current ? 'submitting' : 'idle' } as Phase : p));
+      if (streaming) {
+        clearCancelWatch();
+        setPhase((p) => (p.kind === 'cancelling' ? before : p)); // the stream continues; its terminal decides
+      } else {
+        if (pollTimer.current) clearTimeout(pollTimer.current);
+        resume(q, pollingId);
+      }
     }
-  }, [phase.kind, sessionId, pollTurn, upsert, statusText, finish, refreshSession, announce, r]);
+  }, [phase, sessionId, pollTurn, resume, upsert, statusText, finish, refreshSession, announce, cancelWatchdogMs, r]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && busy && !dialog) void cancel(); };
@@ -315,8 +360,9 @@ export default function ResearchSession({ sessionId, pollMs = POLL_MS, recoveryD
     autoRecoveries.current = 0;
     void ask({ key: newIdempotencyKey(), question: q }, false); // explicit action only: a new key is a new question
   };
-  const checkAgain = () => {
-    const p = inFlight.current ?? loadPending(sessionId);
+  /** Replays the SAME key: the unknown turn's own key (F-D2), else the in-flight or stored pending question. */
+  const checkAgain = (turn?: DisplayTurn) => {
+    const p = turn?.recovery ?? inFlight.current ?? loadPending(sessionId);
     if (p && !busy) { autoRecoveries.current = 0; void ask(p, true); }
   };
   const stageText = phase.kind === 'stage' ? r.stage[phase.stage] : phase.kind === 'idle' ? '' : r.stage[phase.kind];
@@ -389,7 +435,7 @@ export default function ResearchSession({ sessionId, pollMs = POLL_MS, recoveryD
               </div>
             ) : null}
             {turn.exclusions ? <Disclosures ex={turn.exclusions} /> : null}
-            <TurnStatusLine turn={turn} onAskAgain={() => askAgain(turn.question)} onCheckAgain={checkAgain} disabled={busy || blocked} />
+            <TurnStatusLine turn={turn} onAskAgain={() => askAgain(turn.question)} onCheckAgain={() => checkAgain(turn)} disabled={busy || blocked} />
           </article>
         ))}
       </section>
@@ -411,7 +457,7 @@ export default function ResearchSession({ sessionId, pollMs = POLL_MS, recoveryD
       {lost && !busy ? (
         <div role="alert" className="rounded border p-3 text-sm">
           <p>{r.status.connectionLost}</p>
-          <button type="button" onClick={checkAgain} className="mt-2 underline">{r.status.checkAgain}</button>
+          <button type="button" onClick={() => checkAgain()} className="mt-2 underline">{r.status.checkAgain}</button>
         </div>
       ) : null}
       {notice ? <p role="alert" className="text-sm text-red-700 dark:text-red-400" data-testid="notice">{r.errors[notice]}</p> : null}
