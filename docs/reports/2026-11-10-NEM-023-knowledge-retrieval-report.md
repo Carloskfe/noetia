@@ -1,6 +1,6 @@
 # NEM-023 — Report: Knowledge Retrieval and Grounding (Stage 1)
 
-**Status:** **BLOCKED AT PRE-EXECUTION CHECK — no implementation code written.** Three approved stop conditions are triggered. Each needs a decision before implementation can start (§6). Partial report under the reporting protocol (blocked work).
+**Status:** **RESUMED (2026-11-10).** The PO approved B-1, B-2, and B-3 Option A (§9). This report was BLOCKED at the pre-execution check; §1–§8 are kept as the record of that check, and §9 onward records the resumed work.
 **Delivery state:** Not merged · Not deployed · No production indexing · No implementation PR yet.
 
 ---
@@ -103,3 +103,17 @@ Not modified: NEM-019 (code, tests, module bindings), NEM-021 (frozen contract v
 ## 8. Next recommended action
 
 PO decisions on B-1 and B-2 (specification amendments), and PO + PA approval of the B-3 test amendment. *(Recommendation only.)*
+
+---
+
+## 9. PO decision on B-1 to B-3 (2026-11-10)
+
+PO *"NEM-023 RESUME AUTHORIZATION — PRODUCT OWNER DECISION: APPROVED"* approves **Option A** for all three blockers. It is recorded in the mission as **Amendment 1**.
+
+| ID | Decision | Effect |
+|---|---|---|
+| B-1 | **A** | User highlight and note retrieval moves to **E6's** future scope. E5 returns **book passages only** (`chunk` items). NEM-019's protections for `fragments` are unchanged. E6 is not implemented |
+| B-2 | **A** | `chapterLabel`, `phraseIndexStart`, and `phraseIndexEnd` stay nullable and **unpopulated** in Stage 1. `textHash`, code-point offsets, and citation correctness are preserved. `sync_maps` is neither read nor modified |
+| B-3 | **A** | Exactly one intent-preserving amendment of `tests/integration/knowledge/cost-migration.int-spec.ts`: revert newer-than-074 migrations first, then 074 and 073 by name, keeping every NEM-021 assertion; separate commit; verified on disposable PostgreSQL with the NEM-021 regression suites **before** Checkpoint A. No other protected test may change |
+
+The restrictions are unchanged: no merge, no deployment, no production indexing or data, no paid or external AI, no infrastructure or CI/CD changes, no E6, and no change to protected NEM-019/021/022 behaviour.
