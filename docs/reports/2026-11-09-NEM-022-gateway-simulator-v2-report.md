@@ -1,7 +1,7 @@
 # NEM-022 — Completion Report: Provider-Independent AI Gateway and Simulator v2
 
 **Status:** **IMPLEMENTED AND VERIFIED — AWAITING PRODUCT ARCHITECTURE REVIEW.** §5 items 1–12 are implemented. Every acceptance criterion (§11, AC-1 to AC-11) is proven by tests run in this session, including a fresh disposable PostgreSQL run. **NEM-022 is not accepted**: that needs the independent Product Architecture review (§19) and a separate Product Owner decision.
-**Delivery state:** Not merged · Not deployed · Draft PR (stacked on NEM-021 PR #50).
+**Delivery state:** Not merged · Not deployed · **Draft PR #51** (stacked on NEM-021 PR #50).
 **Revision:** 2 (2026-11-09). Supersedes revision 1, the pre-execution BLOCKED report (kept as history in §14).
 
 ---
