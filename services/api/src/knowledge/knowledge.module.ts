@@ -11,6 +11,9 @@ import { EntitlementService } from './entitlement/entitlement.service';
 import { QUALIFYING_PLAN_PORT, UnboundQualifyingPlanPort } from './entitlement/qualifying-plan.port';
 import { ADMISSION_CACHE, createAdmissionRedis, RedisAdmissionCache } from './metering/admission-cache';
 import { BudgetLedgerService } from './metering/budget-ledger.service';
+import { CostConfigService } from './metering/cost-config.service';
+import { CostLedgerService } from './metering/cost-ledger.service';
+import { CostReconciliationJobService } from './metering/cost-reconciliation-job.service';
 import { RateCardService } from './metering/rate-card.service';
 import { ReconciliationJobService } from './metering/reconciliation-job.service';
 import {
@@ -46,6 +49,10 @@ import { TurnService } from './sessions/turn.service';
     RateCardService,
     BudgetLedgerService,
     ReconciliationJobService,
+    // NEM-021 cost-aware ledger (dark): no controller; consumed by the Gateway only under NEM-022.
+    CostConfigService,
+    CostLedgerService,
+    CostReconciliationJobService,
     SessionsService,
     ContextBuilderService,
     TurnService,

@@ -1,0 +1,16 @@
+{
+  "contract": "noetia.ai.unit-weights",
+  "schemaVersion": 1,
+  "id": "fixture-unit-weights-v1",
+  "version": 1,
+  "effectiveFrom": "2026-01-01",
+  "isTestFixture": true,
+  "weights": {
+    "inputUncached": 1000,
+    "cacheRead": 100,
+    "cacheWrite": { "5m": 1250, "1h": 2000, "30m": 1250 },
+    "output": 4000,
+    "reasoning": 4000,
+    "nonTokenUnits": { "tool_call": 1000000 }
+  }
+}

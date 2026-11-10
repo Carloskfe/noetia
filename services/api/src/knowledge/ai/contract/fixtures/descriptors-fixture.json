@@ -1,0 +1,42 @@
+[
+  {
+    "contract": "noetia.ai.capability",
+    "schemaVersion": 1,
+    "providerKey": "fixture-a",
+    "modelKey": "fixture-a-mid",
+    "simulated": true,
+    "capabilities": ["research_session"],
+    "modelPaths": ["research_session.turn"],
+    "maxContextTokens": 1000000,
+    "maxOutputTokens": 64000,
+    "features": {
+      "citations": true, "structuredOutput": true, "streaming": true, "tokenCounting": true, "embeddings": false,
+      "cacheHints": { "lifetimes": ["5m", "1h"], "automaticWrites": false }
+    },
+    "tokenCountingMethod": { "mode": "exact" },
+    "reasoning": { "mode": "within_output" },
+    "noChargeErrorClasses": [],
+    "nonTokenUnits": ["tool_call"]
+  },
+  {
+    "contract": "noetia.ai.capability",
+    "schemaVersion": 1,
+    "providerKey": "fixture-b",
+    "modelKey": "fixture-b-mid",
+    "simulated": true,
+    "capabilities": ["research_session"],
+    "modelPaths": ["research_session.turn"],
+    "maxContextTokens": 1000000,
+    "maxOutputTokens": 32000,
+    "features": {
+      "citations": true, "structuredOutput": true, "streaming": true, "tokenCounting": false, "embeddings": false,
+      "cacheHints": { "lifetimes": ["30m"], "automaticWrites": true }
+    },
+    "tokenCountingMethod": { "mode": "estimated", "conservativeFactorBps": 11000 },
+    "reasoning": { "mode": "separate_bound", "maxReasoningTokens": 16000 },
+    "noChargeErrorClasses": [
+      { "error": "rate_limited", "documentationRef": "TEST FIXTURE: the modelled provider documents that rate-limited requests are not billed" }
+    ],
+    "nonTokenUnits": []
+  }
+]

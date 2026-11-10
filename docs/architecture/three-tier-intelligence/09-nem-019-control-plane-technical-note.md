@@ -158,3 +158,27 @@ NEM019_DISPOSABLE_DB=1 DB_HOST=127.0.0.1 DB_PORT=55432 DB_NAME=nem019_test DB_US
   NEM019_REDIS_URL=redis://127.0.0.1:56379 npx jest -c jest.integration.config.js --runInBand
 docker rm -f nem019-test-pg nem019-test-redis
 ```
+
+## 11. NEM-021 — contract v1 and cost-aware ledger v2 (Draft PR #50, dark)
+
+**Contract v1** (`src/knowledge/ai/contract/`, frozen at `697f8ea`, `CONTRACT_VERSION 1.0.0`): capability descriptor, normalized usage, pricing and unit-weight schemas, `priceUsage` / `worstCaseCost` / `ledgerActionFor`, and the BigInt money primitives. Nothing outside the contract re-implements pricing (architecture test). Full record: [Phase 1 report](../../reports/2026-11-09-NEM-021-phase-1-contract-v1-report.md).
+
+**Ledger v2** (`src/knowledge/metering/cost-*.ts`, migrations 073–074). It extends the NEM-019 ledger table; the NEM-019 turn path is unchanged and still units-only until NEM-022 moves turns onto attempts.
+
+| Piece | Behaviour |
+|---|---|
+| `CostConfigService` | Versioned pricing schemas (one active per provider+model), unit-weight schemas, and global policies (one active). Stored JSON is sealed by the contract validators on insert and on load. Nothing is seeded. Activating a replacement schema is the breaker review gate: it needs a review reference and closes the open breakers. **Global-policy activation takes the B-6 global admission lock first (F-9)**, so a policy change commits strictly before or after each admission |
+| `CostLedgerService.reserveAttempt` | Key `<turnKey>:a<n>`. Pre-checks: unit bound set, tier policy, global policy, active non-expired valid pricing schema, weights, input count. Then one transaction: **global lock → scope lock** (the same keys as NEM-019), re-read the policy, duplicate check, then **one statement checking that the pinned pricing schema is still active and its breaker closed (F-9b)**, per-scope and overall unit bounds, micro-USD unresolved bound, **`committed + worstCaseCost ≤ allowance`**, and the per-user unit allowance. Writes one reservation row pinned to pricing, weights, policy, modifiers, and no-charge declarations |
+| `settleAttempt` | `ledgerActionFor` decides. *Settle*: priced with the **pinned** schema; full actual written (never capped); the excess is classified once in `ai_cost_overruns` and the breaker opens, in the same transaction. *Partial*: cumulative row in `ai_partial_settlements`; the attempt stays unresolved. *Release*: only evidenced `zero_confirmed` (or `not_sent`), and **never once a partial exists**. *Hold*: evidence recorded, reservation untouched |
+| `releaseAttempt` | Only for a request that was never sent. Refused if provider usage or a partial settlement is recorded |
+| `compensateAttempt` | A separate signed entry, never an edit. Each call carries an **adjustment key** (F-8, migration 074): a partial unique index on (attempt key, adjustment key) makes retries and concurrent duplicates write one row (`duplicate`); different keys are separate adjustments; reusing a key with another amount is refused |
+| `reconcileAttempts` | Settles from durable `ai_usage_events` evidence only. Flags expiry once. Never releases to zero |
+| `globalState` | One-statement snapshot. `settled` = window settlements (attempt `settledMicroUsd`, else legacy `costMicroUsd`) + latest partial of each open attempt. `held` = Σ max(0, reserved − partial) over open attempts (any age). `committed = settled + held + compensated`. Overruns are reported and never added |
+
+**Legacy coexistence.** Legacy settle, release, and reconcile act only on rows with `attemptNumber IS NULL`, and legacy rows carry no micro-USD (held 0 in the global state). Both kinds share the unit-based per-scope and overall unresolved bounds and the global advisory lock.
+
+**Lock map.** Global admission lock `G`: cost-aware admission, NEM-019 admission, global-policy activation (always taken first). Pricing activation takes only its per-model lock, and weight activation only its own lock. They never hold `G`, so there is no lock cycle. Their effect on an admission is either pinned on the reservation (weights) or re-checked under `G` (pricing, F-9b).
+
+**TypeORM gotcha.** On PostgreSQL, `query()` returns `[rows, rowCount]` for a bare `UPDATE … RETURNING`. To count updated rows, wrap the update in a CTE and `SELECT count(*)`.
+
+**Tests:** unit under `tests/unit/knowledge/metering/cost-*`, plus integration in `tests/integration/knowledge/cost-ledger.int-spec.ts` and `cost-migration.int-spec.ts` (same disposable-container commands as §10).
