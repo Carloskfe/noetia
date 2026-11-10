@@ -1,7 +1,7 @@
 # NOETIA ENGINEERING MISSION — NEM-024
 ## Research-Turn Orchestration and Minimal Bilingual Web Q&A (dark, simulated provider only)
 
-**Status:** **APPROVED — Checkpoint A ACCEPTED (conditional, PO-036) — CHECKPOINT B IMPLEMENTED — AWAITING PRODUCT ARCHITECTURE REVIEW (2026-11-10).** Release condition (recovery of stranded `accepted` turns) evidenced in the [Checkpoint B report](../../reports/2026-11-10-NEM-024-checkpoint-b-report.md); still subject to PA review. Checkpoints C–E **not authorized**; not merged, not deployed.
+**Status:** **APPROVED — Checkpoint A ACCEPTED (conditional, PO-036) — Checkpoint B ACCEPTED for development progression ([PO-038](../../operating-framework/decisions/product-owner/PO-038-nem-024-checkpoint-b-formal-acceptance.md), 2026-11-10; reviewed `a127c89`, incl. Amendment 2 / PO-037).** The PO-036 recovery condition is satisfied at the development checkpoint level. Exceptions preserved, not waived: E-1, E-2, the NEM-022 coverage exception, D-8, cancellation-record persistence, in-process-only cancellation, Q-11, and TT-14. Checkpoints C–E **not authorized**; not merged, not deployed.
 **Identifier:** `NEM-024`, assigned by the PO on 2026-11-10 (PO-034 D-5). Verified unused on all remote branches, PR titles, and the register.
 **Mission type:** IMPLEMENTATION
 **Implementation authorization:** Checkpoint A (PO-035, accepted conditionally by PO-036) and **Checkpoint B** (PO-036). Checkpoints C, D, E, merge, deployment, production providers or activation, and infrastructure are NOT authorized

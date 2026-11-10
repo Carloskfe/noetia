@@ -1,6 +1,6 @@
 # NEM-024 — Checkpoint B Report (cancellation, recovery, history, guard)
 
-**Status:** **CHECKPOINT B IMPLEMENTED — F-1 to F-4 answered (§12) — Amendment 2 (PO-037) implemented (§13); AWAITING FINAL INDEPENDENT CHECKPOINT B REVIEW (2026-11-10).** The fenced recovery design is provisionally accepted by the PA.
+**Status:** **ACCEPTED FOR DEVELOPMENT PROGRESSION — [PO-038](../operating-framework/decisions/product-owner/PO-038-nem-024-checkpoint-b-formal-acceptance.md) (2026-11-10, reviewed `a127c89`).** Exceptions preserved (PO-038). C–E not authorized; not merged, not deployed.
 **Authorization:** [PO-036](../operating-framework/decisions/product-owner/PO-036-nem-024-checkpoint-a-conditional-acceptance-and-checkpoint-b-authorization.md): Checkpoint A accepted conditionally; Checkpoint B authorized with a **mandatory release condition** (stranded `accepted` turns recovered and verified before any user-facing release).
 **Delivery state:** Branch `feat/nem-024-checkpoint-b` (stacked on PR #55) · Draft PR (see §1) · not merged · not deployed · simulated provider only · no user-facing functionality activated.
 

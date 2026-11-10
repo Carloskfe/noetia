@@ -127,6 +127,13 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Checkpoint A only** authorized; B–E, merge, deployment, production providers or indexing, and infrastructure are not.
 - Pre-execution check: **blocked** (B-1 protected NEM-023 test; B-2 specification gap).
 
+### PO-038 — NEM-024 Checkpoint B formal acceptance — decided 2026-11-10
+→ **[PO-038](../operating-framework/decisions/product-owner/PO-038-nem-024-checkpoint-b-formal-acceptance.md)**
+
+- Checkpoint B accepted for development progression (reviewed `a127c89`): fenced recovery, cancellation including Amendment 2, history, citation redaction, F-1 mapping, and the weighted guard. The PO-036 recovery condition is satisfied at the development checkpoint level.
+- Not waived: E-1, E-2 (80.07% evidence; closing it needs a separate decision), NEM-022 coverage, D-8, cancellation-record persistence, in-process-only cancellation, Q-11, TT-14.
+- Not authorized: C–E, merge, deployment, activation, paid providers, infrastructure.
+
 ### PO-036 / PO-037 — NEM-024 Checkpoint A conditional acceptance, Checkpoint B authorization, Amendment 2 — decided 2026-11-10
 → **[PO-036](../operating-framework/decisions/product-owner/PO-036-nem-024-checkpoint-a-conditional-acceptance-and-checkpoint-b-authorization.md)** · **[PO-037](../operating-framework/decisions/product-owner/PO-037-nem-024-checkpoint-b-amendment-2-cancellation-before-lock.md)**
 
