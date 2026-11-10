@@ -1,8 +1,8 @@
 # NEM-022 — Completion Report: Provider-Independent AI Gateway and Simulator v2
 
-**Status:** **IMPLEMENTED AND VERIFIED — AWAITING PRODUCT ARCHITECTURE REVIEW.** §5 items 1–12 are implemented. Every acceptance criterion (§11, AC-1 to AC-11) is proven by tests run in this session, including a fresh disposable PostgreSQL run. **NEM-022 is not accepted**: that needs the independent Product Architecture review (§19) and a separate Product Owner decision.
+**Status:** **REVIEW FINDINGS F-1 AND F-2 ADDRESSED — RETURNED FOR PRODUCT ARCHITECTURE RE-REVIEW.** Response and evidence in **§18** (revision 3). §5 items 1–12 are implemented. Every acceptance criterion (§11, AC-1 to AC-11) is proven by tests run in this session, including a fresh disposable PostgreSQL run. **NEM-022 is not accepted**: that needs the independent Product Architecture review (§19) and a separate Product Owner decision.
 **Delivery state:** Not merged · Not deployed · **Draft PR #51** (stacked on NEM-021 PR #50).
-**Revision:** 2 (2026-11-09). Supersedes revision 1, the pre-execution BLOCKED report (kept as history in §14).
+**Revision:** 3 (2026-11-09). §18 answers the Product Architecture review of PR #51. **Current results (code HEAD `3c49755`):** unit 1,683/1,683 (NEM-022 162) · contract 212/212 · integration 110/110 (NEM-019 56, NEM-021 37, NEM-022 17) · tsc 0 · eslint 0 errors. Sections 1–17 are the revision 2 record; where §18 changes a statement, §18 wins. Revision 1 was the pre-execution BLOCKED report (history in §14).
 
 ---
 
@@ -113,7 +113,7 @@ None. No provider documentation, price, endpoint, or network resource. All price
 | R-1 | Low | **Legacy files kept.** `model-gateway.service.ts`, `model-router.service.ts`, `simulated-provider.service.ts` (and `model-provider.ts` types) are unchanged and unregistered, kept only because their NEM-019 unit test must pass unchanged. Removal is a later cleanup that needs that test retired |
 | R-2 | Low | **Retries are off by default** (`maxProviderAttempts` 1, `maxRetryDelayMs` 0). They are operational settings and need configuration to take effect; enabled only in tests |
 | R-3 | Info | **AC-8 "under-priced schema"** is exercised as actual usage beyond the reservation (the simulated provider ignores `max_tokens`). Reservation and settlement use the same pinned schema, so a cheaper schema alone cannot create actual > reserved in simulation. The model error is equivalent, and so is NEM-021 AC-9's approach. The full actual is settled once, the overrun is classified, and the breaker opens |
-| R-4 | Low | **Streaming deltas carry text before validation.** Origins are asserted only in validated `segment` events, and a scope violation ends with `terminal.scopeViolation` and no segments, so stream consumers must discard deltas in that case. `TurnService` uses `invoke` and never exposes deltas |
+| R-4 | ~~Low~~ **Resolved in revision 3 (§18, F-1)** | **Streaming deltas carried text before validation.** Origins are asserted only in validated `segment` events, and a scope violation ends with `terminal.scopeViolation` and no segments, so stream consumers must discard deltas in that case. `TurnService` uses `invoke` and never exposes deltas |
 | R-5 | Low | Context item `text` is optional and invented fixture text only, until a retrieval mission supplies content |
 | R-6 | Info | The research-turn instruction template is engineering text (not customer-visible copy) and needs product review before any launch |
 | R-7 | Info | Operational defaults: a turn output bound of 1,024 tokens, 0 billable tool calls per turn, and a 100 ms abort grace. Not product values |
@@ -280,3 +280,119 @@ NEM-019 and NEM-021 tests are changed only as approved (D-1, D-2). No provider, 
 ## 17. Next recommended action
 
 Independent **Product Architecture review** (`REVIEW-CHECKLIST.md`), including confirmation of the new contract test-tree hash `52aec85…` and R-1 to R-4, then a separate **Product Owner acceptance decision**. *(Recommendation only. Not merged, not deployed; no other mission started.)*
+
+---
+
+## 18. Revision 3 — response to the Product Architecture review (2026-11-09)
+
+**Review:** independent Product Architecture review of Draft PR #51 (head `4fad503`). Findings: **F-1** (HIGH, unvalidated streaming deltas) and **F-2** (MEDIUM, context ownership). Both are **confirmed and fixed** in commit **`3c49755`**. Frozen contract v1 is unchanged (source tree `6342668…`; contract test tree still `52aec85…`). No schema, migration, protected-system, provider, network, infrastructure, or CI change.
+
+### 18.1 F-1 (HIGH) — unvalidated streaming deltas: fixed, fail closed
+
+**Finding confirmed.** `runAttempt` yielded each provider delta immediately, so text could reach a streaming consumer before the attempt's citations, origins, and tool scope were validated. Any later violation could drop the final segments but could not retract delivered text. The same path also streamed raw structured-output JSON before schema validation.
+
+**Why a per-segment release is not fail closed.** In the adapter stream, a citation or a `tool_call` may arrive at **any point until the `final` event**. A tool-scope violation can therefore arrive after every segment looks complete and validly cited. Releasing a segment early, even after its own citations check out, could still leak text that the whole-attempt check later rejects.
+
+**Fix.** Deltas are buffered per segment for the whole attempt. They are released only after:
+1. the adapter's `final` event (or the attempt's end by timeout, abort, or failure);
+2. normalization onto the §9.3 table;
+3. `enforceCitations` over **all** segments and **all** tool calls.
+
+Release happens only when the attempt is answered (`completed` or `refused`), has no scope violation, and is in text mode. The buffered chunks are then yielded in their original order and chunking, and each segment's chunks are followed by its validated `segment` event (origin and citations). In every other case nothing is yielded:
+- any violation;
+- `timed_out`, `aborted`, `failed`, or `rejected`;
+- structured output, whose validated object is only in `terminal.response.structured`.
+
+The retry rule is unchanged in effect: no retry once the provider has streamed output in an attempt (`providerStreamed`), so partial output is never paid for twice.
+
+**Tradeoff (documented; technical note §12).** Incremental delivery is now **per attempt, not per provider token**. A consumer sees the first delta only after the attempt finishes and validates, so time to first token equals the attempt's duration. The stream contract is otherwise preserved: event types, order (per segment: deltas → `segment`; then `usage`, `terminal`), and original chunking.
+
+A finer-grained release would require a stronger adapter contract that guarantees segment closure and no tool calls after text. That would be an adapter-contract change, not proposed here; it would need its own review.
+
+**Supersedes `1261832`.** That fix aborted the provider when a consumer abandoned the stream mid-attempt. A consumer now receives no event while the provider streams, so there is no mid-attempt point to abandon. The `finally { ctrl.abort() }` stays, so every attempt's provider call is stopped when its read loop ends. Its test was replaced by one asserting that only `usage` and `terminal` reach the consumer from a timed-out attempt.
+
+**Evidence** (`ai-gateway.service.spec.ts`, describe *"review F-1"*, 7 tests):
+
+| Test | Asserts |
+|---|---|
+| Out-of-scope citation arriving **after** the text | 0 `delta` and 0 `segment` events; `scopeViolation: true`; usage settled once |
+| Disallowed tool call arriving **after** all text and valid citations | 0 deltas |
+| Release timing | The first delta is observed only after the adapter yielded its `final` event (instrumented adapter) |
+| Partial text then timeout; partial text then stream end without usage | 0 deltas |
+| Structured output, even when valid | 0 deltas; object only in the terminal response |
+| Released content | The released deltas for each segment concatenate exactly to the validated segment text; a relabelled origin appears only in `segment` events |
+
+Also:
+- Architecture guard (`gateway-architecture.spec.ts`): exactly one `yield { type: 'delta'` in the Gateway, located after `enforceCitations(`.
+- End to end (`gateway-e2e.int-spec.ts`): an unauthorized citation streams nothing, while the attempt is still settled exactly once (`['reservation', 'settlement']`). The client-abort test now also asserts that no partial text was released.
+
+**Mutation check** (old early-release `yield` restored inside the read loop, file restored by a shell `trap`, restore verified): **all 7 F-1 tests fail**:
+
+```
+✕ a citation outside the allowed set arriving AFTER the text: no delta or segment is ever emitted
+✕ a tool call naming a disallowed book arriving AFTER all text and valid citations: nothing is emitted
+✕ the first delta is released only after the adapter has sent its final event (whole-attempt validation)
+✕ a timeout after partial text releases no text
+✕ a stream that ends without usage after partial text releases no text
+✕ structured output is never streamed: no delta even when valid; the validated object is only in the terminal response
+✕ released deltas are exactly the validated segments (relabelled origins are asserted only in segment events)
+Tests: 7 failed, 29 skipped, 36 total
+```
+
+**Existing tests adjusted to the new contract (not weakened):**
+- The event-order test now asserts each segment's deltas precede its `segment` event.
+- The client-abort tests abort on a timer, since no delta arrives mid-attempt, and additionally assert that no text was released.
+- The retry-after test now times the provider calls (second call ≥ 39 ms after the first for a 40 ms retry-after) instead of consumer receipt, which was flaky (14–36 ms across runs) because receipt timing is not the Gateway's wait. An instrumented run showed the Gateway's wait correct (≈ 42 ms).
+
+### 18.2 F-2 (MEDIUM) — context ownership: fixed
+
+**Finding confirmed.** `prepare` checked the context's seal, path, and invariant, but not that the sealed context (`ctx.userId`) belongs to the user whose budget pays (`request.budget.userId`). `TurnService` always passes matching values, but the Gateway did not enforce it.
+
+**Fix.** In `prepare`, right after the seal and invariant check and **before** template rendering, negotiation, reservation, or any provider call: `ctx.userId !== request.budget.userId` → `IntelligenceDenied('scope_violation')` and `intelligence_scope_violation_total` is incremented.
+
+**Evidence:**
+- Unit (*"review F-2"*, 2 tests): a context sealed for another user, and a budget naming another user, are both rejected with `scope_violation`; `reserveAttempt` is not called; the adapter's `invoke` is not called; the scope-violation metric is incremented; no capability metric fires.
+- End to end: a foreign context leaves **0 reservation rows** and makes no provider call.
+- Architecture guard: the ownership check precedes the reservation call.
+
+### 18.3 Changed files (revision 3, `3c49755`)
+
+- `src/knowledge/ai/gateway/ai-gateway.service.ts` (+29/−12).
+- `tests/unit/knowledge/ai/gateway/ai-gateway.service.spec.ts`: F-1 and F-2 tests, adjusted tests.
+- `tests/unit/knowledge/ai/gateway/gateway-architecture.spec.ts`: guard.
+- `tests/integration/knowledge/gateway-e2e.int-spec.ts`: two tests added, abort test adjusted.
+
+Not changed: the contract, migrations, metering, sessions (`TurnService` uses `invoke`, unaffected), NEM-019 and NEM-021 tests, and everything else.
+
+### 18.4 Tests and validation, revision 3 (raw, this session, code HEAD `3c49755`)
+
+```
+# API unit regression (+ knowledge coverage)
+Test Suites: 112 passed, 112 total
+Tests:       1683 passed, 1683 total            (+10: 7 F-1, 2 F-2, 1 architecture guard)
+All files                            |   98.37 |     94.4 |   96.72 |   99.62 |
+  ai-gateway.service.ts              |   95.33 |    93.06 |   88.46 |     100 |
+# NEM-022 unit (gateway + simulator)    Tests: 162 passed, 162 total
+# NEM-021 contract                      Tests: 212 passed, 212 total
+# Gateway spec, three consecutive runs  Tests: 36 passed ×3 (retry-after assertion stable)
+
+# Integration — fresh disposable PostgreSQL 16 + Redis 7 (containers removed afterwards)
+ledger 24 · sessions 25 · a-schema-migrations 6 · account-deletion 1   (NEM-019: 56)
+cost-ledger 34 · cost-migration 3                                     (NEM-021: 37)
+gateway-e2e 17                                                        (NEM-022: 17)
+Test Suites: 7 passed, 7 total
+Tests:       110 passed, 110 total
+    ✓ client abort mid-stream: client_abort / aborted with partial usage, held at the reserved amount; no partial text released
+    ✓ review F-1: an unauthorized citation releases no text to the stream, while the usage is still settled exactly once
+    ✓ review F-2: a context sealed for another user is rejected before any reservation
+
+# TypeScript: build 0 · test 0
+# ESLint (src/knowledge, tests/unit/knowledge, tests/integration/knowledge): 0 errors, 224 warnings (no-explicit-any, test files)
+```
+
+**Not executed:** CI (no PostgreSQL), staging, production, any real provider or network call.
+
+### 18.5 Status
+
+F-1 and F-2 are fixed and proven, and the R-4 limitation is resolved by F-1. R-1 to R-3 are unchanged and remain for review. **Returned for independent Product Architecture re-review. NEM-022 is not accepted.** Not merged, not deployed; no other mission started.
+
