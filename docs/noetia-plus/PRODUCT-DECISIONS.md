@@ -127,6 +127,17 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Checkpoint A only** authorized; B–E, merge, deployment, production providers or indexing, and infrastructure are not.
 - Pre-execution check: **blocked** (B-1 protected NEM-023 test; B-2 specification gap).
 
+### PO-040 / PO-041 — NEM-024 Checkpoint C accepted; Checkpoint D authorized — decided 2026-11-10
+→ **[PO-040](../operating-framework/decisions/product-owner/PO-040-nem-024-checkpoint-c-formal-acceptance.md)** · **[PO-041](../operating-framework/decisions/product-owner/PO-041-nem-024-checkpoint-d-authorization.md)**
+
+- **Checkpoint C accepted** for development progression. Decisions recorded:
+  - D-C1: SSE content released per turn, after Gateway validation and confirmed persistence (except D-8).
+  - D-C2: stage names `checking` / `searching` / `composing`.
+  - D-C3: after the stream opens, errors are `terminal` events with `statusCode`; HTTP 200 is not success.
+- **New non-blocking risk:** SSE proxy idle timeout (no heartbeat), to be evaluated at Checkpoint E. All PO-038 exceptions are preserved; none closed.
+- **Checkpoint D authorized:** the minimal bilingual web Q&A at `/research/[sessionId]` only.
+- **Excluded:** session creation, selection, and management; navigation entries; user knowledge; Brief; NoetiaX; mobile; reader changes; providers; activation.
+
 ### PO-039 — NEM-024 Checkpoint C authorization (SSE transport and capability probe) — decided 2026-11-10
 → **[PO-039](../operating-framework/decisions/product-owner/PO-039-nem-024-checkpoint-c-authorization.md)**
 
