@@ -133,6 +133,7 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **A:** PO-045 stays on the Draft branch **provisionally**: not accepted, not release-authorized.
 - **B:** diagnostic investigation only, covering storage-fetch overhead, CPU-quota contention, remaining main-thread work, the minimal next remedy, and the single-container boundary.
 - **Unchanged:** Q-11 50 ms, E-1, PO-027 ten books, AC-11/P-2. **Not authorized:** any `src` remedy, configuration, infrastructure, contract, merge, deploy, activation. STOP for PA review.
+- **Executed 2026-11-11** ([report](../reports/2026-11-11-NEM-024-po-046-residual-performance-investigation.md)): residual cause = storage read + V8 parallel GC under 1 vCPU. **Recommended (unapproved):** `--single-threaded-gc` + a leaner presigned read, with ≥3-run requalification. Q-11 still open.
 
 ### PO-045 — NEM-024 Q-11 performance remediation (Option D + A, limited scope) — decided 2026-11-11
 → **[PO-045](../operating-framework/decisions/product-owner/PO-045-nem-024-q11-performance-remediation-authorization.md)**
