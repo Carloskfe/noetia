@@ -121,3 +121,30 @@ docker run --rm --cpus=1 --memory=512m --memory-swap=512m [-e UV_THREADPOOL_SIZE
 Node flags such as `--single-threaded-gc`, `--v8-pool-size` and `--max-semi-space-size` were used only as labelled **sensitivity experiments** in disposable containers. They are not tracked configuration.
 
 Results: `docs/reports/2026-11-11-NEM-024-po-046-residual-performance-investigation.md`.
+
+## PO-048: E-1 retrieval-ranking diagnostics (test only; opt-in)
+
+`e1-ranking-diag.ts` runs against the disposable fixture left by the NEM-023 performance suite (`NEM023_PERF=1 NEM023_PERF_KEEP=1`). Run it from `services/api`:
+
+```bash
+NEM019_DISPOSABLE_DB=1 DB_HOST=127.0.0.1 DB_PORT=55432 DB_NAME=<db>_test DB_USER=… DB_PASS=… MINIO_*=… \
+  npx ts-node -T -P tsconfig.json tests/perf/e1-ranking-diag.ts <info | explain | fingerprint | sql <variant> <reps> | e2e <fwd|rev|shuffle:N> <rounds>>
+```
+
+- **Baseline SQL:** `RANK_SQL` and `STATUS_SQL` are read verbatim from `src/knowledge/retrieval/lexical-retrieval.service.ts`, so the baseline is always the authorized SQL.
+- **Query identifiers:** queries are identified only as Q0..Q9, the governing mix. `E1_EXTRA=1` switches to the adversarial multi-term set X0..X9, which is diagnostic only and not part of the benchmark. No book ids, hashes, keys or text are printed.
+- **`e2e`:** uses the production `LexicalRetrievalService` with the real MinIO, `StorageBookText` and the S2 worker, instrumented per stage. `E1_SUBST=<variant>` substitutes the ranking SQL (test-only, diagnostic).
+- **`sql` variants:**
+
+  | Variant | Class |
+  |---|---|
+  | `base` | Production SQL |
+  | `jitoff`, `workmem` | Exact settings |
+  | `branchlimit`, `hybrid200` | Exact structural |
+  | `twostage50`/`200`/`400`, `cap500`/`2000` | Lossy |
+  | `norank`, `detoast`, `tsrank` | Semantic change, diagnostic only |
+
+  Every run reports equivalence with the production result: identical rows and order, recall@8, and the first missing rank.
+- **Storage experiments:** `lz4`, `EXTERNAL` and `MAIN` storage for `tsv` were tested only in disposable database clones (`CREATE DATABASE <x>_test TEMPLATE nem019_test`, then `ALTER TABLE … ALTER COLUMN tsv SET STORAGE/COMPRESSION …` and a rewrite). They were dropped afterwards. **No migration.**
+
+Results: `docs/reports/2026-11-11-NEM-024-po-048-e1-ranking-investigation.md`.
