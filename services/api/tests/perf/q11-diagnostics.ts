@@ -24,6 +24,12 @@
  *                  executed in a worker thread that the turn awaits — a synthetic proxy for worker-thread isolation in
  *                  the same 1-vCPU cgroup (excludes the fetch's own CPU and result transfer);
  *  - /diag/bench: an isolated, unloaded micro-benchmark of each S2 step on the 10 fixture books.
+ *  - PO-045: S2 worker pool counters (`processS2Verifier().stats()` deltas since the last reset), queue depth sampled
+ *    every 10 ms, and per-thread CPU from /proc/self/task (the S2 worker thread is a separate task).
+ *    After PO-045 the production retrieval path no longer calls computeTextHash/decodeUtf8/sliceCodePointRanges on the
+ *    main thread, so the s2:* timers and the ablation modes no longer affect it; they are HISTORICAL (PO-044) only.
+ *    Do not use `s2free`/`s2worker` with the PO-045 code: their getBytes cache would hand the same (owned) buffer to the
+ *    worker twice. Use mode `none` (= production behaviour) for PO-045 measurements.
  * No question text, passage text, SQL parameters, tokens, or PII are recorded.
  */
 /* eslint-disable @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any */
@@ -40,6 +46,7 @@ const { StorageService } = require('../../src/storage/storage.service');
 const { LexicalRetrievalService } = require('../../src/knowledge/retrieval/lexical-retrieval.service');
 const { AiGatewayService } = require('../../src/knowledge/ai/gateway/ai-gateway.service');
 const { TurnService } = require('../../src/knowledge/sessions/turn.service');
+const { processS2Verifier } = require('../../src/knowledge/retrieval/s2-verification.service');
 const pg = require('pg');
 
 type Mode = 'none' | 'nohash' | 's2free' | 's2worker' | 'bytescan';
@@ -49,6 +56,22 @@ const msSince = (t0: bigint) => Number(hr() - t0) / 1e6;
 const pct = (xs: number[], p: number) => { if (!xs.length) return null; const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.ceil((p / 100) * s.length) - 1)]; };
 const stat = (xs: number[]) => ({ n: xs.length, sum: round(xs.reduce((a, b) => a + b, 0)), p50: round(pct(xs, 50)), p95: round(pct(xs, 95)), p99: round(pct(xs, 99)), max: round(xs.length ? Math.max(...xs) : null) });
 const round = (x: number | null) => (x === null ? null : Math.round(x * 1000) / 1000);
+
+/** Per-thread CPU (clock ticks → ms) from /proc/self/task; `comm` names only, no content. */
+function threadCpu(): Map<string, { comm: string; ms: number }> {
+  const out = new Map<string, { comm: string; ms: number }>();
+  try {
+    for (const tid of require('fs').readdirSync('/proc/self/task')) {
+      try {
+        const st = readFileSync(`/proc/self/task/${tid}/stat`, 'utf8');
+        const comm = st.slice(st.indexOf('(') + 1, st.lastIndexOf(')'));
+        const f = st.slice(st.lastIndexOf(')') + 2).split(' ');
+        out.set(tid, { comm, ms: (Number(f[11]) + Number(f[12])) * 10 });
+      } catch { /* thread exited */ }
+    }
+  } catch { /* not Linux */ }
+  return out;
+}
 
 function cgroupCpu(): { usage: number; nrPeriods: number; nrThrottled: number; throttledUsec: number } | null {
   try {
@@ -217,11 +240,16 @@ export function installDiagnostics(ref: { get: (t: any, o?: any) => any }) {
   const throttles: { t: number; usec: number; periods: number }[] = [];
   const gcs: { t: number; ms: number; kind: number }[] = [];
   const timeline: Record<string, number | null>[] = [];
+  const s2q = { n: 0, sum: 0, max: 0 };
+  let s2base = processS2Verifier().stats();
+  let threadBase = threadCpu();
   let expected = Date.now() + 10;
   const drift = setInterval(() => {
     const now = Date.now();
     const late = now - expected;
     if (late >= 30 && stalls.length < 50_000) stalls.push({ t: expected, ms: late });
+    const q = processS2Verifier().stats().queueDepth;
+    s2q.n++; s2q.sum += q; if (q > s2q.max) s2q.max = q;
     expected = now + 10;
   }, 10);
   drift.unref();
@@ -337,12 +365,34 @@ export function installDiagnostics(ref: { get: (t: any, o?: any) => any }) {
     gc: { n: gcs.length, ms: stat(gcs.map((g) => g.ms)), byKind: Object.fromEntries([...new Set(gcs.map((g) => g.kind))].map((k) => [k, stat(gcs.filter((g) => g.kind === k).map((g) => g.ms))])) },
     throttling: { windows100ms: throttles.length, periods: throttles.reduce((a, t) => a + t.periods, 0), throttledMs: round(throttles.reduce((a, t) => a + t.usec, 0) / 1000) },
     timeline: summarizeTimeline(),
+    s2pool: s2Delta(),
+    threads: threadDelta(),
   });
+  const s2Delta = () => {
+    const now = processS2Verifier().stats();
+    const d = (k: string) => (now as any)[k] - (s2base as any)[k];
+    const unavailable = Object.fromEntries(Object.keys(now.unavailable).map((k) => [k, (now.unavailable as any)[k] - (s2base.unavailable as any)[k]]));
+    const workerDown = Object.fromEntries(Object.keys(now.workerDown).map((k) => [k, (now.workerDown as any)[k] - (s2base.workerDown as any)[k]]));
+    const done = d('ok') + d('stale') + Object.values(unavailable).reduce((a: number, b: any) => a + b, 0);
+    const dispatched = d('transferred') + d('copied');
+    return {
+      submitted: d('submitted'), ok: d('ok'), stale: d('stale'), unavailable, workerDown, spawns: d('spawns'), settled: done,
+      transferred: d('transferred'), copied: d('copied'), copiedMb: round(d('copiedBytes') / 1048576),
+      queueDepth: { max: s2q.max, meanSampled: round(s2q.n ? s2q.sum / s2q.n : 0) },
+      waitMs: { total: round(d('waitMsTotal')), mean: round(dispatched ? d('waitMsTotal') / dispatched : 0), maxEver: round(now.waitMsMax) },
+      workerBusyMs: { total: round(d('execMsTotal')), mean: round(d('ok') + d('stale') ? d('execMsTotal') / (d('ok') + d('stale') + unavailable.invalid_utf8 + unavailable.worker_error) : 0), maxEver: round(now.execMsMax) },
+    };
+  };
+  const threadDelta = () => {
+    const now = threadCpu();
+    return [...now].map(([tid, v]) => ({ tid: Number(tid), comm: v.comm, cpuMs: v.ms - (threadBase.get(tid)?.ms ?? 0) }))
+      .filter((t) => t.cpuMs > 0).sort((a, b) => b.cpuMs - a.cpuMs).slice(0, 8);
+  };
   const summarizeTimeline = () => {
     const col = (k: string) => timeline.map((r) => r[k]).filter((x): x is number => typeof x === 'number');
     return { seconds: timeline.length, elu: stat(col('elu')), cgCpuPct: stat(col('cgCpuPct')), throttledMsPerS: stat(col('throttledMs')), rssMb: stat(col('rssMb')), heapMb: stat(col('heapMb')), extMb: stat(col('extMb')) };
   };
-  const reset = () => { timers.clear(); stalls.length = 0; throttles.length = 0; gcs.length = 0; timeline.length = 0; eld.reset(); };
+  const reset = () => { timers.clear(); stalls.length = 0; throttles.length = 0; gcs.length = 0; timeline.length = 0; eld.reset(); s2base = processS2Verifier().stats(); threadBase = threadCpu(); s2q.n = 0; s2q.sum = 0; s2q.max = 0; };
 
   async function setMode(m: Mode) {
     mode = m;

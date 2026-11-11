@@ -87,3 +87,11 @@ docker run [--cpuset-cpus=N] --cpus=1 --memory=512m --memory-swap=512m --network
 curl 'http://127.0.0.1:4101/diag/mode?m=bytescan'
 Q11_DOCKER_STATS=off Q11_DIAG=1 node <out>/tests/perf/q11-client.js 10 x10,p3x3 out.json <container>
 ```
+
+## PO-045: requalification of the S2 worker remedy (test only)
+
+- `q11-diagnostics.ts` snapshots now include `s2pool` (deltas of `processS2Verifier().stats()` since the last reset: jobs, outcomes, worker restarts, zero-copy transfers vs copies, queue depth sampled every 10 ms, queue wait, worker busy time) and `threads` (per-thread CPU from `/proc/self/task`; the S2 worker is its own task).
+- With the PO-045 code the main thread no longer calls `computeTextHash`/`decodeUtf8`/`sliceCodePointRanges` during retrieval, so the `s2:*` timers stay empty and the PO-044 ablation modes no longer affect the retrieval path. **Use mode `none` only.** Do not use `s2free`/`s2worker`: their `getBytes` cache would hand one owned buffer to the worker twice.
+- Governing method: `Q11_DOCKER_STATS=off Q11_DIAG=1`. `Q11_DOCKER_STATS=sync` is kept only as a labelled historical comparison.
+- Same-session baseline: compile the pre-remediation tree (`git archive d937d2b services/api/{src,tests,tsconfig.json,package.json}`) to a second out-dir and run it with the same container command.
+- Results: `docs/reports/2026-11-11-NEM-024-po-045-q11-remediation-report.md`.
