@@ -127,6 +127,18 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Checkpoint A only** authorized; B–E, merge, deployment, production providers or indexing, and infrastructure are not.
 - Pre-execution check: **blocked** (B-1 protected NEM-023 test; B-2 specification gap).
 
+### PO-047 — NEM-024 Q-11 remediation (C + A) and requalification — decided 2026-11-11
+→ **[PO-047](../operating-framework/decisions/product-owner/PO-047-nem-024-q11-remediation-and-requalification-authorization.md)**
+
+- **Authorized:**
+  - `--single-threaded-gc` on the API process only;
+  - a production-safe, byte-exact presigned S2 read into a validated preallocated buffer;
+  - tests and requalification (≥ 3 valid runs per workload).
+- **Unchanged:** Q-11 50 ms (per endpoint, every run, never averaged), E-1, AC-11/P-2, ten books, 1 vCPU / 512 MB.
+- **PO-045:** still provisional.
+- **PO-046:** accepted as completed diagnostics.
+- **Not authorized:** other flags or strategies, infrastructure, contracts, merge, deploy, activation. A failing valid run → STOP.
+
 ### PO-046 — NEM-024 residual Q-11 investigation (diagnostic only); PO-045 retained provisionally — decided 2026-11-11
 → **[PO-046](../operating-framework/decisions/product-owner/PO-046-nem-024-residual-q11-performance-investigation-authorization.md)**
 
