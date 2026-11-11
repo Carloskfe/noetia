@@ -134,6 +134,7 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Statuses:** PO-045 provisional; PO-046 accepted as diagnostics.
 - **B:** a diagnostic-only E-1 investigation of PostgreSQL ranking versus the other retrieval stages. Exact-result equivalence is mandatory; candidate caps are lossy unless proven otherwise.
 - **Not authorized:** any `src`/SQL/index/migration/configuration change, caps, infrastructure, merge, deploy, activation. **E-1 stays OPEN.**
+- **Executed 2026-11-11** ([report](../reports/2026-11-11-NEM-024-po-048-e1-ranking-investigation.md)): bottleneck is per-row `ts_rank_cd` plus the TOAST `tsvector` fetch. Best exact candidate: E-1 p95 264 ms (not met). **Recommended (unapproved):** inline `tsv` storage + exact single-lexeme hybrid, plus a PO decision on multi-term ranking.
 
 ### PO-047 — NEM-024 Q-11 remediation (C + A) and requalification — decided 2026-11-11
 → **[PO-047](../operating-framework/decisions/product-owner/PO-047-nem-024-q11-remediation-and-requalification-authorization.md)**
