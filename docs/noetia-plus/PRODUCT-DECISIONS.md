@@ -138,6 +138,7 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **PO-045:** still provisional.
 - **PO-046:** accepted as completed diagnostics.
 - **Not authorized:** other flags or strategies, infrastructure, contracts, merge, deploy, activation. A failing valid run → STOP.
+- **Executed 2026-11-11** ([report](../reports/2026-11-11-NEM-024-po-047-q11-remediation-and-requalification.md)): Q-11 met in all 9 required valid runs; minimum margin 1.8 ms (W=10 p3x3); E-1 open; awaiting PA review and PO acceptance.
 
 ### PO-046 — NEM-024 residual Q-11 investigation (diagnostic only); PO-045 retained provisionally — decided 2026-11-11
 → **[PO-046](../operating-framework/decisions/product-owner/PO-046-nem-024-residual-q11-performance-investigation-authorization.md)**
