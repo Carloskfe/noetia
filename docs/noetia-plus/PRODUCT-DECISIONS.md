@@ -127,6 +127,13 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Checkpoint A only** authorized; B–E, merge, deployment, production providers or indexing, and infrastructure are not.
 - Pre-execution check: **blocked** (B-1 protected NEM-023 test; B-2 specification gap).
 
+### PO-045 — NEM-024 Q-11 performance remediation (Option D + A, limited scope) — decided 2026-11-11
+→ **[PO-045](../operating-framework/decisions/product-owner/PO-045-nem-024-q11-performance-remediation-authorization.md)**
+
+- **Authorized:** one bounded S2 worker thread per API process (SHA-256 via `computeTextHash`, strict UTF-8 validation, passage slicing) plus byte-level code-point slicing; tests, documentation, report.
+- **Unchanged:** Q-11 (reader p95 Δ ≤ 50 ms, sampler off; W=10/6/3 scenarios; 10-book admitted at W=10), E-1 target, AC-11/P-2 (re-read + re-verify, no cache), fail-closed `stale`/`unavailable`.
+- **Not authorized:** ranking SQL, infrastructure/config/runtime flags, concurrency or thresholds, contracts, schema, merge, deploy, activation, further remedies. STOP for PA review.
+
 ### PO-044 — NEM-024 Q-11 root-cause investigation (diagnostic only) — decided 2026-11-10
 → **[PO-044](../operating-framework/decisions/product-owner/PO-044-nem-024-q11-root-cause-investigation-authorization.md)**
 
