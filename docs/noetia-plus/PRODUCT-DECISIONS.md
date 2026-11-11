@@ -127,6 +127,13 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Checkpoint A only** authorized; B–E, merge, deployment, production providers or indexing, and infrastructure are not.
 - Pre-execution check: **blocked** (B-1 protected NEM-023 test; B-2 specification gap).
 
+### PO-046 — NEM-024 residual Q-11 investigation (diagnostic only); PO-045 retained provisionally — decided 2026-11-11
+→ **[PO-046](../operating-framework/decisions/product-owner/PO-046-nem-024-residual-q11-performance-investigation-authorization.md)**
+
+- **A:** PO-045 stays on the Draft branch **provisionally**: not accepted, not release-authorized.
+- **B:** diagnostic investigation only, covering storage-fetch overhead, CPU-quota contention, remaining main-thread work, the minimal next remedy, and the single-container boundary.
+- **Unchanged:** Q-11 50 ms, E-1, PO-027 ten books, AC-11/P-2. **Not authorized:** any `src` remedy, configuration, infrastructure, contract, merge, deploy, activation. STOP for PA review.
+
 ### PO-045 — NEM-024 Q-11 performance remediation (Option D + A, limited scope) — decided 2026-11-11
 → **[PO-045](../operating-framework/decisions/product-owner/PO-045-nem-024-q11-performance-remediation-authorization.md)**
 
