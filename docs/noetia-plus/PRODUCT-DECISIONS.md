@@ -127,6 +127,14 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Checkpoint A only** authorized; B–E, merge, deployment, production providers or indexing, and infrastructure are not.
 - Pre-execution check: **blocked** (B-1 protected NEM-023 test; B-2 specification gap).
 
+### PO-048 — NEM-024 E-1 ranking investigation (diagnostic only); PO-047 accepted conditionally — decided 2026-11-11
+→ **[PO-048](../operating-framework/decisions/product-owner/PO-048-nem-024-e1-ranking-root-cause-investigation-authorization.md)**
+
+- **A:** PO-047 is accepted **conditionally for development progression**, not for release. Retained risks: the thin W=10 `p3x3` margin (1.8 ms), large-book memory under 512 MB, and representativeness.
+- **Statuses:** PO-045 provisional; PO-046 accepted as diagnostics.
+- **B:** a diagnostic-only E-1 investigation of PostgreSQL ranking versus the other retrieval stages. Exact-result equivalence is mandatory; candidate caps are lossy unless proven otherwise.
+- **Not authorized:** any `src`/SQL/index/migration/configuration change, caps, infrastructure, merge, deploy, activation. **E-1 stays OPEN.**
+
 ### PO-047 — NEM-024 Q-11 remediation (C + A) and requalification — decided 2026-11-11
 → **[PO-047](../operating-framework/decisions/product-owner/PO-047-nem-024-q11-remediation-and-requalification-authorization.md)**
 
