@@ -133,6 +133,7 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Authorized:** one bounded S2 worker thread per API process (SHA-256 via `computeTextHash`, strict UTF-8 validation, passage slicing) plus byte-level code-point slicing; tests, documentation, report.
 - **Unchanged:** Q-11 (reader p95 Δ ≤ 50 ms, sampler off; W=10/6/3 scenarios; 10-book admitted at W=10), E-1 target, AC-11/P-2 (re-read + re-verify, no cache), fail-closed `stale`/`unavailable`.
 - **Not authorized:** ranking SQL, infrastructure/config/runtime flags, concurrency or thresholds, contracts, schema, merge, deploy, activation, further remedies. STOP for PA review.
+- **Executed 2026-11-11** ([report](../reports/2026-11-11-NEM-024-po-045-q11-remediation-report.md)): implemented, tests green; **Q-11 still not qualified** (W=10, W=6 fail; W=3 passes); E-1 open. Awaiting PA review and PO decision.
 
 ### PO-044 — NEM-024 Q-11 root-cause investigation (diagnostic only) — decided 2026-11-10
 → **[PO-044](../operating-framework/decisions/product-owner/PO-044-nem-024-q11-root-cause-investigation-authorization.md)**
