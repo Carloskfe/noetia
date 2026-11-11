@@ -95,3 +95,29 @@ Q11_DOCKER_STATS=off Q11_DIAG=1 node <out>/tests/perf/q11-client.js 10 x10,p3x3 
 - Governing method: `Q11_DOCKER_STATS=off Q11_DIAG=1`. `Q11_DOCKER_STATS=sync` is kept only as a labelled historical comparison.
 - Same-session baseline: compile the pre-remediation tree (`git archive d937d2b services/api/{src,tests,tsconfig.json,package.json}`) to a second out-dir and run it with the same container command.
 - Results: `docs/reports/2026-11-11-NEM-024-po-045-q11-remediation-report.md`.
+
+## PO-046: residual-interference diagnostics (test only; opt-in)
+
+New `/diag/mode` values in `q11-diagnostics.ts`. All are runtime patches inside the disposable harness process; production `src/` is unchanged.
+
+| Mode | Kind | What it does |
+|---|---|---|
+| `fetchinst` | Contract-equivalent | Same SDK calls as `StorageService.getBytes`, with phase timers (send → headers, first chunk, stream, `Buffer.concat`, chunk count) |
+| `fetchcached` | **Upper bound; breaks AC-11/P-2** | After the first real read, `getBytes` returns a fresh copy of cached bytes. Removes the SDK, the network and chunking; keeps the 2 MB allocation and the real worker verification |
+| `s2memo` | **Upper bound; breaks AC-11/P-2** | Real fetch; the worker result is memoized by (hash, ranges) |
+| `both` | **Upper bound** | `fetchcached` + `s2memo` |
+| `fetchworker` | Contract-equivalent proxy (candidate B) | A test worker does the real SDK read plus `runS2Job`; the main thread never touches book bytes. Test-only and unbounded; not an implementation |
+| `fetchraw` | Contract-equivalent read variant (candidate A) | `node:http` GET of an SDK-presigned URL into one buffer preallocated from `Content-Length`; exact bytes |
+| `workernice` | Scheduling sensitivity | `setpriority(19)` on the S2 worker's thread id |
+
+`s2-fetch-bench.ts`: storage-read micro-benchmark for the capped container. Variants: `prod`, `noCrc`, `prealloc`, `sdkBytes`, `rawHttp`, `cached`. It reports per-object wall time, process CPU, main-thread CPU, per-helper-thread CPU and main-isolate GC. Every variant is checked byte-identical by SHA-256 before timing.
+
+```bash
+docker run --rm --cpus=1 --memory=512m --memory-swap=512m [-e UV_THREADPOOL_SIZE=1] --network host \
+  -v <out>:/app/out:ro -v <api node_modules>:/app/node_modules:ro -w /app -e NEM019_DISPOSABLE_DB=1 -e DB_*=… -e MINIO_*=… \
+  node:20-alpine node [--single-threaded-gc|--v8-pool-size=1] out/tests/perf/s2-fetch-bench.js <rounds> <concurrency>
+```
+
+Node flags such as `--single-threaded-gc`, `--v8-pool-size` and `--max-semi-space-size` were used only as labelled **sensitivity experiments** in disposable containers. They are not tracked configuration.
+
+Results: `docs/reports/2026-11-11-NEM-024-po-046-residual-performance-investigation.md`.

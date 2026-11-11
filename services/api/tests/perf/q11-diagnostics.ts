@@ -30,6 +30,23 @@
  *    main thread, so the s2:* timers and the ablation modes no longer affect it; they are HISTORICAL (PO-044) only.
  *    Do not use `s2free`/`s2worker` with the PO-045 code: their getBytes cache would hand the same (owned) buffer to the
  *    worker twice. Use mode `none` (= production behaviour) for PO-045 measurements.
+ *  - PO-046 modes for the PO-045 code path (diagnostic only; set with /diag/mode):
+ *      fetchinst   — CONTRACT-EQUIVALENT: StorageService.getBytes replaced by an instrumented copy issuing the same SDK
+ *                    calls (GetObjectCommand → stream → Buffer.concat), timing send / stream / concat and counting
+ *                    chunks; output bytes identical;
+ *      fetchcached — UPPER BOUND, BREAKS AC-11/P-2: after the first real read, getBytes returns a FRESH copy of cached
+ *                    bytes (no SDK, no network, no chunking; the 2 MB allocation and the worker verification remain);
+ *      s2memo      — UPPER BOUND, BREAKS AC-11/P-2: real fetch, but the S2 worker result is memoized by (hash, ranges),
+ *                    so the worker's CPU is removed after the first call;
+ *      both        — fetchcached + s2memo (what remains is SQL, gateway, turn bookkeeping, serialization);
+ *      fetchworker — CONTRACT-EQUIVALENT PROXY of 'fetch inside the worker' (candidate B): a TEST worker thread does the
+ *                    real SDK read (StorageService.getBytes) AND the same runS2Job per request; the main thread gets a
+ *                    placeholder from getBytes and never touches book bytes. Same per-request re-read and verification;
+ *                    replaces the production pool for retrieval in this mode only;
+ *      fetchraw    — CONTRACT-EQUIVALENT read variant (candidate A): getBytes = node:http GET of an SDK-presigned URL into
+ *                    one buffer preallocated from Content-Length (exact bytes; no SDK stream/checksum middleware);
+ *      workernice  — SCHEDULING SENSITIVITY: production code, but the S2 worker thread gets nice 19 (setpriority on its
+ *                    tid) inside the same cgroup.
  * No question text, passage text, SQL parameters, tokens, or PII are recorded.
  */
 /* eslint-disable @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any */
@@ -47,9 +64,10 @@ const { LexicalRetrievalService } = require('../../src/knowledge/retrieval/lexic
 const { AiGatewayService } = require('../../src/knowledge/ai/gateway/ai-gateway.service');
 const { TurnService } = require('../../src/knowledge/sessions/turn.service');
 const { processS2Verifier } = require('../../src/knowledge/retrieval/s2-verification.service');
+const { GetObjectCommand } = require('@aws-sdk/client-s3');
 const pg = require('pg');
 
-type Mode = 'none' | 'nohash' | 's2free' | 's2worker' | 'bytescan';
+type Mode = 'none' | 'nohash' | 's2free' | 's2worker' | 'bytescan' | 'fetchcached' | 's2memo' | 'both' | 'fetchinst' | 'workernice' | 'fetchworker' | 'fetchraw';
 const { isUtf8 } = require('buffer');
 const hr = () => process.hrtime.bigint();
 const msSince = (t0: bigint) => Number(hr() - t0) / 1e6;
@@ -181,15 +199,116 @@ export function installDiagnostics(ref: { get: (t: any, o?: any) => any }) {
   // ── async wrappers ────────────────────────────────────────────────────────────────────────────────────────────
   const bytesCache = new Map<string, Buffer>();
   const origGetBytes = StorageService.prototype.getBytes;
+  /** PO-046 `fetchinst`: the same SDK calls as StorageService.getBytes, with phase timers (wall clock, not CPU). */
+  async function instrumentedGetBytes(this: any, key: string, bucket: string): Promise<Buffer> {
+    const t0 = hr();
+    const res = await this.client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    rec('fetch:send→headers(wall)', msSince(t0));
+    const t1 = hr();
+    const chunks: Buffer[] = [];
+    let first = 0;
+    for await (const chunk of res.Body as AsyncIterable<Buffer | Uint8Array>) {
+      if (!chunks.length) first = msSince(t1);
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    rec('fetch:firstChunk(wall)', first);
+    rec('fetch:stream(wall)', msSince(t1));
+    rec('fetch:chunksPerObject', chunks.length);
+    const t2 = hr();
+    const out = Buffer.concat(chunks);
+    rec('fetch:concat(sync)', msSince(t2));
+    rec('fetch:objectMb', out.byteLength / 1048576);
+    return out;
+  }
+  const rawCache = new Map<string, Buffer>();
+  const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+  async function rawGet(svc: any, key: string, bucket: string): Promise<Buffer> {
+    const url = await getSignedUrl(svc.client, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: 60 });
+    return new Promise((resolve, reject) => {
+      require('http').get(url, (res: any) => {
+        if (res.statusCode !== 200) { res.resume(); reject(new Error('status')); return; }
+        const len = Number(res.headers['content-length']);
+        const out = Buffer.allocUnsafeSlow(len); let off = 0;
+        res.on('data', (c: Buffer) => { c.copy(out, off); off += c.length; });
+        res.on('end', () => (off === len ? resolve(out) : reject(new Error('length'))));
+        res.on('error', reject);
+      }).on('error', reject);
+    });
+  }
+  const placeholderKey = new WeakMap<object, { key: string; bucket: string }>();
+  const FETCH_WORKER_SRC = `
+    const { parentPort } = require('worker_threads');
+    const { StorageService } = require('/app/out/src/storage/storage.service');
+    const { runS2Job } = require('/app/out/src/knowledge/retrieval/s2-worker');
+    const storage = new StorageService();
+    parentPort.on('message', async (m) => {
+      try { const bytes = await storage.getBytes(m.key, m.bucket); parentPort.postMessage(runS2Job({ id: m.id, bytes, expectedHash: m.hash, ranges: m.ranges })); }
+      catch { parentPort.postMessage({ id: m.id, kind: 'fetch_error' }); }
+    });`;
+  let fetchWorker: Worker | null = null;
+  let fwSeq = 0;
+  const fwPending = new Map<number, (o: any) => void>();
   StorageService.prototype.getBytes = async function (this: unknown, key: string, bucket = 'books') {
     const t0 = hr();
     try {
       if ((mode === 's2free' || mode === 's2worker') && bytesCache.has(key)) return bytesCache.get(key)!;
-      const b: Buffer = await origGetBytes.call(this, key, bucket);
+      if (mode === 'fetchworker') { const ph = new Uint8Array(1); placeholderKey.set(ph, { key, bucket }); return ph as any; }
+      if ((mode === 'fetchcached' || mode === 'both') && rawCache.has(key)) {
+        const src = rawCache.get(key)!;
+        const fresh = Buffer.allocUnsafeSlow(src.byteLength); // fresh, unpooled, owned: transferred like a real read
+        src.copy(fresh);
+        return fresh;
+      }
+      if (mode === 'fetchraw') return await rawGet(this, key, bucket);
+      const b: Buffer = mode === 'fetchinst' ? await instrumentedGetBytes.call(this, key, bucket) : await origGetBytes.call(this, key, bucket);
       if (mode === 's2free' || mode === 's2worker') bytesCache.set(key, b);
+      if (mode === 'fetchcached' || mode === 'both') { const keep = Buffer.allocUnsafeSlow(b.byteLength); b.copy(keep); rawCache.set(key, keep); }
       return b;
     } finally { rec('s2:getBytes(wall)', msSince(t0)); }
   };
+
+  // PO-046 `s2memo` / `both`: memoize the worker outcome by (hash, ranges) — removes worker CPU after the first call.
+  const pool = processS2Verifier();
+  const origVerify = pool.verify.bind(pool);
+  const s2Memo = new Map<string, unknown>();
+  pool.verify = async (bytes: Uint8Array, hash: string, ranges: { start: number; end: number }[]) => {
+    const t0 = hr();
+    try {
+      if (mode === 'fetchworker' && placeholderKey.has(bytes)) {
+        if (!fetchWorker) {
+          fetchWorker = new Worker(FETCH_WORKER_SRC, { eval: true });
+          fetchWorker.on('message', (r: any) => { const res = fwPending.get(r.id); fwPending.delete(r.id); res?.(r); });
+        }
+        const { key, bucket } = placeholderKey.get(bytes)!;
+        const id = ++fwSeq;
+        const r: any = await new Promise((res) => { fwPending.set(id, res); fetchWorker!.postMessage({ id, key, bucket, hash, ranges }); });
+        if (r.kind === 'ok') return { kind: 'ok', passages: r.passages };
+        if (r.kind === 'stale') return { kind: 'stale' };
+        return { kind: 'unavailable', reason: 'worker_error' };
+      }
+      if (mode !== 's2memo' && mode !== 'both') return await origVerify(bytes, hash, ranges);
+      const k = `${hash}|${JSON.stringify(ranges)}`;
+      const hit = s2Memo.get(k);
+      if (hit) { rec('s2memo:hit', 1); return hit; }
+      const o = await origVerify(bytes, hash, ranges);
+      if (o.kind === 'ok') s2Memo.set(k, o);
+      rec('s2memo:miss', 1);
+      return o;
+    } finally { rec('s2:verify(wall)', msSince(t0)); }
+  };
+
+  /** PO-046 `workernice`: find the S2 worker's tid (the thread whose CPU grows during a large verification) and renice it. */
+  async function reniceWorker(nice: number): Promise<{ tid: number | null; nice: number }> {
+    const big = Buffer.alloc(24 * 1048576, 0x61);
+    const h = textHashMod.computeTextHash(big);
+    const before = threadCpu();
+    await origVerify(big, h, [{ start: 0, end: 1 }]);
+    const after = threadCpu();
+    let tid: string | null = null; let best = 0;
+    for (const [t, v] of after) { if (Number(t) === process.pid) continue; const d = v.ms - (before.get(t)?.ms ?? 0); if (d > best) { best = d; tid = t; } }
+    if (tid) require('os').setPriority(Number(tid), nice);
+    return { tid: tid ? Number(tid) : null, nice };
+  }
   let worker: Worker | null = null;
   let jobSeq = 0;
   const pending = new Map<number, () => void>();
@@ -330,6 +449,8 @@ export function installDiagnostics(ref: { get: (t: any, o?: any) => any }) {
       ['sliceCodePointRanges', /^sliceCodePointRanges/],
       ['getBytes / aws-sdk stream', /^getBytes .*storage\.service|node_modules\/@(aws-sdk|smithy)/],
       ['Buffer.concat', /^concat .*buffer/],
+      ['S2 worker messaging (postMessage / structured clone)', /^postMessage |internal\/worker|messageport/i],
+      ['Readable stream machinery', /internal\/streams\//],
       ['JSON.stringify', /^stringify/],
       ['JSON.parse', /^parse $/],
       ['pg driver (incl. row parsing)', /node_modules\/(pg|pg-protocol|pg-types|postgres-[a-z-]+)\//],
@@ -394,9 +515,12 @@ export function installDiagnostics(ref: { get: (t: any, o?: any) => any }) {
   };
   const reset = () => { timers.clear(); stalls.length = 0; throttles.length = 0; gcs.length = 0; timeline.length = 0; eld.reset(); s2base = processS2Verifier().stats(); threadBase = threadCpu(); s2q.n = 0; s2q.sum = 0; s2q.max = 0; };
 
+  let reniced: { tid: number | null; nice: number } | null = null;
   async function setMode(m: Mode) {
     mode = m;
-    hashMemo.clear(); sliceMemo.clear(); bytesCache.clear();
+    hashMemo.clear(); sliceMemo.clear(); bytesCache.clear(); rawCache.clear(); s2Memo.clear();
+    if (m === 'workernice') reniced = await reniceWorker(19);
+    else if (reniced?.tid) { try { require('os').setPriority(reniced.tid, 0); } catch { /* unprivileged: cannot lower nice back */ } reniced = null; }
     if (m === 's2worker' && !worker) {
       worker = new Worker(WORKER_SRC, { eval: true });
       worker.on('message', (msg: { type: string; id: number }) => { if (msg.type === 'done') { pending.get(msg.id)?.(); pending.delete(msg.id); } });
@@ -440,7 +564,7 @@ export function installDiagnostics(ref: { get: (t: any, o?: any) => any }) {
       if (path === '/diag/reset') { reset(); return { ok: true }; }
       if (path === '/diag/snapshot') return snapshot();
       if (path === '/diag/events') return { stalls, throttles, gcs, timeline };
-      if (path === '/diag/mode') { await setMode((q.get('m') ?? 'none') as Mode); return { mode }; }
+      if (path === '/diag/mode') { await setMode((q.get('m') ?? 'none') as Mode); return { mode, reniced }; }
       if (path === '/diag/bench') return bench(Number(q.get('n') ?? 5));
       if (path === '/diag/prof/start') { await post('Profiler.enable'); await post('Profiler.setSamplingInterval', { interval: Number(q.get('us') ?? 1000) }); await post('Profiler.start'); return { profiling: true }; }
       if (path === '/diag/prof/stop') {
