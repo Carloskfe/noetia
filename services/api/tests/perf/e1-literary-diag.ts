@@ -37,11 +37,13 @@ const env = process.env;
 if (env.NEM019_DISPOSABLE_DB !== '1' || !['127.0.0.1', 'localhost'].includes(env.DB_HOST ?? '') || !/_test$/.test(env.DB_NAME ?? '')) {
   throw new Error('disposable local *_test database only');
 }
-const LANG: 'es' | 'en' = /po050_en_test$/.test(env.DB_NAME ?? '') ? 'en' : 'es';
+const LANG: 'es' | 'en' = /po05[01]_en_test$/.test(env.DB_NAME ?? '') ? 'en' : 'es';
 const CFG = LANG === 'es' ? 'noetia_es' : 'noetia_en';
 const BUDGET = 6000;
 const TOPK = 8;
-const MANIFEST_PATH = join(__dirname, 'fixtures/po050-corpus-manifest.json');
+// PO-051: LIT_MANIFEST / LIT_QPREFIX select another corpus manifest / query-manifest name (defaults: PO-050).
+const MANIFEST_PATH = join(__dirname, 'fixtures', env.LIT_MANIFEST ?? 'po050-corpus-manifest.json');
+const QPREFIX = env.LIT_QPREFIX ?? 'po050-query-manifest';
 const manifest = () => JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'));
 
 // ── statistics ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -116,7 +118,7 @@ function cmdPrepare(rawDir: string, outDir: string) {
 
 // ── ingest ───────────────────────────────────────────────────────────────────────────────────────────────────────
 async function cmdIngest(normDir: string) {
-  if (!/^po050_(es|en)_test$/.test(env.DB_NAME ?? '')) throw new Error('ingest requires po050_es_test or po050_en_test');
+  if (!/^po05[01]_(es|en)_test$/.test(env.DB_NAME ?? '')) throw new Error('ingest requires po050_/po051_ es|en _test');
   if (!['127.0.0.1', 'localhost'].includes(env.MINIO_ENDPOINT ?? '')) throw new Error('local disposable MinIO only');
   const { S3Client, CreateBucketCommand, PutObjectCommand } = require('@aws-sdk/client-s3');
   const { KnowledgeDbService } = require('../../src/knowledge/common/knowledge-db.service');
@@ -220,11 +222,11 @@ async function cmdFreeze(path: string) {
       derivation: q.derivation, querySha256: sha(q.q) });
   }
   await c.end();
-  const body = { schema: 'po050-query-manifest/1', mission: 'NEM-024 PO-050', lang: LANG, frozenAt: new Date().toISOString(),
+  const body = { schema: 'po050-query-manifest/1', mission: QPREFIX.startsWith('po051') ? 'NEM-024 PO-051' : 'NEM-024 PO-050', lang: LANG, frozenAt: new Date().toISOString(),
     note: 'Predeclared before any timed measurement. Query text and reference anchors are kept LOCAL (not committed); this file holds hashes and derivation metadata only.',
     queries: spec };
   const manifestSha = sha(JSON.stringify(spec));
-  writeFileSync(join(__dirname, `fixtures/po050-query-manifest-${LANG}.json`), `${JSON.stringify({ ...body, specSha256: manifestSha, localFileSha256: sha(readFileSync(path)) }, null, 1)}\n`);
+  writeFileSync(join(__dirname, `fixtures/${QPREFIX}-${LANG}.json`), `${JSON.stringify({ ...body, specSha256: manifestSha, localFileSha256: sha(readFileSync(path)) }, null, 1)}\n`);
   const byCat: Record<string, number> = {}; for (const q of spec) byCat[q.category] = (byCat[q.category] ?? 0) + 1;
   const byShape: Record<string, number> = {}; for (const q of spec) byShape[q.structure] = (byShape[q.structure] ?? 0) + 1;
   console.log(JSON.stringify({ cmd: 'freeze', lang: LANG, n: spec.length, byCat, byShape, specSha256: manifestSha }));
