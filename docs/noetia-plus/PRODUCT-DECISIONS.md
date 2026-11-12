@@ -54,6 +54,17 @@ The three principal NEM-003 blockers are **resolved**:
 2. General copyright / quotation architecture → **PO-002 / ADR-002.**
 3. Grounded-only vs broader model knowledge → **PO-003 / ADR-003.**
 
+## PO-053 — Causas Noetia distribution policy (approved product policy) — decided 2026-11-12
+→ **[PO-053](../operating-framework/decisions/product-owner/PO-053-causas-noetia-distribution-policy.md)**
+
+> PO-005 to PO-052 are recorded on unmerged governance branches (for example Draft PRs #44 and #56); this register on `main` receives PO-053 directly.
+
+- 2.22% of each qualifying payment goes to Causas Noetia. Each user selects **one** cause (Animal Welfare / Children and Youth / Environment), which receives 100% of that payment's allocation. **No selection means an equal, deterministic split across all three.** No other options.
+- Supersedes the M2 recommendation and every two-cause or "random" description.
+- Approved public wording (ES/EN) is recorded in PO-053. Copy must be commitment-based: no contributions have been paid yet.
+- **Not authorized:** production allocation, Stripe, subscription logic, preference-API changes, legal-document changes, accounting or payout systems (separate engineering design required), merge, deployment.
+- **Open:** "qualifying payment" definition; legacy two-cause and random preferences; Terms §3 legal review; allocation and reporting design.
+
 ## Still open (subordinate) — not resolved here
 Final retail price · exact fair-use/quotation technical thresholds · final AI fair-use limits · exact provider selection · exact model selection · publisher-contract language · final customer-facing intelligence-mode names · final UX presentation. See [`20-open-product-decisions.md`](20-open-product-decisions.md).
 

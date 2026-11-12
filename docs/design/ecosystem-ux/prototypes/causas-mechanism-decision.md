@@ -1,6 +1,13 @@
 # Causas Noetia — Distribution-Mechanism Decision Recommendation
 
-**Status:** recommendation for the Product Owner. **No mechanism is selected here.** The 2.22% commitment and the three priorities are PO-confirmed and unchanged. Prepared under the Visual Design Phase authorization (2026-11-12).
+> **SUPERSEDED — final policy approved by the Product Owner on 2026-11-12: [PO-053](../../../operating-framework/decisions/product-owner/PO-053-causas-noetia-distribution-policy.md).**
+> - **One cause per user**, receiving 100% of that payment's 2.22% allocation.
+> - **No selection** means an equal, deterministic split across all three causes.
+> - **No other options.**
+>
+> The M2 recommendation below (up to two causes, or an equal split across three) is **not** the approved policy. §1–§4 are kept unchanged as the historical analysis that preceded the decision. The alignment of code and documents is planned in [causas-policy-alignment-plan.md](causas-policy-alignment-plan.md).
+
+**Original status (before PO-053):** recommendation for the Product Owner; no mechanism selected. The 2.22% commitment and the three priorities are PO-confirmed and unchanged. Prepared under the Visual Design Phase authorization (2026-11-12).
 
 ## 1. Confirmed facts (Product Owner)
 
@@ -44,7 +51,7 @@
 | Allocation, payout and audit effort (all options) | **Engineering and finance work required.** Today no allocation, payout or reporting exists (§2). Any option needs: a per-payment allocation calculation (incl. refunds and chargebacks), a contribution ledger, reconciliation with Stripe and accounting, audit trail and reporting of executed contributions, and controls on preference changes over time. M1 and M3 make the calculation simpler; M2 needs a two-cause ratio and a default | same | simplest calculation, but still needs the ledger and audit |
 | Risk | contradicts the existing selector | low, once the ratio and default are defined | contradicts "Tú decides" messaging |
 
-## 5. Option recommended for PO consideration (not selected)
+## 5. Option recommended for PO consideration (not selected) — SUPERSEDED by PO-053
 
 **No mechanism is selected by this document.** For consideration: **M2, with three definitions added:**
 

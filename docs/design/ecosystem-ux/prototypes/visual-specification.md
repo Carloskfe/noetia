@@ -152,7 +152,7 @@ The examples live in the prototypes; names are proposals for `services/web/compo
 
 | ID | Decision |
 |---|---|
-| LPD-6 / Causas | distribution mechanism (recommendation: M2 with equal split, 50/50 for two causes, equal default); business-plan cause names |
+| ~~LPD-6 / Causas mechanism~~ | **Resolved by [PO-053](../../../operating-framework/decisions/product-owner/PO-053-causas-noetia-distribution-policy.md)** (one cause → 100%; no selection → equal, deterministic split across three; no other options). Still open: qualifying-payment definition, legacy preferences, business-plan cause names, Terms §3 counsel review ([alignment plan](causas-policy-alignment-plan.md)) |
 | DV-04 / 05 / 06 / 07 | English term for *fragmento*; Escucha Activa in English; "Suscripción Noetia"; Spanish name for Research Brief |
 | DV-08 | mode and provenance label names |
 | DV-09 | usage units and meter |
@@ -189,5 +189,5 @@ The examples live in the prototypes; names are proposals for `services/web/compo
 | "Tus libros adquiridos son tuyos para siempre…" / "Books you acquire are yours forever…" | `public` (ecosystem note), `core-account` | PO + legal counsel (permanent-ownership clause, DL-05; Appendix C) |
 | "Tus libros son tuyos para siempre." / "Your books are yours forever." | `core-library` | same |
 | "…privado y bajo tu control." / "…private and under your control." | `public` (how it works) | PO + legal counsel (must match actual visibility defaults and opt-out; Appendix G LP-07) |
-| "Destinamos el 2,22% de cada pago…" (commitment wording) | `public` (Causas) | PO-confirmed commitment; final wording and mechanism sentence need PO decision (LPD-6) and legal review against Terms §3 |
+| "Destinamos el 2,22% de cada pago a Causas Noetia. Tú eliges una causa… se distribuye por igual entre las tres." | `public` (Causas) | **Wording approved by the PO (PO-053).** Legal review of Terms §3 consistency is still required before publication (OP-3); "every payment" vs "qualifying payment" is open (OP-1) |
 | Legal documents and disclosures | `legal-*` | placeholders only; qualified counsel |

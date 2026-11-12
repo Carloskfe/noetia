@@ -197,8 +197,8 @@ def public(L):
   </div></div></section>
 <section class="section"><div class="wrap split">
   <div><span class="eyebrow" style="color:var(--emerald)">Causas Noetia</span><h2>{t('Compartir también es ayudar.', 'Sharing is also helping.')}</h2>
-    <p class="intro" style="margin-bottom:20px">{t('Destinamos el 2,22% de cada pago a causas sociales. Forma parte del modelo financiero de Noetia desde el primer día.', 'We commit 2.22% of every payment to social causes. It has been part of Noetia’s financial model from day one.')}</p>
-    <div class="ph" style="background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.25);color:var(--on-navy-2)">{t('[Mecanismo de distribución — pendiente de decisión del PO (LPD-6)]', '[Distribution mechanism — pending PO decision (LPD-6)]')}</div>
+    <p class="intro" style="margin-bottom:20px">{t('Destinamos el 2,22% de cada pago a Causas Noetia. Tú eliges una causa para recibir ese aporte. Si no eliges ninguna, se distribuye por igual entre las tres.', 'We commit 2.22% of every payment to Causas Noetia. You choose one cause to receive that contribution. If you don’t choose one, it is distributed equally among all three.')}</p>
+    <p class="small" style="color:var(--on-navy-3);margin:-8px 0 16px">{t('Texto aprobado por el PO (PO-053).', 'PO-approved wording (PO-053).')}</p>
     <a class="btn text" href="#">{t('Conoce Causas Noetia', 'Learn about Causas Noetia')} {ic('arrow-right', 'icon sm')}</a></div>
   <div class="feature-rows">
     <div class="frow"><div class="ic">{ic('paw')}</div><div><h4>{t('Bienestar animal', 'Animal welfare')}</h4><p>{t('Rescate, cuidado y protección de animales.', 'Rescue, care and protection of animals.')}</p></div></div>
