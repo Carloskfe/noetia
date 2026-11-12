@@ -134,6 +134,7 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **B:** P-3 plan stability (diagnostic planner controls in disposable DBs only); P-1 workload-class comparison (no threshold, no binding criterion); P-2 one near-limit authentic corpus measurement behind a feasibility gate.
 - **C:** P-4 natural-question retrieval recorded as a separate product concern; no implementation.
 - **D:** C1, hybrid, inline storage, S2 changes, infrastructure and the 2,000-chunk limit remain deferred. **E-1 OPEN; Q-11 conditional; Checkpoint E NOT QUALIFIED; release BLOCKED.**
+- **Executed 2026-11-12** ([report](../reports/2026-11-12-NEM-024-po-051-e1-plan-stability-and-workload-class-validation.md)): plan flip is maintenance-state-sensitive, not a defect; E-1 fails in every regime; near-limit authentic p95 127–134 ms, adversarial 211–214 ms; concern recorded as [D13](20-open-product-decisions.md). Decisions R-1..R-5 awaiting.
 
 ### PO-050 — NEM-024 E-1 representative literary corpus validation (limited diagnostic validation only); PO-049 accepted as architecture validation — decided 2026-11-11
 → **[PO-050](../operating-framework/decisions/product-owner/PO-050-nem-024-e1-representative-literary-corpus-validation-authorization.md)**

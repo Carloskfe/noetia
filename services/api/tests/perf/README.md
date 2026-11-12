@@ -202,3 +202,19 @@ Results: `docs/reports/2026-11-11-NEM-024-po-049-e1-architecture-validation.md`.
 Book texts, query text and reference anchors are never committed or printed. The manifests hold metadata and hashes only.
 
 Results: `docs/reports/2026-11-12-NEM-024-po-050-real-literary-corpus-e1-validation.md`.
+
+## PO-051: plan-stability diagnostics and near-limit authentic cohort (test only; opt-in)
+
+`e1-plan-diag.ts` runs against a governing fixture built by the **unchanged** NEM-023 suite, in a disposable local database only.
+
+| Command | Purpose |
+|---|---|
+| `migrate [noautovac]` | Run migrations on an empty database. `noautovac` disables autovacuum for `ai_book_chunks` so the pre-vacuum state can be observed (**diagnostic condition**) |
+| `state <label>` | Settings, relation/index pages and tuples, all-visible pages, vacuum/analyze timestamps, MCELEM coverage per query id |
+| `plans <label> <reps>` | Production `RANK_SQL` (verbatim) for Q0/Q3/Q4/Q5/Q6/Q8 and the protected `ginUsed` probe: `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`, `TIMING OFF` and plain wall time, under the default planner and under `SET LOCAL enable_seqscan = off` (**diagnosis only**), with per-execution TOAST block deltas |
+
+`e1-literary-diag.ts` accepts `LIT_MANIFEST` / `LIT_QPREFIX` to select the PO-051 near-limit cohort (`fixtures/po051-corpus-manifest.json`, `fixtures/po051-query-manifest-es.json`) and `po051_*_test` databases.
+
+Planner controls, autovacuum reloptions and the mid-insert `VACUUM` are disposable-database diagnostics only. None is a configuration recommendation.
+
+Results: `docs/reports/2026-11-12-NEM-024-po-051-e1-plan-stability-and-workload-class-validation.md`.
