@@ -11,7 +11,8 @@
 | Document | Purpose |
 |---|---|
 | [visual-specification.md](visual-specification.md) | tokens, typography, components, responsive layouts, content rules, reuse, dependencies, pending decisions, acceptance criteria |
-| [causas-mechanism-decision.md](causas-mechanism-decision.md) | Causas Noetia distribution-mechanism comparison and recommendation (**no mechanism selected**) |
+| [causas-mechanism-decision.md](causas-mechanism-decision.md) | Causas Noetia distribution-mechanism comparison (historical; **superseded by PO-053**) |
+| [causas-policy-alignment-plan.md](causas-policy-alignment-plan.md) | PO-053 approved policy: inconsistency inventory (code, pages, business plans, legal) and proposed alignment plan; nothing implemented |
 | [src/](src/) | 17 screens × ES/EN static HTML (`index.es.html` / `index.en.html` link them all); shared `assets/proto.css` |
 | [screenshots/](screenshots/) | 68 locally rendered JPEGs: `<screen>--<es\|en>--<desktop\|mobile>.jpg` |
 | [tools/](tools/) | `build_prototypes.py` (stdlib-only generator) and `capture.js` (screenshot tool; uses a locally available `playwright-core` through `PLAYWRIGHT_CORE`; **not added as a dependency**). *Previously under `build/`, which the repository-wide `.gitignore` rule `build/` silently excluded from commit `7bdc013`; moved to `tools/`* |
@@ -81,7 +82,7 @@
 | Noetia+ screens | **conceptual**; capabilities approved (PO-025/027/028/003), UI not implemented |
 | NoetiaX screens | **conceptual**; X-P2/X-P3/X-P4 elements labelled and **require PO approval** |
 | Legal screens | layout only; **no legal text**; wording requires qualified counsel |
-| Causas Noetia | commitment preserved (2.22%; three priorities); **mechanism pending PO decision** |
+| Causas Noetia | commitment preserved (2.22%; three priorities). **Mechanism approved: PO-053** (one cause → 100%; no selection → equal split across three). Prototype homepage uses the approved wording; production alignment not implemented |
 
 ## How to regenerate
 
