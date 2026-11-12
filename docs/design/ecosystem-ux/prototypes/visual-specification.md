@@ -69,7 +69,7 @@ All three families are **repository fonts** in `services/image-gen/fonts`, self-
 
 ### 2.4 Icons
 
-**One outline family:** 24 px grid, 1.5 px stroke, round caps. Defined once as an SVG sprite in `build/build_prototypes.py` (`ICONS`). There are no emoji in the UI. Causes use paw, child and leaf icons; clubs use chat, headphones and vote icons.
+**One outline family:** 24 px grid, 1.5 px stroke, round caps. Defined once as an SVG sprite in `tools/build_prototypes.py` (`ICONS`). There are no emoji in the UI. Causes use paw, child and leaf icons; clubs use chat, headphones and vote icons.
 
 ### 2.5 Motion
 
@@ -94,7 +94,7 @@ The examples live in the prototypes; names are proposals for `services/web/compo
 | `HighlightItem` | serif quote, emerald rule, source and actions | `core-fragments` |
 | `CardEditor` | stepper Formato → Fondo → Texto; live preview; fit control; legibility check | `core-editor` |
 | `BookPicker` | counter "n de N", eligibility line, lock notice; **shared by Noetia+ (3) and NoetiaX (10)** | `plus-select`, `x-select` |
-| `ProvenanceLabel`, `CitationChip`, `PassageCard` | label on every answer segment; numbered citations; "Ir al pasaje" / "Abrir libro" | research pages |
+| `ProvenanceLabel`, `CitationChip`, `PassageCard` | label on every answer segment; numbered citations; "Ir al pasaje" / "Abrir libro". **In prototypes every research answer, Brief and "Verificado (ejemplo)" badge is preceded by an "Illustrative example — not real system output" marker** | research pages |
 | `StatusStage` | reuses the Draft PR #56 stage vocabulary | `plus-workspace` |
 | `EvidencePanel` (**conceptual X-P3/X-P4**) | claim × book matrix on desktop; per-claim cards on mobile | `x-workspace` |
 | `Brief` | legend, cited claims, general-context labels, sources | `plus-brief`, `x-brief` |
@@ -105,9 +105,9 @@ The examples live in the prototypes; names are proposals for `services/web/compo
 
 | Experience | Desktop (1440) | Mobile (390) |
 |---|---|---|
-| Public site | 12-column; hero copy 5 / demo 7; content max 1152 px | stacked; demo under the CTAs; menu sheet |
+| Public site | 12-column; hero copy 5 / demo 7; content max 1152 px | stacked; demo under the CTAs; header shows wordmark, Create account and the menu button; **the ES/EN switch moves into the menu sheet** (deviation from Appendix G §9: at 360–390 px the header can't fit wordmark + switch + CTA + menu without overflow) |
 | App shell | 232 px navy rail + content | bottom tab bar (five items); in-page search |
-| Reader | paper sheet 720 px on a grey surround; audio bar at the bottom | full-width sheet; compact audio bar |
+| Reader | paper sheet 720 px on a grey surround; audio bar at the bottom; selection popover floats next to the phrase | full-width sheet; compact audio bar; **selection popover sits in the text flow under the selected phrase, with wrapping labels** |
 | Noetia+ workspace | conversation + 380 px source panel | conversation, then sources (sheet in the product) |
 | NoetiaX workspace | 260 px source rail + conversation + 400 px evidence panel | rail hidden (sheet in the product); evidence as per-claim cards |
 | Legal | 260 px contents + document (≤ 70 characters) | contents above the document |
@@ -171,3 +171,23 @@ The examples live in the prototypes; names are proposals for `services/web/compo
 6. ES and EN screens are structurally identical; no untranslated strings.
 7. Conceptual or unreleased features are labelled until released; legal placeholders are never shipped as text.
 8. Playwright visual baselines exist for each prototype screen counterpart (ES/EN × 390/1440).
+
+## 11. Correction log (independent PA review of `7bdc013`)
+
+| # | Correction | Where |
+|---|---|---|
+| 1 | Mobile overflow fixed at its source, without `overflow-x: hidden`. Reader: the absolutely positioned selection popover (390 px: right edge at 480 px EN / 557 px ES) now flows under the phrase on mobile. Public header: the action group (390 px EN: right edge at 401 px; 360 px ES: 386 px) now omits the ES/EN switch on mobile, which lives in the menu sheet | `src/assets/proto.css` (`.popover.at-phrase`, `.site-header .lang`), `tools/build_prototypes.py` (reader markup) |
+| 2 | Reproducibility: the generator and capture tool were excluded by the repository-wide `.gitignore` rule `build/`. They moved to `tools/` (not ignored); the root `.gitignore` is unchanged | `tools/` |
+| 3 | Illustrative research output: an explicit "Illustrative example — answer, citations and verification states are simulated. Not real system output." marker on the Noetia+/NoetiaX conversations and Briefs; badges renamed "Verificado (ejemplo)" / "Verified (example)". X-P2/X-P3/X-P4 remain labelled conceptual | research pages |
+| 4 | Public-claim flags (†) on permanent-ownership and personal-data privacy statements, with a footnote on each page | `public`, `core-library`, `core-account` |
+| 5 | Causas effort assessment corrected: allocation, payout and auditability require accounting logic and controls under any option; no mechanism selected | `causas-mechanism-decision.md` |
+
+### Claims register (require approval before any publication)
+
+| Claim (prototype copy) | Screens | Approval needed |
+|---|---|---|
+| "Tus libros adquiridos son tuyos para siempre…" / "Books you acquire are yours forever…" | `public` (ecosystem note), `core-account` | PO + legal counsel (permanent-ownership clause, DL-05; Appendix C) |
+| "Tus libros son tuyos para siempre." / "Your books are yours forever." | `core-library` | same |
+| "…privado y bajo tu control." / "…private and under your control." | `public` (how it works) | PO + legal counsel (must match actual visibility defaults and opt-out; Appendix G LP-07) |
+| "Destinamos el 2,22% de cada pago…" (commitment wording) | `public` (Causas) | PO-confirmed commitment; final wording and mechanism sentence need PO decision (LPD-6) and legal review against Terms §3 |
+| Legal documents and disclosures | `legal-*` | placeholders only; qualified counsel |

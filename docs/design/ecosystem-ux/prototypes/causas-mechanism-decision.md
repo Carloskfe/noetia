@@ -40,12 +40,13 @@
 | Matches current UI | landing only | `/causas` and selector (after the random/equal fix) | none |
 | Allocation clarity | simple | needs a stated two-cause ratio (e.g., 50/50) and a default | simplest; most auditable |
 | User agency | medium | **high** | none |
-| Change effort (copy / engineering) | copy + selector change | **copy only** (labels, two-cause ratio, default) | copy + selector removal |
+| User-facing effort (copy / UI) | copy + selector change | copy only (labels, two-cause ratio, default) | copy + selector removal |
+| Allocation, payout and audit effort (all options) | **Engineering and finance work required.** Today no allocation, payout or reporting exists (§2). Any option needs: a per-payment allocation calculation (incl. refunds and chargebacks), a contribution ledger, reconciliation with Stripe and accounting, audit trail and reporting of executed contributions, and controls on preference changes over time. M1 and M3 make the calculation simpler; M2 needs a two-cause ratio and a default | same | simplest calculation, but still needs the ledger and audit |
 | Risk | contradicts the existing selector | low, once the ratio and default are defined | contradicts "Tú decides" messaging |
 
-## 5. Recommendation (for PO decision; not selected)
+## 5. Option recommended for PO consideration (not selected)
 
-**M2, with three definitions added:**
+**No mechanism is selected by this document.** For consideration: **M2, with three definitions added:**
 
 - **(a)** Rename "Distribuir aleatoriamente" to **"Repartir por igual entre las tres"** / **"Split equally across all three"**. Equal, not random, is deterministic and auditable.
 - **(b)** When two causes are chosen, the split is **50/50**.
@@ -62,10 +63,12 @@ Then use one sentence everywhere: landing, `/causas`, selector and, after legal 
 
 Avoid "apoya / supports" in the present tense and "donado" until contributions exist. Once they do, publish actual amounts.
 
+**Effort correction (PA review of `7bdc013`):** the earlier "copy only" assessment applied only to user-facing wording. The final allocation and payout behaviour, under any option, requires accounting logic and auditability controls (row "Allocation, payout and audit effort" in §4). That work is not designed here and needs its own authorization.
+
 **Required before publishing:**
 - the PO selects the mechanism;
 - the PO authorizes correcting the business-plan cause names;
 - legal review of any Terms wording;
-- (separately) an accounting process or ledger, so that executed contributions can be reported. Not designed here.
+- (separately) allocation, ledger, reconciliation and audit design, so that executed contributions can be calculated and reported. Not designed here. No financial policy, percentage, business plan or payment service is changed by this document.
 
 **Prototype treatment:** the homepage prototype shows the commitment sentence and a labelled placeholder "[Mecanismo de distribución — pendiente de decisión del PO (LPD-6)]".
