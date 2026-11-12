@@ -41,6 +41,16 @@
 | Existing subscriptions and payments | No file under `billing`, `pricing`, `account`, `subscriptions` or the API changed; the cookie-consent component is unchanged |
 | Console errors | `/`: none. `/causas`: CORS errors fetching `localhost:4000/causes`. These are pre-existing and environmental: no API ran during local validation |
 
+### CI (GitHub Actions, run `43314730608`)
+
+| Job | Result | Assessment |
+|---|---|---|
+| web — lint / typecheck / build | pass | — |
+| web — unit tests (≥80% coverage) | fail | **All 319 tests pass.** Only the global coverage threshold over `lib/**` fails (statements 72.8%). It is **identical with `main`'s `lib/`** (measured locally: 324/445 statements in both), so the failure is pre-existing. The same job also failed on PR #22 (same `main` base) |
+| web — E2E tests (Playwright) | fail | **Environmental:** the job stops at "Install Playwright browsers" with *Playwright does not support chromium on ubuntu26.04-x64*. No test ran. The same job passed on PR #22 with an earlier runner image |
+| api — unit tests; mobile — unit tests | fail | Pre-existing coverage-threshold failures (api 948/948 and mobile 179/179 tests pass); also failing on PR #22. Not touched by this PR |
+| api / worker lint-build, worker and image-gen unit tests | pass | — |
+
 **Validation method:**
 1. Local production build served with `next start` on `127.0.0.1:3107`, then stopped afterwards.
 2. Headless Chromium checks (desktop 1440×900, mobile 390×844 and 360×780; ES and EN, set through the site's `noetia_lang` storage).
