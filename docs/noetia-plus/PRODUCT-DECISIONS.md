@@ -134,6 +134,7 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **B:** PO-045 provisional; PO-046 and PO-048 accepted as diagnostics; PO-047 conditional for development progression (risks retained). **E-1 OPEN; Checkpoint E NOT QUALIFIED; release BLOCKED.**
 - **C:** bounded validation of F-48-1 (is the single-lexeme hybrid exact?), F-48-2 (benchmark representativeness, governing benchmark unchanged) and F-48-3 (at most two further exact strategies).
 - **Not authorized:** any `src`/SQL/migration/index/config change, approximate ranking, benchmark revision, infrastructure, merge, deploy, activation, PO-050.
+- **Executed 2026-11-11** ([report](../reports/2026-11-11-NEM-024-po-049-e1-architecture-validation.md)): hybrid **conditionally exact**; best exact (inline + C1 threshold) p95 256–268 ms, E-1 not met; production passes only on supplementary B/C. Decisions D-1..D-3 awaiting.
 
 ### PO-048 — NEM-024 E-1 ranking investigation (diagnostic only); PO-047 accepted conditionally — decided 2026-11-11
 → **[PO-048](../operating-framework/decisions/product-owner/PO-048-nem-024-e1-ranking-root-cause-investigation-authorization.md)**
