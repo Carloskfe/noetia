@@ -1,313 +1,312 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
 
-const NAV_LINKS = [
-  { href: '/about',        es: 'Sobre Noetia',     en: 'About' },
-  { href: '/company',      es: 'Empresa',           en: 'Company' },
-  { href: '/how-we-build', es: 'Cómo construimos',  en: 'How we build' },
-  { href: '/team',         es: 'Equipo',            en: 'Team' },
-  { href: '/careers',      es: 'Carreras',          en: 'Careers' },
-  { href: '/contact',      es: 'Contacto',          en: 'Contact' },
-];
+/**
+ * Public landing page — Quiet Editorial presentation of the full ecosystem (Noetia available; Noetia+ and NoetiaX
+ * shown with non-interactive "Coming Soon" labels: no upgrade, checkout or activation path). All copy comes from
+ * the `landing` i18n namespace. The page renders no footer of its own; the single global Footer (root layout)
+ * switches to its dark tone on this route.
+ */
 
-const FEATURES = [
-  {
-    es: { title: 'Absorbe', desc: 'Lee y escucha a la vez, frase por frase. El texto y el audio se mueven juntos — lo que escuchas es exactamente lo que ves. Nunca más pierdas el hilo.' },
-    en: { title: 'Absorb', desc: 'Read and listen simultaneously, phrase by phrase. The text and audio move together — what you hear is exactly what you see. Never lose the thread again.' },
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-7 h-7" aria-hidden="true">
-        <path d="M3 18v-6a9 9 0 0118 0v6" />
-        <path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3z" />
-        <path d="M3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z" />
-      </svg>
-    ),
-  },
-  {
-    es: { title: 'Captura', desc: 'Un toque guarda el pasaje que te movió. Cada fragmento es una pieza de lo que piensas — organizado por libro, listo para ser expresado.' },
-    en: { title: 'Capture', desc: 'One tap saves the passage that moved you. Every fragment is a piece of what you think — organized by book, ready to be expressed.' },
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-7 h-7" aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 11.25v5.25a2.25 2.25 0 01-2.25 2.25H5.25a2.25 2.25 0 01-2.25-2.25V6.75A2.25 2.25 0 015.25 4.5h5.25" />
-      </svg>
-    ),
-  },
-  {
-    es: { title: 'Expresa', desc: 'Convierte cualquier fragmento en contenido visual para LinkedIn, Instagram o Pinterest. Lo que compartiste hoy es parte de quién eres mañana.' },
-    en: { title: 'Express', desc: 'Turn any fragment into visual content for LinkedIn, Instagram, or Pinterest. What you shared today is part of who you are tomorrow.' },
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-7 h-7" aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
-      </svg>
-    ),
-  },
-];
+type IconName = 'headphones' | 'pen' | 'share' | 'check' | 'chat' | 'vote' | 'paw' | 'child' | 'leaf' | 'menu' | 'close' | 'arrow';
 
-const CLUBS_FEATURES = [
-  {
-    es: { icon: '💬', label: 'Discusiones ancladas', desc: 'Cada comentario vive en la frase exacta que lo inspiró, no en el capítulo' },
-    en: { icon: '💬', label: 'Anchored discussions', desc: 'Every comment lives in the exact phrase that inspired it — not in the chapter' },
-  },
-  {
-    es: { icon: '🎧', label: 'Escucha Juntos', desc: 'Sesiones en vivo donde todos escuchan la misma frase al mismo tiempo' },
-    en: { icon: '🎧', label: 'Listen Together', desc: 'Live sessions where everyone hears the same phrase at the same time' },
-  },
-  {
-    es: { icon: '🗳️', label: 'Elijan juntos', desc: 'El grupo vota el próximo libro — el conocimiento como decisión colectiva' },
-    en: { icon: '🗳️', label: 'Choose together', desc: 'The group votes on the next book — knowledge as collective decision' },
-  },
-];
+const ICON_PATHS: Record<IconName, JSX.Element> = {
+  headphones: <><path d="M3 18v-6a9 9 0 0 1 18 0v6" /><rect x="3" y="14" width="5" height="7" rx="2" /><rect x="16" y="14" width="5" height="7" rx="2" /></>,
+  pen: <><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z" /><path d="m14 6 4 4" /></>,
+  share: <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" /></>,
+  check: <path d="m5 12 5 5L20 7" />,
+  chat: <path d="M4 5h16v11H9l-5 4z" />,
+  vote: <><path d="M4 12h16v8H4z" /><path d="m8 12 3-7 5 2-2 5" /></>,
+  paw: <><circle cx="7" cy="9" r="1.8" /><circle cx="11" cy="6" r="1.8" /><circle cx="15" cy="6.5" r="1.8" /><circle cx="18" cy="10" r="1.8" /><path d="M8 17c0-3 2-5 4.5-5s4.5 2 4.5 5c0 2-2 3-4.5 3S8 19 8 17z" /></>,
+  child: <><circle cx="12" cy="5" r="2.5" /><path d="M12 8v7M8 11h8M10 21l2-6 2 6" /></>,
+  leaf: <><path d="M20 4C10 4 4 9 4 16c0 2 1 4 1 4s2-1 4-1c7 0 11-6 11-15z" /><path d="M4 20 14 10" /></>,
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  close: <path d="M6 6l12 12M18 6 6 18" />,
+  arrow: <><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></>,
+};
 
-const CAUSAS_FEATURES = [
-  {
-    es: { icon: '🐾', label: 'Bienestar Animal', desc: 'Rescate, cuidado y protección de animales en América Latina' },
-    en: { icon: '🐾', label: 'Animal Welfare', desc: 'Rescue, care and protection of animals in Latin America' },
-  },
-  {
-    es: { icon: '📚', label: 'Niñez y Juventud', desc: 'Protección, alimentación, educación y oportunidades para los más vulnerables' },
-    en: { icon: '📚', label: 'Children & Youth', desc: 'Protection, food, education and opportunities for the most vulnerable' },
-  },
-  {
-    es: { icon: '🌿', label: 'Medio Ambiente', desc: 'Protección de ecosistemas y biodiversidad de la región' },
-    en: { icon: '🌿', label: 'Environment', desc: 'Protection of ecosystems and biodiversity of the region' },
-  },
-];
+function Icon({ name, className = 'w-5 h-5' }: { name: IconName; className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      {ICON_PATHS[name]}
+    </svg>
+  );
+}
+
+const STEP_ICONS: IconName[] = ['headphones', 'pen', 'share'];
+const CLUB_ICONS: IconName[] = ['chat', 'headphones', 'vote'];
+const CAUSE_ICONS: IconName[] = ['paw', 'child', 'leaf'];
+
+const focusRing = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300';
+const btnPrimary = `inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-400 px-6 py-3 text-sm font-bold text-navy transition hover:bg-emerald-300 ${focusRing}`;
+const btnSecondary = `inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10 ${focusRing}`;
+const textLink = `inline-flex items-center gap-2 text-sm font-bold text-emerald-400 hover:text-emerald-300 ${focusRing}`;
+const eyebrow = 'text-xs font-bold uppercase tracking-[0.14em]';
+const sectionTitle = 'font-display text-3xl sm:text-4xl font-bold leading-tight';
+const card = 'rounded-2xl border border-white/10 bg-navy-raised p-6';
+
+function LanguageSwitch({ className = '' }: { className?: string }) {
+  const { t, language, setLanguage } = useTranslation();
+  return (
+    <div role="group" aria-label={t.landing.nav.language} className={`inline-flex overflow-hidden rounded-full border border-white/25 text-xs font-bold ${className}`}>
+      {(['es', 'en'] as const).map((lng) => (
+        <button
+          key={lng}
+          type="button"
+          lang={lng}
+          aria-pressed={language === lng}
+          onClick={() => setLanguage(lng)}
+          className={`px-3 py-1.5 transition ${focusRing} ${language === lng ? 'bg-white/15 text-white' : 'text-slate-400 hover:text-white'}`}
+        >
+          {lng.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function LandingContent() {
-  const { language, setLanguage } = useTranslation();
-  const l = language;
+  const { t } = useTranslation();
+  const l = t.landing;
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
+
+  const navLinks = [
+    { href: '#como-funciona', label: l.nav.howItWorks },
+    { href: '/library', label: l.nav.library },
+    { href: '#ecosistema', label: l.nav.ecosystem },
+    { href: '/pricing', label: l.nav.plans },
+  ];
 
   return (
-    <main className="min-h-screen bg-[#0D1B2A] text-white">
+    <main className="min-h-screen bg-navy text-white">
+      {/* Header */}
+      <header className="border-b border-white/10">
+        <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
+          <Link href="/" className={`text-lg font-bold tracking-[0.28em] ${focusRing}`}>NOETIA</Link>
+          <nav aria-label={l.nav.main} className="hidden items-center gap-7 text-sm text-slate-300 lg:flex">
+            {navLinks.map((n) => (
+              <Link key={n.href} href={n.href} className={`hover:text-white ${focusRing}`}>{n.label}</Link>
+            ))}
+          </nav>
+          <div className="flex items-center gap-3">
+            <LanguageSwitch className="hidden sm:inline-flex" />
+            <Link href="/login" className={`hidden text-sm text-slate-300 hover:text-white sm:inline ${focusRing}`}>{l.nav.signIn}</Link>
+            <Link href="/register" className={`rounded-xl bg-emerald-400 px-4 py-2 text-sm font-bold text-navy hover:bg-emerald-300 ${focusRing}`}>{l.nav.createAccount}</Link>
+            <button
+              type="button"
+              className={`grid h-10 w-10 place-items-center rounded-lg text-white lg:hidden ${focusRing}`}
+              aria-label={l.nav.openMenu}
+              aria-expanded={menuOpen}
+              aria-controls="landing-menu"
+              onClick={() => setMenuOpen(true)}
+            >
+              <Icon name="menu" className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
+      </header>
 
-      {/* Nav */}
-      <nav className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between gap-6">
-        <span className="text-xl font-bold tracking-widest shrink-0">NOETIA</span>
-        <div className="hidden lg:flex items-center gap-6 text-sm text-slate-400">
-          {NAV_LINKS.map(({ href, es, en }) => (
-            <Link key={href} href={href} className="hover:text-white transition">
-              {l === 'es' ? es : en}
-            </Link>
-          ))}
+      {/* Mobile / tablet menu */}
+      {menuOpen && (
+        <div id="landing-menu" role="dialog" aria-modal="true" aria-label={l.nav.menu} className="fixed inset-0 z-40 overflow-y-auto bg-navy lg:hidden">
+          <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-5 sm:px-8">
+            <span className="text-lg font-bold tracking-[0.28em]">NOETIA</span>
+            <button type="button" className={`grid h-10 w-10 place-items-center rounded-lg ${focusRing}`} aria-label={l.nav.closeMenu} onClick={() => setMenuOpen(false)} autoFocus>
+              <Icon name="close" className="h-6 w-6" />
+            </button>
+          </div>
+          <nav aria-label={l.nav.menu} className="mx-auto max-w-6xl px-5 pb-10 sm:px-8">
+            <ul className="divide-y divide-white/10 font-display text-2xl font-bold">
+              {navLinks.map((n) => (
+                <li key={n.href}><Link href={n.href} className={`block py-3 ${focusRing}`} onClick={() => setMenuOpen(false)}>{n.label}</Link></li>
+              ))}
+            </ul>
+            <div className="mt-7 grid gap-3">
+              <Link href="/register" className={btnPrimary}>{l.nav.createAccount}</Link>
+              <Link href="/login" className={btnSecondary}>{l.nav.signIn}</Link>
+            </div>
+            <div className="mt-7 flex items-center justify-between">
+              <span className={`${eyebrow} text-slate-400`}>{l.nav.language}</span>
+              <LanguageSwitch />
+            </div>
+          </nav>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <Link href="/login" className="hidden sm:block text-sm text-slate-300 hover:text-white transition">
-            {l === 'es' ? 'Iniciar sesión' : 'Sign in'}
-          </Link>
-          <Link href="/register" className="bg-white text-[#0D1B2A] px-4 py-1.5 rounded-full font-semibold hover:bg-slate-100 transition text-sm">
-            {l === 'es' ? 'Crear cuenta' : 'Create account'}
-          </Link>
-        </div>
-      </nav>
+      )}
 
       {/* Hero */}
-      <section className="max-w-3xl mx-auto px-6 pt-12 pb-20 text-center">
-        {/* Language selector */}
-        <div className="flex items-center justify-center gap-2 mb-10">
-          <button
-            onClick={() => setLanguage('es')}
-            className={`px-5 py-2 rounded-full text-sm font-semibold transition border ${
-              l === 'es' ? 'bg-white text-[#0D1B2A] border-white' : 'text-slate-400 border-white/20 hover:border-white/40 hover:text-white'
-            }`}
-          >
-            Español
-          </button>
-          <button
-            onClick={() => setLanguage('en')}
-            className={`px-5 py-2 rounded-full text-sm font-semibold transition border ${
-              l === 'en' ? 'bg-white text-[#0D1B2A] border-white' : 'text-slate-400 border-white/20 hover:border-white/40 hover:text-white'
-            }`}
-          >
-            English
-          </button>
+      <section className="mx-auto grid max-w-6xl items-center gap-12 px-5 pb-20 pt-14 sm:px-8 lg:grid-cols-12 lg:pt-20">
+        <div className="lg:col-span-5">
+          <p className={`${eyebrow} text-emerald-400`}>{l.hero.eyebrow}</p>
+          <h1 className="mt-4 font-display text-4xl font-bold leading-[1.12] sm:text-5xl">
+            {l.hero.titleA}<br /><span className="text-emerald-400">{l.hero.titleB}</span>
+          </h1>
+          <p className="mt-5 max-w-md text-lg text-slate-300">{l.hero.lede}</p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link href="/register" className={btnPrimary}>{l.hero.ctaPrimary}</Link>
+            <Link href="/library" className={btnSecondary}>{l.hero.ctaSecondary} <Icon name="arrow" className="h-4 w-4" /></Link>
+          </div>
         </div>
 
-        <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-6">
-          Knowledge Expression Platform
-        </p>
-        <h1 className="text-4xl sm:text-5xl font-bold leading-tight mb-6">
-          {l === 'es' ? 'Lo que lees te define.' : 'What you read defines you.'}<br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
-            {l === 'es' ? 'Noetia lo hace visible.' : 'Noetia makes it visible.'}
-          </span>
-        </h1>
-        <p className="text-slate-300 text-lg leading-relaxed mb-10 max-w-xl mx-auto">
-          {l === 'es'
-            ? 'Noetia combina lectura, escucha activa, captura de ideas y expresión en una sola plataforma. Lo que resaltas y compartes construye algo más que contenido: construye tu identidad intelectual.'
-            : 'Noetia combines reading, active listening, idea capture, and expression in one platform. Every fragment you save and share builds something more than content: it builds your intellectual identity.'}
-        </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link href="/register" className="w-full sm:w-auto bg-white text-[#0D1B2A] font-semibold px-8 py-3.5 rounded-xl hover:bg-slate-100 transition text-base">
-            {l === 'es' ? 'Crear cuenta gratis' : 'Create free account'}
-          </Link>
-          <Link href="/library" className="w-full sm:w-auto border border-white/20 text-white font-medium px-8 py-3.5 rounded-xl hover:bg-white/10 transition text-base">
-            {l === 'es' ? 'Explorar la biblioteca →' : 'Explore the library →'}
-          </Link>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="bg-white/5 border-t border-white/10" aria-label={l === 'es' ? 'Cómo funciona' : 'How it works'}>
-        <div className="max-w-4xl mx-auto px-6 py-16">
-          <p className="text-center text-slate-400 text-sm font-medium uppercase tracking-widest mb-10">
-            {l === 'es' ? 'Tres pasos. Una transformación.' : 'Three steps. One transformation.'}
-          </p>
-          <div className="grid sm:grid-cols-3 gap-8">
-            {FEATURES.map((f) => {
-              const text = l === 'es' ? f.es : f.en;
-              return (
-                <div key={text.title} className="text-center space-y-3">
-                  <div className="w-14 h-14 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center mx-auto">
-                    {f.icon}
-                  </div>
-                  <h2 className="font-semibold text-white">{text.title}</h2>
-                  <p className="text-slate-400 text-sm leading-relaxed">{text.desc}</p>
+        {/* Illustrative product demonstration: static, public-domain text, labelled as an illustration. */}
+        <figure className="lg:col-span-7" aria-label={l.hero.demoLabel}>
+          <div className="grid items-end gap-4 sm:grid-cols-[1.15fr_0.85fr]">
+            <div>
+              <div className="rounded-2xl bg-[#FCFCFD] p-6 text-gray-900 shadow-2xl">
+                <div className="mb-3 flex items-center justify-between text-xs text-gray-600">
+                  <span>{l.hero.demoSource}</span>
+                  <Icon name="headphones" className="h-4 w-4" />
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Identity callout */}
-      <section className="border-t border-white/10" aria-label={l === 'es' ? 'Identidad intelectual' : 'Intellectual identity'}>
-        <div className="max-w-4xl mx-auto px-6 py-14">
-          <div className="rounded-2xl bg-gradient-to-br from-indigo-900/60 to-blue-900/40 border border-indigo-500/20 px-8 py-10 sm:px-12 text-center">
-            <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest mb-4">
-              {l === 'es' ? 'Lo que ocurre con el tiempo' : 'What happens over time'}
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white leading-snug mb-4 max-w-2xl mx-auto">
-              {l === 'es'
-                ? 'No acumulas libros leídos.\nConstruyes quién eres.'
-                : "You don't accumulate books read.\nYou build who you are."}
-            </h2>
-            <p className="text-slate-300 text-base leading-relaxed max-w-xl mx-auto">
-              {l === 'es'
-                ? 'Cada fragmento que guardas y compartes es una pieza de tu identidad intelectual. Con el tiempo, Noetia sabe qué leíste, qué te movió y qué compartiste. El resultado no es una biblioteca. Es un mapa visible de lo que piensas y en qué crees.'
-                : 'Every fragment you save and share is a piece of your intellectual identity. Over time, Noetia knows what you read, what moved you, and what you shared. The result is not a library. It is a visible map of what you think and what you believe.'}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Clubs */}
-      <section className="border-t border-white/10" aria-label="Noetia Clubs">
-        <div className="max-w-4xl mx-auto px-6 py-14">
-          <div className="rounded-2xl bg-white/5 border border-white/10 px-8 py-10 sm:px-12">
-            <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-4">
-              Noetia Clubs
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white leading-snug mb-3">
-              {l === 'es' ? 'Las ideas se profundizan cuando se comparten.' : 'Ideas deepen when they are shared.'}
-            </h2>
-            <p className="text-slate-300 text-base leading-relaxed mb-8 max-w-xl">
-              {l === 'es'
-                ? 'Los Clubes de Noetia no son grupos de chat sobre libros. Son comunidades donde el conocimiento se construye colectivamente — con discusiones ancladas a la frase exacta que las inspiró, sesiones en vivo sincronizadas y un historial compartido de lo que el grupo leyó y pensó.'
-                : 'Noetia Clubs are not book chat groups. They are communities where knowledge is built collectively — with discussions anchored to the exact phrase that inspired them, synchronized live sessions, and a shared record of what the group read and thought.'}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 mb-8">
-              {CLUBS_FEATURES.map((f) => {
-                const text = l === 'es' ? f.es : f.en;
-                return (
-                  <div key={text.label} className="flex-1 flex gap-3 items-start bg-white/5 rounded-xl p-4">
-                    <span className="text-2xl mt-0.5 shrink-0">{text.icon}</span>
-                    <div>
-                      <p className="text-sm font-semibold text-white">{text.label}</p>
-                      <p className="text-xs text-slate-400 leading-snug mt-0.5">{text.desc}</p>
-                    </div>
-                  </div>
-                );
-              })}
+                <p className="font-serif text-[17px] leading-[1.75]">
+                  {l.hero.demoBefore}
+                  <mark className="rounded bg-emerald-50 px-0.5 text-gray-900 shadow-[inset_0_-2px_0_#047857]">{l.hero.demoPhrase}</mark>
+                  {l.hero.demoAfter}
+                </p>
+                <div className="mt-4 flex items-center gap-3 border-t border-gray-200 pt-3 text-xs text-gray-600" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><path d="M7 4.5v15l12-7.5z" /></svg>
+                  <span className="relative h-1 flex-1 rounded bg-gray-200"><span className="absolute inset-y-0 left-0 w-[38%] rounded bg-emerald-700" /></span>
+                  <span>0:42</span><b>1.0×</b>
+                </div>
+              </div>
+              <p className="mt-3"><span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800"><Icon name="check" className="h-4 w-4" />{l.hero.demoSaved}</span></p>
             </div>
-            <Link href="/clubs" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-3 rounded-xl transition text-sm">
-              {l === 'es' ? 'Explorar clubes →' : 'Explore clubs →'}
-            </Link>
+            <div className="relative mx-auto aspect-square w-full max-w-[300px] overflow-hidden rounded-2xl shadow-2xl">
+              <Image src="/backgrounds/imagen-13.jpg" alt="" fill sizes="300px" className="object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-b from-navy/10 to-navy/70" />
+              <span className="absolute left-4 top-4 text-[11px] font-bold tracking-[0.28em]" aria-hidden="true">NOETIA</span>
+              <blockquote className="absolute inset-x-5 bottom-5">
+                <p className="font-display text-lg font-semibold leading-snug">{l.hero.demoQuote}</p>
+                <p className="mt-2 text-xs text-white/90">{l.hero.demoAuthor}</p>
+              </blockquote>
+            </div>
+          </div>
+          <ol className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-400">
+            {l.hero.demoSteps.map((s, i) => (<li key={s}><b className="mr-1.5 text-emerald-400">{i + 1}</b>{s}</li>))}
+          </ol>
+          <figcaption className="mt-2 text-xs text-slate-400">{l.hero.caption}</figcaption>
+        </figure>
+      </section>
+
+      {/* How it works */}
+      <section id="como-funciona" className="border-t border-white/10 py-20" aria-labelledby="como-funciona-title">
+        <div className="mx-auto max-w-6xl px-5 sm:px-8">
+          <p className={`${eyebrow} text-slate-400`}>{l.how.eyebrow}</p>
+          <h2 id="como-funciona-title" className={`mt-3 ${sectionTitle}`}>{l.how.title}</h2>
+          <p className="mt-4 max-w-2xl text-lg text-slate-300">{l.how.intro}</p>
+          <div className="mt-10 grid gap-8 sm:grid-cols-3">
+            {l.how.steps.map((s, i) => (
+              <div key={s.title}>
+                <div className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-emerald-400/10 text-emerald-400"><Icon name={STEP_ICONS[i]} /></div>
+                <h3 className="font-display text-xl font-bold">{s.title}</h3>
+                <p className="mt-1 text-slate-300">{s.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Causas */}
-      <section className="border-t border-white/10" aria-label="Causas Noetia">
-        <div className="max-w-4xl mx-auto px-6 py-14">
-          <div className="rounded-2xl bg-white/5 border border-white/10 px-8 py-10 sm:px-12">
-            <p className="text-xs font-semibold text-emerald-400 uppercase tracking-widest mb-4">
-              Causas Noetia
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white leading-snug mb-4">
-              {l === 'es' ? 'Compartir es una forma de ayudar.' : 'Sharing is a form of helping.'}
-            </h2>
-            <p className="text-slate-300 text-base leading-relaxed mb-8 max-w-xl">
-              {l === 'es'
-                ? <>Noetia es una plataforma de compartir conocimiento. Y creemos que compartir tiene que significar algo más que alcance. Por eso el <strong className="text-white">2,22% de cada compra</strong> apoya proyectos sociales reales — no como un botón de donación, sino como parte de cómo opera la plataforma desde el primer día. Tú eliges la causa.</>
-                : <>Noetia is a platform for sharing knowledge. We believe sharing must mean something more than reach. That is why <strong className="text-white">2.22% of every purchase</strong> supports real social projects — not as a donation button, but as part of how the platform has operated from day one. You choose the cause.</>}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 mb-8">
-              {CAUSAS_FEATURES.map((f) => {
-                const text = l === 'es' ? f.es : f.en;
-                return (
-                  <div key={text.label} className="flex-1 flex gap-3 items-start bg-white/5 rounded-xl p-4">
-                    <span className="text-2xl mt-0.5 shrink-0">{text.icon}</span>
-                    <div>
-                      <p className="text-sm font-semibold text-white">{text.label}</p>
-                      <p className="text-xs text-slate-400 leading-snug mt-0.5">{text.desc}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <Link href="/causas" className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold px-6 py-3 rounded-xl transition text-sm">
-              {l === 'es' ? 'Conoce más de Causas Noetia →' : 'Learn more about Causas Noetia →'}
-            </Link>
+      {/* Ecosystem */}
+      <section id="ecosistema" className="border-t border-white/10 py-20" aria-labelledby="ecosistema-title">
+        <div className="mx-auto max-w-6xl px-5 sm:px-8">
+          <p className={`${eyebrow} text-emerald-400`}>{l.eco.eyebrow}</p>
+          <h2 id="ecosistema-title" className={`mt-3 ${sectionTitle}`}>{l.eco.title}</h2>
+          <div className="mt-10 grid gap-5 md:grid-cols-3">
+            <article className={card} data-tier="noetia">
+              <span className="inline-flex rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-300">{l.eco.available}</span>
+              <h3 className="mt-4 font-display text-2xl font-bold">Noetia</h3>
+              <p className="mt-1 text-slate-300">{l.eco.noetia.verb}</p>
+              <ul className="mt-5 grid gap-2.5 text-sm text-slate-300">
+                {l.eco.noetia.bullets.map((b) => (<li key={b} className="flex gap-2.5"><Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />{b}</li>))}
+              </ul>
+              <Link href="/register" className={`${btnPrimary} mt-6`}>{l.eco.noetia.cta}</Link>
+            </article>
+            {(['plus', 'x'] as const).map((tier) => (
+              <article key={tier} className={card} data-tier={tier}>
+                {/* Non-interactive availability label: no upgrade, checkout or activation path. */}
+                <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-slate-200">{l.eco.comingSoon}</span>
+                <h3 className="mt-4 font-display text-2xl font-bold">{tier === 'plus' ? 'Noetia+' : 'NoetiaX'}</h3>
+                <p className="mt-1 text-slate-300">{l.eco[tier].verb}</p>
+                <ul className="mt-5 grid gap-2.5 text-sm text-slate-300">
+                  {l.eco[tier].bullets.map((b) => (<li key={b} className="flex gap-2.5"><Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />{b}</li>))}
+                </ul>
+                <p className="mt-6 border-t border-white/10 pt-4 text-sm text-slate-400">{l.eco[tier].requirement}</p>
+              </article>
+            ))}
           </div>
+          <p className="mt-5 max-w-3xl text-sm text-slate-400">{l.eco.note}</p>
+        </div>
+      </section>
+
+      {/* Reading Clubs */}
+      <section className="border-t border-white/10 py-20" aria-labelledby="clubes-title">
+        <div className="mx-auto grid max-w-6xl gap-10 px-5 sm:px-8 lg:grid-cols-12">
+          <div className="lg:col-span-5">
+            <p className={`${eyebrow} text-slate-400`}>{l.clubs.eyebrow}</p>
+            <h2 id="clubes-title" className={`mt-3 ${sectionTitle}`}>{l.clubs.title}</h2>
+            <Link href="/clubs" className={`${btnSecondary} mt-7`}>{l.clubs.cta}</Link>
+          </div>
+          <ul className="grid gap-5 lg:col-span-7">
+            {l.clubs.items.map((it, i) => (
+              <li key={it.title} className="flex gap-4">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/5 text-emerald-400"><Icon name={CLUB_ICONS[i]} /></span>
+                <span><b className="block">{it.title}</b><span className="text-slate-300">{it.desc}</span></span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* Causas Noetia — PO-approved commitment wording; no allocation logic on this page. */}
+      <section className="border-t border-white/10 py-20" aria-labelledby="causas-title">
+        <div className="mx-auto grid max-w-6xl gap-10 px-5 sm:px-8 lg:grid-cols-12">
+          <div className="lg:col-span-5">
+            <p className={`${eyebrow} text-emerald-400`}>{l.causas.eyebrow}</p>
+            <h2 id="causas-title" className={`mt-3 ${sectionTitle}`}>{l.causas.title}</h2>
+            <p className="mt-4 text-lg text-slate-300">{l.causas.body}</p>
+            <Link href="/causas" className={`${textLink} mt-6`}>{l.causas.cta} <Icon name="arrow" className="h-4 w-4" /></Link>
+          </div>
+          <ul className="grid gap-5 lg:col-span-7">
+            {l.causas.causes.map((c, i) => (
+              <li key={c.title} className="flex gap-4">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/5 text-emerald-400"><Icon name={CAUSE_ICONS[i]} /></span>
+                <span><b className="block">{c.title}</b><span className="text-slate-300">{c.desc}</span></span>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
       {/* Authors */}
-      <section className="max-w-4xl mx-auto px-6 py-16" aria-label={l === 'es' ? 'Para autores' : 'For authors'}>
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-8 sm:p-10 flex flex-col sm:flex-row items-start sm:items-center gap-6">
-          <div className="flex-1">
-            <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-2">
-              {l === 'es' ? 'Para autores y editoriales' : 'For authors and publishers'}
-            </p>
-            <h2 className="text-xl font-bold text-white mb-2">
-              {l === 'es'
-                ? 'Tus lectores no solo leen tu libro. Lo integran, lo resaltan y lo comparten como parte de quiénes son.'
-                : "Your readers don't just read your book. They integrate it, highlight it, and share it as part of who they are."}
-            </h2>
-            <p className="text-slate-400 text-sm leading-relaxed">
-              {l === 'es'
-                ? 'Publicar en Noetia no es solo distribución digital. Es entrar a una plataforma donde los libros se convierten en expresión — con analytics en tiempo real de lecturas, fragmentos compartidos y alcance orgánico generado por tus lectores.'
-                : 'Publishing on Noetia is not just digital distribution. It is entering a platform where books become expression — with real-time reading analytics, shared fragments, and organic reach generated by your readers.'}
-            </p>
+      <section className="border-t border-white/10 py-20" aria-labelledby="autores-title">
+        <div className="mx-auto grid max-w-6xl items-start gap-8 px-5 sm:px-8 lg:grid-cols-12">
+          <div className="lg:col-span-5">
+            <p className={`${eyebrow} text-slate-400`}>{l.authors.eyebrow}</p>
+            <h2 id="autores-title" className={`mt-3 ${sectionTitle}`}>{l.authors.title}</h2>
           </div>
-          <div className="flex-shrink-0">
-            <Link href="/upload-guide" className="inline-block bg-white text-[#0D1B2A] font-semibold px-6 py-3 rounded-xl hover:bg-slate-100 transition text-sm whitespace-nowrap">
-              {l === 'es' ? 'Ver guía de publicación →' : 'View publishing guide →'}
-            </Link>
+          <div className="lg:col-span-7">
+            <p className="text-lg text-slate-300">{l.authors.body}</p>
+            <Link href="/upload-guide" className={`${btnSecondary} mt-6`}>{l.authors.cta}</Link>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-white/10 py-8">
-        <div className="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
-          <div>
-            <span className="font-bold tracking-widest text-slate-400">NOETIA</span>
-            <span className="ml-3 text-slate-600 text-xs">Where knowledge becomes visible.</span>
-          </div>
-          <nav aria-label="Footer" className="flex gap-6">
-            <Link href="/login" className="hover:text-slate-300 transition">{l === 'es' ? 'Iniciar sesión' : 'Sign in'}</Link>
-            <Link href="/clubs" className="hover:text-slate-300 transition">{l === 'es' ? 'Clubes' : 'Clubs'}</Link>
-            <Link href="/causas" className="hover:text-slate-300 transition">Causas Noetia</Link>
-            <Link href="/upload-guide" className="hover:text-slate-300 transition">{l === 'es' ? 'Para autores' : 'For authors'}</Link>
-            <a href="mailto:info@noetia.app" className="hover:text-slate-300 transition">{l === 'es' ? 'Contacto' : 'Contact'}</a>
-          </nav>
-          <span>© {new Date().getFullYear()} Noetia</span>
+      {/* Closing */}
+      <section className="border-t border-white/10 py-20 text-center">
+        <div className="mx-auto max-w-6xl px-5 sm:px-8">
+          <h2 className={sectionTitle}>{l.closing.title}</h2>
+          <Link href="/register" className={`${btnPrimary} mt-7`}>{l.closing.cta}</Link>
         </div>
-      </footer>
-
+      </section>
     </main>
   );
 }

@@ -828,6 +828,112 @@ export const en = {
       },
     },
   },
+  landing: {
+    nav: {
+      main: 'Main',
+      howItWorks: 'How it works',
+      library: 'Library',
+      ecosystem: 'Noetia+ & NoetiaX',
+      plans: 'Plans',
+      signIn: 'Sign in',
+      createAccount: 'Create account',
+      openMenu: 'Open menu',
+      closeMenu: 'Close menu',
+      menu: 'Menu',
+      language: 'Language',
+    },
+    hero: {
+      eyebrow: 'Reading that becomes ideas',
+      titleA: 'What you read defines you.',
+      titleB: 'Noetia makes it visible.',
+      lede: 'Read and listen at the same time, save the passages that move you and share them as visual cards.',
+      ctaPrimary: 'Create free account',
+      ctaSecondary: 'Explore the library',
+      demoLabel: 'Illustration of how Noetia works',
+      demoSource: 'Pride and Prejudice · Chapter 1',
+      demoBefore: 'It is a truth universally acknowledged, ',
+      demoPhrase: 'that a single man in possession of a good fortune,',
+      demoAfter: ' must be in want of a wife.',
+      demoSaved: 'Passage saved',
+      demoQuote: '“I declare after all there is no enjoyment like reading!”',
+      demoAuthor: '— Jane Austen',
+      demoSteps: ['Listen and read', 'Capture', 'Share'],
+      caption: 'Product illustration using a public-domain text.',
+    },
+    how: {
+      eyebrow: 'How it works',
+      title: 'Three gestures. A new way to read.',
+      intro: 'Over time, your saved passages form a map of the ideas that move you.',
+      steps: [
+        { title: 'Absorb', desc: 'Read and listen together, phrase by phrase.' },
+        { title: 'Capture', desc: 'Save the passage that moved you in one tap.' },
+        { title: 'Express', desc: 'Turn it into a visual card to share.' },
+      ],
+    },
+    eco: {
+      eyebrow: 'Ecosystem',
+      title: 'One ecosystem to read, understand and investigate',
+      available: 'Available',
+      comingSoon: 'Coming Soon',
+      noetia: {
+        verb: 'Read, listen, capture and share.',
+        bullets: [
+          'Read and listen with synchronized text and audio',
+          'Capture passages and create visual quotations',
+          'Join reading communities',
+        ],
+        cta: 'Create account',
+      },
+      plus: {
+        verb: 'Understand, ask and connect ideas.',
+        bullets: [
+          'Source-aware AI research across up to three eligible books you select per session',
+          'Questions and explanations with references to the source text',
+        ],
+        requirement: 'Will require an active Noetia subscription.',
+      },
+      x: {
+        verb: 'Investigate in depth and compare ideas.',
+        bullets: [
+          'Advanced source-aware investigation across up to ten eligible books you select',
+          'Deeper exploration and comparison of ideas and evidence across books',
+        ],
+        requirement: 'Will require an active Noetia subscription.',
+      },
+      note: 'Noetia+ and NoetiaX are not available yet. These descriptions reflect their approved direction and may change. No dates or prices have been announced.',
+    },
+    clubs: {
+      eyebrow: 'Reading Clubs',
+      title: 'Ideas grow when they are shared.',
+      cta: 'Explore clubs',
+      items: [
+        { title: 'Anchored discussions', desc: 'Discuss the exact phrase that inspired you.' },
+        { title: 'Listen Together', desc: 'Live sessions on the same phrase at the same time.' },
+        { title: 'Choose together', desc: 'The group votes on the next book.' },
+      ],
+    },
+    causas: {
+      eyebrow: 'Causas Noetia',
+      title: 'Sharing is also helping.',
+      body: 'We commit 2.22% of every payment to Causas Noetia. You choose one cause to receive that contribution. If you don\'t choose one, it is distributed equally among all three.',
+      cta: 'Learn about Causas Noetia',
+      causes: [
+        { title: 'Animal welfare', desc: 'Rescue, care and protection of animals.' },
+        { title: 'Children and youth', desc: 'Protection, education and opportunity.' },
+        { title: 'Environment', desc: 'Ecosystems and biodiversity.' },
+      ],
+    },
+    authors: {
+      eyebrow: 'For authors and publishers',
+      title: 'Your readers highlight your book and share it.',
+      body: 'Publish on Noetia with reading and sharing analytics.',
+      cta: 'View publishing guide',
+    },
+    closing: {
+      title: 'Start reading differently.',
+      cta: 'Create free account',
+    },
+  },
 };
 
 export type Translations = typeof en;

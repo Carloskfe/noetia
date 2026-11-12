@@ -236,24 +236,6 @@ export default function CausasPage() {
         </div>
       </section>
 
-      {/* Footer strip */}
-      <footer className="border-t border-white/10 py-8">
-        <div className="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
-          <span className="font-bold tracking-widest text-slate-400">NOETIA</span>
-          <nav className="flex gap-6">
-            <Link href="/library" className="hover:text-slate-300 transition">
-              {l === 'es' ? 'Biblioteca' : 'Library'}
-            </Link>
-            <Link href="/pricing" className="hover:text-slate-300 transition">
-              {l === 'es' ? 'Planes' : 'Plans'}
-            </Link>
-            <a href="mailto:info@noetia.app" className="hover:text-slate-300 transition">
-              {l === 'es' ? 'Contacto' : 'Contact'}
-            </a>
-          </nav>
-          <span>© {new Date().getFullYear()} Noetia</span>
-        </div>
-      </footer>
 
     </main>
   );
