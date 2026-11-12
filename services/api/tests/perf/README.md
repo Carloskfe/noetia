@@ -185,3 +185,20 @@ B, C and D are supplementary research distributions. They never replace A.
 **Inline-storage experiments:** use a disposable clone (`CREATE DATABASE … TEMPLATE …; ALTER TABLE ai_book_chunks ALTER COLUMN tsv SET STORAGE MAIN; UPDATE … SET tsv = (tsv::text)::tsvector; VACUUM FULL`). **No migration.**
 
 Results: `docs/reports/2026-11-11-NEM-024-po-049-e1-architecture-validation.md`.
+
+## PO-050: representative literary corpus diagnostics (test only; opt-in)
+
+`e1-literary-diag.ts` measures the **unchanged** production retrieval path (`LexicalRetrievalService`, `RANK_SQL`/`STATUS_SQL` verbatim, real MinIO, S2 worker, no caches) on authentic public-domain books. It runs only against disposable local `po050_es_test` / `po050_en_test` databases and a disposable MinIO.
+
+| Command | Purpose |
+|---|---|
+| `prepare <raw> <norm>` | Verify downloads against `fixtures/po050-corpus-manifest.json`, apply the production `GutenbergFetcherService.stripHeaders` and the manifest's editorial cut, and write normalized texts **locally only** |
+| `ingest <norm>` | Store texts in MinIO and index them with the production `BookIndexer` (real rights rows, real `IndexingPermission`) |
+| `profile <norm>` | Corpus composition and selectivity (no lexeme strings) |
+| `freeze <q.json>` | Write the hash-only predeclared query manifest `fixtures/po050-query-manifest-<lang>.json` |
+| `info`, `explain`, `relevance` | Untimed selectivity, production plan, usefulness and citation validity |
+| `e2e <q.json> <seed> <rounds> [declared\|S1\|S3\|S10\|L]` | Timed sessions with stage timings and session resource deltas |
+
+Book texts, query text and reference anchors are never committed or printed. The manifests hold metadata and hashes only.
+
+Results: `docs/reports/2026-11-12-NEM-024-po-050-real-literary-corpus-e1-validation.md`.

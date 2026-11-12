@@ -251,6 +251,25 @@ async function cmdInfo(path: string, scopeOverride: string) {
   console.log(JSON.stringify({ cmd: 'info', lang: LANG, scope: scopeOverride, corpusChunks: total, queries: out }));
 }
 
+// ── explain: the production RANK_SQL (verbatim from src) plan per query (untimed) ───────────────────────────────
+async function cmdExplain(path: string) {
+  const SRC = readFileSync(join(process.cwd(), 'src/knowledge/retrieval/lexical-retrieval.service.ts'), 'utf8');
+  const m = /const RANK_SQL = `([\s\S]*?)`;/.exec(SRC); if (!m) throw new Error('RANK_SQL not found');
+  const qs = loadQueries(path);
+  const c = await pg(); const W = await works(c); const all = [...W.keys()];
+  const out: any[] = [];
+  for (const q of qs) {
+    const ws = scopeWorks(q.scope, all).map((w) => W.get(w)!);
+    const [{ 'QUERY PLAN': p }] = (await c.query(`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${m[1]}`, [ws.map((x) => x.bookId), ws.map((x) => x.textHash), q.q, TOPK])).rows;
+    const scans: string[] = [];
+    const walk = (n: any) => { if (/Scan/.test(n['Node Type']) && n['Relation Name'] === 'ai_book_chunks') scans.push(n['Node Type']); (n.Plans ?? []).forEach(walk); };
+    walk(p[0].Plan);
+    out.push({ id: q.id, cls: q.cls, execMs: r2(p[0]['Execution Time']), scans: [...new Set(scans)], sharedHit: p[0].Plan['Shared Hit Blocks'], sharedRead: p[0].Plan['Shared Read Blocks'] });
+  }
+  await c.end();
+  console.log(JSON.stringify({ cmd: 'explain', lang: LANG, queries: out }));
+}
+
 // ── retrieval wiring (production classes; instrumentation wraps, never substitutes) ─────────────────────────────
 async function wire() {
   const { KnowledgeDbService } = require('../../src/knowledge/common/knowledge-db.service');
@@ -382,6 +401,7 @@ async function cmdE2e(path: string, seed: number, rounds: number, scopeOverride:
   else if (cmd === 'freeze') await cmdFreeze(a1);
   else if (cmd === 'info') await cmdInfo(a1, a2 ?? 'declared');
   else if (cmd === 'relevance') await cmdRelevance(a1, a2);
+  else if (cmd === 'explain') await cmdExplain(a1);
   else if (cmd === 'e2e') await cmdE2e(a1, Number(a2), Number(a3 ?? 3), a4 ?? 'declared');
   else throw new Error('usage: prepare <raw> <out> | ingest <norm> | profile <norm> | freeze <q.json> | info <q.json> [scope] | relevance <q.json> <norm> | e2e <q.json> <seed> <rounds> [scope]');
 })().catch((e) => { console.error(e?.message ?? e); process.exit(1); });
