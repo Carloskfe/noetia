@@ -83,7 +83,7 @@ Per mission §44: where the product spec is incomplete, **engineering does not i
 - **Recommended default:** **not at launch**; design keeps it possible.
 
 ### D13 — How should a reader's natural-language question reach lexical retrieval? (retrieval quality)
-> **OPEN — product concern recorded under [PO-051](../operating-framework/decisions/product-owner/PO-051-nem-024-e1-plan-stability-and-workload-class-validation-authorization.md) Decision C (2026-11-12).** It is separate from NEM-024 E-1 latency. No implementation is authorized.
+> **OPEN — product concern recorded under [PO-051](../operating-framework/decisions/product-owner/PO-051-nem-024-e1-plan-stability-and-workload-class-validation-authorization.md) Decision C (2026-11-12); preserved as separate and unresolved by [PO-052](../operating-framework/decisions/product-owner/PO-052-nem-024-po-051-formal-acceptance.md).** It is separate from NEM-024 E-1 latency. No implementation is authorized.
 - **Observed** ([PO-050 report §16](../reports/2026-11-12-NEM-024-po-050-real-literary-corpus-e1-validation.md)):
   - On authentic public-domain books, **7 of 15 question-form queries returned no passages**, even though the relevant books were indexed and permitted.
   - One known-location question (*"¿Cómo se llama el caballo de don Quijote?"*) returned passages but not the naming passage, within either the top 8 or the top 20.

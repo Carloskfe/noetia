@@ -127,6 +127,14 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Checkpoint A only** authorized; B–E, merge, deployment, production providers or indexing, and infrastructure are not.
 - Pre-execution check: **blocked** (B-1 protected NEM-023 test; B-2 specification gap).
 
+### PO-052 — NEM-024 formal acceptance of PO-051 as completed diagnostics (governance only) — decided 2026-11-12
+→ **[PO-052](../operating-framework/decisions/product-owner/PO-052-nem-024-po-051-formal-acceptance.md)**
+
+- PO-051's plan-stability investigation, near-limit authentic-corpus measurements and workload-class assessment are **accepted as diagnostic evidence**, with all limitations retained. Its recommendations R-1..R-5 are **not** approved.
+- **E-1 OPEN and BLOCKED** (150 ms p95 unchanged, unmet); **Checkpoint E NOT QUALIFIED**; Q-11 conditional (risks retained); PR #56 Draft; release and activation **BLOCKED**.
+- **Not authorized:** C1, hybrid ranking, inline storage migration, S2 optimization, performance-policy revisions, any new investigation or mission.
+- [D13](20-open-product-decisions.md) is preserved as a separate unresolved retrieval-quality concern.
+
 ### PO-051 — NEM-024 E-1 plan stability and workload-class architecture validation (bounded diagnostic only); PO-050 accepted as diagnostics — decided 2026-11-12
 → **[PO-051](../operating-framework/decisions/product-owner/PO-051-nem-024-e1-plan-stability-and-workload-class-validation-authorization.md)**
 
