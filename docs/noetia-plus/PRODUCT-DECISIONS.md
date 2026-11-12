@@ -127,6 +127,14 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Checkpoint A only** authorized; B–E, merge, deployment, production providers or indexing, and infrastructure are not.
 - Pre-execution check: **blocked** (B-1 protected NEM-023 test; B-2 specification gap).
 
+### PO-049 — NEM-024 E-1 architecture validation (diagnostic and architectural validation only); PO-048 accepted as diagnostics — decided 2026-11-11
+→ **[PO-049](../operating-framework/decisions/product-owner/PO-049-nem-024-e1-architecture-validation-authorization.md)**
+
+- **A:** PO-048 accepted as a completed diagnostic investigation (not its remedy).
+- **B:** PO-045 provisional; PO-046 and PO-048 accepted as diagnostics; PO-047 conditional for development progression (risks retained). **E-1 OPEN; Checkpoint E NOT QUALIFIED; release BLOCKED.**
+- **C:** bounded validation of F-48-1 (is the single-lexeme hybrid exact?), F-48-2 (benchmark representativeness, governing benchmark unchanged) and F-48-3 (at most two further exact strategies).
+- **Not authorized:** any `src`/SQL/migration/index/config change, approximate ranking, benchmark revision, infrastructure, merge, deploy, activation, PO-050.
+
 ### PO-048 — NEM-024 E-1 ranking investigation (diagnostic only); PO-047 accepted conditionally — decided 2026-11-11
 → **[PO-048](../operating-framework/decisions/product-owner/PO-048-nem-024-e1-ranking-root-cause-investigation-authorization.md)**
 
