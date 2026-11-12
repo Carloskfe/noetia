@@ -168,3 +168,70 @@ describe('apiFetch', () => {
     results.forEach((r) => expect(r).toEqual({ ok: 1 })); // all retried successfully
   });
 });
+
+// NEM-024 Checkpoint D: raw-Response variant for SSE (same token + shared refresh; never parses or throws on non-2xx).
+describe('apiStream', () => {
+  const originalFetch = global.fetch;
+  afterAll(() => { global.fetch = originalFetch; });
+
+  it('returns the raw Response (even non-2xx) with the bearer token and JSON content type', async () => {
+    jest.resetModules();
+    const { apiStream } = await import('../../../lib/api');
+    localStorageMock.getItem.mockImplementation(((k: string) => (k === 'access_token' ? 'tok' : null)) as (key: string) => string);
+    const res = { ok: false, status: 409, json: jest.fn() };
+    global.fetch = jest.fn().mockResolvedValue(res);
+    expect(await apiStream('/knowledge/sessions/s/turns/stream', { method: 'POST', body: '{}' })).toBe(res);
+    expect(res.json).not.toHaveBeenCalled();
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toMatch(/\/knowledge\/sessions\/s\/turns\/stream$/);
+    expect(init.headers).toMatchObject({ Authorization: 'Bearer tok', 'Content-Type': 'application/json' });
+  });
+
+  it('on 401 refreshes once and retries with the new token', async () => {
+    jest.resetModules();
+    const { apiStream } = await import('../../../lib/api');
+    localStorageMock.getItem.mockImplementation((k: string) => mockStorage[k] ?? null);
+    mockStorage['access_token'] = 'expired';
+    global.fetch = jest.fn((url: string, init?: any) => {
+      if (url.includes('/auth/refresh')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ accessToken: 'fresh' }) });
+      return Promise.resolve(init?.headers?.Authorization === 'Bearer fresh' ? { ok: true, status: 200 } : { ok: false, status: 401 });
+    }) as unknown as typeof fetch;
+    expect((await apiStream('/x')).status).toBe(200);
+  });
+
+  it('on 401 with a failed refresh → redirects to /login and throws status 401', async () => {
+    jest.resetModules();
+    const { apiStream } = await import('../../../lib/api');
+    global.fetch = jest.fn((url: string) => Promise.resolve(url.includes('/auth/refresh') ? { ok: false } : { ok: false, status: 401 })) as unknown as typeof fetch;
+    await expect(apiStream('/x')).rejects.toMatchObject({ status: 401 });
+  });
+});
+
+// NEM-024 F-D1: account scoping + logout sweep for research recovery entries.
+describe('currentAccountId / clearResearchRecovery', () => {
+  const b64url = (o: unknown) => btoa(JSON.stringify(o)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+  it('reads `sub` from the access token payload (base64url, unpadded); null when absent, malformed, or without sub', async () => {
+    const { currentAccountId } = await import('../../../lib/api');
+    localStorageMock.getItem.mockImplementation((k: string) => mockStorage[k] ?? null);
+    const sub = 'user-??>>~~1';
+    const payload = b64url({ sub, email: 'e' });
+    expect(payload).toMatch(/[-_]/); // exercises the base64url alphabet
+    mockStorage['access_token'] = `h.${payload}.s`;
+    expect(currentAccountId()).toBe(sub);
+    for (const tok of ['', 'not-a-jwt', `h.${b64url({ email: 'e' })}.s`, `h.${b64url({ sub: '' })}.s`, 'h.%%%.s']) {
+      mockStorage['access_token'] = tok;
+      expect(currentAccountId()).toBeNull();
+    }
+    delete mockStorage['access_token'];
+    expect(currentAccountId()).toBeNull();
+  });
+  it('clearResearchRecovery removes only prefixed entries from sessionStorage; tolerates an unusable localStorage', async () => {
+    const { clearResearchRecovery, RESEARCH_RECOVERY_PREFIX } = await import('../../../lib/api');
+    sessionStorage.setItem(`${RESEARCH_RECOVERY_PREFIX}a`, '1');
+    sessionStorage.setItem(`${RESEARCH_RECOVERY_PREFIX}b`, '2');
+    sessionStorage.setItem('keep', '3');
+    expect(() => clearResearchRecovery()).not.toThrow(); // the mocked localStorage has no key()/length
+    expect(Object.keys(sessionStorage)).toEqual(['keep']);
+    sessionStorage.clear();
+  });
+});

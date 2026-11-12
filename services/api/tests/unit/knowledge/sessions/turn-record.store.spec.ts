@@ -51,8 +51,9 @@ describe('TurnRecordStore (NEM-024 Checkpoint A)', () => {
     expect(await store.recordStep4Failure({ sessionId: S, keyHash: 'turn:k', question: 'q', reason: 'set_changed', release: 'released' })).toBe('new-id');
     const [c] = db.ran(/INSERT INTO ai_turns/);
     expect(c.sql).toMatch(/ON CONFLICT \("sessionId", "keyHash"\) DO NOTHING/);
-    expect(c.sql).toMatch(/VALUES \(\$1, NULL, \$2, \$3, 'failed'/); // turnIndex NULL: not a research turn
+    expect(c.sql).toMatch(/VALUES \(\$1, NULL, \$2, \$3, \$7/); // turnIndex NULL: not a research turn
     expect(c.params.slice(0, 5)).toEqual([S, 'turn:k', 'q', 'set_changed', 'released']);
+    expect(c.params[6]).toBe('failed'); // default status
     const kept = setup([[/INSERT INTO ai_turns/, () => []], [/FROM ai_turns WHERE "sessionId" = \$1 AND "keyHash"/, () => [{ id: 'existing' }]]]);
     expect(await kept.store.recordStep4Failure({ sessionId: S, keyHash: 'turn:k', question: 'q', reason: 'x', release: 'unconfirmed' })).toBe('existing');
     const broken = setup([[/INSERT INTO ai_turns/, () => []], [/FROM ai_turns WHERE "sessionId" = \$1 AND "keyHash"/, () => []]]);
@@ -73,5 +74,45 @@ describe('TurnRecordStore (NEM-024 Checkpoint A)', () => {
     expect(isUniqueViolation({ code: '23505', constraint: 'other' }, 'UQ_ai_turns_session_key')).toBe(false);
     expect(isUniqueViolation({ code: '40001' }, 'UQ_ai_turns_session_key')).toBe(false);
     expect(isUniqueViolation(null, 'x')).toBe(false);
+  });
+
+  it('Checkpoint B: T3 cancel and T4 finalize/sweep are fenced in opposite directions and require status accepted', async () => {
+    const { db, store } = setup([[/SET status = 'cancelled'/, () => [{ n: 1 }]], [/SET status = 'interrupted'/, () => [{ n: 2 }]]]);
+    expect(await store.cancel(T)).toBe(true);
+    expect(await store.finalize([T, 'x'])).toBe(2);
+    expect(await store.finalize([])).toBe(0);
+    expect(await store.sweep(7)).toBe(2);
+    const [cancel] = db.ran(/SET status = 'cancelled'/);
+    expect(cancel.sql).toMatch(/status = 'accepted' AND statement_timestamp\(\) < "fenceAt"/);
+    for (const c of db.ran(/SET status = 'interrupted'/)) {
+      expect(c.sql).toMatch(/status = 'accepted' AND statement_timestamp\(\) >= "fenceAt"/);
+      expect(c.sql).toMatch(/^WITH u AS \(UPDATE/);
+      expect(c.sql).not.toMatch(/\bnow\(\)/);
+      expect(c.sql).not.toMatch(/ai_budget_ledger|ai_usage_events/);
+    }
+    expect(db.ran(/SET status = 'interrupted'/)[1].params).toEqual([7]);
+    expect(db.ran(/SET status = 'interrupted'/).length).toBe(2); // finalize([]) issues no statement
+  });
+
+  it('LW-5 guard (source-level): no transition statement uses now()', () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, '../../../../src/knowledge/sessions/turn-record.store.ts'), 'utf8');
+    const updates = [...src.matchAll(/`(UPDATE ai_turns[^`]*)`/g)].map((m: RegExpMatchArray) => m[1]);
+    expect(updates.length).toBeGreaterThanOrEqual(5);
+    for (const u of updates) { expect(u).not.toMatch(/\bnow\(\)/); expect(u).toMatch(/statement_timestamp\(\)/); }
+  });
+
+  it('history listing and single-row lookup are scoped to the session', async () => {
+    const { db, store } = setup([[/ORDER BY "createdAt" DESC/, () => [{ id: T }]], [/"sessionId" = \$1 AND id = \$2/, () => []]]);
+    expect(await store.listBySession(S, 5)).toEqual([{ id: T }]);
+    expect(db.ran(/ORDER BY "createdAt" DESC/)[0].params).toEqual([S, 5]);
+    expect(await store.findHistoryRow(S, T)).toBeNull();
+  });
+
+  it('Amendment 2: the terminal record may be cancelled (turnIndex NULL, no reason); only failed | cancelled are accepted', async () => {
+    const { db, store } = setup([[/INSERT INTO ai_turns/, () => [{ id: 'c-id' }]]]);
+    expect(await store.recordStep4Failure({ sessionId: S, keyHash: 'turn:c', question: 'q', reason: null, release: 'unconfirmed', status: 'cancelled' })).toBe('c-id');
+    const [c] = db.ran(/INSERT INTO ai_turns/);
+    expect([c.params[3], c.params[4], c.params[6]]).toEqual([null, 'unconfirmed', 'cancelled']);
+    await expect(store.recordStep4Failure({ sessionId: S, keyHash: 'turn:c', question: 'q', reason: null, release: 'released', status: 'completed' as any })).rejects.toThrow(/failed or cancelled/);
   });
 });

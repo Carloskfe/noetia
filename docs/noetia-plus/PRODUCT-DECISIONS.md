@@ -127,6 +127,125 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Checkpoint A only** authorized; B–E, merge, deployment, production providers or indexing, and infrastructure are not.
 - Pre-execution check: **blocked** (B-1 protected NEM-023 test; B-2 specification gap).
 
+### PO-052 — NEM-024 formal acceptance of PO-051 as completed diagnostics (governance only) — decided 2026-11-12
+→ **[PO-052](../operating-framework/decisions/product-owner/PO-052-nem-024-po-051-formal-acceptance.md)**
+
+- PO-051's plan-stability investigation, near-limit authentic-corpus measurements and workload-class assessment are **accepted as diagnostic evidence**, with all limitations retained. Its recommendations R-1..R-5 are **not** approved.
+- **E-1 OPEN and BLOCKED** (150 ms p95 unchanged, unmet); **Checkpoint E NOT QUALIFIED**; Q-11 conditional (risks retained); PR #56 Draft; release and activation **BLOCKED**.
+- **Not authorized:** C1, hybrid ranking, inline storage migration, S2 optimization, performance-policy revisions, any new investigation or mission.
+- [D13](20-open-product-decisions.md) is preserved as a separate unresolved retrieval-quality concern.
+
+### PO-051 — NEM-024 E-1 plan stability and workload-class architecture validation (bounded diagnostic only); PO-050 accepted as diagnostics — decided 2026-11-12
+→ **[PO-051](../operating-framework/decisions/product-owner/PO-051-nem-024-e1-plan-stability-and-workload-class-validation-authorization.md)**
+
+- **A:** PO-050 accepted as completed diagnostics (limitations retained; not production readiness, not a standard change).
+- **B:** P-3 plan stability (diagnostic planner controls in disposable DBs only); P-1 workload-class comparison (no threshold, no binding criterion); P-2 one near-limit authentic corpus measurement behind a feasibility gate.
+- **C:** P-4 natural-question retrieval recorded as a separate product concern; no implementation.
+- **D:** C1, hybrid, inline storage, S2 changes, infrastructure and the 2,000-chunk limit remain deferred. **E-1 OPEN; Q-11 conditional; Checkpoint E NOT QUALIFIED; release BLOCKED.**
+- **Executed 2026-11-12** ([report](../reports/2026-11-12-NEM-024-po-051-e1-plan-stability-and-workload-class-validation.md)): plan flip is maintenance-state-sensitive, not a defect; E-1 fails in every regime; near-limit authentic p95 127–134 ms, adversarial 211–214 ms; concern recorded as [D13](20-open-product-decisions.md). Decisions R-1..R-5 awaiting.
+
+### PO-050 — NEM-024 E-1 representative literary corpus validation (limited diagnostic validation only); PO-049 accepted as architecture validation — decided 2026-11-11
+→ **[PO-050](../operating-framework/decisions/product-owner/PO-050-nem-024-e1-representative-literary-corpus-validation-authorization.md)**
+
+- **A:** PO-049 accepted as completed architecture validation (diagnostic evidence; no remedy authorized).
+- **B:** D-1 (C1 / hybrid / inline `tsvector` migration) **DEFERRED**; D-2 **APPROVED**; D-3 (S2 changes) **DEFERRED**. PO-045 provisional; PO-046/048 accepted diagnostics; PO-047 conditional development acceptance; PO-049 accepted. **E-1 OPEN; Q-11 conditional (risks retained); Checkpoint E NOT QUALIFIED; release BLOCKED.**
+- **C:** E-1 study on ten rights-verified authentic Spanish works (+ 3–5 English, supplementary) with predeclared realistic queries, on the unchanged production retrieval path; governing benchmark and 150 ms threshold unchanged.
+- **Not authorized:** any `src`/SQL/migration/index/S2 change, C1/hybrid/inline migration, benchmark or threshold change, committing book texts, LLM evaluation, infrastructure, merge, deploy, activation, PO-051.
+- **Executed 2026-11-12** ([report](../reports/2026-11-12-NEM-024-po-050-real-literary-corpus-e1-validation.md)): authentic Spanish p95 79–84 ms (0/944 over 150 ms); governing p95 570–598 ms, E-1 not met; benchmark judged a stress condition (synthetic TOAST, Seq Scan, upper-bound size). Decisions P-1..P-5 awaiting.
+
+### PO-049 — NEM-024 E-1 architecture validation (diagnostic and architectural validation only); PO-048 accepted as diagnostics — decided 2026-11-11
+→ **[PO-049](../operating-framework/decisions/product-owner/PO-049-nem-024-e1-architecture-validation-authorization.md)**
+
+- **A:** PO-048 accepted as a completed diagnostic investigation (not its remedy).
+- **B:** PO-045 provisional; PO-046 and PO-048 accepted as diagnostics; PO-047 conditional for development progression (risks retained). **E-1 OPEN; Checkpoint E NOT QUALIFIED; release BLOCKED.**
+- **C:** bounded validation of F-48-1 (is the single-lexeme hybrid exact?), F-48-2 (benchmark representativeness, governing benchmark unchanged) and F-48-3 (at most two further exact strategies).
+- **Not authorized:** any `src`/SQL/migration/index/config change, approximate ranking, benchmark revision, infrastructure, merge, deploy, activation, PO-050.
+- **Executed 2026-11-11** ([report](../reports/2026-11-11-NEM-024-po-049-e1-architecture-validation.md)): hybrid **conditionally exact**; best exact (inline + C1 threshold) p95 256–268 ms, E-1 not met; production passes only on supplementary B/C. Decisions D-1..D-3 awaiting.
+
+### PO-048 — NEM-024 E-1 ranking investigation (diagnostic only); PO-047 accepted conditionally — decided 2026-11-11
+→ **[PO-048](../operating-framework/decisions/product-owner/PO-048-nem-024-e1-ranking-root-cause-investigation-authorization.md)**
+
+- **A:** PO-047 is accepted **conditionally for development progression**, not for release. Retained risks: the thin W=10 `p3x3` margin (1.8 ms), large-book memory under 512 MB, and representativeness.
+- **Statuses:** PO-045 provisional; PO-046 accepted as diagnostics.
+- **B:** a diagnostic-only E-1 investigation of PostgreSQL ranking versus the other retrieval stages. Exact-result equivalence is mandatory; candidate caps are lossy unless proven otherwise.
+- **Not authorized:** any `src`/SQL/index/migration/configuration change, caps, infrastructure, merge, deploy, activation. **E-1 stays OPEN.**
+- **Executed 2026-11-11** ([report](../reports/2026-11-11-NEM-024-po-048-e1-ranking-investigation.md)): bottleneck is per-row `ts_rank_cd` plus the TOAST `tsvector` fetch. Best exact candidate: E-1 p95 264 ms (not met). **Recommended (unapproved):** inline `tsv` storage + exact single-lexeme hybrid, plus a PO decision on multi-term ranking.
+
+### PO-047 — NEM-024 Q-11 remediation (C + A) and requalification — decided 2026-11-11
+→ **[PO-047](../operating-framework/decisions/product-owner/PO-047-nem-024-q11-remediation-and-requalification-authorization.md)**
+
+- **Authorized:**
+  - `--single-threaded-gc` on the API process only;
+  - a production-safe, byte-exact presigned S2 read into a validated preallocated buffer;
+  - tests and requalification (≥ 3 valid runs per workload).
+- **Unchanged:** Q-11 50 ms (per endpoint, every run, never averaged), E-1, AC-11/P-2, ten books, 1 vCPU / 512 MB.
+- **PO-045:** still provisional.
+- **PO-046:** accepted as completed diagnostics.
+- **Not authorized:** other flags or strategies, infrastructure, contracts, merge, deploy, activation. A failing valid run → STOP.
+- **Executed 2026-11-11** ([report](../reports/2026-11-11-NEM-024-po-047-q11-remediation-and-requalification.md)): Q-11 met in all 9 required valid runs; minimum margin 1.8 ms (W=10 p3x3); E-1 open; awaiting PA review and PO acceptance.
+
+### PO-046 — NEM-024 residual Q-11 investigation (diagnostic only); PO-045 retained provisionally — decided 2026-11-11
+→ **[PO-046](../operating-framework/decisions/product-owner/PO-046-nem-024-residual-q11-performance-investigation-authorization.md)**
+
+- **A:** PO-045 stays on the Draft branch **provisionally**: not accepted, not release-authorized.
+- **B:** diagnostic investigation only, covering storage-fetch overhead, CPU-quota contention, remaining main-thread work, the minimal next remedy, and the single-container boundary.
+- **Unchanged:** Q-11 50 ms, E-1, PO-027 ten books, AC-11/P-2. **Not authorized:** any `src` remedy, configuration, infrastructure, contract, merge, deploy, activation. STOP for PA review.
+- **Executed 2026-11-11** ([report](../reports/2026-11-11-NEM-024-po-046-residual-performance-investigation.md)): residual cause = storage read + V8 parallel GC under 1 vCPU. **Recommended (unapproved):** `--single-threaded-gc` + a leaner presigned read, with ≥3-run requalification. Q-11 still open.
+
+### PO-045 — NEM-024 Q-11 performance remediation (Option D + A, limited scope) — decided 2026-11-11
+→ **[PO-045](../operating-framework/decisions/product-owner/PO-045-nem-024-q11-performance-remediation-authorization.md)**
+
+- **Authorized:** one bounded S2 worker thread per API process (SHA-256 via `computeTextHash`, strict UTF-8 validation, passage slicing) plus byte-level code-point slicing; tests, documentation, report.
+- **Unchanged:** Q-11 (reader p95 Δ ≤ 50 ms, sampler off; W=10/6/3 scenarios; 10-book admitted at W=10), E-1 target, AC-11/P-2 (re-read + re-verify, no cache), fail-closed `stale`/`unavailable`.
+- **Not authorized:** ranking SQL, infrastructure/config/runtime flags, concurrency or thresholds, contracts, schema, merge, deploy, activation, further remedies. STOP for PA review.
+- **Executed 2026-11-11** ([report](../reports/2026-11-11-NEM-024-po-045-q11-remediation-report.md)): implemented, tests green; **Q-11 still not qualified** (W=10, W=6 fail; W=3 passes); E-1 open. Awaiting PA review and PO decision.
+
+### PO-044 — NEM-024 Q-11 root-cause investigation (diagnostic only) — decided 2026-11-10
+→ **[PO-044](../operating-framework/decisions/product-owner/PO-044-nem-024-q11-root-cause-investigation-authorization.md)**
+
+- **Diagnostic investigation only:** the causes of the Q-11 reader degradation, E-1 retrieval p95, and the N-3 one-second outliers.
+- **Checkpoint E stays NOT QUALIFIED — Q-11 BLOCKING.**
+- **Not authorized:** remedies, production code, contract changes, worker threads, infrastructure, concurrency or target changes, merge, deploy, activation.
+
+### PO-042 / PO-043 — NEM-024 Checkpoint D accepted; Checkpoint E authorized — decided 2026-11-10
+→ **[PO-042](../operating-framework/decisions/product-owner/PO-042-nem-024-checkpoint-d-formal-acceptance.md)** · **[PO-043](../operating-framework/decisions/product-owner/PO-043-nem-024-checkpoint-e-authorization.md)**
+
+- **Checkpoint D accepted** for development progression, including F-D1 (privacy), F-D2 (idempotency), and F-D3 (cancellation).
+- **Limitations preserved:** tab-only recovery; 15-minute storage expiry; older unknown turn after a newer question and reload; web coverage below its gate.
+- **Checkpoint E authorized:** final verification and performance qualification only (regression, builds, Q-11 W=10→6→3, coverage, safety, exception register).
+- **Not authorized:** merge, deployment, activation, paid providers, infrastructure, contract changes.
+
+### PO-040 / PO-041 — NEM-024 Checkpoint C accepted; Checkpoint D authorized — decided 2026-11-10
+→ **[PO-040](../operating-framework/decisions/product-owner/PO-040-nem-024-checkpoint-c-formal-acceptance.md)** · **[PO-041](../operating-framework/decisions/product-owner/PO-041-nem-024-checkpoint-d-authorization.md)**
+
+- **Checkpoint C accepted** for development progression. Decisions recorded:
+  - D-C1: SSE content released per turn, after Gateway validation and confirmed persistence (except D-8).
+  - D-C2: stage names `checking` / `searching` / `composing`.
+  - D-C3: after the stream opens, errors are `terminal` events with `statusCode`; HTTP 200 is not success.
+- **New non-blocking risk:** SSE proxy idle timeout (no heartbeat), to be evaluated at Checkpoint E. All PO-038 exceptions are preserved; none closed.
+- **Checkpoint D authorized:** the minimal bilingual web Q&A at `/research/[sessionId]` only.
+- **Excluded:** session creation, selection, and management; navigation entries; user knowledge; Brief; NoetiaX; mobile; reader changes; providers; activation.
+
+### PO-039 — NEM-024 Checkpoint C authorization (SSE transport and capability probe) — decided 2026-11-10
+→ **[PO-039](../operating-framework/decisions/product-owner/PO-039-nem-024-checkpoint-c-authorization.md)**
+
+- Checkpoint C only: `POST …/turns/stream` (stage / segment+delta after validation / terminal; disconnect ≠ cancel; D-8 never shown as persisted) and `GET /knowledge/sessions/capabilities` (before `:id`; no monetary or provider values).
+- No exception waived. Not authorized: D–E, merge, deployment, activation, paid providers, infrastructure.
+
+### PO-038 — NEM-024 Checkpoint B formal acceptance — decided 2026-11-10
+→ **[PO-038](../operating-framework/decisions/product-owner/PO-038-nem-024-checkpoint-b-formal-acceptance.md)**
+
+- Checkpoint B accepted for development progression (reviewed `a127c89`): fenced recovery, cancellation including Amendment 2, history, citation redaction, F-1 mapping, and the weighted guard. The PO-036 recovery condition is satisfied at the development checkpoint level.
+- Not waived: E-1, E-2 (80.07% evidence; closing it needs a separate decision), NEM-022 coverage, D-8, cancellation-record persistence, in-process-only cancellation, Q-11, TT-14.
+- Not authorized: C–E, merge, deployment, activation, paid providers, infrastructure.
+
+### PO-036 / PO-037 — NEM-024 Checkpoint A conditional acceptance, Checkpoint B authorization, Amendment 2 — decided 2026-11-10
+→ **[PO-036](../operating-framework/decisions/product-owner/PO-036-nem-024-checkpoint-a-conditional-acceptance-and-checkpoint-b-authorization.md)** · **[PO-037](../operating-framework/decisions/product-owner/PO-037-nem-024-checkpoint-b-amendment-2-cancellation-before-lock.md)**
+
+- Checkpoint A accepted (conditional). Checkpoint B authorized with a release condition: stranded turns recovered before any user-facing release.
+- Amendment 2 (Option B): a cancel before lock commit leaves no lock and no turn count, and writes a terminal `cancelled` record.
+- Not authorized: C–E, merge, deployment, activation.
+
 ### Still open in the three-tier package
 TT-01 purchased-token expiry · TT-12 verified AI-eligible launch corpus and rights · NoetiaX depth and evaluation criteria (TT-07) · AI budget values and resets (TT-09, TT-11) · premium pricing and Stripe architecture (TT-16) · quotation and anti-reconstruction thresholds (TT-13) · retention and export (TT-14) · legal disclosures and provider data handling (TT-22). **PO-025** (three-tier structure) was **decided on 2026-11-08** with TT-01 kept open; draft **PO-029** (eligible corpus) remains **not decided**. See [`05-open-decisions.md`](../architecture/three-tier-intelligence/05-open-decisions.md).
 

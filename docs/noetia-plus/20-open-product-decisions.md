@@ -82,5 +82,23 @@ Per mission §44: where the product spec is incomplete, **engineering does not i
 - **Consequence:** if offered, needs a **separate** `ai_credit_ledger` ([09](09-data-model.md)) — do not reuse book tokens.
 - **Recommended default:** **not at launch**; design keeps it possible.
 
+### D13 — How should a reader's natural-language question reach lexical retrieval? (retrieval quality)
+> **OPEN — product concern recorded under [PO-051](../operating-framework/decisions/product-owner/PO-051-nem-024-e1-plan-stability-and-workload-class-validation-authorization.md) Decision C (2026-11-12); preserved as separate and unresolved by [PO-052](../operating-framework/decisions/product-owner/PO-052-nem-024-po-051-formal-acceptance.md).** It is separate from NEM-024 E-1 latency. No implementation is authorized.
+- **Observed** ([PO-050 report §16](../reports/2026-11-12-NEM-024-po-050-real-literary-corpus-e1-validation.md)):
+  - On authentic public-domain books, **7 of 15 question-form queries returned no passages**, even though the relevant books were indexed and permitted.
+  - One known-location question (*"¿Cómo se llama el caballo de don Quijote?"*) returned passages but not the naming passage, within either the top 8 or the top 20.
+  - On the PO-051 near-limit cohort the same pattern held: 2 of 9 question-form queries returned nothing, and the known-location question again missed.
+  - Keyword and quoted-phrase searches were never unexpectedly empty.
+- **Affected behaviour:** the question text is passed verbatim through `QueryContextSource` → `RetrievalPort` → `websearch_to_tsquery`. That function ANDs every non-stop word, so a chunk must contain *all* the content words of the question, including generic ones ("papel", "novela", "representan", "escena").
+- **Why citation correctness is not enough:** every returned citation was valid, mapping exactly to verified text in an allowed book. But an empty or off-target result means the reader receives no grounded passage. Under ADR-003 "This Book" mode, that degrades the answer or leads to a refusal. Correct citations of nothing do not satisfy the reader.
+- **Options (for a future PO/PA decision; none chosen):**
+  - keep the current contract and teach users keyword search;
+  - question interpretation before retrieval, such as stop-phrase removal or term weighting;
+  - OR/ranked matching for questions;
+  - lexical fallback when AND returns nothing;
+  - semantic retrieval (ADR-004 pgvector).
+- **Consequence:** every option changes the retrieval contract, ranking semantics, relevance evaluation and possibly cost or latency (E-1). Each needs its own PO decision, relevance criteria and mission.
+- **Recommended default:** **none.** Engineering does not choose retrieval semantics. Evidence: the PO-050 and PO-051 reports and their raw measurements.
+
 ---
 **ADR-worthy among these:** D3, D6, D9. Semantic-index technology is now **decided** — PostgreSQL + pgvector ([ADR-004](../architecture/adr/ADR-004-postgresql-pgvector-semantic-retrieval.md) / PO-004). See [PRODUCT-DECISIONS.md](PRODUCT-DECISIONS.md) and the ADR index for the full decided/candidate list.

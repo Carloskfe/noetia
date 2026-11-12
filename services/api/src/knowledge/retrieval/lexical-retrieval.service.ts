@@ -1,11 +1,9 @@
 import { KnowledgeDbService } from '../common/knowledge-db.service';
-import { computeTextHash, TEXT_HASH_PATTERN } from '../rights/text-hash';
-import { sliceCodePointRanges } from './chunker';
+import { TEXT_HASH_PATTERN } from '../rights/text-hash';
 import { RetrievalMetricsService } from './retrieval-metrics.service';
 import {
   BookTextPort,
   chunkRef,
-  decodeUtf8,
   estimateTokens,
   isUuid,
   Passage,
@@ -17,6 +15,7 @@ import {
   RetrievalRequestInvalid,
   RetrievalResult,
 } from './retrieval.types';
+import { processS2Verifier, S2Verifier } from './s2-verification.service';
 
 interface RankedRow {
   id: string;
@@ -80,6 +79,11 @@ export function normalizeQuery(q: unknown): string {
  * SQL ranks chunk offsets; then, per distinct result book (≤ 10), the MinIO object is read, its hash verified against
  * the chunk's `textHash` (which is the caller's current hash), and passages are sliced by code-point offsets. A read
  * failure or hash mismatch drops that book (fail closed). Passages are trimmed to the token budget in rank order.
+ *
+ * PO-045: the read stays on this (main) thread; hash verification, whole-object UTF-8 validation and byte-level
+ * slicing run in the process's single bounded S2 worker (`S2Verifier`). A worker failure, timeout or saturation drops
+ * the book as `unavailable` — never an in-loop fallback, never unverified text. Every retrieval still re-reads and
+ * re-verifies; nothing is cached.
  * No query or passage text is logged, persisted, or put in metrics or errors.
  */
 export class LexicalRetrievalService implements RetrievalPort {
@@ -88,7 +92,13 @@ export class LexicalRetrievalService implements RetrievalPort {
     private readonly text: BookTextPort,
     private readonly metrics: RetrievalMetricsService,
     private readonly config: RetrievalConfig,
+    private readonly s2: S2Verifier = processS2Verifier(),
   ) {}
+
+  /** Nest shutdown hook: stops the S2 worker and fails any in-flight verification closed. */
+  async onModuleDestroy(): Promise<void> {
+    await this.s2.shutdown();
+  }
 
   private validate(req: RetrievalRequest): { books: string[]; hashes: string[]; query: string } {
     const allowed = Array.isArray(req?.allowed) ? req.allowed : null;
@@ -144,11 +154,13 @@ export class LexicalRetrievalService implements RetrievalPort {
       if (!s.current) (s.indexed ? excluded.stale : excluded.unindexed).push(s.bookId);
     }
 
-    // S2: read each distinct result book once, verify the object hash, slice by offsets.
+    // S2: read each distinct result book once (main thread), then verify the object hash, validate UTF-8 and slice by
+    // offsets in the S2 worker (PO-045).
     const resultBooks = [...new Set(rows.map((r) => r.bookId))];
-    const texts = new Map<string, string>();
+    const sliced = new Map<string, (string | null)[]>();
     await Promise.all(resultBooks.map(async (bookId) => {
-      const hash = rows.find((r) => r.bookId === bookId)!.textHash;
+      const mine = rows.filter((r) => r.bookId === bookId);
+      const hash = mine[0].textHash;
       const key = keys.get(bookId);
       let bytes: Uint8Array;
       try {
@@ -158,22 +170,11 @@ export class LexicalRetrievalService implements RetrievalPort {
         excluded.unavailable.push(bookId);
         return;
       }
-      if (computeTextHash(bytes) !== hash) {
-        excluded.stale.push(bookId);
-        return;
-      }
-      try {
-        texts.set(bookId, decodeUtf8(bytes));
-      } catch {
-        excluded.unavailable.push(bookId);
-      }
+      const out = await this.s2.verify(bytes, hash, mine.map((r) => ({ start: r.charStart, end: r.charEnd })));
+      if (out.kind === 'ok') sliced.set(bookId, out.passages);
+      else (out.kind === 'stale' ? excluded.stale : excluded.unavailable).push(bookId);
     }));
 
-    const sliced = new Map<string, (string | null)[]>();
-    for (const [bookId, t] of texts) {
-      const mine = rows.filter((r) => r.bookId === bookId);
-      sliced.set(bookId, sliceCodePointRanges(t, mine.map((r) => ({ start: r.charStart, end: r.charEnd }))));
-    }
     const cursor = new Map<string, number>();
     const passages: Passage[] = [];
     let used = 0;

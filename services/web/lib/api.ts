@@ -56,12 +56,67 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<an
   return data;
 }
 
+/**
+ * Like `apiFetch`, but returns the raw `Response` so the caller can read a streamed body (SSE). Shares the same
+ * token header and the same de-duplicated 401 refresh; it never parses the body and never throws on non-2xx.
+ */
+export async function apiStream(path: string, init: RequestInit = {}): Promise<Response> {
+  let res = await fetchWithToken(path, init);
+  if (res.status === 401 && !path.startsWith('/auth/')) {
+    if (await refreshAccessToken()) {
+      res = await fetchWithToken(path, init);
+    } else {
+      if (typeof window !== 'undefined') window.location.href = '/login';
+      throw Object.assign(new Error('Session expired'), { status: 401 });
+    }
+  }
+  return res;
+}
+
 export function saveToken(token: string) {
   localStorage.setItem('access_token', token);
 }
 
 export function clearToken() {
   localStorage.removeItem('access_token');
+  clearResearchRecovery(); // NEM-024 F-D1: a pending research question never outlives the login
+}
+
+/** NEM-024 F-D1: storage prefix of the per-session research recovery entry (see lib/research.ts). */
+export const RESEARCH_RECOVERY_PREFIX = 'noetia_research_pending:';
+
+/** Removes every research recovery entry (tab storage, plus any legacy localStorage copy). Never throws. */
+export function clearResearchRecovery() {
+  for (const getStore of [() => sessionStorage, () => localStorage]) {
+    try {
+      const store = getStore();
+      const keys: string[] = [];
+      for (let i = 0; i < store.length; i++) {
+        const k = store.key(i);
+        if (k && k.startsWith(RESEARCH_RECOVERY_PREFIX)) keys.push(k);
+      }
+      keys.forEach((k) => store.removeItem(k));
+    } catch {
+      // storage unavailable
+    }
+  }
+}
+
+/**
+ * NEM-024 F-D1: the signed-in account's id (`sub` of the current access token), used only to scope client-side
+ * recovery data to one account. Decoded WITHOUT verification (scoping, not authorization); null when absent/invalid.
+ */
+export function currentAccountId(): string | null {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    const part = token?.split('.')[1];
+    if (!part) return null;
+    const json = atob(part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '='));
+    const sub = (JSON.parse(json) as { sub?: unknown }).sub;
+    return typeof sub === 'string' && sub.length > 0 ? sub : null;
+  } catch {
+    return null;
+  }
 }
 
 export function saveUserType(userType: string | null) {

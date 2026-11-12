@@ -43,6 +43,12 @@ export interface TurnRow {
   attemptToken: string;
 }
 
+export interface HistoryRow extends TurnRow {
+  question: string;
+  createdAt: Date;
+  completedAt: Date | null;
+}
+
 /** Grace between the owner's own bound (T_max) and the fence (proposed 30 s; review package Q-12). */
 export const FENCE_GRACE_SECONDS = 30;
 /** Mirrors the Gateway's per-turn attempt ceiling (metering/attempt-key.ts) without importing metering code. */
@@ -135,18 +141,76 @@ export class TurnRecordStore {
     return rows === 1;
   }
 
+  /** T3 — explicit cancel. Eligible only when the statement starts before the fence; never overwrites a terminal state. */
+  async cancel(id: string): Promise<boolean> {
+    return (await this.transition(
+      `UPDATE ai_turns SET status = 'cancelled'
+        WHERE id = $1 AND status = 'accepted' AND statement_timestamp() < "fenceAt"
+        RETURNING id`,
+      [id],
+    )) === 1;
+  }
+
   /**
-   * Amendment 1 (B-2): a terminal `failed` record after a step-4 failure and the Gateway release. Idempotent
+   * T4 — finalization of the given rows (lazy, from a status-returning read). Eligible only when the statement starts
+   * at or after the fence. If a pre-fence transition holds a row, this statement waits for its commit and then
+   * re-checks `status = 'accepted'` (READ COMMITTED), so it never overwrites a terminal outcome.
+   */
+  async finalize(ids: string[]): Promise<number> {
+    if (ids.length === 0) return 0;
+    return this.transition(
+      `UPDATE ai_turns SET status = 'interrupted'
+        WHERE id = ANY($1::uuid[]) AND status = 'accepted' AND statement_timestamp() >= "fenceAt"
+        RETURNING id`,
+      [ids],
+    );
+  }
+
+  /** T4 — the periodic sweep: finalize up to `limit` expired provisional rows. Never touches the ledger. */
+  async sweep(limit = 500): Promise<number> {
+    return this.transition(
+      `UPDATE ai_turns SET status = 'interrupted'
+        WHERE id IN (SELECT id FROM ai_turns WHERE status = 'accepted' AND "fenceAt" <= statement_timestamp() ORDER BY "fenceAt" LIMIT $1)
+          AND status = 'accepted' AND statement_timestamp() >= "fenceAt"
+        RETURNING id`,
+      [limit],
+    );
+  }
+
+  /** History page for one session, newest first (the caller verifies ownership). */
+  async listBySession(sessionId: string, limit: number): Promise<HistoryRow[]> {
+    return this.db.query<HistoryRow>(
+      `SELECT ${COLUMNS}, question, "createdAt", "completedAt" FROM ai_turns WHERE "sessionId" = $1 ORDER BY "createdAt" DESC, id DESC LIMIT $2`,
+      [sessionId, limit],
+    );
+  }
+
+  async findHistoryRow(sessionId: string, id: string): Promise<HistoryRow | null> {
+    const [r] = await this.db.query<HistoryRow>(
+      `SELECT ${COLUMNS}, question, "createdAt", "completedAt" FROM ai_turns WHERE "sessionId" = $1 AND id = $2`, [sessionId, id]);
+    return r ?? null;
+  }
+
+  /**
+   * Amendment 1 (B-2), extended by Amendment 2 (PO-037): a terminal `failed` record after a step-4 failure, or a terminal
+   * `cancelled` record after an explicit cancellation observed before the lock committed — in both cases after the
+   * Gateway release. Idempotent
    * (`ON CONFLICT DO NOTHING`; an existing record for the key is kept). Not a research turn: no lock, no turn count,
    * `turnIndex` NULL. Written with no Gateway call, so it can never reserve or charge. Returns the record's id.
    */
-  async recordStep4Failure(a: { sessionId: string; keyHash: string; question: string; reason: string; release: ReservationRelease }): Promise<string> {
+  async recordStep4Failure(a: {
+    sessionId: string; keyHash: string; question: string; reason: string | null; release: ReservationRelease;
+    /** Amendment 2 (PO-037): `cancelled` for an explicit cancellation observed before the lock committed. */
+    status?: 'failed' | 'cancelled';
+  }): Promise<string> {
+    const status = a.status ?? 'failed';
+    if (status !== 'failed' && status !== 'cancelled') throw new Error('terminal record status must be failed or cancelled');
     const inserted = await this.db.query<{ id: string }>(
       `INSERT INTO ai_turns ("sessionId", "turnIndex", "keyHash", question, status, "failureReason", "reservationRelease", "attemptToken", "fenceAt")
-       VALUES ($1, NULL, $2, $3, 'failed', $4, $5, $6, statement_timestamp())
+       VALUES ($1, NULL, $2, $3, $7, $4, $5, $6, statement_timestamp())
        ON CONFLICT ("sessionId", "keyHash") DO NOTHING
        RETURNING id`,
-      [a.sessionId, a.keyHash, a.question, a.reason, a.release, randomUUID()],
+      [a.sessionId, a.keyHash, a.question, a.reason, a.release, randomUUID(), status],
     );
     if (inserted[0]) return inserted[0].id;
     const existing = await this.findByKey(a.sessionId, a.keyHash);

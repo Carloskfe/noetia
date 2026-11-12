@@ -12,6 +12,10 @@ import { DEFAULT_RETRIEVAL_CONFIG } from '../../../../src/knowledge/retrieval/re
 import { ContextBuilderService } from '../../../../src/knowledge/sessions/context-builder.service';
 import { TurnRecordStore } from '../../../../src/knowledge/sessions/turn-record.store';
 import { TurnService } from '../../../../src/knowledge/sessions/turn.service';
+import { TurnCancelRegistry } from '../../../../src/knowledge/sessions/turn-cancel.registry';
+import { TurnGuard } from '../../../../src/knowledge/sessions/turn-guard';
+import { TurnMetricsService } from '../../../../src/knowledge/sessions/turn-metrics.service';
+import { TurnRecoveryJobService } from '../../../../src/knowledge/sessions/turn-recovery.job';
 import { insertRights, IT_CONFIG, wire } from './it-env';
 import { BOTH_OPS, insertBook, MemoryObjectStore } from './retrieval-env';
 
@@ -20,8 +24,8 @@ import { BOTH_OPS, insertBook, MemoryObjectStore } from './retrieval-env';
  * turn record, composed exactly as the module does. Simulated provider; fixture texts; local disposable DB only.
  * The rights port, the index permission, and the anchor resolver share ONE text-identity map (`fx.textHash`).
  */
-export function wireTurns(ds: DataSource) {
-  const w = wire(ds);
+export function wireTurns(ds: DataSource, opts: { weight?: number; config?: Partial<typeof IT_CONFIG> } = {}) {
+  const w = wire(ds, opts.config ? { config: opts.config } : {});
   const store = new MemoryObjectStore();
   const identity = { currentTextHash: async (b: string) => w.fx.textHash.get(b) ?? null };
   const authority = {
@@ -36,9 +40,14 @@ export function wireTurns(ds: DataSource) {
   const qcs = new QueryContextSource(permission, lexical, metrics, cfg);
   const anchors = new AnchorResolver(w.db, identity);
   const records = new TurnRecordStore(w.db, IT_CONFIG);
+  const guard = new TurnGuard(opts.weight ?? 10);
+  const cancels = new TurnCancelRegistry();
+  const turnMetrics = new TurnMetricsService();
+  const recovery = new TurnRecoveryJobService(records, turnMetrics);
   const qturns = new TurnService(w.db, w.sessions, w.rights, new ContextBuilderService(new KnowledgeMetricsService()), w.gateway, IT_CONFIG,
-    { candidates: async () => [] }, qcs, permission, anchors, records);
-  return { ...w, store, permission, indexer, qcs, anchors, records, qturns };
+    { candidates: async () => [] }, qcs, permission, anchors, records, store, guard, cancels, turnMetrics);
+  // Note: with opts.config the TurnService uses the same overrides as the Gateway.
+  return { ...w, store, permission, indexer, qcs, anchors, records, qturns, guard, cancels, turnMetrics, recovery };
 }
 export type TurnWiring = ReturnType<typeof wireTurns>;
 
@@ -66,3 +75,7 @@ export function gate() {
   const p = new Promise<void>((r) => { open = r; });
   return { p, open };
 }
+
+/** Total ledger rows (any key): recovery must never change it. */
+export const ledgerCount = async (ds: DataSource) =>
+  Number((await ds.query(`SELECT (SELECT count(*) FROM ai_budget_ledger) + (SELECT count(*) FROM ai_usage_events) AS n`))[0].n);

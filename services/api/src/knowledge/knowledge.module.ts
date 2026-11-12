@@ -32,6 +32,11 @@ import { SessionsController } from './sessions/sessions.controller';
 import { SessionsService } from './sessions/sessions.service';
 import { TurnService } from './sessions/turn.service';
 import { TurnRecordStore } from './sessions/turn-record.store';
+import { TURN_BOOK_TEXT } from './sessions/turn.service';
+import { TurnCancelRegistry } from './sessions/turn-cancel.registry';
+import { TurnGuard, turnWeightLimitFromEnv } from './sessions/turn-guard';
+import { TurnMetricsService } from './sessions/turn-metrics.service';
+import { TurnRecoveryJobService } from './sessions/turn-recovery.job';
 import { AnchorResolver } from './retrieval/anchor-resolver';
 import { IndexingPermission } from './retrieval/indexing-permission';
 import { LexicalRetrievalService } from './retrieval/lexical-retrieval.service';
@@ -73,6 +78,13 @@ import { RightsVerificationAuthorityPort, TextIdentityPort } from './rights/righ
     // (default deny in the real module). The offline indexer is not registered.
     TurnRecordStore,
     RetrievalMetricsService,
+    // NEM-024 Checkpoint B: cancellation registry, weighted guard (W candidate; env-configurable), metrics, recovery sweep,
+    // and the S2 reader for history re-materialization (the same E5 adapter).
+    TurnCancelRegistry,
+    TurnMetricsService,
+    TurnRecoveryJobService,
+    { provide: TurnGuard, useFactory: () => new TurnGuard(turnWeightLimitFromEnv(process.env)) },
+    { provide: TURN_BOOK_TEXT, useExisting: StorageBookText },
     { provide: StorageBookText, useFactory: (s: StorageService) => new StorageBookText(s), inject: [StorageService] },
     {
       provide: IndexingPermission,

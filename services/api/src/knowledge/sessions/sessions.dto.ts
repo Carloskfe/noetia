@@ -40,3 +40,10 @@ export class TurnDto {
   @MaxLength(4000)
   question: string;
 }
+
+/** NEM-024 Checkpoint B: explicit cancellation names the turn by its client key (server-namespaced by user + session). */
+export class CancelTurnDto {
+  @IsString()
+  @Matches(/^[A-Za-z0-9_-]{8,64}$/)
+  idempotencyKey: string;
+}
