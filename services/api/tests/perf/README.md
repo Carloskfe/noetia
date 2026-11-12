@@ -148,3 +148,40 @@ NEM019_DISPOSABLE_DB=1 DB_HOST=127.0.0.1 DB_PORT=55432 DB_NAME=<db>_test DB_USER
 - **Storage experiments:** `lz4`, `EXTERNAL` and `MAIN` storage for `tsv` were tested only in disposable database clones (`CREATE DATABASE <x>_test TEMPLATE nem019_test`, then `ALTER TABLE … ALTER COLUMN tsv SET STORAGE/COMPRESSION …` and a rewrite). They were dropped afterwards. **No migration.**
 
 Results: `docs/reports/2026-11-11-NEM-024-po-048-e1-ranking-investigation.md`.
+
+## PO-049: E-1 architecture validation (test only; opt-in)
+
+`e1-arch-diag.ts` validates PO-048's findings. It runs only against disposable local PostgreSQL/MinIO (`NEM019_DISPOSABLE_DB=1`, `127.0.0.1`, DB name `*_test`), and the production `RANK_SQL` is read verbatim from `src`. Run it from `services/api`:
+
+```bash
+NEM019_DISPOSABLE_DB=1 DB_HOST=127.0.0.1 DB_PORT=… DB_NAME=<x>_test DB_USER=… DB_PASS=… [MINIO_*=…] \
+  npx ts-node -T -P tsconfig.json tests/perf/e1-arch-diag.ts <command>
+```
+
+| Command | Purpose |
+|---|---|
+| `rankfn` | F-48-1: exhaustive bit-level `ts_rank` / `ts_rank_cd` table for one lexeme (n = 1..300, all three configs), position independence and precondition counterexamples |
+| `prop <seed> <rows> [violate]` | F-48-1: property-based differential against `RANK_SQL`, comparing every column at full precision (rank as PostgreSQL's shortest-exact float4 text), for topK 1–20 and several M. **Truncates the chunk table:** DB name must end in `_prop_test`. `PROP_VARIANTS=` selects the variants. `violate` adds weighted and stripped vectors, where mismatches are expected |
+| `counterexamples` | Replays `fixtures/po049-hybrid-counterexamples.json`, the deterministic precondition-violation regression cases (`_prop_test` DB) |
+| `build-b` | F-48-2: the supplementary Distribution-B corpus (Zipf s = 1 over 50k ranks, the PostgreSQL Spanish stop list on top), built with the production chunking, indexer and rights path (`_b_test` DB, local MinIO) |
+| `info <set>` / `explain <set> <variant> <qid>` | Selectivity per query; per-node plan summary (content-free) |
+| `sql <set> <variant> <reps>` | Server execution, client wall and full-precision equivalence at topK 1, 8 and 20 |
+| `e2e <set> <variant> <rounds>` | Production `LexicalRetrievalService` with real MinIO and the S2 worker, ranking SQL substituted test-only; per-stage timings plus whole-`retrieve()` contract equivalence (sha256) |
+
+**Sets:**
+- **A:** the governing NEM-023 mix, unchanged.
+- **D:** adversarial stress on the governing corpus.
+- **B:** a mirror of the governing categories on the B corpus.
+- **C:** a mixed realistic-style workload on the B corpus.
+
+B, C and D are supplementary research distributions. They never replace A.
+
+**Variants:**
+- **`base`:** production `RANK_SQL`.
+- **`hybrid<M>`:** the PO-048 single-lexeme hybrid.
+- **`thresh<M>`:** the PO-049 C1 exact threshold pruning, using an occurrence-count upper bound.
+- **`andb<M>`:** C1 plus the minimal-window conjunction bound (C2).
+
+**Inline-storage experiments:** use a disposable clone (`CREATE DATABASE … TEMPLATE …; ALTER TABLE ai_book_chunks ALTER COLUMN tsv SET STORAGE MAIN; UPDATE … SET tsv = (tsv::text)::tsvector; VACUUM FULL`). **No migration.**
+
+Results: `docs/reports/2026-11-11-NEM-024-po-049-e1-architecture-validation.md`.
