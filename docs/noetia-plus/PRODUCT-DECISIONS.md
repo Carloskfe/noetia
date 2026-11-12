@@ -127,6 +127,14 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **Checkpoint A only** authorized; B–E, merge, deployment, production providers or indexing, and infrastructure are not.
 - Pre-execution check: **blocked** (B-1 protected NEM-023 test; B-2 specification gap).
 
+### PO-050 — NEM-024 E-1 representative literary corpus validation (limited diagnostic validation only); PO-049 accepted as architecture validation — decided 2026-11-11
+→ **[PO-050](../operating-framework/decisions/product-owner/PO-050-nem-024-e1-representative-literary-corpus-validation-authorization.md)**
+
+- **A:** PO-049 accepted as completed architecture validation (diagnostic evidence; no remedy authorized).
+- **B:** D-1 (C1 / hybrid / inline `tsvector` migration) **DEFERRED**; D-2 **APPROVED**; D-3 (S2 changes) **DEFERRED**. PO-045 provisional; PO-046/048 accepted diagnostics; PO-047 conditional development acceptance; PO-049 accepted. **E-1 OPEN; Q-11 conditional (risks retained); Checkpoint E NOT QUALIFIED; release BLOCKED.**
+- **C:** E-1 study on ten rights-verified authentic Spanish works (+ 3–5 English, supplementary) with predeclared realistic queries, on the unchanged production retrieval path; governing benchmark and 150 ms threshold unchanged.
+- **Not authorized:** any `src`/SQL/migration/index/S2 change, C1/hybrid/inline migration, benchmark or threshold change, committing book texts, LLM evaluation, infrastructure, merge, deploy, activation, PO-051.
+
 ### PO-049 — NEM-024 E-1 architecture validation (diagnostic and architectural validation only); PO-048 accepted as diagnostics — decided 2026-11-11
 → **[PO-049](../operating-framework/decisions/product-owner/PO-049-nem-024-e1-architecture-validation-authorization.md)**
 
