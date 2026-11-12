@@ -134,6 +134,7 @@ Approved by the Product Owner on 2026-11-08 (*Product Architecture Decision Reco
 - **B:** D-1 (C1 / hybrid / inline `tsvector` migration) **DEFERRED**; D-2 **APPROVED**; D-3 (S2 changes) **DEFERRED**. PO-045 provisional; PO-046/048 accepted diagnostics; PO-047 conditional development acceptance; PO-049 accepted. **E-1 OPEN; Q-11 conditional (risks retained); Checkpoint E NOT QUALIFIED; release BLOCKED.**
 - **C:** E-1 study on ten rights-verified authentic Spanish works (+ 3–5 English, supplementary) with predeclared realistic queries, on the unchanged production retrieval path; governing benchmark and 150 ms threshold unchanged.
 - **Not authorized:** any `src`/SQL/migration/index/S2 change, C1/hybrid/inline migration, benchmark or threshold change, committing book texts, LLM evaluation, infrastructure, merge, deploy, activation, PO-051.
+- **Executed 2026-11-12** ([report](../reports/2026-11-12-NEM-024-po-050-real-literary-corpus-e1-validation.md)): authentic Spanish p95 79–84 ms (0/944 over 150 ms); governing p95 570–598 ms, E-1 not met; benchmark judged a stress condition (synthetic TOAST, Seq Scan, upper-bound size). Decisions P-1..P-5 awaiting.
 
 ### PO-049 — NEM-024 E-1 architecture validation (diagnostic and architectural validation only); PO-048 accepted as diagnostics — decided 2026-11-11
 → **[PO-049](../operating-framework/decisions/product-owner/PO-049-nem-024-e1-architecture-validation-authorization.md)**
