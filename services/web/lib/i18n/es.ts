@@ -348,6 +348,13 @@ export const es: Translations = {
     currentPlan: 'Tu plan actual',
     startTrial: 'Comenzar prueba gratuita',
     paymentError: 'No pudimos iniciar el pago. Intenta de nuevo.',
+    prefLookup: {
+      title: 'No pudimos consultar tu elección de Causas Noetia',
+      body: 'Si ya elegiste una causa, no se modificará. Inténtalo de nuevo o continúa al pago sin cambiarla.',
+      retry: 'Intentar de nuevo',
+      retrying: 'Consultando…',
+      continue: 'Continuar sin cambiarla',
+    },
     planDescriptions: {
       Individual: {
         tagline: 'Para lectores que quieren lo mejor.',

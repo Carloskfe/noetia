@@ -346,6 +346,13 @@ export const en = {
     currentPlan: 'Your current plan',
     startTrial: 'Start free trial',
     paymentError: 'Could not start payment. Please try again.',
+    prefLookup: {
+      title: "We couldn't check your Causas Noetia choice",
+      body: "If you already chose a cause, it won't be changed. Try again, or continue to payment without changing it.",
+      retry: 'Try again',
+      retrying: 'Checking…',
+      continue: 'Continue without changing it',
+    },
     planDescriptions: {
       Individual: {
         tagline: 'For readers who want the best.',

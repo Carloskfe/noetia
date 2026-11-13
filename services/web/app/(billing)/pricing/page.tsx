@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import CauseSelector from '@/components/CauseSelector';
+import { apiFetch } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
 
 type Plan = {
@@ -21,6 +22,30 @@ type TokenPackage = {
   amountCents: number;
 };
 
+/**
+ * Causas preference lookup outcome:
+ * - `saved`: a preference record exists;
+ * - `none`: the API answered 200 with an EMPTY body (no saved choice — apiFetch maps it to `{}`);
+ * - `auth`: the session could not be authenticated, even after the refresh attempt;
+ * - `error`: any other failure — we do not know whether a choice exists, so the page must not imply the
+ *   equal-split default nor risk overwriting a saved cause.
+ */
+type PreferenceState = 'saved' | 'none' | 'auth' | 'error';
+
+// /pricing is public: protected calls use optional authentication and never bounce a guest to /login on load.
+const OPTIONAL_AUTH = { redirectOnAuthFailure: false } as const;
+const LOGIN_FOR_PRICING = '/login?next=/pricing';
+
+const isAuthError = (e: unknown) => (e as { status?: number } | null)?.status === 401;
+
+async function loadPreference(): Promise<PreferenceState> {
+  try {
+    const pref = await apiFetch('/causes/preferences', {}, OPTIONAL_AUTH);
+    return pref && typeof pref === 'object' && 'cause1Id' in pref ? 'saved' : 'none';
+  } catch (e) {
+    return isAuthError(e) ? 'auth' : 'error';
+  }
+}
 
 function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -34,39 +59,61 @@ export default function PricingPage() {
   const [interval, setInterval] = useState<'month' | 'year'>('month');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hasPreferences, setHasPreferences] = useState(true);
+  const [signedIn, setSignedIn] = useState(false);
+  const [preference, setPreference] = useState<PreferenceState>('auth');
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+  const [lookupFailedPlanId, setLookupFailedPlanId] = useState<string | null>(null);
+  const [retryingLookup, setRetryingLookup] = useState(false);
   const [buyingPackageId, setBuyingPackageId] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
+    // Public catalogue: plain fetch, no authentication required.
+    const catalogue = Promise.all([
       fetch('/api/subscriptions/plans').then((r) => r.ok ? r.json() : []),
       fetch('/api/subscriptions/token-packages').then((r) => r.ok ? r.json() : []),
-      fetch('/api/subscriptions/me').then((r) => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/causes/preferences').then((r) => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([fetchedPlans, fetchedPackages, status, prefs]) => {
+    ]);
+    // Optional session: apiFetch sends the Bearer token; with an absent/expired token it tries the
+    // httpOnly refresh cookie once. Sequential so a guest costs one 401 + one refresh, never a redirect.
+    const session = (async () => {
+      let planId: string | null = null;
+      try {
+        const status = await apiFetch('/subscriptions/me', {}, OPTIONAL_AUTH);
+        planId = status?.planId ?? null;
+      } catch (e) {
+        if (isAuthError(e)) return { signedIn: false, planId: null, preference: 'auth' as PreferenceState };
+      }
+      const pref = await loadPreference();
+      return { signedIn: pref !== 'auth', planId, preference: pref };
+    })();
+
+    Promise.all([catalogue, session]).then(([[fetchedPlans, fetchedPackages], s]) => {
       setPlans(fetchedPlans);
       setPackages(fetchedPackages);
-      if (status?.planId) setCurrentPlanId(status.planId);
-      setHasPreferences(!!prefs);
+      setSignedIn(s.signedIn);
+      setCurrentPlanId(s.planId);
+      setPreference(s.preference);
     }).finally(() => setLoading(false));
   }, []);
 
   const displayed = plans.filter((p) => p.interval === interval);
 
+  function goToLogin() {
+    window.location.href = LOGIN_FOR_PRICING;
+  }
+
   async function checkout(planId: string) {
     setError(null);
     try {
-      const res = await fetch('/api/subscriptions/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId }),
-      });
-      if (!res.ok) throw new Error();
-      const { url } = await res.json();
+      const { url } = await apiFetch(
+        '/subscriptions/checkout',
+        { method: 'POST', body: JSON.stringify({ planId }) },
+        OPTIONAL_AUTH,
+      );
+      if (!url) throw new Error('No checkout URL');
       window.location.href = url;
-    } catch {
-      setError(t.pricing.paymentError);
+    } catch (e) {
+      if (isAuthError(e)) goToLogin();
+      else setError(t.pricing.paymentError);
     }
   }
 
@@ -74,31 +121,49 @@ export default function PricingPage() {
     setError(null);
     setBuyingPackageId(packageId);
     try {
-      const res = await fetch('/api/subscriptions/tokens/purchase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packageId }),
-      });
-      if (res.status === 401) {
-        window.location.href = `/login?returnUrl=${encodeURIComponent('/pricing')}`;
-        return;
-      }
-      if (!res.ok) throw new Error();
-      const { url } = await res.json();
+      const { url } = await apiFetch(
+        '/subscriptions/tokens/purchase',
+        { method: 'POST', body: JSON.stringify({ packageId }) },
+        OPTIONAL_AUTH,
+      );
+      if (!url) throw new Error('No checkout URL');
       window.location.href = url;
-    } catch {
-      setError(t.pricing.paymentError);
+    } catch (e) {
+      if (isAuthError(e)) goToLogin();
+      else setError(t.pricing.paymentError);
     } finally {
       setBuyingPackageId(null);
     }
   }
 
-  async function handleSelect(planId: string) {
-    if (!hasPreferences) {
-      setPendingPlanId(planId);
-    } else {
-      await checkout(planId);
-    }
+  function routeByPreference(planId: string, pref: PreferenceState) {
+    if (pref === 'auth') return goToLogin();
+    if (pref === 'saved') return checkout(planId);
+    if (pref === 'none') return setPendingPlanId(planId);
+    setLookupFailedPlanId(planId); // unknown: offer retry, or continue without changing the preference
+  }
+
+  function handleSelect(planId: string) {
+    if (!signedIn) return goToLogin();
+    routeByPreference(planId, preference);
+  }
+
+  async function retryLookup() {
+    const planId = lookupFailedPlanId;
+    if (!planId) return;
+    setRetryingLookup(true);
+    const pref = await loadPreference();
+    setRetryingLookup(false);
+    setPreference(pref);
+    if (pref === 'error') return; // keep the notice open
+    setLookupFailedPlanId(null);
+    routeByPreference(planId, pref);
+  }
+
+  function continueWithoutChanging() {
+    const planId = lookupFailedPlanId;
+    setLookupFailedPlanId(null);
+    if (planId) checkout(planId);
   }
 
   return (
@@ -228,9 +293,51 @@ export default function PricingPage() {
       {/* Cause selector */}
       {pendingPlanId && (
         <CauseSelector
-          onSave={() => { setHasPreferences(true); checkout(pendingPlanId); setPendingPlanId(null); }}
+          onSave={() => { setPreference('saved'); checkout(pendingPlanId); setPendingPlanId(null); }}
           onSkip={() => { checkout(pendingPlanId); setPendingPlanId(null); }}
         />
+      )}
+
+      {/* Preference lookup failed: never assume the equal-split default or overwrite a saved choice */}
+      {lookupFailedPlanId && (
+        <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/50 px-4 pb-4 sm:pb-0">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pref-lookup-title"
+            data-testid="pref-lookup-dialog"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5 sm:p-6"
+          >
+            <h2 id="pref-lookup-title" className="text-lg font-semibold text-gray-900 mb-2">{t.pricing.prefLookup.title}</h2>
+            <p role="alert" className="text-sm text-gray-600 leading-relaxed mb-5">{t.pricing.prefLookup.body}</p>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={retryLookup}
+                disabled={retryingLookup}
+                className="w-full py-3 rounded-xl bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-50 transition"
+              >
+                {retryingLookup ? t.pricing.prefLookup.retrying : t.pricing.prefLookup.retry}
+              </button>
+              <button
+                type="button"
+                onClick={continueWithoutChanging}
+                disabled={retryingLookup}
+                className="w-full py-3 rounded-xl border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition"
+              >
+                {t.pricing.prefLookup.continue}
+              </button>
+              <button
+                type="button"
+                onClick={() => setLookupFailedPlanId(null)}
+                disabled={retryingLookup}
+                className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 transition"
+              >
+                {t.common.cancel}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );
