@@ -91,26 +91,63 @@ describe('GiftsService', () => {
   });
 
   describe('fulfillGift', () => {
-    it('creates gift card record and sends emails', async () => {
+    const session = {
+      id: 'cs_test_1',
+      metadata: { type: 'gift', buyerUserId: 'u1', recipientEmail: 'r@test.com', tokenCount: '3', message: 'Congrats', occasion: 'graduation' },
+      customer_details: { email: 'buyer@test.com', name: 'Carlos' },
+    };
+    beforeEach(() => {
+      mockGiftRepo.findOneBy.mockResolvedValue(null);
       mockGiftRepo.create.mockImplementation((d: any) => d);
       mockGiftRepo.save.mockResolvedValue({ id: 'gc1' });
       mockUserRepo.findOneBy.mockResolvedValue({ name: 'Carlos' });
       mockEmailService.sendGiftCard.mockResolvedValue(undefined);
       mockEmailService.sendGiftConfirmation.mockResolvedValue(undefined);
+    });
 
-      await service.fulfillGift({
-        id: 'cs_test_1',
-        metadata: { type: 'gift', buyerUserId: 'u1', recipientEmail: 'r@test.com', tokenCount: '3', message: 'Congrats', occasion: 'graduation' },
-        customer_details: { email: 'buyer@test.com', name: 'Carlos' },
-      });
+    it('records the gift card and returns the e-mail step, which sends nothing until it is run (after commit)', async () => {
+      const notify = await service.fulfillGift(session);
+      expect(mockGiftRepo.save).toHaveBeenCalledWith(expect.objectContaining({ stripeSessionId: 'cs_test_1', tokenCount: 3, status: 'sent' }));
+      expect(mockEmailService.sendGiftCard).not.toHaveBeenCalled();
 
-      expect(mockGiftRepo.save).toHaveBeenCalled();
+      await notify!();
       expect(mockEmailService.sendGiftCard).toHaveBeenCalledWith('r@test.com', 'Carlos', 3, 'Congrats', expect.any(String), expect.any(String));
       expect(mockEmailService.sendGiftConfirmation).toHaveBeenCalledWith('buyer@test.com', 'Carlos', 'r@test.com', 3);
     });
 
+    it('the e-mailed claim link carries the token of the recorded gift', async () => {
+      const notify = await service.fulfillGift(session);
+      await notify!();
+      const savedToken = mockGiftRepo.save.mock.calls[0][0].claimToken;
+      expect(mockEmailService.sendGiftCard.mock.calls[0][5]).toBe(savedToken);
+    });
+
+    it('uses the caller transaction repository when given', async () => {
+      const txGiftRepo = { findOneBy: jest.fn().mockResolvedValue(null), create: jest.fn((d: any) => d), save: jest.fn() };
+      const em = { getRepository: jest.fn(() => txGiftRepo) };
+      await service.fulfillGift(session, em as any);
+      expect(txGiftRepo.save).toHaveBeenCalled();
+      expect(mockGiftRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('a gift already recorded for this Checkout session is not recorded or e-mailed again', async () => {
+      mockGiftRepo.findOneBy.mockResolvedValue({ id: 'gc_existing', stripeSessionId: 'cs_test_1' });
+      jest.spyOn((service as any).logger, 'warn').mockImplementation(() => undefined);
+      expect(await service.fulfillGift(session)).toBeNull();
+      expect(mockGiftRepo.save).not.toHaveBeenCalled();
+      expect(mockGiftRepo.findOneBy).toHaveBeenCalledWith({ stripeSessionId: 'cs_test_1' });
+    });
+
+    it('anonymous buyer: the name comes from Checkout, no confirmation e-mail without a buyer address', async () => {
+      const notify = await service.fulfillGift({ id: 'cs_2', metadata: { recipientEmail: 'r@test.com', tokenCount: '1' }, customer_details: { name: 'Ana' } });
+      await notify!();
+      expect(mockUserRepo.findOneBy).not.toHaveBeenCalled();
+      expect(mockEmailService.sendGiftCard).toHaveBeenCalledWith('r@test.com', 'Ana', 1, null, null, expect.any(String));
+      expect(mockEmailService.sendGiftConfirmation).not.toHaveBeenCalled();
+    });
+
     it('skips when metadata is missing recipientEmail', async () => {
-      await service.fulfillGift({ id: 'cs_1', metadata: { type: 'gift' }, customer_details: null });
+      expect(await service.fulfillGift({ id: 'cs_1', metadata: { type: 'gift' }, customer_details: null })).toBeNull();
       expect(mockGiftRepo.save).not.toHaveBeenCalled();
     });
   });

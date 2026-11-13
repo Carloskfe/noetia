@@ -13,7 +13,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'crypto';
 import Stripe from 'stripe';
-import { In, LessThan, MoreThan, Repository } from 'typeorm';
+import { EntityManager, In, LessThan, MoreThan, Repository } from 'typeorm';
 import { EmailService } from '../email/email.service';
 import { PushService } from '../push/push.service';
 import { Book } from '../books/book.entity';
@@ -21,6 +21,7 @@ import { UserBook } from '../library/user-book.entity';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { PlansService } from './plans.service';
+import { claimStripeKey, fulfillmentKey, lockSubscriptionIdentity } from './stripe-fulfillment-ledger';
 import { Subscription, SubscriptionStatus } from './subscription.entity';
 import { SubscriptionInvite } from './subscription-invite.entity';
 import { TokenLedger } from './token-ledger.entity';
@@ -78,7 +79,9 @@ export class SubscriptionsService {
     count: number,
     type: 'paid' | 'promotional' | 'courtesy',
     options: { subscriptionId?: string; reason?: string } = {},
+    em?: EntityManager,
   ): Promise<void> {
+    const tokenRepo = em ? em.getRepository(TokenLedger) : this.tokenRepo;
     const now = new Date();
     const expiryDays =
       type === 'paid' ? TOKEN_EXPIRY_DAYS :
@@ -88,7 +91,7 @@ export class SubscriptionsService {
     const expiresAt = new Date(now.getTime() + expiryDays * 24 * 60 * 60 * 1000);
 
     const entries = Array.from({ length: count }, () =>
-      this.tokenRepo.create({
+      tokenRepo.create({
         userId,
         subscriptionId: options.subscriptionId ?? null,
         type,
@@ -100,7 +103,7 @@ export class SubscriptionsService {
       }),
     );
 
-    await this.tokenRepo.save(entries);
+    await tokenRepo.save(entries);
   }
 
   async getActiveTokenCount(userId: string): Promise<number> {
@@ -249,6 +252,8 @@ export class SubscriptionsService {
       let openSessions: Array<{ id: string; url: string | null; metadata?: Record<string, string> | null }>;
       try {
         const sessions = await stripe.checkout.sessions.list({ customer: customerId, status: 'open', limit: 100 });
+        // A first page is not an inventory: with more pages, an unseen open session could still complete.
+        if (sessions.has_more) throw new Error('checkout session list truncated'); // → 503, fail safe
         openSessions = sessions.data.filter((cs) => cs.mode === 'subscription');
         for (const customer of customerIds) {
           // Default listing = every subscription that is not canceled (newest first).
@@ -279,18 +284,50 @@ export class SubscriptionsService {
         }
       }
 
-      const session = await stripe.checkout.sessions.create({
-        customer: customerId,
-        payment_method_types: ['card'],
-        line_items: [{ price: plan.stripePriceId, quantity: 1 }],
-        mode: 'subscription',
-        subscription_data: { trial_period_days: 14 },
-        metadata: { noetiaUserId: userId, noetiaPlanId: planId },
-        success_url: `${this.webUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${this.webUrl}/billing/cancel`,
-      });
-      return { url: session.url! };
+      try {
+        const session = await stripe.checkout.sessions.create({
+          customer: customerId,
+          payment_method_types: ['card'],
+          line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+          mode: 'subscription',
+          subscription_data: { trial_period_days: 14 },
+          metadata: { noetiaUserId: userId, noetiaPlanId: planId },
+          success_url: `${this.webUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${this.webUrl}/billing/cancel`,
+        });
+        return { url: session.url! };
+      } catch (err) {
+        return this.recoverAmbiguousCheckoutCreate(stripe, customerId, planId, userId, err);
+      }
     });
+  }
+
+  /**
+   * A create that failed AMBIGUOUSLY (network error/timeout or Stripe 5xx: Stripe may have created the session
+   * but the response was lost — stripe-node's own retries already reuse one idempotency key) must not be
+   * followed by another create. Still under the checkout lock: re-list open sessions and return the one for
+   * this plan if Stripe did create it; otherwise 409 `checkout_pending`, so the user's retry goes through the
+   * guard again (which reuses the session once it is visible). A definitive Stripe rejection is re-thrown
+   * unchanged (nothing was created).
+   */
+  private async recoverAmbiguousCheckoutCreate(
+    stripe: InstanceType<typeof Stripe>,
+    customerId: string,
+    planId: string,
+    userId: string,
+    err: unknown,
+  ): Promise<{ url: string }> {
+    const type = (err as { type?: string } | null)?.type;
+    if (type !== 'StripeConnectionError' && type !== 'StripeAPIError') throw err;
+    this.logger.warn(`[checkout-guard] ambiguous session create for user ${userId} (${type}); checking for a created session`);
+    try {
+      const sessions = await stripe.checkout.sessions.list({ customer: customerId, status: 'open', limit: 100 });
+      const created = sessions.data.find((cs) => cs.mode === 'subscription' && cs.metadata?.noetiaPlanId === planId && cs.url);
+      if (created) return { url: created.url! };
+    } catch {
+      // fall through: still unknown → do not create
+    }
+    throw new ConflictException({ error: 'checkout_pending' });
   }
 
   /**
@@ -357,7 +394,8 @@ export class SubscriptionsService {
     return { url: session.url! };
   }
 
-  async issueTokensForPurchasedPackage(tokenPackageId: string, userId: string): Promise<void> {
+  /** Called inside the webhook transaction, after the Checkout session's fulfillment key was claimed. */
+  async issueTokensForPurchasedPackage(tokenPackageId: string, userId: string, em?: EntityManager): Promise<void> {
     const pkg = await this.plansService.findTokenPackageById(tokenPackageId);
     if (!pkg) {
       this.logger.warn(`Token package not found for id: ${tokenPackageId}`);
@@ -365,34 +403,56 @@ export class SubscriptionsService {
     }
     await this.issueTokens(userId, pkg.tokenCount, 'paid', {
       reason: `Purchased ${pkg.name}`,
-    });
+    }, em);
   }
 
-  async addPurchasedBook(userId: string, bookId: string): Promise<void> {
-    try {
-      await this.userBookRepo.insert({ userId, bookId, purchaseType: 'purchase' });
-    } catch (err: any) {
-      if (err?.code === '23505') return;
-      throw err;
-    }
+  /**
+   * Idempotent on the (userId, bookId) unique constraint. ON CONFLICT DO NOTHING (not catch-23505) because a
+   * failed statement would abort the surrounding webhook transaction.
+   */
+  async addPurchasedBook(userId: string, bookId: string, em?: EntityManager): Promise<void> {
+    const repo = em ? em.getRepository(UserBook) : this.userBookRepo;
+    await repo
+      .createQueryBuilder()
+      .insert()
+      .values({ userId, bookId, purchaseType: 'purchase' })
+      .orIgnore()
+      .execute();
   }
 
-  async issueTokensForNewSubscription(stripeSubscriptionId: string): Promise<void> {
-    const sub = await this.subRepo.findOne({
+  /**
+   * Cycle tokens for a paid invoice. When/whether tokens are issued is unchanged (trial-token STOP gate): only
+   * when the row already has a plan. When the invoice id is known, the grant is claimed once per invoice
+   * (fulfillment key in the webhook transaction), so two different events for the same invoice grant once.
+   * The claim is taken only when tokens are actually issued, so an invoice that grants nothing today does not
+   * change behaviour later.
+   */
+  async issueTokensForNewSubscription(
+    stripeSubscriptionId: string,
+    em?: EntityManager,
+    invoiceId?: string | null,
+  ): Promise<void> {
+    const subRepo = em ? em.getRepository(Subscription) : this.subRepo;
+    const sub = await subRepo.findOne({
       where: { stripeSubscriptionId },
       relations: ['plan'],
     });
     if (!sub?.plan) return;
 
+    if (em && invoiceId && !(await claimStripeKey(em, fulfillmentKey('invoice-tokens', invoiceId), 'fulfillment:invoice-tokens'))) {
+      this.logger.warn(`Tokens for invoice ${invoiceId} already issued — not issuing again`);
+      return;
+    }
+
     await this.issueTokens(sub.userId, sub.plan.tokensPerCycle, 'paid', {
       subscriptionId: sub.id,
       reason: 'Subscription renewal',
-    });
+    }, em);
 
     if (sub.plan.interval === 'year') {
       const next = new Date();
       next.setDate(next.getDate() + 30);
-      await this.subRepo.update(sub.id, { nextTokenIssuanceAt: next });
+      await subRepo.update(sub.id, { nextTokenIssuanceAt: next });
     }
   }
 
@@ -605,6 +665,12 @@ export class SubscriptionsService {
    * `planId` is written only when the caller passes it (unchanged behaviour: only
    * `customer.subscription.updated` does — see the trial-token STOP gate in the stabilization report).
    *
+   * Atomicity: the read, the identity comparison and the write run in ONE transaction under a per-user
+   * advisory lock (`subscription-identity:<userId>`), so two concurrent webhooks for different Stripe
+   * subscriptions are serialized — the second one reads the row the first one committed and is rejected.
+   * Without the lock both could read "no row / ended row" and the later upsert would silently replace the
+   * earlier live subscription. Uses the caller's transaction when given (the webhook transaction).
+   *
    * @returns true when the state was applied.
    */
   async upsertFromWebhook(
@@ -615,37 +681,48 @@ export class SubscriptionsService {
     currentPeriodEnd: Date,
     trialEnd: Date | null,
     planId?: string | null,
+    em?: EntityManager,
   ): Promise<boolean> {
-    const user = await this.userRepo.findOneBy({ stripeCustomerId });
-    if (!user) {
-      this.logger.warn(`No user found for stripeCustomerId: ${stripeCustomerId}`);
-      return false;
-    }
-    const existing = await this.subRepo.findOneBy({ userId: user.id });
-    if (existing?.stripeEventId === stripeEventId) return false;
-
-    if (existing?.stripeSubscriptionId && existing.stripeSubscriptionId !== stripeSubscriptionId) {
-      const currentLive = LIVE_SUBSCRIPTION_STATUSES.includes(existing.status);
-      const incomingLive = LIVE_SUBSCRIPTION_STATUSES.includes(status);
-      if (currentLive || !incomingLive) {
-        const detail =
-          `user=${user.id} current=${existing.stripeSubscriptionId}(${existing.status}) ` +
-          `incoming=${stripeSubscriptionId}(${status}) event=${stripeEventId}`;
-        if (currentLive && incomingLive) {
-          // Two billable subscriptions for one user: needs manual review (refund/cancel is a human decision).
-          this.logger.error(`[subscription-identity] DUPLICATE_LIVE_SUBSCRIPTION ${detail}`);
-        } else {
-          this.logger.warn(`[subscription-identity] IGNORED_OTHER_SUBSCRIPTION_EVENT ${detail}`);
-        }
+    return this.inTransaction(em, async (tx) => {
+      const user = await tx.getRepository(User).findOneBy({ stripeCustomerId });
+      if (!user) {
+        this.logger.warn(`No user found for stripeCustomerId: ${stripeCustomerId}`);
         return false;
       }
-    }
+      await lockSubscriptionIdentity(tx, user.id);
+      const subRepo = tx.getRepository(Subscription);
+      // Read AFTER the lock: READ COMMITTED gives this statement every commit made before the lock was granted.
+      const existing = await subRepo.findOneBy({ userId: user.id });
+      if (existing?.stripeEventId === stripeEventId) return false;
 
-    await this.subRepo.upsert(
-      { userId: user.id, stripeCustomerId, stripeSubscriptionId, status, currentPeriodEnd, trialEnd, stripeEventId, ...(planId !== undefined ? { planId } : {}) },
-      { conflictPaths: ['userId'] },
-    );
-    return true;
+      if (existing?.stripeSubscriptionId && existing.stripeSubscriptionId !== stripeSubscriptionId) {
+        const currentLive = LIVE_SUBSCRIPTION_STATUSES.includes(existing.status);
+        const incomingLive = LIVE_SUBSCRIPTION_STATUSES.includes(status);
+        if (currentLive || !incomingLive) {
+          const detail =
+            `user=${user.id} current=${existing.stripeSubscriptionId}(${existing.status}) ` +
+            `incoming=${stripeSubscriptionId}(${status}) event=${stripeEventId}`;
+          if (currentLive && incomingLive) {
+            // Two billable subscriptions for one user: needs manual review (refund/cancel is a human decision).
+            this.logger.error(`[subscription-identity] DUPLICATE_LIVE_SUBSCRIPTION ${detail}`);
+          } else {
+            this.logger.warn(`[subscription-identity] IGNORED_OTHER_SUBSCRIPTION_EVENT ${detail}`);
+          }
+          return false;
+        }
+      }
+
+      await subRepo.upsert(
+        { userId: user.id, stripeCustomerId, stripeSubscriptionId, status, currentPeriodEnd, trialEnd, stripeEventId, ...(planId !== undefined ? { planId } : {}) },
+        { conflictPaths: ['userId'] },
+      );
+      return true;
+    });
+  }
+
+  /** Runs `fn` in the caller's transaction, or in a new one. */
+  private inTransaction<T>(em: EntityManager | undefined, fn: (tx: EntityManager) => Promise<T>): Promise<T> {
+    return em ? fn(em) : this.subRepo.manager.transaction(fn);
   }
 
   /**
@@ -657,6 +734,7 @@ export class SubscriptionsService {
     stripeEventId: string,
     stripeSubscriptionId: string,
     options: { includePlan?: boolean } = {},
+    em?: EntityManager,
   ): Promise<boolean> {
     const sub = (await this.requireStripe().subscriptions.retrieve(stripeSubscriptionId)) as any;
     const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
@@ -675,11 +753,21 @@ export class SubscriptionsService {
       periodEnd ? new Date(periodEnd * 1000) : new Date(),
       sub.trial_end ? new Date(sub.trial_end * 1000) : null,
       planId,
+      em,
     );
   }
 
-  async cancelFromWebhook(stripeSubscriptionId: string): Promise<void> {
-    await this.subRepo.update({ stripeSubscriptionId }, { status: 'canceled' });
+  /** Same per-user identity lock as upsertFromWebhook, so a delete and a concurrent switch are serialized. */
+  async cancelFromWebhook(stripeSubscriptionId: string, em?: EntityManager): Promise<void> {
+    await this.inTransaction(em, async (tx) => {
+      const subRepo = tx.getRepository(Subscription);
+      const rows = await subRepo.find({ where: { stripeSubscriptionId } });
+      for (const row of rows) {
+        await lockSubscriptionIdentity(tx, row.userId);
+        // Re-checks the subscription id after the lock: the row may have switched to a newer subscription.
+        await subRepo.update({ id: row.id, stripeSubscriptionId }, { status: 'canceled' });
+      }
+    });
   }
 
   async findPlanByStripePriceId(priceId: string): Promise<string | null> {

@@ -58,8 +58,10 @@ function installAdvisoryLock() {
   mockSubRepo.manager.transaction.mockImplementation(async (fn: (em: any) => Promise<unknown>) => {
     let release!: () => void;
     const em = {
+      getRepository: (entity: unknown) => repoFor(entity),
       query: async (sql: string, params: unknown[]) => {
         lockQueries.push([sql, params]);
+        if (sql.includes('INSERT INTO stripe_processed_events')) return claimResult(String(params[0]));
         const key = String(params[0]);
         while (held.has(key)) await held.get(key);
         held.set(key, new Promise<void>((r) => { release = () => { held.delete(key); r(); }; }));
@@ -71,10 +73,28 @@ function installAdvisoryLock() {
 
 const mockBookRepo = { findOneBy: jest.fn() };
 
+const mockOrIgnoreExecute = jest.fn();
 const mockUserBookRepo = {
   existsBy: jest.fn(),
   insert: jest.fn(),
+  createQueryBuilder: jest.fn(() => ({ insert: () => ({ values: (v: unknown) => ({ orIgnore: () => ({ execute: () => mockOrIgnoreExecute(v) }) }) }) })),
 };
+// Fulfillment-key claims (stripe_processed_events PK) seen by issueTokensForNewSubscription.
+const claimed = new Set<string>();
+function claimResult(key: string) {
+  if (claimed.has(key)) return [];
+  claimed.add(key);
+  return [{ eventId: key }];
+}
+function repoFor(entity: unknown): any {
+  if (entity === Subscription) return mockSubRepo;
+  if (entity === User) return mockUserRepo;
+  if (entity === TokenLedger) return mockTokenRepo;
+  if (entity === UserBook) return mockUserBookRepo;
+  return {};
+}
+/** A plain transaction manager (no lock contention) for calls that receive the webhook transaction. */
+const txEm = { getRepository: repoFor, query: jest.fn(async (sql: string, params: unknown[]) => (sql.includes('INSERT INTO stripe_processed_events') ? claimResult(String(params[0])) : [])) };
 
 const mockTokenRepo = {
   create: jest.fn(),
@@ -124,6 +144,9 @@ describe('SubscriptionsService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    claimed.clear();
+    lockQueries.length = 0;
+    installAdvisoryLock();
     mockQb.getOne.mockResolvedValue(null);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -367,6 +390,68 @@ describe('SubscriptionsService', () => {
     });
   });
 
+  describe('createCheckoutSession — listing truncation and ambiguous create (timeout) recovery', () => {
+    const PLAN = { id: 'plan1', stripePriceId: 'price_123' };
+    const none = { data: [], has_more: false };
+    const stripeErr = (type: string) => Object.assign(new Error(type), { type });
+
+    beforeEach(() => {
+      mockUsersService.findById.mockResolvedValue({ id: 'u1', stripeCustomerId: 'cus_1' });
+      mockPlansService.findById.mockResolvedValue(PLAN);
+      mockSubRepo.findOneBy.mockResolvedValue(null);
+      mockStripe.checkout.sessions.list.mockResolvedValue(none);
+      mockStripe.subscriptions.list.mockResolvedValue(none);
+    });
+
+    it('a first page of 100 open sessions with more pages is not an inventory → 503, nothing created', async () => {
+      mockStripe.checkout.sessions.list.mockResolvedValue({
+        data: Array.from({ length: 100 }, (_, i) => ({ id: `cs_${i}`, mode: 'payment', url: null, metadata: {} })),
+        has_more: true,
+      });
+      await expect(service.createCheckoutSession('u1', 'plan1')).rejects.toThrow(ServiceUnavailableException);
+      expect(mockStripe.checkout.sessions.create).not.toHaveBeenCalled();
+      expect(mockStripe.checkout.sessions.expire).not.toHaveBeenCalled();
+    });
+
+    it('timeout after Stripe created the session → the created session is found and returned; no second create', async () => {
+      mockStripe.checkout.sessions.create.mockRejectedValue(stripeErr('StripeConnectionError'));
+      mockStripe.checkout.sessions.list
+        .mockResolvedValueOnce(none) // guard listing, before the create
+        .mockResolvedValueOnce({ data: [{ id: 'cs_made', mode: 'subscription', url: 'https://checkout.stripe.com/made', metadata: { noetiaPlanId: 'plan1' } }], has_more: false });
+      await expect(service.createCheckoutSession('u1', 'plan1')).resolves.toEqual({ url: 'https://checkout.stripe.com/made' });
+      expect(mockStripe.checkout.sessions.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('timeout and no session visible → 409 checkout_pending (no blind re-create); the retry reuses it once visible', async () => {
+      mockStripe.checkout.sessions.create.mockRejectedValueOnce(stripeErr('StripeAPIError'));
+      await expect(service.createCheckoutSession('u1', 'plan1')).rejects.toMatchObject({ response: { error: 'checkout_pending' } });
+      expect(mockStripe.checkout.sessions.create).toHaveBeenCalledTimes(1);
+      // User retries; Stripe had in fact created it.
+      mockStripe.checkout.sessions.list.mockResolvedValue({ data: [{ id: 'cs_made', mode: 'subscription', url: 'https://checkout.stripe.com/made', metadata: { noetiaPlanId: 'plan1' } }], has_more: false });
+      await expect(service.createCheckoutSession('u1', 'plan1')).resolves.toEqual({ url: 'https://checkout.stripe.com/made' });
+      expect(mockStripe.checkout.sessions.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('timeout and the re-list also fails → 409 checkout_pending', async () => {
+      mockStripe.checkout.sessions.create.mockRejectedValue(stripeErr('StripeConnectionError'));
+      mockStripe.checkout.sessions.list.mockResolvedValueOnce(none).mockRejectedValueOnce(new Error('network'));
+      await expect(service.createCheckoutSession('u1', 'plan1')).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('a session for ANOTHER plan found after a timeout is not returned for this plan', async () => {
+      mockStripe.checkout.sessions.create.mockRejectedValue(stripeErr('StripeConnectionError'));
+      mockStripe.checkout.sessions.list.mockResolvedValueOnce(none).mockResolvedValueOnce({ data: [{ id: 'cs_x', mode: 'subscription', url: 'u', metadata: { noetiaPlanId: 'plan2' } }], has_more: false });
+      await expect(service.createCheckoutSession('u1', 'plan1')).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('a definitive Stripe rejection (nothing created) is re-thrown unchanged', async () => {
+      const err = stripeErr('StripeInvalidRequestError');
+      mockStripe.checkout.sessions.create.mockRejectedValue(err);
+      await expect(service.createCheckoutSession('u1', 'plan1')).rejects.toBe(err);
+      expect(mockStripe.checkout.sessions.list).toHaveBeenCalledTimes(1); // no recovery listing
+    });
+  });
+
   describe('cancelSubscription', () => {
     it('sets cancel_at_period_end and updates status to canceling', async () => {
       mockSubRepo.findOneBy.mockResolvedValue({
@@ -512,6 +597,47 @@ describe('SubscriptionsService', () => {
     });
   });
 
+  describe('upsertFromWebhook — atomic identity (per-user lock)', () => {
+    const at = new Date('2026-12-01T00:00:00Z');
+
+    it('takes the per-user lock BEFORE reading the row, inside a transaction', async () => {
+      const order: string[] = [];
+      mockUserRepo.findOneBy.mockResolvedValue({ id: 'u1' });
+      mockSubRepo.manager.transaction.mockImplementationOnce(async (fn: any) => fn({
+        getRepository: repoFor,
+        query: async (_sql: string, params: unknown[]) => { order.push(`lock ${params[0]}`); },
+      }));
+      mockSubRepo.findOneBy.mockImplementationOnce(async () => { order.push('read'); return null; });
+      await service.upsertFromWebhook('evt_1', 'cus_1', 'sub_1', 'trialing', at, null);
+      expect(order).toEqual(['lock subscription-identity:u1', 'read']);
+    });
+
+    it('uses the caller transaction when given (no nested transaction)', async () => {
+      mockUserRepo.findOneBy.mockResolvedValue({ id: 'u1' });
+      mockSubRepo.findOneBy.mockResolvedValue(null);
+      await service.upsertFromWebhook('evt_1', 'cus_1', 'sub_1', 'trialing', at, null, undefined, txEm as any);
+      expect(mockSubRepo.manager.transaction).not.toHaveBeenCalled();
+      expect(txEm.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock(hashtext($1))', ['subscription-identity:u1']);
+    });
+
+    it('two CONCURRENT webhooks for different live subscriptions: exactly one is applied, the other is rejected', async () => {
+      // Stateful row + a read that yields, so without the lock both would read "no row" before either writes.
+      let row: any = null;
+      mockUserRepo.findOneBy.mockResolvedValue({ id: 'u1' });
+      mockSubRepo.findOneBy.mockImplementation(async () => { await new Promise((r) => setTimeout(r, 5)); return row ? { ...row } : null; });
+      mockSubRepo.upsert.mockImplementation(async (v: any) => { row = { ...(row ?? {}), ...v }; });
+      const logError = jest.spyOn((service as any).logger, 'error').mockImplementation(() => undefined);
+      const results = await Promise.all([
+        service.upsertFromWebhook('evt_a', 'cus_1', 'sub_A', 'trialing', at, null),
+        service.upsertFromWebhook('evt_b', 'cus_1', 'sub_B', 'trialing', at, null),
+      ]);
+      expect(results.filter(Boolean)).toHaveLength(1);
+      expect(mockSubRepo.upsert).toHaveBeenCalledTimes(1);
+      expect(row.stripeSubscriptionId).toBe(results[0] ? 'sub_A' : 'sub_B');
+      expect(logError).toHaveBeenCalledWith(expect.stringContaining('DUPLICATE_LIVE_SUBSCRIPTION'));
+    });
+  });
+
   describe('applyStripeSubscription (order-independent: re-reads Stripe)', () => {
     const now = Math.floor(Date.now() / 1000);
     beforeEach(() => {
@@ -554,10 +680,20 @@ describe('SubscriptionsService', () => {
   });
 
   describe('cancelFromWebhook', () => {
-    it('updates subscription status to canceled', async () => {
+    it('cancels the row of THAT Stripe subscription under the per-user identity lock (own transaction)', async () => {
+      mockSubRepo.find.mockResolvedValue([{ id: 'row1', userId: 'u1', stripeSubscriptionId: 'sub_1' }]);
       mockSubRepo.update.mockResolvedValue(undefined);
       await service.cancelFromWebhook('sub_1');
-      expect(mockSubRepo.update).toHaveBeenCalledWith({ stripeSubscriptionId: 'sub_1' }, { status: 'canceled' });
+      expect(mockSubRepo.manager.transaction).toHaveBeenCalledTimes(1);
+      expect(lockQueries).toContainEqual(['SELECT pg_advisory_xact_lock(hashtext($1))', ['subscription-identity:u1']]);
+      expect(mockSubRepo.update).toHaveBeenCalledWith({ id: 'row1', stripeSubscriptionId: 'sub_1' }, { status: 'canceled' });
+    });
+
+    it('uses the caller transaction when given and does nothing for an unknown subscription', async () => {
+      mockSubRepo.find.mockResolvedValue([]);
+      await service.cancelFromWebhook('sub_unknown', txEm as any);
+      expect(mockSubRepo.manager.transaction).not.toHaveBeenCalled();
+      expect(mockSubRepo.update).not.toHaveBeenCalled();
     });
   });
 
@@ -679,21 +815,21 @@ describe('SubscriptionsService', () => {
   });
 
   describe('addPurchasedBook', () => {
-    it('inserts user_book with purchaseType purchase', async () => {
-      mockUserBookRepo.insert.mockResolvedValue(undefined);
+    it('inserts user_book with purchaseType purchase, ON CONFLICT DO NOTHING (never aborts the webhook transaction)', async () => {
+      mockOrIgnoreExecute.mockResolvedValue(undefined);
       await service.addPurchasedBook('u1', 'bk1');
-      expect(mockUserBookRepo.insert).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 'u1', bookId: 'bk1', purchaseType: 'purchase' }),
-      );
+      expect(mockOrIgnoreExecute).toHaveBeenCalledWith({ userId: 'u1', bookId: 'bk1', purchaseType: 'purchase' });
+      expect(mockUserBookRepo.insert).not.toHaveBeenCalled();
     });
 
-    it('silently ignores duplicate (already owned)', async () => {
-      mockUserBookRepo.insert.mockRejectedValue({ code: '23505' });
-      await expect(service.addPurchasedBook('u1', 'bk1')).resolves.toBeUndefined();
+    it('uses the caller transaction repository when given', async () => {
+      mockOrIgnoreExecute.mockResolvedValue(undefined);
+      await expect(service.addPurchasedBook('u1', 'bk1', txEm as any)).resolves.toBeUndefined();
+      expect(mockUserBookRepo.createQueryBuilder).toHaveBeenCalled();
     });
 
     it('rethrows unexpected errors', async () => {
-      mockUserBookRepo.insert.mockRejectedValue(new Error('DB down'));
+      mockOrIgnoreExecute.mockRejectedValue(new Error('DB down'));
       await expect(service.addPurchasedBook('u1', 'bk1')).rejects.toThrow('DB down');
     });
   });
@@ -732,6 +868,25 @@ describe('SubscriptionsService', () => {
 
       await service.issueTokensForNewSubscription('sub_stripe_1');
       expect(mockSubRepo.update).toHaveBeenCalledWith('sub1', expect.objectContaining({ nextTokenIssuanceAt: expect.any(Date) }));
+    });
+
+    it('in the webhook transaction, claims the invoice once: a second call for the same invoice issues nothing', async () => {
+      mockSubRepo.findOne.mockResolvedValue({ id: 'sub1', userId: 'u1', plan: { tokensPerCycle: 2, interval: 'month' } });
+      mockTokenRepo.create.mockImplementation((d: any) => d);
+      mockTokenRepo.save.mockResolvedValue([]);
+      await service.issueTokensForNewSubscription('sub_stripe_1', txEm as any, 'in_1');
+      await service.issueTokensForNewSubscription('sub_stripe_1', txEm as any, 'in_1');
+      expect(mockTokenRepo.save).toHaveBeenCalledTimes(1);
+      expect(claimed.has('fulfillment:invoice-tokens:in_1')).toBe(true);
+      await service.issueTokensForNewSubscription('sub_stripe_1', txEm as any, 'in_2'); // next renewal
+      expect(mockTokenRepo.save).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not claim the invoice when no tokens are issued (no plan yet — trial-token gate unchanged)', async () => {
+      mockSubRepo.findOne.mockResolvedValue({ id: 'sub1', userId: 'u1', plan: null });
+      await service.issueTokensForNewSubscription('sub_stripe_1', txEm as any, 'in_trial');
+      expect(claimed.size).toBe(0);
+      expect(mockTokenRepo.save).not.toHaveBeenCalled();
     });
   });
 

@@ -1,5 +1,8 @@
 // Payment lifecycle — event-order matrix. REAL WebhooksService + REAL SubscriptionsService; in-memory stand-ins
 // for the subscriptions / users / token-ledger / processed-events tables and a stateful fake Stripe client.
+// The fake transaction snapshots every table and restores it when the callback throws (rollback), and the
+// claim INSERT honours the primary key — so atomicity and crash/retry behaviour are exercised here; true
+// concurrency is evidenced against real PostgreSQL (see the PR #60 report, payment-safety harness).
 // No database, no network, no real Stripe. Synthetic ids only.
 import { ConflictException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -58,7 +61,9 @@ const PLAN = { id: 'plan-ind', stripePriceId: 'price_ind', tokensPerCycle: 1, in
 let subRow: any; // uq_subscriptions_user: at most one row per user (single synthetic user here)
 let tokens: any[];
 let processed: Set<string>;
+let ownedBooks: Set<string>;
 const USER = { id: 'u1', email: 'synthetic@test.invalid', stripeCustomerId: 'cus_1' };
+const PACKAGE = { id: 'pkg-1', name: '1 Token', tokenCount: 1, stripePriceId: 'price_pkg_1' };
 
 const subRepo = {
   findOneBy: jest.fn(async (w: any) => {
@@ -80,7 +85,8 @@ const subRepo = {
     if (match) subRow = { ...subRow, ...v };
   }),
   createQueryBuilder: jest.fn(() => ({ leftJoinAndSelect() { return this; }, where() { return this; }, andWhere() { return this; }, getOne: async () => null })),
-  manager: { transaction: jest.fn(async (fn: any) => fn({ query: async () => undefined })) },
+  find: jest.fn(async ({ where }: any) => (subRow && where.stripeSubscriptionId === subRow.stripeSubscriptionId ? [{ ...subRow }] : [])),
+  manager: { transaction: (fn: any) => transaction(fn) },
 };
 const tokenRepo = {
   create: jest.fn((v: any) => v),
@@ -88,10 +94,37 @@ const tokenRepo = {
   count: jest.fn(async () => tokens.length),
   update: jest.fn(),
 };
-const processedRepo = {
-  findOne: jest.fn(async ({ where: { eventId } }: any) => (processed.has(eventId) ? { eventId } : null)),
-  createQueryBuilder: jest.fn(() => ({ insert: () => ({ values: (v: any) => ({ orIgnore: () => ({ execute: async () => { processed.add(v.eventId); } }) }) }) })),
+const userRepo = { findOneBy: async (w: any) => (w.stripeCustomerId === USER.stripeCustomerId ? USER : null), update: jest.fn() };
+const userBookRepo = {
+  createQueryBuilder: () => ({ insert: () => ({ values: (v: any) => ({ orIgnore: () => ({ execute: async () => { ownedBooks.add(`${v.userId}:${v.bookId}`); } }) }) }) }),
 };
+const processedRepo = { manager: { transaction: (fn: any) => transaction(fn) } };
+
+// Transaction stand-in: claims honour the primary key; a throw restores every table (rollback).
+const lockQueries: string[] = [];
+const em = {
+  getRepository: (entity: unknown) =>
+    entity === Subscription ? subRepo : entity === User ? userRepo : entity === TokenLedger ? tokenRepo : entity === UserBook ? userBookRepo : {},
+  query: async (sql: string, params: any[]) => {
+    if (sql.includes('INSERT INTO stripe_processed_events')) {
+      if (processed.has(params[0])) return [];
+      processed.add(params[0]);
+      return [{ eventId: params[0] }];
+    }
+    lockQueries.push(`${sql} ${params?.[0]}`);
+    return [];
+  },
+};
+async function transaction(fn: (m: typeof em) => Promise<unknown>) {
+  const snap = { subRow: subRow ? { ...subRow } : null, tokens: [...tokens], processed: new Set(processed), ownedBooks: new Set(ownedBooks) };
+  try {
+    return await fn(em);
+  } catch (err) {
+    subRow = snap.subRow; tokens = snap.tokens; processed = snap.processed; ownedBooks = snap.ownedBooks;
+    throw err;
+  }
+}
+const giftsFake = { fulfillGift: jest.fn() };
 
 let webhooks: WebhooksService;
 let subscriptions: SubscriptionsService;
@@ -106,20 +139,23 @@ beforeEach(async () => {
   subRow = null;
   tokens = [];
   processed = new Set();
+  ownedBooks = new Set();
+  lockQueries.length = 0;
+  giftsFake.fulfillGift.mockResolvedValue(null);
   const mod = await Test.createTestingModule({
     providers: [
       SubscriptionsService,
       WebhooksService,
       { provide: ConfigService, useValue: { get: (k: string, d?: string) => (k === 'STRIPE_SECRET_KEY' ? 'sk_test_synthetic' : d ?? '') } },
       { provide: UsersService, useValue: { findById: async () => USER } },
-      { provide: PlansService, useValue: { findById: async (id: string) => (id === PLAN.id ? PLAN : null), findAll: async () => [PLAN] } },
+      { provide: PlansService, useValue: { findById: async (id: string) => (id === PLAN.id ? PLAN : null), findAll: async () => [PLAN], findTokenPackageById: async (id: string) => (id === PACKAGE.id ? PACKAGE : null) } },
       { provide: EmailService, useValue: {} },
       { provide: PushService, useValue: {} },
-      { provide: GiftsService, useValue: { fulfillGift: jest.fn() } },
+      { provide: GiftsService, useValue: giftsFake },
       { provide: getRepositoryToken(Subscription), useValue: subRepo },
-      { provide: getRepositoryToken(User), useValue: { findOneBy: async (w: any) => (w.stripeCustomerId === USER.stripeCustomerId ? USER : null), update: jest.fn() } },
+      { provide: getRepositoryToken(User), useValue: userRepo },
       { provide: getRepositoryToken(Book), useValue: {} },
-      { provide: getRepositoryToken(UserBook), useValue: {} },
+      { provide: getRepositoryToken(UserBook), useValue: userBookRepo },
       { provide: getRepositoryToken(TokenLedger), useValue: tokenRepo },
       { provide: getRepositoryToken(SubscriptionInvite), useValue: {} },
       { provide: getRepositoryToken(StripeProcessedEvent), useValue: processedRepo },
@@ -130,6 +166,7 @@ beforeEach(async () => {
   logError = jest.spyOn((subscriptions as any).logger, 'error').mockImplementation(() => undefined);
   jest.spyOn((subscriptions as any).logger, 'warn').mockImplementation(() => undefined);
   jest.spyOn((webhooks as any).logger, 'log').mockImplementation(() => undefined);
+  jest.spyOn((webhooks as any).logger, 'warn').mockImplementation(() => undefined);
 });
 
 // Stripe-side state changes (what the customer / Stripe did), then the webhooks that describe them.
@@ -141,7 +178,11 @@ const ev = (type: string, object: any, id = `evt_${++seq}`) => webhooks.handleEv
 const created = (sub: string) => ev('customer.subscription.created', { id: sub, customer: 'cus_1' });
 const updated = (sub: string) => ev('customer.subscription.updated', { id: sub, customer: 'cus_1', items: { data: [] } });
 const completed = (sub: string) => ev('checkout.session.completed', { mode: 'subscription', subscription: sub, customer: 'cus_1' });
-const invoicePaid = (sub: string, id?: string) => ev('invoice.paid', { subscription: sub, customer: 'cus_1' }, id);
+let invoiceSeq = 0;
+const invoicePaid = (sub: string, id?: string, invoiceId = `in_${++invoiceSeq}`) =>
+  ev('invoice.paid', { id: invoiceId, subscription: sub, customer: 'cus_1' }, id);
+const paymentCompleted = (sessionId: string, metadata: Record<string, string>, id?: string) =>
+  ev('checkout.session.completed', { id: sessionId, mode: 'payment', metadata }, id);
 const deleted = (sub: string) => ev('customer.subscription.deleted', { id: sub });
 
 describe('Event-order matrix (one subscription)', () => {
@@ -189,8 +230,8 @@ describe('Event-order matrix (one subscription)', () => {
   it('duplicated delivery of invoice.paid does not duplicate token grants', async () => {
     stripeHas('sub_A', 'active');
     await updated('sub_A');
-    await invoicePaid('sub_A', 'evt_inv_1');
-    await invoicePaid('sub_A', 'evt_inv_1'); // Stripe redelivers the same event
+    await invoicePaid('sub_A', 'evt_inv_1', 'in_X');
+    await invoicePaid('sub_A', 'evt_inv_1', 'in_X'); // Stripe redelivers the same event
     expect(tokens).toHaveLength(PLAN.tokensPerCycle);
   });
 
@@ -291,5 +332,116 @@ describe('Trial-token behaviour (documented as-is — PO decision pending, NOT c
     await invoicePaid('sub_A');
     await updated('sub_A');
     expect(tokens).toHaveLength(0);
+  });
+});
+
+describe('Exactly-once fulfillment (P0 idempotency correction)', () => {
+  it('crash after granting tokens but before the event is recorded → everything rolls back; the retry grants once', async () => {
+    stripeHas('sub_A', 'active');
+    await updated('sub_A');
+    const real = subscriptions.issueTokens.bind(subscriptions);
+    jest.spyOn(subscriptions, 'issueTokens').mockImplementationOnce(async (...args: Parameters<typeof real>) => {
+      await real(...args);
+      expect(tokens).toHaveLength(PLAN.tokensPerCycle); // granted inside the transaction…
+      throw new Error('process crashed before COMMIT'); // …then the process dies
+    });
+    await expect(invoicePaid('sub_A', 'evt_crash', 'in_crash')).rejects.toThrow('process crashed');
+    expect(tokens).toHaveLength(0);
+    expect(processed.has('evt_crash')).toBe(false);
+    expect(processed.has('fulfillment:invoice-tokens:in_crash')).toBe(false);
+    await invoicePaid('sub_A', 'evt_crash', 'in_crash'); // Stripe retries the same event
+    await invoicePaid('sub_A', 'evt_crash', 'in_crash'); // and once more
+    expect(tokens).toHaveLength(PLAN.tokensPerCycle);
+  });
+
+  it('two DIFFERENT event ids for the same invoice → tokens granted once', async () => {
+    stripeHas('sub_A', 'active');
+    await updated('sub_A');
+    await invoicePaid('sub_A', 'evt_a', 'in_same');
+    await invoicePaid('sub_A', 'evt_b', 'in_same');
+    expect(tokens).toHaveLength(PLAN.tokensPerCycle);
+    expect(processed.has('evt_a') && processed.has('evt_b')).toBe(true);
+  });
+
+  it('distinct invoices of the same subscription still each grant (renewals unchanged)', async () => {
+    stripeHas('sub_A', 'active');
+    await updated('sub_A');
+    await invoicePaid('sub_A', undefined, 'in_m1');
+    await invoicePaid('sub_A', undefined, 'in_m2');
+    expect(tokens).toHaveLength(2 * PLAN.tokensPerCycle);
+  });
+
+  it('an invoice that grants nothing today (no plan yet — trial gate) does not consume its fulfillment key', async () => {
+    stripeHas('sub_A', 'trialing');
+    await created('sub_A');
+    await invoicePaid('sub_A', 'evt_t1', 'in_trial');
+    expect(processed.has('fulfillment:invoice-tokens:in_trial')).toBe(false);
+    expect(tokens).toHaveLength(0);
+  });
+
+  it('token package: duplicate delivery AND a different event id for the same Checkout session → tokens once', async () => {
+    const md = { tokenPackageId: PACKAGE.id, userId: 'u1' };
+    await paymentCompleted('cs_pkg', md, 'evt_p1');
+    await paymentCompleted('cs_pkg', md, 'evt_p1');
+    await paymentCompleted('cs_pkg', md, 'evt_p2');
+    expect(tokens).toHaveLength(PACKAGE.tokenCount);
+    expect(tokens[0]).toMatchObject({ userId: 'u1', type: 'paid', reason: `Purchased ${PACKAGE.name}` });
+  });
+
+  it('two different token-package sessions each grant (no over-blocking)', async () => {
+    await paymentCompleted('cs_p1', { tokenPackageId: PACKAGE.id, userId: 'u1' });
+    await paymentCompleted('cs_p2', { tokenPackageId: PACKAGE.id, userId: 'u1' });
+    expect(tokens).toHaveLength(2 * PACKAGE.tokenCount);
+  });
+
+  it('a failed token-package fulfillment rolls back and the legitimate retry grants once', async () => {
+    tokenRepo.save.mockRejectedValueOnce(new Error('db write failed'));
+    const md = { tokenPackageId: PACKAGE.id, userId: 'u1' };
+    await expect(paymentCompleted('cs_retry', md, 'evt_r1')).rejects.toThrow('db write failed');
+    expect(processed.has('fulfillment:checkout-session:cs_retry')).toBe(false);
+    await paymentCompleted('cs_retry', md, 'evt_r1');
+    expect(tokens).toHaveLength(PACKAGE.tokenCount);
+  });
+
+  it('book purchase: different event ids for one session → one ownership insert', async () => {
+    await paymentCompleted('cs_book', { bookId: 'b1', userId: 'u1' }, 'evt_b1');
+    await paymentCompleted('cs_book', { bookId: 'b1', userId: 'u1' }, 'evt_b2');
+    expect([...ownedBooks]).toEqual(['u1:b1']);
+  });
+
+  it('gift: different event ids for one session → fulfilled once; the e-mail step runs once, after commit', async () => {
+    const order: string[] = [];
+    const notify = jest.fn(async () => { order.push(`email (event committed: ${processed.has('evt_g1')})`); });
+    giftsFake.fulfillGift.mockImplementation(async () => { order.push('record'); return notify; });
+    await paymentCompleted('cs_gift', { type: 'gift', recipientEmail: 'r@test.invalid', tokenCount: '1' }, 'evt_g1');
+    await paymentCompleted('cs_gift', { type: 'gift', recipientEmail: 'r@test.invalid', tokenCount: '1' }, 'evt_g2');
+    expect(giftsFake.fulfillGift).toHaveBeenCalledTimes(1);
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect(order).toEqual(['record', 'email (event committed: true)']);
+  });
+
+  it('gift: a failure while recording sends no e-mail and the retry fulfills once', async () => {
+    const notify = jest.fn(async () => undefined);
+    giftsFake.fulfillGift.mockRejectedValueOnce(new Error('db write failed')).mockResolvedValue(notify);
+    const md = { type: 'gift', recipientEmail: 'r@test.invalid', tokenCount: '3' };
+    await expect(paymentCompleted('cs_gf', md, 'evt_gf')).rejects.toThrow('db write failed');
+    expect(notify).not.toHaveBeenCalled();
+    await paymentCompleted('cs_gf', md, 'evt_gf');
+    expect(notify).toHaveBeenCalledTimes(1);
+  });
+
+  it('a failing post-commit e-mail does not fail the webhook or undo the fulfillment', async () => {
+    giftsFake.fulfillGift.mockResolvedValue(async () => { throw new Error('smtp down'); });
+    jest.spyOn((webhooks as any).logger, 'error').mockImplementation(() => undefined);
+    await expect(paymentCompleted('cs_ge', { type: 'gift', recipientEmail: 'r@test.invalid', tokenCount: '1' }, 'evt_ge')).resolves.toBe('evt_ge');
+    expect(processed.has('fulfillment:checkout-session:cs_ge')).toBe(true);
+  });
+
+  it('subscription webhook writes take the per-user identity lock inside the event transaction', async () => {
+    stripeHas('sub_A', 'trialing');
+    await created('sub_A');
+    stripeHas('sub_A', 'canceled');
+    await deleted('sub_A');
+    expect(lockQueries.filter((q) => q.includes('subscription-identity:u1'))).toHaveLength(2);
   });
 });
