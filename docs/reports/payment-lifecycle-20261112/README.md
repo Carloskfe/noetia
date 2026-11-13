@@ -302,11 +302,14 @@ All earlier `/pricing` tests still pass unchanged: authentication, Causas lookup
 
 ## 9. CI status and release blockers
 
-**CI:** see the Draft PR. Expected failures, identical to `main` and PR #59:
-- coverage gates: API branches, web, mobile;
-- E2E: "Playwright does not support chromium on ubuntu26.04-x64".
-
-All tests are expected to pass.
+**CI did not run for this PR.** `.github/workflows/ci.yml` triggers only on `pull_request` targeting `main` and has no `workflow_dispatch`. A PR stacked on PR #59 therefore gets no CI run.
+- Changing the workflow would be a CI change, which needs its own mission, so the workflow was left alone.
+- **Evidence is the local full runs in §6.2.** They are the same commands CI runs: unit tests with coverage, tsc, lint and build for both services.
+- CI will run when the stack is retargeted to `main`, which needs PO authorization.
+- **Expected CI result then, based on PR #59 run 43360737319:**
+  - all tests pass;
+  - failures only on the coverage gates that already fail on `main` (API branches, web, mobile) and on the E2E browser install ("Playwright does not support chromium on ubuntu26.04-x64").
+- The mobile and worker services are untouched by this mission.
 
 **Release remains BLOCKED:**
 - PA review of this mission and PR #59;
