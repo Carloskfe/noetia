@@ -94,3 +94,32 @@ Full-page captures of the local production build, 2026-11-12. The existing cooki
 - NEM-024 unchanged: E-1 OPEN and BLOCKED; Checkpoint E NOT QUALIFIED.
 - PR #56 and PR #57 not modified.
 - No merge, deployment or activation.
+
+## 6. Correction after PA review of `d35a283` — `/causas` copy aligned with PO-053
+
+**Scope:** the `/causas` page copy only (`services/web/app/causas/page.tsx`), plus a regression test. The Terms of Service, the cause selector, the preference API, the schema, accounting, and the About/Milestones/Company pages are **unchanged**; proposals for those are reported separately for PA review.
+
+| Location (`app/causas/page.tsx`) | Before | After (ES / EN) |
+|---|---|---|
+| Hero paragraph | "2,22% de cada compra… apoya proyectos sociales reales — desde el primer día, sin excepción" / "…every purchase… supports real social projects — from day one, without exception" | PO-053 wording: "Destinamos el 2,22% de cada pago a Causas Noetia. Tú eliges una causa para recibir ese aporte. Si no eliges ninguna, se distribuye por igual entre las tres." / "We commit 2.22% of every payment to Causas Noetia. You choose one cause to receive that contribution. If you don't choose one, it is distributed equally among all three." |
+| Cause descriptions | "Apoyamos… / Impulsamos… / Contribuimos…" / "We support… / We drive… / We help protect…" (present-tense activity) | "Línea dedicada a…" / "A line dedicated to…" |
+| How it works, step 01 | "Cada suscripción o compra… activa automáticamente tu aporte" (implies an allocation mechanism that does not exist) | "Cada pago en Noetia incluye el compromiso de Causas Noetia." / "Every payment on Noetia carries the Causas Noetia commitment." |
+| Step 02 | "se asigna a proyectos sociales reales" | "Destinamos el 2,22% de ese pago a Causas Noetia, calculado sobre el total del pago y no sobre las ganancias." / "We commit 2.22% of that payment… calculated on the total payment, not on profits." |
+| Step 03 | "elige hasta dos líneas… o distribuye… de forma aleatoria" / "choose up to two… or… randomly" | PO-053 rule (one cause; equal default) |
+| Step 04 | "Publicamos informes periódicos de impacto…" / "We publish periodic impact reports…" (none published) | **Removed.** Whether to commit publicly to future impact reports is a PO decision |
+
+**Retained and flagged (not changed):**
+- The three cause statistics (70 million animals; 1 in 3 children without books; 40% of biodiversity and 2.6 Mha per year) are **unsourced**. They need sources or removal (PO decision).
+- The partner invitation ("Buscamos aliados…") claims no existing partners and is kept.
+- The `causas@noetia.app` contact is kept.
+
+**Validation after correction:**
+
+| Check | Result |
+|---|---|
+| Web unit tests | **325/325 passed (22 suites)**; new `tests/unit/app/causas.spec.tsx` asserts the PO-053 rule (ES/EN), agreement with the homepage sentence, the three causes, and the absence of two-cause, random, executed-contribution and published-report claims |
+| `tsc`, `next lint`, `next build` | pass; no lint findings in changed files |
+| Homepage ↔ `/causas` | Same distribution sentence (enforced by the test) |
+| Premium cards | still **0** links or buttons |
+| Footers | 1 per page; no overflow at 360/390/1440; all internal links HTTP 200 |
+| Screenshots | `screenshots/causas--{es,en}--{desktop,mobile}.jpg` and `home--*` regenerated |
