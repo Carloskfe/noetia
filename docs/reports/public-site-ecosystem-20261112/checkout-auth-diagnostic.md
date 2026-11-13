@@ -258,3 +258,80 @@ No horizontal overflow at 1280 or 390 px. Lookup-notice screenshots: `screenshot
 
 - The account billing page, the billing success page, join and gift claim make header-less protected calls (§6.1).
 - The reader heartbeat, StatsTab, PrivacyTab and the i18n language sync read `localStorage.noetia_token`, which nothing writes (§6.2).
+
+## 9. PA final payment-flow review of `25e956f`: subscription-status correction
+
+**PA decision on `25e956f`:** checkout authentication conditionally accepted; release blocked.
+**Bounded correction A:** implemented in `f7c9118`. **Diagnostic B:** delivered separately in [post-payment-billing-diagnostic.md](post-payment-billing-diagnostic.md); nothing implemented.
+
+### 9.1 Defect
+
+At `25e956f`, a non-auth failure of `GET /subscriptions/me` (5xx or network) was swallowed:
+- the page went on to the Causas lookup;
+- if that lookup succeeded, the user was treated as fully verified;
+- `currentPlanId` stayed `null`, so every plan showed **Start free trial** and checkout was allowed.
+
+The API does not prevent a second subscription: `createCheckoutSession` always creates a new Stripe subscription-mode session. An unknown status could therefore let an existing subscriber start a duplicate subscription.
+
+### 9.2 Correction (web only: `app/(billing)/pricing/page.tsx`, `lib/i18n/{en,es}.ts`)
+
+**Subscription status is tracked separately from the Causas lookup.** It has three states:
+- `known`: the API answered;
+- `unknown`: a 5xx or network failure;
+- `auth`: a guest.
+
+A successful Causas lookup proves the session, never the subscription status.
+
+**While the status is `unknown`:**
+- Plans stay visible.
+- Token-package purchase works as before. It is a one-time payment, not a subscription.
+- A non-blocking banner says "We couldn't confirm your current plan. You can still browse plans and buy tokens", with a **Try again** button.
+- Choosing a plan opens a notice ("To avoid starting a second subscription…") with **Try again** and **Cancel**. There is no continue option.
+- No selector opens, no preference is written, and no checkout session is created. `checkout()` also re-checks the status through a ref, so a stale callback cannot bypass the block.
+
+**When a retry runs:**
+- **succeeds:** the normal flow resumes (saved → checkout; none → selector; lookup error → lookup notice);
+- **shows the chosen plan is already live:** no checkout, and the plan is marked current;
+- **fails again:** the notice stays open;
+- **returns 401** with the refresh failing: `/login?next=/pricing`.
+
+**Current plan: tightened in the same correction, because it is part of reading the status correctly.**
+- A plan is "current" only for statuses that still hold a Stripe subscription: `active`, `trialing`, `canceling` or `past_due`.
+- At `25e956f`, any `planId` counted, so a `canceled` subscriber could not re-subscribe to their former plan. This only became reachable once `/subscriptions/me` started succeeding in `92273f8`.
+
+**Unchanged:** Stripe, the API, entitlement rules, request bodies, guest behaviour, JWT refresh, Causas handling, and the existing checkout contracts.
+
+### 9.3 Tests
+
+`tests/unit/app/billing/pricing.spec.tsx` has 16 new tests (35 in total). They use the same network-level stub, which can now make `/subscriptions/me` return a 500 or reject at the network level, and which returns `status`.
+
+| Test | Against `25e956f` |
+|---|---|
+| Status 500 → plans and token packages browsable, banner with retry, no redirect | fails |
+| Saved cause and successful lookup, but status 500 → checkout blocked | fails |
+| Status unknown with no saved cause → no selector, no preference write | fails |
+| Network failure → unknown, not guest | fails |
+| Retry succeeds → checkout with the saved cause and an unchanged body | fails |
+| Retry succeeds with no saved cause → selector | fails |
+| Retry shows the plan already active → no second checkout; plan marked current | fails |
+| Retry fails again → notice stays; cancel → no checkout | fails |
+| Retry returns 401 with the refresh failing → `/login?next=/pricing` | fails |
+| Banner retry recovers the status without choosing a plan | fails |
+| Token purchase not blocked by an unknown status | passes (regression guard) |
+| `active` / `trialing` / `canceling` / `past_due` → current plan | passes (regression guard) |
+| `canceled` → former plan purchasable again | fails |
+
+**Negative control:** run against the `25e956f` page, 11 of the 16 new tests fail. All 19 earlier pricing tests still pass unchanged.
+
+### 9.4 Checks (local, `f7c9118`)
+
+- **Web:** 383/383 tests pass (25 suites). tsc is clean, `next lint` reports no issues in the changed files, and `next build` passes. Coverage is 73.03% statements, unchanged.
+- **API:** no change in this revision. The contract test from `09cc391` still pins the `/subscriptions/me` guard.
+- **Thresholds:** unchanged.
+
+### 9.5 Screenshots
+
+Local production build, with the browser-side stub returning 500 for `/subscriptions/me`. No horizontal overflow at 1280 or 390 px.
+
+- `screenshots/pricing-status-unknown-banner--{es,en}--{desktop,mobile}.jpg`
+- `screenshots/pricing-status-unknown-dialog--{es,en}--{desktop,mobile}.jpg`

@@ -229,3 +229,21 @@ The PO authorized this bounded change on Draft PR #59. Out of scope and unchange
 - **Results:** web 367/367 and API 976/976 pass; tsc, lint and build pass; coverage is unchanged or higher.
 - **Details:** full diagnosis, implementation, scenario before/after table and separate findings are in [checkout-auth-diagnostic.md](checkout-auth-diagnostic.md) §8.
 - **Unchanged:** Stripe, prices, request bodies, entitlements, allocation, and the API auth contract.
+
+### 9.1 PA final payment-flow review of `25e956f`
+
+**A. Bounded correction (`f7c9118`).**
+- `/pricing` now tracks the subscription status separately from the Causas lookup.
+- When `/subscriptions/me` fails with a 5xx or network error, the status is *unknown*:
+  - plans and token packages stay usable;
+  - a banner and a plan-click notice offer **Try again**;
+  - **no new subscription checkout is created** until the status is confirmed.
+- A plan counts as current only while its subscription is `active`, `trialing`, `canceling` or `past_due`.
+- 16 new tests; 11 of them fail against `25e956f`. Web 383/383 pass.
+- Details: [checkout-auth-diagnostic.md](checkout-auth-diagnostic.md) §9.
+
+**B. Separate diagnostic, not implemented.** [post-payment-billing-diagnostic.md](post-payment-billing-diagnostic.md):
+- Webhooks are the system of record. The browser sync, which today always gets 401, is not needed for entitlement.
+- The account billing page shows "no active plan" to every user, and its portal button navigates to `/undefined`.
+- API-side gaps: `planId` stays unset until the first `customer.subscription.updated`, and a second checkout orphans the first subscription.
+- Recommendations: R-1 (web only) and R-2 (API and Stripe handling; needs PO authorization).
