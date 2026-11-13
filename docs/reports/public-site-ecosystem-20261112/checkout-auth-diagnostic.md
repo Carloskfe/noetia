@@ -2,6 +2,8 @@
 
 **Trigger:** PA finding "PR #59 checkout authentication blocker" on reviewed HEAD `1d75bb9`.
 **Authorization:** diagnosis and remediation proposal only. **Nothing is implemented here.** The fix needs PA review and PO authorization.
+
+> **Update (2026-11-12):** the PO authorized the remediation, and it is implemented on PR #59. See §8, which supersedes the proposal in §3 where they differ.
 **Date:** 2026-11-12. No production or staging access; no payment credentials; no real purchases; no real accounts.
 
 ## 1. Root cause (CONFIRMED)
@@ -166,6 +168,93 @@ Coverage thresholds stay unchanged.
    - E2E fails because the runner can't install Chromium ("Playwright does not support chromium on ubuntu26.04-x64").
    - All unit tests pass.
 
-## 7. STOP
+## 7. STOP (diagnosis phase)
 
-No code was changed. PR #59 stays Draft. Implementation awaits PA review and PO authorization. No merge or deployment.
+The diagnosis phase changed no code.
+
+## 8. Implementation (PO-authorized remediation, 2026-11-12)
+
+### 8.1 Changes
+
+- **`lib/api.ts`:** `apiFetch(path, init?, opts?)` gains `opts.redirectOnAuthFailure`.
+  - It defaults to `true`, so every existing caller keeps today's behaviour.
+  - With `false`, a 401 that survives the single, de-duplicated refresh throws `{status: 401}` instead of navigating.
+  - With **no stored access token**, the request still returns 401, and a valid httpOnly refresh cookie then issues a new one. This is required change 3.
+- **`app/(billing)/pricing/page.tsx`:**
+  - **Public catalogue:** `plans` and `token-packages` keep the plain `fetch`, with no authentication needed.
+  - **Optional session on load:** `GET /subscriptions/me`, then `GET /causes/preferences`, both through `apiFetch` with `redirectOnAuthFailure: false`. A guest costs one 401 plus one refresh and is **never redirected on load**.
+  - **Preference states:**
+    - `saved`: a record containing `cause1Id`;
+    - `none`: an empty 200 body, which `apiFetch` turns into `{}`;
+    - `auth`: a 401 after the refresh;
+    - `error`: anything else.
+  - **Plan click:**
+    - guest → `/login?next=/pricing`;
+    - `saved` → checkout;
+    - `none` → `CauseSelector` (unchanged);
+    - `error` → a new notice with **Try again** (repeats the lookup, then follows the same routing), **Continue without changing it** (checkout with no preference write; a saved cause is never overwritten) and **Cancel**. No equal-split wording is shown.
+  - **`checkout` / `buyTokenPackage`:** sent through `apiFetch`, so with a Bearer token and refresh.
+    - Endpoints, methods and bodies (`{planId}` / `{packageId}`) are unchanged.
+    - A 401 → `/login?next=/pricing`. Other failures → the existing `paymentError`.
+  - `currentPlanId` is now populated, so the current-plan button is disabled again.
+- **`lib/i18n/{en,es}.ts`:** a new `pricing.prefLookup` block (web only: title, body, retry, retrying, continue).
+- **Unchanged:** `CauseSelector`, the API, Stripe, prices, entitlements, allocation, and subscription economics.
+
+### 8.2 Tests
+
+| Suite | Kind | Count |
+|---|---|---|
+| `services/api/tests/unit/subscriptions/subscriptions-auth.contract.spec.ts` | **Integration** (new): real `JwtStrategy`, `JwtAuthGuard`, `EmailConfirmedGuard`, controllers, cookie-parser and `ValidationPipe`; real signed JWTs over loopback HTTP; services mocked | 25 |
+| `services/web/tests/unit/app/billing/pricing.spec.tsx` | Rewritten at the **network** level: real `apiFetch` and the real `CauseSelector`; only `fetch` is stubbed, enforcing the contract above | 19 |
+| `services/web/tests/unit/lib/api.spec.ts` | +4: default redirect kept; `false` throws without navigating; no token + valid refresh → retried with Bearer; empty body → `{}` | 23 |
+
+- **The integration test asserts:**
+  - refresh cookie alone → 401 on all five protected endpoints;
+  - valid Bearer → 200; expired → 401; forged → 401; deleted user → 401; unconfirmed email → 403, without reaching the service;
+  - the user ID and request body passed to the checkout and purchase services are unchanged;
+  - "no preference" = **200 with an empty body**;
+  - a second cause → 400.
+- **The pricing tests cover:**
+  - guest: no redirect on load and no preference lookup; plan or package choice → `/login?next=/pricing`;
+  - signed-in: Bearer on `me`, the preference lookup, checkout and purchase;
+  - the current plan is disabled;
+  - saved preference → direct checkout; empty body → selector;
+  - save success; save failure then retry; skip;
+  - lookup error → continue (no write; the saved cause is kept), retry → saved, retry → none, retry fails → cancel;
+  - checkout 401 → login with `next`; checkout 403 → payment error;
+  - expired token + refresh; **no token** + refresh.
+- **Negative control:** the new pricing suite run against the *old* page fails 18 of 19 tests.
+
+### 8.3 Browser re-run (scenarios from §2.2, plus lookup failure and no-token refresh)
+
+Local production build, Playwright, browser-side stub enforcing the §2.1 contract:
+
+| # | Scenario | Before | After |
+|---|---|---|---|
+| 1 / 8a | Signed-in, saved cause | Selector shown (lookup 401) | **Direct checkout**; no selector |
+| 2 | Signed-in, no saved cause | Selector (by accident) | Selector (lookup 200 with empty body) |
+| 3 | Guest | Payment error, or `/login` without `next` | No redirect on load; plan → **`/login?next=/pricing`** |
+| 4 | Save succeeds | Checkout 401 | **Checkout reached** |
+| 5 | Save fails, then retry | Checkout 401 | Alert, selection kept, retry → **checkout reached** |
+| 6 | Continue without choosing | Checkout 401 | **Checkout reached**, no preference write |
+| 7 | Expired token + refresh | Checkout 401 | One refresh → **checkout reached** with the new token |
+| 8b | Token package | `/login?returnUrl=…` | **Token checkout reached** |
+| 9 | Saved cause, lookup 500 | n/a | Lookup notice, no selector; "Continue without changing it" → checkout, no write |
+| 10 | No token, valid refresh cookie | n/a | Refresh → signed in → selector → skip → **checkout reached** |
+
+No horizontal overflow at 1280 or 390 px. Lookup-notice screenshots: `screenshots/pricing-pref-lookup-error--{es,en}--{desktop,mobile}.jpg`.
+
+### 8.4 Checks
+
+- **Web:** 367/367 tests pass; tsc clean; `next lint` reports no issues in the changed files; build passes; coverage 73.03% statements (72.8% before).
+- **API:**
+  - 976/976 tests pass;
+  - one suite (`auth.controller.spec`) can't load locally because the `bcrypt` native binding isn't built in this worktree; it runs on CI;
+  - tsc and eslint clean on the new spec;
+  - branch coverage 68.88%, the pre-existing gate;
+  - thresholds unchanged.
+
+### 8.5 Separate findings, for a separate prioritized mission (not changed here)
+
+- The account billing page, the billing success page, join and gift claim make header-less protected calls (§6.1).
+- The reader heartbeat, StatsTab, PrivacyTab and the i18n language sync read `localStorage.noetia_token`, which nothing writes (§6.2).

@@ -214,3 +214,18 @@ The PO authorized this bounded change on Draft PR #59. Out of scope and unchange
   - `/pricing` checks for a preference with an unauthenticated `fetch('/api/causes/preferences')`. A Bearer-token session can therefore look like "no preference", and the selector may reappear before checkout.
   - The preference is a recorded intent only. Nothing allocates or pays out yet.
 - **Release status:** E-1 remains OPEN and BLOCKED, Checkpoint E remains NOT QUALIFIED, and release remains BLOCKED. Not merged, not deployed.
+
+## 9. Checkout authentication remediation (PO-authorized, 2026-11-12)
+
+- **Diagnosis:** the API reads JWTs only from the Bearer header, but `/pricing` called protected endpoints with plain `fetch`. Every signed-in checkout and token purchase failed with 401, and saved causes were never detected. **This predates PR #59.**
+- **Fix:** `/pricing` now uses the existing `apiFetch` (Bearer token plus refresh). A new per-request option, `redirectOnAuthFailure: false`, keeps the page public, so guests are never redirected on load.
+  - The preference lookup distinguishes four states: saved, none (empty 200 body), auth failure and error.
+  - A lookup error offers **Try again** or **Continue without changing it**, never the equal-split default.
+  - When sign-in is needed, the page goes to `/login?next=/pricing`.
+- **Tests:**
+  - a new API integration test using the real guards (25 tests);
+  - a network-level pricing suite (19 tests; 18 of them fail against the old page);
+  - 4 new `apiFetch` tests.
+- **Results:** web 367/367 and API 976/976 pass; tsc, lint and build pass; coverage is unchanged or higher.
+- **Details:** full diagnosis, implementation, scenario before/after table and separate findings are in [checkout-auth-diagnostic.md](checkout-auth-diagnostic.md) §8.
+- **Unchanged:** Stripe, prices, request bodies, entitlements, allocation, and the API auth contract.
