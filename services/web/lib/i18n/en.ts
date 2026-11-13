@@ -353,6 +353,13 @@ export const en = {
       retrying: 'Checking…',
       continue: 'Continue without changing it',
     },
+    statusCheck: {
+      title: "We couldn't confirm your current plan",
+      body: 'To avoid starting a second subscription, we need to check your current plan before payment. Try again in a moment.',
+      banner: "We couldn't confirm your current plan. You can still browse plans and buy tokens.",
+      retry: 'Try again',
+      retrying: 'Checking…',
+    },
     planDescriptions: {
       Individual: {
         tagline: 'For readers who want the best.',

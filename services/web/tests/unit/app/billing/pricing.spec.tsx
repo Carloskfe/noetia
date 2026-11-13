@@ -35,6 +35,8 @@ type Server = {
   saveResults: Array<'ok' | 'fail'>;   // queued outcomes for POST /causes/preferences (default ok)
   checkoutStatus: number;
   planId: string | null;
+  subStatus: string;                   // subscription status returned by /subscriptions/me
+  meResults: Array<'ok' | 'fail' | 'network'>; // queued outcomes for GET /subscriptions/me (default ok)
 };
 
 let server: Server;
@@ -69,7 +71,12 @@ function installFetch() {
       return res(200, { accessToken: server.refreshIssues });
     }
     if (!authed) return res(401, { message: 'Unauthorized', statusCode: 401 });
-    if (method === 'GET' && path === '/subscriptions/me') return res(200, { planId: server.planId });
+    if (method === 'GET' && path === '/subscriptions/me') {
+      const outcome = server.meResults.shift() ?? 'ok';
+      if (outcome === 'network') return Promise.reject(new TypeError('Failed to fetch'));
+      if (outcome === 'fail') return res(500, { message: 'boom' });
+      return res(200, server.planId ? { status: server.subStatus, planId: server.planId } : { status: 'none' });
+    }
     if (method === 'GET' && path === '/causes/preferences') {
       if ((server.prefLookup.shift() ?? 'ok') === 'fail') return res(500, { message: 'boom' });
       return server.savedCause
@@ -102,6 +109,10 @@ const req = (method: string, path: string) => calls.filter((c) => c.method === m
 const href = () => (window.location as any).href as string;
 const selectorOpen = () => !!container.querySelector('input[type="radio"]');
 const lookupDialogOpen = () => !!container.querySelector('[data-testid="pref-lookup-dialog"]');
+const statusDialog = () => container.querySelector<HTMLElement>('[data-testid="status-check-dialog"]');
+const statusBanner = () => container.querySelector<HTMLElement>('[data-testid="status-unknown-banner"]');
+const within = (el: HTMLElement | null, label: string) =>
+  Array.from(el?.querySelectorAll('button') ?? []).find((b) => b.textContent === label) as HTMLButtonElement | undefined;
 
 async function render() {
   act(() => { root.render(React.createElement(PricingPage)); });
@@ -109,7 +120,7 @@ async function render() {
 }
 
 beforeEach(() => {
-  server = { validTokens: new Set(['valid']), refreshIssues: null, savedCause: null, prefLookup: [], saveResults: [], checkoutStatus: 200, planId: null };
+  server = { validTokens: new Set(['valid']), refreshIssues: null, savedCause: null, prefLookup: [], saveResults: [], checkoutStatus: 200, planId: null, subStatus: 'active', meResults: [] };
   calls = [];
   localStorage.clear();
   installFetch();
@@ -307,5 +318,142 @@ describe('/pricing — refresh session', () => {
     await click(planButton());
     expect(selectorOpen()).toBe(true);
     expect(href()).toBe('http://localhost/pricing');
+  });
+});
+
+describe('/pricing — subscription status unknown (server or network failure)', () => {
+  beforeEach(() => { localStorage.setItem('access_token', 'valid'); });
+
+  it('status 500 → plans and token packages stay browsable; a banner offers a retry; no redirect', async () => {
+    server.meResults = ['fail'];
+    await render();
+    expect(planButton()).toBeDefined();
+    expect(byText(en.pricing.tokens.buy)).toBeDefined();
+    expect(statusBanner()?.textContent).toContain(en.pricing.statusCheck.banner);
+    expect(href()).toBe('http://localhost/pricing');
+  });
+
+  it('a successful Causas lookup does not count as status verification: saved cause + status 500 → no checkout', async () => {
+    server.meResults = ['fail'];
+    server.savedCause = CAUSE.id;
+    await render();
+    expect(req('GET', '/causes/preferences')).toHaveLength(1); // the lookup succeeded…
+    await click(planButton());
+    expect(statusDialog()).not.toBeNull(); // …but checkout is still blocked
+    expect(req('POST', '/subscriptions/checkout')).toHaveLength(0);
+    expect(href()).toBe('http://localhost/pricing');
+  });
+
+  it('status unknown + no saved cause → no selector and no preference write before the status is known', async () => {
+    server.meResults = ['fail'];
+    await render();
+    await click(planButton());
+    expect(statusDialog()).not.toBeNull();
+    expect(selectorOpen()).toBe(false);
+    expect(req('POST', '/causes/preferences')).toHaveLength(0);
+  });
+
+  it('a network failure (fetch rejects) is treated as unknown status, not as a guest', async () => {
+    server.meResults = ['network'];
+    server.savedCause = CAUSE.id;
+    await render();
+    expect(statusBanner()).not.toBeNull();
+    await click(planButton());
+    expect(statusDialog()).not.toBeNull();
+    expect(href()).toBe('http://localhost/pricing');
+    expect(req('POST', '/subscriptions/checkout')).toHaveLength(0);
+  });
+
+  it('retry succeeds (no subscription) → continues to checkout with the saved cause, unchanged body', async () => {
+    server.meResults = ['fail', 'ok'];
+    server.savedCause = CAUSE.id;
+    await render();
+    await click(planButton());
+    await click(within(statusDialog(), en.pricing.statusCheck.retry));
+    expect(statusDialog()).toBeNull();
+    expect(statusBanner()).toBeNull();
+    const [c] = req('POST', '/subscriptions/checkout');
+    expect(c.body).toBe(JSON.stringify({ planId: PLAN.id }));
+    expect(href()).toBe('https://checkout.test/sub');
+  });
+
+  it('retry succeeds with no saved cause → normal selector flow', async () => {
+    server.meResults = ['fail', 'ok'];
+    await render();
+    await click(planButton());
+    await click(within(statusDialog(), en.pricing.statusCheck.retry));
+    expect(selectorOpen()).toBe(true);
+  });
+
+  it('retry reveals the chosen plan is already active → no second checkout; plan marked current', async () => {
+    server.meResults = ['fail', 'ok'];
+    server.planId = PLAN.id;
+    server.savedCause = CAUSE.id;
+    await render();
+    await click(planButton());
+    await click(within(statusDialog(), en.pricing.statusCheck.retry));
+    expect(statusDialog()).toBeNull();
+    expect(req('POST', '/subscriptions/checkout')).toHaveLength(0);
+    expect(byText(en.pricing.currentPlan)?.disabled).toBe(true);
+  });
+
+  it('retry fails again → notice stays; cancel closes it without checkout', async () => {
+    server.meResults = ['fail', 'fail'];
+    server.savedCause = CAUSE.id;
+    await render();
+    await click(planButton());
+    await click(within(statusDialog(), en.pricing.statusCheck.retry));
+    expect(statusDialog()).not.toBeNull();
+    await click(within(statusDialog(), en.common.cancel));
+    expect(statusDialog()).toBeNull();
+    expect(req('POST', '/subscriptions/checkout')).toHaveLength(0);
+  });
+
+  it('retry finds the session expired (401, refresh fails) → /login?next=/pricing', async () => {
+    server.meResults = ['fail'];
+    await render();
+    await click(planButton());
+    server.validTokens.delete('valid');
+    await click(within(statusDialog(), en.pricing.statusCheck.retry));
+    expect(href()).toBe(LOGIN);
+  });
+
+  it('banner retry recovers the status without choosing a plan (current plan then marked)', async () => {
+    server.meResults = ['fail', 'ok'];
+    server.planId = PLAN.id;
+    await render();
+    await click(within(statusBanner(), en.pricing.statusCheck.retry));
+    expect(statusBanner()).toBeNull();
+    expect(byText(en.pricing.currentPlan)?.disabled).toBe(true);
+    expect(req('POST', '/subscriptions/checkout')).toHaveLength(0);
+  });
+
+  it('token-package purchase is not blocked by an unknown subscription status', async () => {
+    server.meResults = ['fail'];
+    await render();
+    await click(byText(en.pricing.tokens.buy));
+    expect(req('POST', '/subscriptions/tokens/purchase')[0].auth).toBe('Bearer valid');
+    expect(href()).toBe('https://checkout.test/tokens');
+  });
+});
+
+describe('/pricing — which statuses count as a current plan', () => {
+  beforeEach(() => { localStorage.setItem('access_token', 'valid'); });
+
+  it.each(['active', 'trialing', 'canceling', 'past_due'])('status %s → plan marked current and not purchasable again', async (st) => {
+    server.planId = PLAN.id;
+    server.subStatus = st;
+    await render();
+    expect(byText(en.pricing.currentPlan)?.disabled).toBe(true);
+  });
+
+  it('status canceled → the former plan can be purchased again', async () => {
+    server.planId = PLAN.id;
+    server.subStatus = 'canceled';
+    server.savedCause = CAUSE.id;
+    await render();
+    expect(byText(en.pricing.currentPlan)).toBeUndefined();
+    await click(planButton());
+    expect(href()).toBe('https://checkout.test/sub');
   });
 });

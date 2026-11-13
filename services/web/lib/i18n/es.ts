@@ -355,6 +355,13 @@ export const es: Translations = {
       retrying: 'Consultando…',
       continue: 'Continuar sin cambiarla',
     },
+    statusCheck: {
+      title: 'No pudimos confirmar tu plan actual',
+      body: 'Para evitar iniciar una segunda suscripción, necesitamos consultar tu plan actual antes del pago. Inténtalo de nuevo en un momento.',
+      banner: 'No pudimos confirmar tu plan actual. Puedes seguir viendo los planes y comprar tokens.',
+      retry: 'Intentar de nuevo',
+      retrying: 'Consultando…',
+    },
     planDescriptions: {
       Individual: {
         tagline: 'Para lectores que quieren lo mejor.',
