@@ -29,7 +29,13 @@ const mockStripe = {
     retrieve: jest.fn(),
     list: jest.fn(),
   },
+  invoices: { listLineItems: jest.fn() },
 };
+/** Stripe line items with one regular subscription line whose period starts at `start`. */
+const subscriptionLineItems = (start: number) => ({
+  data: [{ id: 'il_1', parent: { type: 'subscription_item_details', subscription_item_details: { proration: false } }, period: { start } }],
+  has_more: false,
+});
 
 jest.mock('stripe', () => {
   return jest.fn().mockImplementation(() => mockStripe);
@@ -672,10 +678,91 @@ describe('SubscriptionsService', () => {
       expect(mockTokenRepo.save).toHaveBeenCalledTimes(2);
     });
 
-    it('without a period (no subscription line) the invoice-id key still guards duplicates', async () => {
-      await service.issueTokensForNewSubscription('sub_s', txEm as any, 'in_9', null);
-      await service.issueTokensForNewSubscription('sub_s', txEm as any, 'in_9', null);
+    it('F-02: payload without the subscription line → period read from Stripe line items; a different invoice for the same period grants nothing', async () => {
+      mockStripe.invoices.listLineItems.mockResolvedValue(subscriptionLineItems(1800000000));
+      await service.issueTokensForNewSubscription('sub_s', txEm as any, 'in_a', null);
+      await service.issueTokensForNewSubscription('sub_s', txEm as any, 'in_b', null);
       expect(mockTokenRepo.save).toHaveBeenCalledTimes(1);
+      expect(claimed.has('fulfillment:period-tokens:sub_s:1800000000')).toBe(true);
+      expect(mockStripe.invoices.listLineItems).toHaveBeenCalledWith('in_a', { limit: 100 });
+    });
+
+    it('F-02: the subscription line on a later page of Stripe line items is found (pagination)', async () => {
+      const proration = (i: number) => ({ id: `il_p${i}`, parent: { type: 'invoice_item_details', invoice_item_details: { proration: true } }, period: { start: 1 } });
+      mockStripe.invoices.listLineItems
+        .mockResolvedValueOnce({ data: [proration(1), proration(2)], has_more: true })
+        .mockResolvedValueOnce(subscriptionLineItems(1800000000));
+      await service.issueTokensForNewSubscription('sub_s', txEm as any, 'in_p', null);
+      expect(mockStripe.invoices.listLineItems).toHaveBeenNthCalledWith(2, 'in_p', { limit: 100, starting_after: 'il_p2' });
+      expect(claimed.has('fulfillment:period-tokens:sub_s:1800000000')).toBe(true);
+    });
+
+    it('F-02: period still unknown → fails CLOSED: throws before any claim or allocation (the transaction rolls back; Stripe retries)', async () => {
+      mockStripe.invoices.listLineItems.mockResolvedValue({ data: [{ id: 'il_x', type: 'invoiceitem', period: { start: 5 } }], has_more: false });
+      await expect(service.issueTokensForNewSubscription('sub_s', txEm as any, 'in_u', null)).rejects.toThrow('[invoice-period]');
+      expect(claimed.size).toBe(0);
+      expect(mockTokenRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('F-02: a Stripe error while reading line items propagates (no claim, no allocation)', async () => {
+      mockStripe.invoices.listLineItems.mockRejectedValue(new Error('stripe down'));
+      await expect(service.issueTokensForNewSubscription('sub_s', txEm as any, 'in_e', null)).rejects.toThrow('stripe down');
+      expect(claimed.size).toBe(0);
+    });
+
+    it('F-02: no invoice id and no period → fails closed', async () => {
+      await expect(service.issueTokensForNewSubscription('sub_s', txEm as any, null, null)).rejects.toThrow('[invoice-period]');
+      expect(mockStripe.invoices.listLineItems).not.toHaveBeenCalled();
+    });
+
+    it('F-02: a period already in the payload is used as-is (no Stripe call)', async () => {
+      await service.issueTokensForNewSubscription('sub_s', txEm as any, 'in_ok', 1800000000);
+      expect(mockStripe.invoices.listLineItems).not.toHaveBeenCalled();
+      expect(mockTokenRepo.save).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('F-01 — trial-eligibility behaviour matrix (CURRENT behaviour pinned; one case awaits a PO decision)', () => {
+    // Characterization only: no behaviour was changed by the F-01 review. Rows marked PENDING-PO are the cases D1
+    // does not clearly decide (report §14.B); they pin today's conservative result until the PO decides.
+    const PLAN = { id: 'plan1', stripePriceId: 'price_123' };
+    const none = { data: [], has_more: false };
+    const trialOf = () => mockStripe.checkout.sessions.create.mock.calls[0]?.[0]?.subscription_data ?? null;
+    beforeEach(() => {
+      mockUsersService.findById.mockResolvedValue({ id: 'u1', stripeCustomerId: 'cus_1', email: 'reader@test.invalid' });
+      mockPlansService.findById.mockResolvedValue(PLAN);
+      mockSubRepo.findOneBy.mockResolvedValue(null);
+      mockStripe.checkout.sessions.list.mockResolvedValue(none);
+      mockStripe.subscriptions.list.mockResolvedValue(none);
+      mockStripe.customers.list.mockResolvedValue(none);
+      mockStripe.checkout.sessions.create.mockResolvedValue({ id: 'cs', url: 'https://checkout.stripe.com/x' });
+    });
+    const history = (subs: any[]) => mockStripe.subscriptions.list.mockResolvedValue({ data: subs, has_more: false });
+
+    it.each([
+      ['first-time customer, no history', () => undefined, true],
+      ['previously received a trial (canceled, trial_start set)', () => history([{ id: 's', status: 'canceled', trial_start: 1 }]), false],
+      ['PENDING-PO: previously subscribed and paid WITHOUT a trial (canceled, no trial_start)', () => history([{ id: 's', status: 'canceled', trial_start: null }]), false],
+      ['previous subscription never activated (incomplete_expired)', () => history([{ id: 's', status: 'incomplete_expired', trial_start: null }]), true],
+      ['PENDING-PO: never activated but canceled before expiry (canceled, no trial_start, never paid — not distinguishable from a paid one)', () => history([{ id: 's', status: 'canceled', trial_start: null }]), false],
+      ['returning customer with a canceled Noetia subscription row', () => mockSubRepo.findOneBy.mockResolvedValue({ userId: 'u1', status: 'canceled', stripeSubscriptionId: 'sub_old', stripeCustomerId: 'cus_1' }), false],
+      ['Duo/Family member subscribing independently (no own row, no own Stripe subscriptions)', () => undefined, true],
+    ])('%s → trial offered: %s', async (_label, arrange, expectedTrial) => {
+      (arrange as () => void)();
+      await service.createCheckoutSession('u1', 'plan1');
+      expect(trialOf()).toEqual(expectedTrial ? { trial_period_days: 14 } : null);
+    });
+
+    it.each([
+      ['history truncated', () => mockStripe.subscriptions.list.mockResolvedValue({ data: [], has_more: true })],
+      ['customer list truncated', () => mockStripe.customers.list.mockResolvedValue({ data: [], has_more: true })],
+      ['Stripe unavailable', () => mockStripe.subscriptions.list.mockRejectedValue(new Error('down'))],
+    ])('history %s → checkout 503 (no session) and eligibility null (no trial advertised)', async (_label, arrange) => {
+      (arrange as () => void)();
+      jest.spyOn((service as any).logger, 'warn').mockImplementation(() => undefined);
+      await expect(service.createCheckoutSession('u1', 'plan1')).rejects.toThrow(ServiceUnavailableException);
+      await expect(service.getTrialEligibility('u1')).resolves.toBeNull();
+      expect(mockStripe.checkout.sessions.create).not.toHaveBeenCalled();
     });
   });
 
@@ -1202,6 +1289,8 @@ describe('SubscriptionsService', () => {
       mockSubRepo.findOne.mockResolvedValue({ id: 'sub1', userId: 'u1', plan: { tokensPerCycle: 2, interval: 'month' } });
       mockTokenRepo.create.mockImplementation((d: any) => d);
       mockTokenRepo.save.mockResolvedValue([]);
+      // No period in the call → read from Stripe's line items (F-02): in_1 and in_2 bill different periods.
+      mockStripe.invoices.listLineItems.mockImplementation(async (id: string) => subscriptionLineItems(id === 'in_1' ? 1800000000 : 1802592000));
       await service.issueTokensForNewSubscription('sub_stripe_1', txEm as any, 'in_1');
       await service.issueTokensForNewSubscription('sub_stripe_1', txEm as any, 'in_1');
       expect(mockTokenRepo.save).toHaveBeenCalledTimes(1);

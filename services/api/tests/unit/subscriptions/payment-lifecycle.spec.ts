@@ -25,7 +25,8 @@ import { UsersService } from '../../../src/users/users.service';
 
 // ── fake Stripe ────────────────────────────────────────────────────────────────
 type FakeSub = { id: string; customer: string; status: string; cancel_at_period_end: boolean; current_period_end: number; trial_end: number | null; trial_start?: number | null; current_period_start?: number; billing_cycle_anchor?: number; items: { data: Array<{ price: { id: string } }> } };
-const stripeState = { subs: new Map<string, FakeSub>(), sessions: [] as any[], failRetrieve: false };
+const stripeState = { subs: new Map<string, FakeSub>(), sessions: [] as any[], failRetrieve: false, invoiceLines: new Map<string, any[]>(), failLines: false };
+const defaultPeriodOf = (invoiceId: string) => 1_800_000_000 + [...invoiceId].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 1_000_000, 7);
 const fakeStripe = {
   customers: { create: jest.fn(async () => ({ id: 'cus_1' })), list: jest.fn(async () => ({ data: [], has_more: false })) },
   subscriptions: {
@@ -54,6 +55,16 @@ const fakeStripe = {
     },
   },
   billingPortal: { sessions: { create: jest.fn() } },
+  invoices: {
+    listLineItems: jest.fn(async (invoiceId: string, params: any = {}) => {
+      if (stripeState.failLines) throw new Error('stripe unavailable');
+      const all = stripeState.invoiceLines.get(invoiceId)
+        ?? [{ id: `il_${invoiceId}`, parent: { type: 'subscription_item_details', subscription_item_details: { proration: false } }, period: { start: defaultPeriodOf(invoiceId) } }];
+      const from = params.starting_after ? all.findIndex((l) => l.id === params.starting_after) + 1 : 0;
+      const page = all.slice(from, from + (params.limit ?? 10));
+      return { data: page, has_more: from + page.length < all.length };
+    }),
+  },
 };
 jest.mock('stripe', () => jest.fn().mockImplementation(() => fakeStripe));
 const lastSession = (): any => (fakeStripe.checkout.sessions.create.mock.calls as any[][]).at(-1)![0];
@@ -147,6 +158,8 @@ beforeEach(async () => {
   stripeState.subs.clear();
   stripeState.sessions = [];
   stripeState.failRetrieve = false;
+  stripeState.invoiceLines.clear();
+  stripeState.failLines = false;
   subRow = null;
   tokens = [];
   processed = new Set();
@@ -721,5 +734,89 @@ describe('Exactly-once fulfillment (P0 idempotency correction)', () => {
     stripeHas('sub_A', 'canceled');
     await deleted('sub_A');
     expect(lockQueries.filter((q) => q.includes('subscription-identity:u1'))).toHaveLength(2);
+  });
+});
+
+describe('F-02 — billing-period identity when the invoice payload does not carry the subscription line', () => {
+  // Stripe API 2026-04-22.dahlia (stripe-node 22): an invoice embeds only the first handful (10) of its lines, and
+  // lines are sorted with pending invoice items (incl. prorations) FIRST. A renewal after several plan changes can
+  // therefore arrive with 10 proration lines and `has_more: true`, without the subscription line.
+  const prorations = Array.from({ length: 10 }, (_, i) => ({
+    id: `il_pr_${i}`, parent: { type: 'invoice_item_details', invoice_item_details: { proration: true } }, period: { start: 1_830_000_000 - i * 1000 },
+  }));
+  const truncatedRenewal = (id: string) => ({
+    id, subscription: 'sub_A', customer: 'cus_1', amount_paid: 899, billing_reason: 'subscription_cycle',
+    lines: { data: prorations, has_more: true },
+  });
+  const PERIOD = 1_830_000_000;
+  const subscriptionLine = { id: 'il_sub', parent: { type: 'subscription_item_details', subscription_item_details: { proration: false } }, period: { start: PERIOD } };
+
+  it('two different paid renewal invoices for the SAME billing period, both with truncated payloads → allocated once', async () => {
+    stripeHas('sub_A', 'active');
+    await updated('sub_A');
+    stripeState.invoiceLines.set('in_F2_a', [...prorations, subscriptionLine]);
+    stripeState.invoiceLines.set('in_F2_b', [...prorations, subscriptionLine]);
+    await ev('invoice.paid', truncatedRenewal('in_F2_a'));
+    await ev('invoice.paid', truncatedRenewal('in_F2_b'));
+    expect(tokens).toHaveLength(PLAN.tokensPerCycle);
+    expect(processed.has(`fulfillment:period-tokens:sub_A:${PERIOD}`)).toBe(true);
+  });
+  it('a valid $0 renewal with a truncated payload still allocates once (D5), period from Stripe line items', async () => {
+    stripeHas('sub_A', 'active');
+    await updated('sub_A');
+    stripeState.invoiceLines.set('in_F2_zero', [...prorations, subscriptionLine]);
+    await ev('invoice.paid', { ...truncatedRenewal('in_F2_zero'), amount_paid: 0 });
+    await ev('invoice.paid', { ...truncatedRenewal('in_F2_zero'), amount_paid: 0 }, 'evt_other_id');
+    expect(tokens).toHaveLength(PLAN.tokensPerCycle);
+  });
+
+  it('proration / upgrade and the trial creation invoice never read Stripe line items and never allocate (D4, T-1 separate)', async () => {
+    stripeHas('sub_A', 'trialing');
+    await created('sub_A'); // T-1 trial allocation
+    fakeStripe.invoices.listLineItems.mockClear();
+    await ev('invoice.paid', { ...truncatedRenewal('in_up'), billing_reason: 'subscription_update', amount_paid: 450 });
+    await ev('invoice.paid', { ...truncatedRenewal('in_tr'), billing_reason: 'subscription_create', amount_paid: 0 });
+    await ev('invoice.paid', { ...truncatedRenewal('in_mn'), billing_reason: 'manual' });
+    expect(fakeStripe.invoices.listLineItems).not.toHaveBeenCalled();
+    expect(tokens.map((t) => t.reason)).toEqual(['Trial start (initial cycle)']);
+  });
+
+  it('a paid creation without a trial (truncated payload) allocates its first cycle once', async () => {
+    stripeHas('sub_A', 'active');
+    await created('sub_A');
+    stripeState.invoiceLines.set('in_create', [...prorations, subscriptionLine]);
+    await ev('invoice.paid', { ...truncatedRenewal('in_create'), billing_reason: 'subscription_create' });
+    await ev('invoice.paid', { ...truncatedRenewal('in_create'), billing_reason: 'subscription_create' }, 'evt_dup_create');
+    expect(tokens).toHaveLength(PLAN.tokensPerCycle);
+  });
+
+  it('fails CLOSED when the period cannot be determined: the event rolls back (nothing recorded), and the retry allocates once', async () => {
+    stripeHas('sub_A', 'active');
+    await updated('sub_A');
+    stripeState.failLines = true; // Stripe line items unavailable
+    await expect(ev('invoice.paid', truncatedRenewal('in_F2_retry'), 'evt_F2_retry')).rejects.toThrow('stripe unavailable');
+    expect(tokens).toHaveLength(0);
+    expect(processed.has('evt_F2_retry')).toBe(false);
+    expect([...processed].some((k) => k.includes('in_F2_retry') || k.startsWith('fulfillment:period-tokens'))).toBe(false);
+    stripeState.failLines = false;
+    stripeState.invoiceLines.set('in_F2_retry', prorations); // still no subscription line anywhere → fail closed again
+    await expect(ev('invoice.paid', truncatedRenewal('in_F2_retry'), 'evt_F2_retry')).rejects.toThrow('[invoice-period]');
+    expect(tokens).toHaveLength(0);
+    stripeState.invoiceLines.set('in_F2_retry', [...prorations, subscriptionLine]); // resolvable now
+    await ev('invoice.paid', truncatedRenewal('in_F2_retry'), 'evt_F2_retry'); // Stripe retry of the same event
+    await ev('invoice.paid', truncatedRenewal('in_F2_retry'), 'evt_F2_retry'); // and a redelivery
+    expect(tokens).toHaveLength(PLAN.tokensPerCycle);
+  });
+
+  it('out of order: the later period arrives first, then the earlier one — one allocation per period', async () => {
+    stripeHas('sub_A', 'active');
+    await updated('sub_A');
+    const line = (start: number) => ({ ...subscriptionLine, period: { start } });
+    stripeState.invoiceLines.set('in_m2', [...prorations, line(PERIOD + 2_592_000)]);
+    stripeState.invoiceLines.set('in_m1', [...prorations, line(PERIOD)]);
+    await ev('invoice.paid', truncatedRenewal('in_m2'));
+    await ev('invoice.paid', truncatedRenewal('in_m1'));
+    await ev('invoice.paid', truncatedRenewal('in_m2'), 'evt_late_dup');
+    expect(tokens).toHaveLength(2 * PLAN.tokensPerCycle);
   });
 });

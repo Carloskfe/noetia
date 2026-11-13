@@ -57,7 +57,9 @@ export const grantsCycle = (c: InvoiceClass): boolean => c === 'renewal' || c ==
 /**
  * Start (unix seconds) of the billing period an invoice pays for, read from its subscription line item
  * (`lines.data[].period.start`, non-proration). Not `invoice.period_start`, which on subscription invoices refers
- * to the PREVIOUS period. null when no subscription line is present (the invoice-id key still applies).
+ * to the PREVIOUS period. null when no subscription line is present in the given lines — e.g. a webhook payload,
+ * which embeds only the first lines (pending prorations come first): the caller then reads Stripe's line items
+ * (SubscriptionsService.resolveInvoicePeriodStart) and fails closed if the period is still unknown (F-02).
  */
 export function invoicePeriodStart(invoice: any): number | null {
   const lines: any[] = invoice?.lines?.data ?? [];

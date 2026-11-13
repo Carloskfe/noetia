@@ -109,7 +109,14 @@ describe('billing-cycles (D1, D2, D4, D5)', () => {
         { type: 'subscription', proration: false, period: { start: 333 } },
       ] } })).toBe(333);
     });
-    it('null when no subscription line (the invoice-id key still applies)', () => {
+    it('F-02 reachability: a dahlia webhook payload embeds only the first 10 lines, pending prorations first → null', () => {
+      const prorations = Array.from({ length: 10 }, (_, i) => ({ id: `il_${i}`, parent: { type: 'invoice_item_details', invoice_item_details: { proration: true } }, period: { start: 1000 + i } }));
+      expect(invoicePeriodStart({ lines: { data: prorations, has_more: true } })).toBeNull();
+    });
+    it('dahlia subscription-item proration lines are not the billed period', () => {
+      expect(invoicePeriodStart({ lines: { data: [{ parent: { type: 'subscription_item_details', subscription_item_details: { proration: true } }, period: { start: 9 } }] } })).toBeNull();
+    });
+    it('null when no subscription line (the caller then reads Stripe line items and fails closed — F-02)', () => {
       expect(invoicePeriodStart({ lines: { data: [{ type: 'invoiceitem', period: { start: 5 } }] } })).toBeNull();
       expect(invoicePeriodStart({})).toBeNull();
       expect(invoicePeriodStart(null)).toBeNull();

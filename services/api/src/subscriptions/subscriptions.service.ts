@@ -21,7 +21,7 @@ import { UserBook } from '../library/user-book.entity';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { PlansService } from './plans.service';
-import { annualScheduledCycles, subscriptionEverStarted } from './billing-cycles';
+import { annualScheduledCycles, invoicePeriodStart, subscriptionEverStarted } from './billing-cycles';
 import { claimStripeKey, fulfillmentKey, lockSubscriptionIdentity } from './stripe-fulfillment-ledger';
 import { Subscription, SubscriptionStatus } from './subscription.entity';
 import { SubscriptionInvite } from './subscription-invite.entity';
@@ -581,7 +581,8 @@ export class SubscriptionsService {
    *
    * Exactly once per billing period: claims `fulfillment:period-tokens:<sub>:<periodStart>` (the period the invoice
    * pays for) AND the invoice-id key, in the webhook transaction — so duplicate deliveries, different event ids
-   * and a voided-and-reissued invoice for the same period all grant once. Annual plans: this is paid cycle 0 of the
+   * and a voided-and-reissued invoice for the same period all grant once. The period always comes from Stripe: the
+   * payload's subscription line, else Stripe's line items for the invoice, else the event fails closed (F-02). Annual plans: this is paid cycle 0 of the
    * period; the scheduler grants cycles 1…11 (its hint is reset so the new period is checked promptly).
    */
   async issueTokensForNewSubscription(
@@ -596,6 +597,18 @@ export class SubscriptionsService {
       relations: ['plan'],
     });
     if (!sub?.plan) return;
+
+    if (em && !periodStart) {
+      // F-02: the webhook payload did not carry the subscription line (Stripe embeds only the first lines, with
+      // pending prorations first). Read the billing period from Stripe's own line items for this invoice; if it
+      // still cannot be determined, fail CLOSED: throw, so the whole webhook transaction rolls back — nothing is
+      // allocated and nothing is recorded as fulfilled — and Stripe retries the event. Never allocate on the
+      // invoice id alone, which cannot deduplicate a different invoice for the same period.
+      periodStart = invoiceId ? await this.resolveInvoicePeriodStart(invoiceId) : null;
+      if (!periodStart) {
+        throw new Error(`[invoice-period] billing period of invoice ${invoiceId ?? '(no id)'} (${stripeSubscriptionId}) could not be determined — not allocating; Stripe will retry`);
+      }
+    }
 
     if (em && periodStart && !(await claimStripeKey(em, fulfillmentKey('period-tokens', `${stripeSubscriptionId}:${periodStart}`), 'fulfillment:period-tokens'))) {
       this.logger.warn(`Tokens for period ${periodStart} of ${stripeSubscriptionId} already issued — not issuing again`);
@@ -621,6 +634,24 @@ export class SubscriptionsService {
    * @param options.includeTrialEligibility — D6: adds `trialEligible` (true / false / null = unverifiable). Opt-in,
    *   because it may call Stripe; only the pricing page and the mobile paywall ask for it.
    */
+  /**
+   * F-02 — the billed period's start (unix seconds) from Stripe's paginated line items of `invoiceId` (authoritative;
+   * same subscription-line rule as invoicePeriodStart). null when no subscription line exists after reading every
+   * page (bounded). A Stripe error propagates (the webhook is retried).
+   */
+  async resolveInvoicePeriodStart(invoiceId: string): Promise<number | null> {
+    const stripe = this.requireStripe();
+    let startingAfter: string | undefined;
+    for (let page = 0; page < 20; page++) {
+      const res = await stripe.invoices.listLineItems(invoiceId, { limit: 100, ...(startingAfter ? { starting_after: startingAfter } : {}) });
+      const found = invoicePeriodStart({ lines: { data: res.data } });
+      if (found !== null) return found;
+      if (!res.has_more || res.data.length === 0) return null;
+      startingAfter = res.data[res.data.length - 1].id;
+    }
+    return null;
+  }
+
   async getSubscriptionStatus(userId: string, options: { includeTrialEligibility?: boolean } = {}) {
     const status = await this.readSubscriptionStatus(userId);
     if (!options.includeTrialEligibility) return status;
