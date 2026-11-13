@@ -82,7 +82,7 @@ export class GiftsService {
         message: message ?? '',
         occasion: occasion ?? '',
       },
-      success_url: `${this.webUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${this.webUrl}/billing/success?purchase=gift&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.webUrl}/gift`,
     });
 

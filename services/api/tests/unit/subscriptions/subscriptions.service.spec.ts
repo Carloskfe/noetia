@@ -572,6 +572,8 @@ describe('SubscriptionsService', () => {
       expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
         expect.objectContaining({ mode: 'payment', metadata: { bookId: 'bk1', userId: 'u1' } }),
       );
+      // The success page must not wait for a subscription after a one-time purchase.
+      expect(mockStripe.checkout.sessions.create.mock.calls[0][0].success_url).toContain('/billing/success?purchase=book&session_id=');
     });
 
     it('throws NotFoundException for unknown or unpublished book', async () => {
@@ -638,6 +640,7 @@ describe('SubscriptionsService', () => {
         expect.objectContaining({
           mode: 'payment',
           metadata: { tokenPackageId: 'pkg1', userId: 'u1' },
+          success_url: expect.stringContaining('/billing/success?purchase=tokens&session_id='),
         }),
       );
     });

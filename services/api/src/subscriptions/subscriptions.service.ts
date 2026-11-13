@@ -332,7 +332,7 @@ export class SubscriptionsService {
       }],
       mode: 'payment',
       metadata: { bookId: book.id, userId },
-      success_url: `${this.webUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${this.webUrl}/billing/success?purchase=book&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.webUrl}/billing/cancel`,
     });
     return { url: session.url! };
@@ -351,7 +351,7 @@ export class SubscriptionsService {
       line_items: [{ price: pkg.stripePriceId, quantity: 1 }],
       mode: 'payment',
       metadata: { tokenPackageId: pkg.id, userId },
-      success_url: `${this.webUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${this.webUrl}/billing/success?purchase=tokens&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.webUrl}/billing/cancel`,
     });
     return { url: session.url! };

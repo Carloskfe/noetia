@@ -68,7 +68,11 @@ describe('GiftsService', () => {
       const result = await service.createGiftSession('buyer1', 'gift@test.com', 1, 'Feliz cumpleaños', 'birthday');
       expect(result).toEqual({ url: 'https://checkout.stripe.com/gift' });
       expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
-        expect.objectContaining({ mode: 'payment', metadata: expect.objectContaining({ type: 'gift', tokenCount: '1' }) }),
+        expect.objectContaining({
+          mode: 'payment',
+          metadata: expect.objectContaining({ type: 'gift', tokenCount: '1' }),
+          success_url: expect.stringContaining('/billing/success?purchase=gift&session_id='),
+        }),
       );
     });
 
