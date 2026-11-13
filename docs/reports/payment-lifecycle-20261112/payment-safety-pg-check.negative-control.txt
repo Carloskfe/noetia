@@ -1,9 +1,9 @@
-=== negative control: code at 220e33d (2026-11-13T17:52:01Z) ===
-payment-safety-pg-check — code under test: <checkout of 220e33d>/services/api/src
+=== negative control: code at 1be3f48 (before round 4) (2026-11-13T19:27:11Z) ===
+payment-safety-pg-check — code under test: <checkout of 1be3f48>/services/api/src
 PostgreSQL: PostgreSQL 16.13 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
 
 PASS  S1 eight CONCURRENT deliveries of the same invoice.paid event
-      tokens=1 (expected 1); deliveries ok=8, failed=0; 49 ms
+      tokens=1 (expected 1); deliveries ok=8, failed=0; 75 ms
 PASS  S2 six CONCURRENT events with DIFFERENT ids for the same invoice
       tokens=1 (expected 1); ok=6, failed=0
 PASS  S3 token-package purchase: 4 duplicate + 4 distinct-id CONCURRENT deliveries of one session
@@ -15,62 +15,42 @@ PASS  S5 first-subscription race (no row yet): 25 rounds of two CONCURRENT live 
 PASS  S5b re-subscription race (previous row ended): 25 rounds of two CONCURRENT live subscriptions for one user
       silent replacements=0 (expected 0); rounds with no subscription applied=0 (expected 0); row/event mismatch=0
 PASS  S5c legitimate re-subscription after the old subscription ended still works
-      row=sub_new_3bc70da4(trialing) (expected sub_new_3bc70da4(trialing))
+      row=sub_new_63524110(trialing) (expected sub_new_63524110(trialing))
 PASS  S6 process killed (SIGKILL) after granting tokens, before the event is recorded; then Stripe retries
       child: tokens inserted, exit signal=SIGKILL; after crash: tokens=0, event rows=0, invoice-claim rows=0 (expected 0/0/0 — legacy code shows tokens=1, event rows=0); after retry + redelivery: tokens=1 (expected 1)
 PASS  S7 transaction fails after the token insert; the legitimate retry grants exactly once
       first delivery threw=true; tokens after failure=0 (expected 0); after retry=1 (expected 1)
 PASS  S8 a duplicate arriving mid-transaction blocks until the first commits, then skips
-      tokens=1; Stripe reads=1 (expected 1: the duplicate never ran the handler); completion times ms=425, 426
-FAIL  T1 T-1: 15 rounds × 11 CONCURRENT signup deliveries (created/completed/updated/$0 invoice, duplicates + new ids)
-      rounds with a token count other than 1: 6 (expected 0); failed deliveries: 0
-FAIL  T2 T-1: all 24 delivery orders of the four signup events
-      orders with a token count other than 1: 12 (expected 0) — created→completed→trialInvoice→updated=0, created→trialInvoice→completed→updated=0, created→trialInvoice→updated→completed=0, completed→created→trialInvoice→updated=0
-FAIL  T3 T-1: SIGKILL after the trial grant inserted tokens, before COMMIT; then retry + other signup events
-      exit signal=null; after crash: tokens=0, trial claim rows=0, subscription rows=1 (expected 0/0/0); after retry: tokens=0 (expected 1)
+      tokens=1; Stripe reads=1 (expected 1: the duplicate never ran the handler); completion times ms=476, 477
+PASS  T1 T-1: 15 rounds × 11 CONCURRENT signup deliveries (created/completed/updated/$0 invoice, duplicates + new ids)
+      rounds with a token count other than 1: 0 (expected 0); failed deliveries: 0
+PASS  T2 T-1: all 24 delivery orders of the four signup events
+      orders with a token count other than 1: 0 (expected 0)
+PASS  T3 T-1: SIGKILL after the trial grant inserted tokens, before COMMIT; then retry + other signup events
+      exit signal=SIGKILL; after crash: tokens=0, trial claim rows=0, subscription rows=0 (expected 0/0/0); after retry: tokens=1 (expected 1)
 PASS  T4 T-1: trial cancelled before paying, then late events
       tokens=1, still active=1 (expected 1, no claw-back); row status=canceled
-FAIL  T5 T-1: first paid invoice (4 concurrent deliveries, 3 ids) then the next monthly invoice
-      after trial + first paid: 0 (expected 2); after second invoice: 0 (expected 3)
-FAIL  T6 T-1 annual plan: trial grant, cron during trial, first paid annual invoice, scheduled monthly issuance
-      trial start: tokens=0 status=trialing next=null | cron during trial (incl. forced overdue pointer): tokens=0 status=trialing next=null | first paid annual invoice: tokens=0 status=active next=null | cron right after (not due): tokens=0 status=active next=null | cron when due (simulated day 45): tokens=0 status=active next=set | cron again same day: tokens=0 status=active next=set | schedule after first paid invoice = +-1.00 days (expected 30)
+PASS  T5 T-1: first paid invoice (4 concurrent deliveries, 3 ids) then the next monthly invoice
+      after trial + first paid: 2 (expected 2); after second invoice: 3 (expected 3)
+PASS  T6 T-1 annual plan: trial grant, scheduler during trial, first paid annual invoice (cycle 0), nothing extra
+      trial start: tokens=1 status=trialing next=null | cron during trial (incl. forced overdue pointer): tokens=1 status=trialing next=null | first paid annual invoice: tokens=2 status=active next=set | scheduler right after (nothing due before the first anniversary): tokens=2 status=active next=set
+FAIL  D1 checkout trial eligibility (real advisory lock, real rows; fake Stripe)
+      first-time → trial 14; returning (Noetia row) → trial 14; Stripe-only history → trial 14; 4 concurrent checkouts → 4 answers, 1 session (expected 1); history unverifiable → no error and no session
+FAIL  A1 D2: one annual period on PostgreSQL — invoice + daily scheduler for 400 simulated days
+      paid allocations=1 (expected 12); scheduled cycles claimed k=[] (expected 1…11); none after the period end
+FAIL  A2 two scheduler instances (separate pools) run together, 20 rounds × 3 due cycles
+      rounds with a count other than 3: 20 (expected 0); total 40 (expected 60)
+FAIL  A3 scheduler process killed (SIGKILL) after granting a cycle, before COMMIT; then the next run
+      not applicable: this code has no per-cycle annual scheduler (issueDueAnnualCycles)
+FAIL  A4 D3: annual subscription cancelled at period end (canceling) keeps its scheduled allocations, none after expiry
+      scheduled allocations=0 (expected 11; cycle 0 came with the paid invoice before the cancellation)
+FAIL  I1 invoice classes on PostgreSQL: paid upgrade + manual (none); a valid $0 renewal and two reissues of it, concurrently (once)
+      after upgrade/manual: 2 (expected 0); after $0 renewal ×3 invoices, same period: 2 (expected 1)
+FAIL  R1 one token, five books redeemed at the same moment
+      succeeded=5 (expected 1); books owned=5; tokens redeemed=1 (expected 1/1); others: 
+PASS  R2 Duo shared pool: plan owner and linked member redeem at the same moment (10 rounds each with 1 and 2 pool tokens)
+      1-token rounds wrong: 0; 2-token rounds wrong: 0 (expected 0/0 — one token never serves two books; two tokens serve both)
+PASS  R3 the same book redeemed four times at once (3 tokens available)
+      succeeded=1; owned=1; tokens redeemed=1, still active=2 (expected 1/1/1/2 — losers' tokens rolled back)
 
-11/16 scenarios passed
-=== negative control: code at 9a8b4d8 (2026-11-13T17:52:19Z) ===
-payment-safety-pg-check — code under test: <checkout of 9a8b4d8>/services/api/src
-PostgreSQL: PostgreSQL 16.13 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
-
-FAIL  S1 eight CONCURRENT deliveries of the same invoice.paid event
-      tokens=8 (expected 1); deliveries ok=8, failed=0; 77 ms
-FAIL  S2 six CONCURRENT events with DIFFERENT ids for the same invoice
-      tokens=6 (expected 1); ok=6, failed=0
-FAIL  S3 token-package purchase: 4 duplicate + 4 distinct-id CONCURRENT deliveries of one session
-      tokens=80 (expected 10); ok=8, failed=0
-FAIL  S4 gift: 6 CONCURRENT deliveries (3 event ids) of one session
-      gift rows=6 (expected 1); recipient e-mails=6 (expected 1); e-mailed link matches stored gift=false; failed=0
-FAIL  S5 first-subscription race (no row yet): 25 rounds of two CONCURRENT live subscriptions for one user
-      silent replacements=13 (expected 0); rounds with no subscription applied=0 (expected 0); row/event mismatch=0
-FAIL  S5b re-subscription race (previous row ended): 25 rounds of two CONCURRENT live subscriptions for one user
-      silent replacements=14 (expected 0); rounds with no subscription applied=0 (expected 0); row/event mismatch=0
-PASS  S5c legitimate re-subscription after the old subscription ended still works
-      row=sub_new_88f108e9(trialing) (expected sub_new_88f108e9(trialing))
-FAIL  S6 process killed (SIGKILL) after granting tokens, before the event is recorded; then Stripe retries
-      child: tokens inserted, exit signal=SIGKILL; after crash: tokens=1, event rows=0, invoice-claim rows=0 (expected 0/0/0 — legacy code shows tokens=1, event rows=0); after retry + redelivery: tokens=2 (expected 1)
-FAIL  S7 transaction fails after the token insert; the legitimate retry grants exactly once
-      first delivery threw=true; tokens after failure=1 (expected 0); after retry=2 (expected 1)
-FAIL  S8 a duplicate arriving mid-transaction blocks until the first commits, then skips
-      tokens=2; Stripe reads=2 (expected 1: the duplicate never ran the handler); completion times ms=79, 425
-FAIL  T1 T-1: 15 rounds × 11 CONCURRENT signup deliveries (created/completed/updated/$0 invoice, duplicates + new ids)
-      rounds with a token count other than 1: 12 (expected 0); failed deliveries: 0
-FAIL  T2 T-1: all 24 delivery orders of the four signup events
-      orders with a token count other than 1: 12 (expected 0) — created→completed→trialInvoice→updated=0, created→trialInvoice→completed→updated=0, created→trialInvoice→updated→completed=0, completed→created→trialInvoice→updated=0
-FAIL  T3 T-1: SIGKILL after the trial grant inserted tokens, before COMMIT; then retry + other signup events
-      exit signal=null; after crash: tokens=0, trial claim rows=0, subscription rows=1 (expected 0/0/0); after retry: tokens=0 (expected 1)
-PASS  T4 T-1: trial cancelled before paying, then late events
-      tokens=1, still active=1 (expected 1, no claw-back); row status=canceled
-FAIL  T5 T-1: first paid invoice (4 concurrent deliveries, 3 ids) then the next monthly invoice
-      after trial + first paid: 0 (expected 2); after second invoice: 0 (expected 3)
-FAIL  T6 T-1 annual plan: trial grant, cron during trial, first paid annual invoice, scheduled monthly issuance
-      trial start: tokens=0 status=trialing next=null | cron during trial (incl. forced overdue pointer): tokens=0 status=trialing next=null | first paid annual invoice: tokens=0 status=active next=null | cron right after (not due): tokens=0 status=active next=null | cron when due (simulated day 45): tokens=0 status=active next=set | cron again same day: tokens=0 status=active next=set | schedule after first paid invoice = +-1.00 days (expected 30)
-
-2/16 scenarios passed
+18/25 scenarios passed

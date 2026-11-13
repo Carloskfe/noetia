@@ -10,6 +10,8 @@
 > **Round 2 (2026-11-13), PA review of `220e33d`:** the transactional webhook fulfillment and the atomic identity corrections were **provisionally accepted**. The **PO decided T-1** (initial cycle of tokens when the 14-day trial begins) and **USD** as the commercial currency; both are **final**. Round 2 implements T-1, verifies and marks USD, and records both decisions in [`docs/product-governance/COMMERCE-DECISIONS.md`](../../product-governance/COMMERCE-DECISIONS.md). See **§11**, which supersedes every earlier mention of a pending trial-token decision.
 >
 > **Round 3 (2026-11-13), PA review of `b320561`:** T-1 and USD were accepted for their bounded scope. Analysis and design only, no code changes: trial eligibility, annual cycle accuracy (13 cycles per year today; 20/20 double grants with two scheduler instances), paid-invoice eligibility, and launch-safeguard plans. See **§12**, including the PO decisions it needs.
+>
+> **Round 4 (2026-11-13), PO authorization D1–D6:** implemented. One trial per eligible customer; exactly 12 paid annual allocations; cancellation preserves paid entitlements; no tokens from upgrades; valid $0 renewals; bilingual disclosures. Also atomic token redemption and a scheduler that is safe across instances. See **§13**, which supersedes §12's open decisions.
 
 ## 0. Summary
 
@@ -956,3 +958,220 @@ The sentence "One free trial per person" applies only if the PO adopts 12.2.
 - **Release restrictions unchanged:** no merge, deploy, live purchase or premium activation. NEM-024: E-1 **OPEN / BLOCKED**, Checkpoint E **NOT QUALIFIED**.
 
 **STOP for independent PA review and PO decisions.**
+
+---
+
+## 13. Round 4: PO D1–D6 implementation, atomic redemption, scheduler concurrency (PO authorization, baseline `1be3f48`, 2026-11-13)
+
+**Authorization:** PRODUCT OWNER APPROVED, bounded implementation of D1–D6, atomic token redemption, and annual-scheduler concurrency.
+
+**Preflight:**
+- local, remote and PR head were all `1be3f48`, so there was no concurrent work to overwrite;
+- the PR is Draft;
+- it is stacked on the current PR #59 head (`e326b81`);
+- I read the governance record and §12, and re-read the subscription, webhook, ledger and redemption code before changing anything.
+
+**Not done, by instruction:**
+- no merge, deploy, production-data change, Stripe price change, live charge or premium activation;
+- no new Checkout-verification API, Redis checkout idempotency, Stripe price verification, gift-e-mail recovery, or work on unrelated systems;
+- no migration;
+- NEM-024: E-1 stays **OPEN / BLOCKED**, and Checkpoint E stays **NOT QUALIFIED**.
+
+The decisions are recorded as final in [`docs/product-governance/COMMERCE-DECISIONS.md`](../../product-governance/COMMERCE-DECISIONS.md), section "D1–D6".
+
+### 13.1 Commits and changed files
+
+| Commit | Scope |
+|---|---|
+| `c8b1611` | API: D1 eligibility, D2/D3 annual schedule, D4/D5 invoice classes, atomic redemption, unit tests |
+| `6487eb5` | Web `/pricing` and mobile paywall: D6 copy (en/es), tests |
+| `267212e` | Real-PostgreSQL script: D1, A1–A4, I1, R1–R3 scenarios |
+| (report commit) | Governance record, this section, evidence, screenshots |
+
+The API changes are one commit because they share `subscriptions.service.ts`; no interactive partial staging was available.
+
+**Files:**
+
+| Area | Files |
+|---|---|
+| API source | `src/subscriptions/billing-cycles.ts` (new, pure rules); `subscriptions.service.ts`; `webhooks.service.ts`; `subscriptions.controller.ts` (`/me?trialEligibility=1`); `stripe-fulfillment-ledger.ts` (two new key kinds) |
+| API tests | `billing-cycles.spec.ts` (new, 32); `subscriptions.service.spec.ts` (150); `payment-lifecycle.spec.ts` (67); `webhooks.service.spec.ts` (39); `stripe-fulfillment-ledger.spec.ts` (8) |
+| API script | `scripts/payment-safety-pg-check.ts` |
+| Web | `app/(billing)/pricing/page.tsx`; `lib/i18n/{en,es}.ts`; `tests/unit/app/billing/pricing.spec.tsx` (46) |
+| Mobile | `src/api/subscriptions.ts`; `src/screens/PaywallScreen.tsx`; `src/i18n/{en,es}.ts`; `tests/unit/screens/PaywallScreen.spec.ts` |
+| Docs | `docs/product-governance/COMMERCE-DECISIONS.md`; this report; `payment-safety-pg-check.txt`; `payment-safety-pg-check.negative-control.txt`; `browser-run-d6.txt`; 16 screenshots `pricing-trial-{guest,eligible,returning,unverified}--{es,en}--{desktop,mobile}.jpg` |
+
+### 13.2 Compliance matrix
+
+| Requirement | Implementation | Evidence |
+|---|---|---|
+| **D1** one 14-day trial per eligible customer | `createCheckoutSession`: trial only if there is no local subscription history **and** no started subscription in the Stripe history (`status:'all'`, every known customer id + other customers with the account e-mail); otherwise **no `subscription_data`** | unit "D1" (12); payment-lifecycle "D1" (2); PG **D1** |
+| D1 returning subscriber can buy again, without a trial | same; session tagged `noetiaTrial:'no'` | unit; PG D1 (Noetia-row and Stripe-only history) |
+| D1 T-1 only when an eligible trial begins | T-1 still keys off Stripe `trialing`, so a no-trial session never triggers it | payment-lifecycle "after a cancelled trial … no second T-1 grant" |
+| D1 no claw-back | no code touches granted tokens or owned books | payment-lifecycle cancellation tests |
+| D1 linked members eligible; gift/token buyers eligible | members have no own row; one-time payments are not subscriptions | unit (2) |
+| D1 fail safe | truncated or failed history → **503**; `trialEligible:null` → no trial advertised | unit (3 cases); PG D1 ("history unverifiable → 503, no session") |
+| D1 no invasive identity tracking | only the account e-mail and existing Stripe customers; limits documented (13.9) | code review |
+| **D2** exactly 12 paid annual allocations | invoice = cycle 0 (once per period); scheduler cycles 1…11 on UTC calendar-month anniversaries of Stripe's `current_period_start` + `billing_cycle_anchor`, strictly inside the period | `billing-cycles.spec` (Jan 31, Feb 29, leap years, DST, year boundary); payment-lifecycle "D2" timeline; PG **A1** |
+| D2 never the next period early | cycles filtered to `< current_period_end`; the renewal invoice opens the next period | payment-lifecycle "renewal"; PG A1 (400 days, nothing after) |
+| D2 quantities and 90-day expiry | `issueTokens` unchanged | unit (`tokensPerCycle`), existing expiry tests |
+| **D3** cancel at period end keeps allocations | candidates `active` **and** `canceling`; Stripe `active` (incl. cancel-at-period-end) required; nothing once the period has expired | unit; payment-lifecycle "D3" (12 paid); PG **A4** (11 scheduled) |
+| D3 immediate termination / failed payment / unpaid-trial cancellation | Stripe status `canceled` / `past_due` / `trialing` → nothing | payment-lifecycle (3 tests); unit (status table) |
+| **D4** no tokens from upgrades | `classifyInvoice`: `subscription_update` → none | `billing-cycles.spec`; webhooks (4 cases); payment-lifecycle; PG **I1** |
+| D4 portal configuration | **not changed**; verification pending (13.10) | — |
+| **D5** valid $0 renewals | `subscription_cycle` at any amount grants; trial `subscription_create` at $0 grants none; paid creation grants | `billing-cycles.spec`; webhooks; payment-lifecycle; PG I1 |
+| D5 once per billing period | `fulfillment:period-tokens:<sub>:<period start from the subscription line>` + invoice-id key, in the webhook transaction | unit "reissued invoice"; payment-lifecycle "voided-and-reissued"; PG I1 (3 invoices, same period → 1) |
+| **D6** bilingual disclosures | `/pricing`: guest / eligible / returning / unverified states, included tokens per plan, ownership, renewal/cancellation; mobile paywall subtitle follows the same rule | pricing spec (7 new, EN+ES); PaywallScreen spec (3); 16 screenshots |
+| D6 never advertise a trial to a returning customer | returning → "Welcome back… your subscription starts today" + "Subscribe"; unverified → no trial words | screenshots (`trial-mentions=0` when unverified); tests |
+| **Atomic redemption** | one transaction: `UPDATE … WHERE id = (SELECT … FOR UPDATE SKIP LOCKED)`, then wait/retry; ownership `INSERT … ON CONFLICT DO NOTHING`; a conflict throws, so the token rolls back; shared pool unchanged | unit (6); PG **R1–R3** |
+| **Scheduler concurrency** | per-cycle claim `fulfillment:annual-cycle:<sub>:<period start>:<k>` in the grant's transaction | PG **A2** (two instances), **A3** (SIGKILL), unit re-run |
+| No migration, no price change, no new infrastructure | existing table/primary key, existing transactions | — |
+
+### 13.3 Real PostgreSQL evidence
+
+**Method:** disposable `postgres:16-alpine` (removed afterwards); 68 migrations; the real services; fake Stripe, e-mail and push; synthetic accounts.
+- A2 runs two scheduler instances, each with its own DataSource and pool.
+- A3 kills the child process with `SIGKILL` mid-transaction.
+
+| # | Scenario | Corrected (3 runs) | `1be3f48` (before) |
+|---|---|---|---|
+| D1 | First-time / returning (Noetia row) / Stripe-only history / 4 concurrent checkouts / history unverifiable | trial 14 / none / none / **1** session / 503, no session | trial 14 / **14** / **14** / 1 / **no error** |
+| A1 | One annual period: invoice + daily scheduler for 400 simulated days | **12** paid; cycles k = 1…11 claimed; none after the end | **1** |
+| A2 | Two scheduler instances, 20 rounds × 3 due cycles | 60 / 60 | **40 / 60** (one cycle each, granted twice) |
+| A3 | Scheduler `SIGKILL` after granting, before COMMIT | after crash 0 tokens, 0 claims → after two runs **3** | n/a (no per-cycle scheduler) |
+| A4 | Annual cancelled at period end | **11** scheduled until expiry, none after | **0** |
+| I1 | Paid upgrade + manual invoice; then a $0 renewal + 2 reissues of it, concurrently | **0**, then **1** | 2, then 2 |
+| R1 | One token, 5 books at once | **1** book, 1 token used | **5 books for 1 token** |
+| R2 | Duo shared pool: owner + member at once (10 rounds × 1 and 2 tokens) | 0 wrong | 0 wrong (race not hit in this run) |
+| R3 | Same book ×4 at once, 3 tokens | 1 owned, 1 used, 2 still active | passed (race not hit) |
+
+- **Round 1–2 scenarios** (S1–S8, T1–T6) still pass. Total **25/25 in each of 3 runs**; negative control **18/25**.
+- **R2 and R3 on the old code** passed in that run only because the race window wasn't hit. R1 shows the defect deterministically.
+- **Script change after the runs:** an unused constant was removed to satisfy lint. Behaviour is identical.
+
+### 13.4 Annual timeline: exactly 12 paid allocations
+
+Unit timeline (`payment-lifecycle.spec`, real services, fake clock, daily scheduler at 01:00 UTC). Individual Annual: trial 2027-01-01, paid period 2027-01-15 12:00 → 2028-01-15 12:00 UTC.
+
+| Allocation | Date granted |
+|---|---|
+| T-1 (trial, additional) | 2027-01-01 |
+| Paid 1: the annual invoice | 2027-01-15 |
+| Paid 2–12: scheduler | 02-16, 03-16, 04-16, 05-16, 06-16, 07-16, 08-16, 09-16, 10-16, 11-16, 12-16. Each is due on the 15th at 12:00 UTC; the next daily run grants it |
+| Before the renewal | nothing more |
+| Year 2 | a new invoice on 2028-01-15, then 11 more: **12** paid |
+
+Other cases:
+
+| Case | Result |
+|---|---|
+| Cancel at period end on day 60 | 12 paid, then nothing after 2028-01-15 |
+| Immediate termination, day 100 (Apr 11) | T-1 + cycle 0 + Feb + Mar, then nothing |
+| Renewal `past_due` | nothing in the unpaid period |
+| Jan 31 anchor | Feb 28, Mar 31, Apr 30, May 31 …; 12 paid |
+
+Round 3 measured 13 paid cycles per period for the previous code.
+
+### 13.5 Trial and invoice eligibility results
+
+**API**
+
+| Suite | Tests | Result |
+|---|---|---|
+| `subscriptions.service.spec` | 150 | pass. Includes D1 checkout (12), `getTrialEligibility` / `me?trialEligibility` (6), `issueDueAnnualCycles` (10), period keys (3), atomic redemption (6) |
+| `billing-cycles.spec` | 32 | pass. Calendar (Jan 31, Feb 29, leap year, DST, year boundary), 11-cycle windows, invoice classes (10 cases), period extraction, history signal |
+| `webhooks.service.spec` | 39 | pass. D4 (4 invoice kinds), D5 ($0 renewal, paid creation) |
+| `payment-lifecycle.spec` | 67 | pass. 24 T-1 delivery orders; D1 re-subscription; D2/D3 timelines; D4/D5; reissue |
+| `stripe-fulfillment-ledger.spec` | 8 | pass |
+
+All suites also pass under `TZ=UTC` and `TZ=America/New_York`.
+
+**Web and mobile**
+
+| Suite | Tests | Result |
+|---|---|---|
+| Web `pricing.spec` | 46 | pass. 7 D6 tests: guest, eligible, returning, unverified, status failure, EN and ES |
+| Mobile `PaywallScreen.spec` | — | +3 tests |
+
+### 13.6 Bilingual copy (D6)
+
+**Shipped in the app** (web `/pricing`; mobile paywall subtitle uses the equivalent strings):
+
+| State | EN | ES |
+|---|---|---|
+| Guest | New subscribers get a 14-day free trial with their plan's first tokens included. Cancel anytime. | Los nuevos suscriptores tienen 14 días de prueba gratuita con los primeros tokens de su plan incluidos. Cancela cuando quieras. |
+| Eligible | Your 14-day free trial includes your plan's first tokens. Cancel anytime. | Tu prueba gratuita de 14 días incluye los primeros tokens de tu plan. Cancela cuando quieras. |
+| Eligible, per plan | Includes {n} token(s) to start your trial | Incluye {n} token(s) para empezar tu prueba |
+| Eligible / guest | Books you redeem during the trial are yours to keep, even if you cancel. | Los libros que canjees durante la prueba son tuyos para siempre, aunque canceles. |
+| Returning | Welcome back. You've already had your free trial, so your subscription starts today. | Qué bueno verte de nuevo. Ya disfrutaste tu prueba gratuita, así que tu suscripción comienza hoy. |
+| Unverified | Prices in US dollars. Cancel anytime. | Precios en dólares estadounidenses. Cancela cuando quieras. |
+| Everyone | Plans renew automatically. If you cancel, you keep your access and your plan's tokens until the end of the period you paid for. | Los planes se renuevan automáticamente. Si cancelas, conservas tu acceso y los tokens de tu plan hasta el final del período que pagaste. |
+
+**CTAs:** Start free trial / Comenzar prueba gratuita (eligible) · Get started / Empezar (guest) · Subscribe / Suscribirme (returning or unverified).
+
+The copy keeps the existing page styles (small grey and emerald notes) in the established Quiet Editorial register: sentence case, "tú", no exclamation marks.
+
+**Proposed Terms wording: not applied** (legal approval required, OP-3; overlaps legal-gated PR #22). It would replace "Free trial: when available, terms will be specified at the time of subscription":
+- **EN:** "Free trial: new subscribers receive one 14-day free trial per customer, including the plan's first monthly tokens. Books redeemed with those tokens remain yours even if you cancel during the trial. Returning subscribers are not eligible for another trial. Annual plans include 12 monthly token allocations per paid year; if you cancel, renewal stops and your allocations continue until the end of the period you paid for. Plan upgrades take effect at the next billing cycle and do not add a token allocation."
+- **ES:** "Prueba gratuita: los nuevos suscriptores reciben una prueba gratuita de 14 días por cliente, que incluye los primeros tokens mensuales del plan. Los libros canjeados con esos tokens siguen siendo tuyos aunque canceles durante la prueba. Quienes ya fueron suscriptores no tienen derecho a otra prueba. Los planes anuales incluyen 12 asignaciones mensuales de tokens por año pagado; si cancelas, la renovación se detiene y tus asignaciones continúan hasta el final del período que pagaste. Los cambios a un plan superior se aplican en el siguiente ciclo de facturación y no añaden una asignación de tokens."
+
+### 13.7 Atomic redemption evidence
+
+**Before (`1be3f48`, real PostgreSQL R1):** one token bought **5 books** when redeemed in parallel.
+
+**Now:**
+- R1 → 1 book, 1 token.
+- R2 → a Duo owner and a linked member sharing 1 token: exactly one succeeds. With 2 tokens, both succeed with distinct tokens (10 + 10 rounds).
+- R3 → four parallel redemptions of the same book: 1 ownership; the losers' tokens are rolled back (2 of 3 stay active).
+
+**Unit tests** cover: the statement sequence, rollback on an ownership conflict, the already-owned fast path, no tokens, the owner-pool fallback (ownership goes to the redeeming member), and the unknown book.
+
+### 13.8 Validation
+
+| Check | Result |
+|---|---|
+| API unit (full, `--maxWorkers=2`) | **1184/1184** pass. The one non-loading suite, `auth.controller.spec`, is environmental (`bcrypt` native binding not built in this worktree), as in every round |
+| API coverage | `webhooks.service.ts` 100 / 95.6 (statements / branches); `subscriptions.service.ts` 92.9 / 84.6; `gifts.service.ts` 97.3 / 84.6. Global branches 72.2%; the gate (80%) was failing on `main` before this mission; **threshold unchanged** |
+| API `tsc` / eslint / `nest build` | pass / **0 errors** (87 `any` warnings, existing style) / pass |
+| Real PostgreSQL script | **25/25** in 3 runs; negative control 18/25 |
+| Web unit (full) | **448/448** (28 suites). Includes i18n en/es parity, PO-053 selector tests and the Noetia+/NoetiaX Coming Soon landing tests, all unchanged and passing |
+| Web `tsc` / `next lint` (changed files) / **`next build`** | pass / clean / **compiled successfully** |
+| Mobile unit (full) / `tsc` | **182/182** / pass. Run with the main checkout's `node_modules` linked temporarily, removed afterwards |
+| Browser | `/pricing` D6 states: 16/16 reached the expected state; no overflow; 0 trial mentions when unverified |
+| CI | **Did not run** (stacked PR, §9). No green CI is claimed |
+
+### 13.9 Known limitations
+
+- **D1 identity is not proof of a person.** A deleted-and-recreated account is recognized only when it reuses the same e-mail, exact-match (e-mails aren't normalized at registration). A different e-mail evades the rule. Closing that would need a new persistent identity mechanism, which isn't proposed and would need PA/PO approval.
+- **Stripe cost of eligibility.** `?trialEligibility=1` calls Stripe, roughly 1 + N list calls. Only `/pricing` and the mobile paywall ask for it; every other `/me` caller is unchanged.
+- **The annual scheduler reads Stripe.** It makes one Stripe read per annual subscription only when a cycle may be due (the `nextTokenIssuanceAt` hint), so about 12 calls per subscription per year. If Stripe is down, that day's cycles are granted on a later run within the period.
+- **Pre-existing display issue (not this mission).** Individual and Duo plan cards show no taglines with the current plan names; this belongs to the presentation PR (#21). Family "up to 5 users" vs 4 seats is also still open there.
+- **Single API commit,** as explained in 13.1.
+
+### 13.10 Remaining launch gates (not expanded here)
+
+| Gate | Status | Smallest next action |
+|---|---|---|
+| Server-side Checkout-session verification (G-1) | Open | PA approves the §10.4 endpoint design; then implement (`subscriptions.controller/service`, success page) |
+| Stripe USD price-object verification (USD-1) | **Pending: requires Stripe account access** | PO runs the read-only check from §12.5 D with a restricted key, or confirms each referenced price is `usd` in the Dashboard |
+| Checkout ambiguity after Stripe timeouts (G-4) | Open | PA approves the §12.5 C design (existing Redis + Stripe idempotency key); then implement |
+| Gift-e-mail recovery | Open | PO/PA choose an admin resend action (no migration) or a pending marker (migration) |
+| Stripe portal configuration (D4) | **Pending verification** | PO confirms in the Dashboard that plan changes take effect at the next billing cycle, matching the Terms; any change goes to separate approval |
+| Terms wording for D1–D6 (T1-D) | Draft in 13.6 | Legal review (OP-3), coordinated with PR #22 |
+| Verification-script location (G-5) | Open | PA: keep `services/api/scripts/` or drop |
+
+### 13.11 Release blockers
+
+- PA review of this round;
+- PO merge and deploy instruction naming the PR (merging to `main` is a production deploy);
+- the gates above;
+- Stripe production configuration: webhook events incl. `customer.subscription.created`, the USD price check, the portal check;
+- Terms review (OP-3);
+- NEM-024: E-1 **OPEN / BLOCKED**, Checkpoint E **NOT QUALIFIED**.
+
+**Unchanged:**
+- **Product rules:** prices, trial length (14 days), token quantities, 90-day expiry, permanent ownership.
+- **Policy:** Causas 2.22% and PO-053; Noetia+/NoetiaX remain Coming Soon.
+- **Protected systems:** reader / Escucha Activa; production and staging systems.
+
+**STOP for independent Product Architecture review.**

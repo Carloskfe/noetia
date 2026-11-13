@@ -59,13 +59,63 @@ Durable record of **Product Owner decisions** on Noetia's commercial model: subs
 
 ---
 
-## Pending PO decisions (not yet decided)
+## D1–D6: subscription policy (approved 2026-11-13)
 
-Raised in the PR #60 report §12 (2026-11-13). **None is implemented, and none is policy until the PO decides:**
-1. **Trial eligibility:** one free trial per person (Noetia account and Stripe customer; optional e-mail check). Do linked Duo/Family members remain eligible?
-2. **Annual plans:** confirm 12 monthly cycles per paid annual period. Today's code grants 13.
-3. **Annual cancel-at-period-end:** do monthly cycles continue until the period ends, as the Terms' cancellation clause implies? Today they stop.
-4. **Mid-cycle upgrades:** no extra cycle (recommended), or a token difference?
-5. **$0 renewal invoices** (if discounts are ever introduced): grant the cycle or not?
-6. **T-1 customer disclosure** copy (then legal review, OP-3).
+| | |
+|---|---|
+| **Decided by** | Product Owner, "PO AUTHORIZATION: D1–D6 SUBSCRIPTION POLICY IMPLEMENTATION", baseline `1be3f48`, **2026-11-13** |
+| **Status** | **Final.** A change needs an explicit new PO decision. |
+| **Implemented in** | PR #60 (Draft, stacked on PR #59): `services/api/src/subscriptions/{subscriptions.service,webhooks.service,billing-cycles,stripe-fulfillment-ledger}.ts`, web `/pricing`, mobile paywall. Report §13. **Not merged or deployed.** |
+
+### D1: one trial per eligible customer
+- **One 14-day trial per eligible customer.** A customer who has already received a subscription trial does not get another. A returning subscriber may buy a new subscription, **without** a trial.
+- **T-1 tokens are granted only when an eligible trial actually begins:** Stripe reports the subscription as trialing.
+- **Nothing is clawed back:** trial tokens already granted and books already redeemed are kept.
+- **Linked Duo/Family members** who never held their own subscription remain eligible when they subscribe on their own.
+- **Gift and token-package purchases** alone do not use up eligibility.
+- **Evidence used:** existing data only.
+  - the Noetia account's subscription history;
+  - the full history (canceled included) of every Stripe customer known for the account;
+  - other Stripe customers registered under the **account e-mail**.
+
+  There is no fingerprinting, no device or payment-card tracking, and no new personal data.
+- **Fail safe:** if the history can't be verified, checkout returns 503 and **never charges unexpectedly**. The pricing page then doesn't mention a trial.
+- **Known limit, no claim of perfect identification:** someone who deletes their account and signs up again with a **different e-mail**, or with different capitalization (e-mails aren't normalized at registration), isn't recognized. Closing that gap would need a new persistent identity mechanism, which isn't proposed.
+
+### D2: exactly 12 paid annual allocations
+- **12 paid allocations per annual billing period.**
+  - The paid annual invoice gives allocation 1.
+  - The other 11 fall on **UTC calendar-month anniversaries** within that paid period, anchored to Stripe's billing anchor. Month-end anchors are clamped: Jan 31 → Feb 28/29, Feb 29 → Mar 29.
+  - Daylight-saving time doesn't affect them.
+- **The T-1 trial allocation is additional,** for eligible new subscribers.
+- **Never early:** no allocation from the next annual period is granted before that period begins. Quantities and the 90-day expiry are unchanged.
+
+### D3: cancellation preserves paid entitlements
+- **Cancelled at period end** (`canceling`): renewal stops, but scheduled allocations continue until the paid period expires, and none come after.
+- **Immediate termination, failed payment (`past_due`), and cancellation during an unpaid trial:** no further allocations.
+
+### D4: no extra tokens from mid-cycle upgrades
+- `subscription_update` and proration invoices never produce a token cycle. The new plan's entitlement applies from the next eligible billing cycle.
+- The Stripe portal configuration is unchanged. **Verifying it** (proration and effective dates against the Terms' "plan changes take effect at the start of the next billing cycle") is **pending PO verification in the Stripe Dashboard**. Any change goes to separate approval.
+
+### D5: valid $0 renewals
+- A legitimate `subscription_cycle` invoice of **$0** still grants the normal cycle.
+- **Grant:** renewals and paid creations without a trial.
+- **No grant:**
+  - the trial's $0 creation invoice (T-1 covers the trial);
+  - plan changes and prorations;
+  - manual and unrelated invoices.
+- **Once per billing period,** enforced by the transactional ledger, so duplicate and reissued invoices grant once.
+- No discount program is introduced.
+
+### D6: bilingual disclosures
+- English and Spanish copy covers:
+  - first-time eligible customers;
+  - returning subscribers without a trial;
+  - the initial tokens included in the trial;
+  - permanent ownership of books redeemed during the trial;
+  - renewal and cancellation behaviour.
+- **A trial is never advertised to a returning customer.** When eligibility can't be confirmed, no trial is mentioned.
+- **App copy** is updated on `/pricing` and the mobile paywall.
+- **Terms and Privacy Policy are not modified;** legal approval is required. Proposed Terms wording is in report §13.6.
 
