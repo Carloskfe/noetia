@@ -101,6 +101,21 @@ const fakeStripe = {
 };
 let stripeFailCustomers = false;
 const checkoutSessions: any[] = [];
+// Invoice line items (F-02): registered per invoice id; by default every invoice bills its own unique period.
+const invoiceLines = new Map<string, any[]>();
+let stripeFailLines = false;
+const subLine = (start: number) => ({ id: `il_sub_${start}`, parent: { type: 'subscription_item_details', subscription_item_details: { proration: false } }, period: { start } });
+const defaultPeriodOf = (invoiceId: string) => 1_800_000_000 + [...invoiceId].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 1_000_000, 7);
+(fakeStripe as any).invoices = {
+  listLineItems: async (invoiceId: string, params: any = {}) => {
+    await jitter();
+    if (stripeFailLines) throw new Error('stripe unavailable');
+    const all = invoiceLines.get(invoiceId) ?? [subLine(defaultPeriodOf(invoiceId))];
+    const from = params.starting_after ? all.findIndex((l: any) => l.id === params.starting_after) + 1 : 0;
+    const page = all.slice(from, from + (params.limit ?? 10));
+    return { data: page, has_more: from + page.length < all.length };
+  },
+};
 const emails: Array<{ kind: string; to: string; claimToken?: string }> = [];
 const logs: string[] = [];
 const quietLogger = { log: () => undefined, warn: (m: string) => logs.push(String(m)), error: (m: string) => logs.push(String(m)) };
@@ -630,6 +645,51 @@ async function d1TrialEligibility(subs: any) {
     `4 concurrent checkouts → ${race.ok} answers, ${racerSessions} session (expected 1); history unverifiable → ${fail.failed[0] ?? 'no error'} and no session`);
 }
 
+// ── F-02: billing-period identity when the payload lacks the subscription line ──────────────────────────────
+const prorationLines = Array.from({ length: 10 }, (_, i) => ({ id: `il_pr_${i}`, parent: { type: 'invoice_item_details', invoice_item_details: { proration: true } }, period: { start: 1_700_000_000 + i } }));
+
+async function f2SamePeriodTruncated(webhooks: any, rounds: number) {
+  // Two DIFFERENT paid renewal invoices for the SAME billing period, delivered concurrently, each payload holding only
+  // 10 proration lines (has_more) — the dahlia shape after several plan changes.
+  let wrong = 0; let failed = 0;
+  for (let i = 0; i < rounds; i++) {
+    const u = await activeSubscriber(webhooks, 'f2');
+    const t = u.id.slice(0, 8);
+    const period = 1_840_000_000 + i;
+    for (const id of [`in_f2a_${t}`, `in_f2b_${t}`]) invoiceLines.set(id, [...prorationLines, subLine(period)]);
+    const inv = (id: string, ev_: string) => ev(ev_, 'invoice.paid', { id, subscription: u.sub, customer: u.cus, amount_paid: 899, billing_reason: 'subscription_cycle', lines: { data: prorationLines, has_more: true } });
+    const r = await settle([
+      webhooks.handleEvent(inv(`in_f2a_${t}`, `evt_f2a_${t}`)), webhooks.handleEvent(inv(`in_f2b_${t}`, `evt_f2b_${t}`)),
+      webhooks.handleEvent(inv(`in_f2a_${t}`, `evt_f2a_${t}`)), webhooks.handleEvent(inv(`in_f2b_${t}`, `evt_f2c_${t}`)),
+    ]);
+    failed += r.failed.length;
+    if ((await tokensOf(u.id)) !== 1) wrong++;
+  }
+  record(`F2a two different renewal invoices for the SAME period, truncated payloads, 4 concurrent deliveries (${rounds} rounds)`, wrong === 0 && failed === 0,
+    `rounds with a count other than 1: ${wrong} (expected 0); failed deliveries: ${failed}`);
+}
+
+async function f2FailClosed(webhooks: any) {
+  const u = await activeSubscriber(webhooks, 'f2fc');
+  const t = u.id.slice(0, 8);
+  const id = `in_f2fc_${t}`;
+  const e = ev(`evt_f2fc_${t}`, 'invoice.paid', { id, subscription: u.sub, customer: u.cus, amount_paid: 899, billing_reason: 'subscription_cycle', lines: { data: prorationLines, has_more: true } });
+  stripeFailLines = true;
+  const first = await settle([webhooks.handleEvent(e)]);
+  stripeFailLines = false;
+  invoiceLines.set(id, prorationLines); // Stripe answers, but no subscription line anywhere
+  const second = await settle([webhooks.handleEvent(e)]);
+  const afterFail = { tokens: await tokensOf(u.id), event: await processed(`evt_f2fc_${t}`), periodKeys: await one(`SELECT count(*) n FROM stripe_processed_events WHERE "eventId" LIKE $1`, [`fulfillment:period-tokens:${u.sub}:%`]), invoiceKey: await processed(`fulfillment:invoice-tokens:${id}`) };
+  invoiceLines.set(id, [...prorationLines, subLine(1_850_000_000)]);
+  await webhooks.handleEvent(e); // Stripe retry
+  await webhooks.handleEvent(e); // redelivery
+  const final = await tokensOf(u.id);
+  record('F2b period undeterminable → fail closed (Stripe error, then no subscription line); then the retry',
+    first.failed.length === 1 && second.failed.length === 1 && afterFail.tokens === 0 && afterFail.event === 0 && afterFail.periodKeys === 0 && afterFail.invoiceKey === 0 && final === 1,
+    `deliveries failed: ${first.failed.length + second.failed.length}/2 (${[...first.failed, ...second.failed].map((m) => m.slice(0, 40)).join(' | ')}); ` +
+    `after failures: tokens=${afterFail.tokens}, event rows=${afterFail.event}, period keys=${afterFail.periodKeys}, invoice key=${afterFail.invoiceKey} (expected 0/0/0/0); after retry + redelivery: tokens=${final} (expected 1)`);
+}
+
 /** Child for A3: killed right after the scheduler granted a cycle's tokens, before COMMIT. */
 async function annualCrashChild(cus: string, sub: string) {
   (ds.options as any).applicationName = 'pgh-crash-child';
@@ -718,6 +778,9 @@ async function main() {
   await r1ParallelRedemption(subs);
   await r2SharedPool(subs, 10);
   await r3SameBookTwice(subs);
+  // PA follow-up F-02
+  await f2SamePeriodTruncated(webhooks, 10);
+  await f2FailClosed(webhooks);
   await ds2.destroy();
 
   const failed = results.filter((r) => !r.pass);
