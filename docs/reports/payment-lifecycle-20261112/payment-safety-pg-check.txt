@@ -1,0 +1,78 @@
+=== run 1 (2026-11-13T17:24:09Z) ===
+payment-safety-pg-check — code under test: services/api/src
+PostgreSQL: PostgreSQL 16.13 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+
+PASS  S1 eight CONCURRENT deliveries of the same invoice.paid event
+      tokens=1 (expected 1); deliveries ok=8, failed=0; 51 ms
+PASS  S2 six CONCURRENT events with DIFFERENT ids for the same invoice
+      tokens=1 (expected 1); ok=6, failed=0
+PASS  S3 token-package purchase: 4 duplicate + 4 distinct-id CONCURRENT deliveries of one session
+      tokens=10 (expected 10); ok=8, failed=0
+PASS  S4 gift: 6 CONCURRENT deliveries (3 event ids) of one session
+      gift rows=1 (expected 1); recipient e-mails=1 (expected 1); e-mailed link matches stored gift=true; failed=0
+PASS  S5 first-subscription race (no row yet): 25 rounds of two CONCURRENT live subscriptions for one user
+      silent replacements=0 (expected 0); rounds with no subscription applied=0 (expected 0); row/event mismatch=0
+PASS  S5b re-subscription race (previous row ended): 25 rounds of two CONCURRENT live subscriptions for one user
+      silent replacements=0 (expected 0); rounds with no subscription applied=0 (expected 0); row/event mismatch=0
+PASS  S5c legitimate re-subscription after the old subscription ended still works
+      row=sub_new_b692b481(trialing) (expected sub_new_b692b481(trialing))
+PASS  S6 process killed (SIGKILL) after granting tokens, before the event is recorded; then Stripe retries
+      child: tokens inserted, exit signal=SIGKILL; after crash: tokens=0, event rows=0, invoice-claim rows=0 (expected 0/0/0 — legacy code shows tokens=1, event rows=0); after retry + redelivery: tokens=1 (expected 1)
+PASS  S7 transaction fails after the token insert; the legitimate retry grants exactly once
+      first delivery threw=true; tokens after failure=0 (expected 0); after retry=1 (expected 1)
+PASS  S8 a duplicate arriving mid-transaction blocks until the first commits, then skips
+      tokens=1; Stripe reads=1 (expected 1: the duplicate never ran the handler); completion times ms=451, 451
+
+10/10 scenarios passed
+=== run 2 (2026-11-13T17:24:15Z) ===
+payment-safety-pg-check — code under test: services/api/src
+PostgreSQL: PostgreSQL 16.13 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+
+PASS  S1 eight CONCURRENT deliveries of the same invoice.paid event
+      tokens=1 (expected 1); deliveries ok=8, failed=0; 52 ms
+PASS  S2 six CONCURRENT events with DIFFERENT ids for the same invoice
+      tokens=1 (expected 1); ok=6, failed=0
+PASS  S3 token-package purchase: 4 duplicate + 4 distinct-id CONCURRENT deliveries of one session
+      tokens=10 (expected 10); ok=8, failed=0
+PASS  S4 gift: 6 CONCURRENT deliveries (3 event ids) of one session
+      gift rows=1 (expected 1); recipient e-mails=1 (expected 1); e-mailed link matches stored gift=true; failed=0
+PASS  S5 first-subscription race (no row yet): 25 rounds of two CONCURRENT live subscriptions for one user
+      silent replacements=0 (expected 0); rounds with no subscription applied=0 (expected 0); row/event mismatch=0
+PASS  S5b re-subscription race (previous row ended): 25 rounds of two CONCURRENT live subscriptions for one user
+      silent replacements=0 (expected 0); rounds with no subscription applied=0 (expected 0); row/event mismatch=0
+PASS  S5c legitimate re-subscription after the old subscription ended still works
+      row=sub_new_6c0a4405(trialing) (expected sub_new_6c0a4405(trialing))
+PASS  S6 process killed (SIGKILL) after granting tokens, before the event is recorded; then Stripe retries
+      child: tokens inserted, exit signal=SIGKILL; after crash: tokens=0, event rows=0, invoice-claim rows=0 (expected 0/0/0 — legacy code shows tokens=1, event rows=0); after retry + redelivery: tokens=1 (expected 1)
+PASS  S7 transaction fails after the token insert; the legitimate retry grants exactly once
+      first delivery threw=true; tokens after failure=0 (expected 0); after retry=1 (expected 1)
+PASS  S8 a duplicate arriving mid-transaction blocks until the first commits, then skips
+      tokens=1; Stripe reads=1 (expected 1: the duplicate never ran the handler); completion times ms=425, 426
+
+10/10 scenarios passed
+=== run 3 (2026-11-13T17:24:21Z) ===
+payment-safety-pg-check — code under test: services/api/src
+PostgreSQL: PostgreSQL 16.13 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+
+PASS  S1 eight CONCURRENT deliveries of the same invoice.paid event
+      tokens=1 (expected 1); deliveries ok=8, failed=0; 50 ms
+PASS  S2 six CONCURRENT events with DIFFERENT ids for the same invoice
+      tokens=1 (expected 1); ok=6, failed=0
+PASS  S3 token-package purchase: 4 duplicate + 4 distinct-id CONCURRENT deliveries of one session
+      tokens=10 (expected 10); ok=8, failed=0
+PASS  S4 gift: 6 CONCURRENT deliveries (3 event ids) of one session
+      gift rows=1 (expected 1); recipient e-mails=1 (expected 1); e-mailed link matches stored gift=true; failed=0
+PASS  S5 first-subscription race (no row yet): 25 rounds of two CONCURRENT live subscriptions for one user
+      silent replacements=0 (expected 0); rounds with no subscription applied=0 (expected 0); row/event mismatch=0
+PASS  S5b re-subscription race (previous row ended): 25 rounds of two CONCURRENT live subscriptions for one user
+      silent replacements=0 (expected 0); rounds with no subscription applied=0 (expected 0); row/event mismatch=0
+PASS  S5c legitimate re-subscription after the old subscription ended still works
+      row=sub_new_f2e2f4e8(trialing) (expected sub_new_f2e2f4e8(trialing))
+PASS  S6 process killed (SIGKILL) after granting tokens, before the event is recorded; then Stripe retries
+      child: tokens inserted, exit signal=SIGKILL; after crash: tokens=0, event rows=0, invoice-claim rows=0 (expected 0/0/0 — legacy code shows tokens=1, event rows=0); after retry + redelivery: tokens=1 (expected 1)
+PASS  S7 transaction fails after the token insert; the legitimate retry grants exactly once
+      first delivery threw=true; tokens after failure=0 (expected 0); after retry=1 (expected 1)
+PASS  S8 a duplicate arriving mid-transaction blocks until the first commits, then skips
+      tokens=1; Stripe reads=1 (expected 1: the duplicate never ran the handler); completion times ms=445, 448
+
+10/10 scenarios passed
