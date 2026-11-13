@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { GiftsService } from '../gifts/gifts.service';
+import { classifyInvoice, grantsCycle, invoicePeriodStart } from './billing-cycles';
 import { claimStripeKey, fulfillmentKey } from './stripe-fulfillment-ledger';
 import { StripeProcessedEvent } from './stripe-processed-event.entity';
 import { SubscriptionsService } from './subscriptions.service';
@@ -66,7 +67,7 @@ export class WebhooksService {
    *
    * Tokens (T-1, PO decision 2026-11-13): every subscription event records the plan, and the first one that
    * sees the subscription `trialing` grants the initial cycle once (SubscriptionsService.issueTrialStartTokens).
-   * Paid invoices grant the renewal cycle once per invoice; $0 invoices (the trial's) grant no renewal cycle.
+   * Renewals (incl. valid $0 renewals) and paid creations grant the cycle once per billing period (D4, D5).
    */
   private async dispatch(event: any, em: EntityManager, afterCommit: AfterCommit): Promise<void> {
     switch (event.type) {
@@ -133,12 +134,17 @@ export class WebhooksService {
     const subId = this.invoiceSubscriptionId(invoice);
     if (!subId) return;
     await this.subscriptionsService.applyStripeSubscription(event.id, subId, em);
-    // A $0 invoice (the trial's subscription_create invoice, or a $0 proration) grants no renewal cycle: under
-    // T-1 the trial's initial cycle is the trial-start grant made above, and must not be granted twice.
-    if (invoice?.amount_paid === 0) return;
-    // Paid cycle: looks the row up by this Stripe subscription id and needs its plan. A subscription rejected by
-    // the identity guard has no row, so no tokens are attached to an untracked one. Once per invoice id.
-    await this.subscriptionsService.issueTokensForNewSubscription(subId, em, invoice?.id ?? null);
+    // D4/D5: only a renewal (`subscription_cycle`, including a valid $0 renewal) or a paid creation without a trial
+    // grants a cycle. The trial's $0 creation invoice (T-1 grants the trial), plan changes / prorations
+    // (`subscription_update`) and manual or other invoices never do.
+    const invoiceClass = classifyInvoice(invoice);
+    if (!grantsCycle(invoiceClass)) {
+      this.logger.log(`Invoice ${invoice?.id} (${invoice?.billing_reason ?? 'no billing_reason'}) is ${invoiceClass}: no cycle tokens`);
+      return;
+    }
+    // Looks the row up by this Stripe subscription id and needs its plan (an identity-rejected subscription has no
+    // row → nothing). Once per billing period and per invoice id.
+    await this.subscriptionsService.issueTokensForNewSubscription(subId, em, invoice?.id ?? null, invoicePeriodStart(invoice));
   }
 
   private invoiceSubscriptionId(invoice: any): string | null {

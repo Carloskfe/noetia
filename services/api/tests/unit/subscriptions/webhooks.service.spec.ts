@@ -117,13 +117,13 @@ describe('WebhooksService', () => {
       expect(mockSubscriptionsService.issueTokensForPurchasedPackage).not.toHaveBeenCalled();
     });
 
-    it('invoice.paid → re-reads the subscription, then issues tokens exactly as before', async () => {
+    it('renewal invoice.paid → re-reads the subscription, then issues the cycle (once per period and invoice)', async () => {
       const order: string[] = [];
       mockSubscriptionsService.applyStripeSubscription.mockImplementationOnce(async () => { order.push('apply'); return true; });
       mockSubscriptionsService.issueTokensForNewSubscription.mockImplementationOnce(async () => { order.push('tokens'); });
-      await service.handleEvent(makeEvent('invoice.paid', { id: 'in_1', subscription: 'sub_1', customer: 'cus_1' }) as any);
+      await service.handleEvent(makeEvent('invoice.paid', { id: 'in_1', subscription: 'sub_1', customer: 'cus_1', billing_reason: 'subscription_cycle', amount_paid: 899, lines: { data: [{ type: 'subscription', period: { start: 1800000000 } }] } }) as any);
       expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_1', em);
-      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledWith('sub_1', em, 'in_1');
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledWith('sub_1', em, 'in_1', 1800000000);
       expect(order).toEqual(['apply', 'tokens']);
     });
 
@@ -133,6 +133,27 @@ describe('WebhooksService', () => {
       expect(mockSubscriptionsService.issueTokensForNewSubscription).not.toHaveBeenCalled();
     });
 
+    it.each([
+      ['a paid upgrade / proration (subscription_update)', { billing_reason: 'subscription_update', amount_paid: 450 }],
+      ['a manual invoice', { billing_reason: 'manual', amount_paid: 899 }],
+      ['a usage-threshold invoice', { billing_reason: 'subscription_threshold', amount_paid: 899 }],
+      ['an invoice without billing_reason', { amount_paid: 899 }],
+    ])('D4/D5: %s grants no cycle', async (_label, fields) => {
+      await service.handleEvent(makeEvent('invoice.paid', { id: 'in_x', subscription: 'sub_1', ...fields }) as any);
+      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalled();
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).not.toHaveBeenCalled();
+    });
+
+    it('D5: a valid $0 renewal (subscription_cycle at $0) grants the normal cycle', async () => {
+      await service.handleEvent(makeEvent('invoice.paid', { id: 'in_zero', subscription: 'sub_1', billing_reason: 'subscription_cycle', amount_paid: 0, lines: { data: [{ type: 'subscription', period: { start: 1800000000 } }] } }) as any);
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledWith('sub_1', em, 'in_zero', 1800000000);
+    });
+
+    it('a subscription created WITHOUT a trial (paid subscription_create) grants its first cycle', async () => {
+      await service.handleEvent(makeEvent('invoice.paid', { id: 'in_create', subscription: 'sub_1', billing_reason: 'subscription_create', amount_paid: 899 }) as any);
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledWith('sub_1', em, 'in_create', null);
+    });
+
     it('a $0 proration invoice grants no cycle either', async () => {
       await service.handleEvent(makeEvent('invoice.paid', { id: 'in_prorate', subscription: 'sub_1', amount_paid: 0, billing_reason: 'subscription_update' }) as any);
       expect(mockSubscriptionsService.issueTokensForNewSubscription).not.toHaveBeenCalled();
@@ -140,7 +161,7 @@ describe('WebhooksService', () => {
 
     it('the first PAID invoice after the trial grants the renewal cycle (once per invoice id)', async () => {
       await service.handleEvent(makeEvent('invoice.paid', { id: 'in_first', subscription: 'sub_1', amount_paid: 899, billing_reason: 'subscription_cycle' }) as any);
-      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledWith('sub_1', em, 'in_first');
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledWith('sub_1', em, 'in_first', null);
     });
 
     it('invoice.paid reads the subscription id from the newer invoice shape (parent.subscription_details)', async () => {
@@ -209,7 +230,7 @@ describe('WebhooksService', () => {
   describe('idempotency (P2)', () => {
     it('processes a first delivery exactly once and records it', async () => {
       const event = makeEvent('invoice.paid', {
-        subscription: 'sub_1', customer: 'cus_1', lines: { data: [] },
+        subscription: 'sub_1', customer: 'cus_1', lines: { data: [] }, billing_reason: 'subscription_cycle',
       }, 'evt_first');
 
       await service.handleEvent(event as any);
@@ -220,7 +241,7 @@ describe('WebhooksService', () => {
 
     it('duplicate invoice.paid does not issue duplicate subscription tokens', async () => {
       const event = makeEvent('invoice.paid', {
-        subscription: 'sub_1', customer: 'cus_1', lines: { data: [] },
+        subscription: 'sub_1', customer: 'cus_1', lines: { data: [] }, billing_reason: 'subscription_cycle',
       }, 'evt_inv_dup');
 
       await service.handleEvent(event as any);
@@ -242,7 +263,7 @@ describe('WebhooksService', () => {
 
     it('a processing FAILURE does not permanently suppress a legitimate Stripe retry', async () => {
       const event = makeEvent('invoice.paid', {
-        subscription: 'sub_1', customer: 'cus_1', lines: { data: [] },
+        subscription: 'sub_1', customer: 'cus_1', lines: { data: [] }, billing_reason: 'subscription_cycle',
       }, 'evt_retry');
 
       // First delivery fails mid-processing → must NOT be recorded as processed.
@@ -258,18 +279,18 @@ describe('WebhooksService', () => {
 
     it('distinct legitimate events continue to process independently', async () => {
       const e1 = makeEvent('invoice.paid', {
-        subscription: 'sub_1', customer: 'cus_1', lines: { data: [] },
+        subscription: 'sub_1', customer: 'cus_1', lines: { data: [] }, billing_reason: 'subscription_cycle',
       }, 'evt_a');
       const e2 = makeEvent('invoice.paid', {
-        subscription: 'sub_2', customer: 'cus_2', lines: { data: [] },
+        subscription: 'sub_2', customer: 'cus_2', lines: { data: [] }, billing_reason: 'subscription_cycle',
       }, 'evt_b');
 
       await service.handleEvent(e1 as any);
       await service.handleEvent(e2 as any);
 
       expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledTimes(2);
-      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledWith('sub_1', em, null);
-      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledWith('sub_2', em, null);
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledWith('sub_1', em, null, null);
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledWith('sub_2', em, null, null);
     });
   });
 

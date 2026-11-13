@@ -10,7 +10,9 @@ import { EntityManager } from 'typeorm';
  *     claimed once per economic fulfillment, so two DIFFERENT events about the same invoice, Checkout session
  *     or trial can never both grant it. Kinds: `invoice-tokens:<in_…>` (paid renewal cycle),
  *     `checkout-session:<cs_…>` (token package / book / gift), `trial-start-tokens:<sub_…>` (T-1 initial
- *     cycle, once per Stripe subscription). The `type` column says which kind a row is.
+ *     cycle, once per Stripe subscription), `period-tokens:<sub_…>:<periodStart>` (a renewal's billing period, D5),
+ *     `annual-cycle:<sub_…>:<periodStart>:<k>` (annual scheduled cycle k = 1…11, D2). The `type` column says which
+ *     kind a row is.
  *
  * Why this is exactly-once: the INSERT runs in the same transaction as the side effects.
  *   - A concurrent transaction inserting the same key blocks on the uncommitted row until the first one
@@ -30,7 +32,12 @@ export async function claimStripeKey(em: EntityManager, key: string, type: strin
 }
 
 /** Fulfillment key for one Stripe object (invoice, Checkout session…) — see claimStripeKey. */
-export type FulfillmentKind = 'invoice-tokens' | 'checkout-session' | 'trial-start-tokens';
+export type FulfillmentKind =
+  | 'invoice-tokens'
+  | 'checkout-session'
+  | 'trial-start-tokens'
+  | 'period-tokens'
+  | 'annual-cycle';
 export const fulfillmentKey = (kind: FulfillmentKind, stripeObjectId: string): string =>
   `fulfillment:${kind}:${stripeObjectId}`;
 

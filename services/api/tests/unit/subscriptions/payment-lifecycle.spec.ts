@@ -24,10 +24,10 @@ import { User } from '../../../src/users/user.entity';
 import { UsersService } from '../../../src/users/users.service';
 
 // ── fake Stripe ────────────────────────────────────────────────────────────────
-type FakeSub = { id: string; customer: string; status: string; cancel_at_period_end: boolean; current_period_end: number; trial_end: number | null; items: { data: Array<{ price: { id: string } }> } };
+type FakeSub = { id: string; customer: string; status: string; cancel_at_period_end: boolean; current_period_end: number; trial_end: number | null; trial_start?: number | null; current_period_start?: number; billing_cycle_anchor?: number; items: { data: Array<{ price: { id: string } }> } };
 const stripeState = { subs: new Map<string, FakeSub>(), sessions: [] as any[], failRetrieve: false };
 const fakeStripe = {
-  customers: { create: jest.fn(async () => ({ id: 'cus_1' })) },
+  customers: { create: jest.fn(async () => ({ id: 'cus_1' })), list: jest.fn(async () => ({ data: [], has_more: false })) },
   subscriptions: {
     retrieve: jest.fn(async (id: string) => {
       if (stripeState.failRetrieve) throw new Error('stripe unavailable');
@@ -35,8 +35,9 @@ const fakeStripe = {
       if (!s) throw new Error('No such subscription');
       return { ...s };
     }),
-    list: jest.fn(async ({ customer }: { customer: string }) => ({
-      data: [...stripeState.subs.values()].filter((s) => s.customer === customer && s.status !== 'canceled'),
+    list: jest.fn(async ({ customer, status }: { customer: string; status?: string }) => ({
+      // status 'all' = the full history (D1); the default listing omits canceled subscriptions.
+      data: [...stripeState.subs.values()].filter((s) => s.customer === customer && (status === 'all' || s.status !== 'canceled')),
       has_more: false,
     })),
     update: jest.fn(),
@@ -55,6 +56,7 @@ const fakeStripe = {
   billingPortal: { sessions: { create: jest.fn() } },
 };
 jest.mock('stripe', () => jest.fn().mockImplementation(() => fakeStripe));
+const lastSession = (): any => (fakeStripe.checkout.sessions.create.mock.calls as any[][]).at(-1)![0];
 
 // ── in-memory tables ─────────────────────────────────────────────────────────
 const PLAN = { id: 'plan-ind', stripePriceId: 'price_ind', tokensPerCycle: 1, interval: 'month', maxProfiles: 1 };
@@ -91,9 +93,9 @@ const subRepo = {
   find: jest.fn(async ({ where }: any) => {
     if (!subRow) return [];
     if (where.stripeSubscriptionId) return where.stripeSubscriptionId === subRow.stripeSubscriptionId ? [{ ...subRow }] : [];
-    // annual cron: { status: 'active', nextTokenIssuanceAt: LessThan(now) }
-    const due = subRow.status === where.status && subRow.nextTokenIssuanceAt && subRow.nextTokenIssuanceAt < where.nextTokenIssuanceAt.value;
-    return due ? [{ ...subRow, plan: planOf(subRow.planId) }] : [];
+    // annual scheduler candidates: { status: In(['active', 'canceling']) }
+    const statuses: string[] = where.status?.value ?? [where.status];
+    return statuses.includes(subRow.status) ? [{ ...subRow, plan: planOf(subRow.planId) }] : [];
   }),
   manager: { transaction: (fn: any) => transaction(fn) },
 };
@@ -180,7 +182,13 @@ beforeEach(async () => {
 
 // Stripe-side state changes (what the customer / Stripe did), then the webhooks that describe them.
 function stripeHas(id: string, status: string, extra: Partial<FakeSub> = {}, priceId = PLAN.stripePriceId) {
-  stripeState.subs.set(id, { id, customer: 'cus_1', status, cancel_at_period_end: false, current_period_end: T0 + 30 * 86400, trial_end: status === 'trialing' ? T0 + 14 * 86400 : null, items: { data: [{ price: { id: priceId } }] }, ...extra });
+  const prev = stripeState.subs.get(id);
+  stripeState.subs.set(id, {
+    id, customer: 'cus_1', status, cancel_at_period_end: false, current_period_end: T0 + 30 * 86400,
+    trial_end: status === 'trialing' ? T0 + 14 * 86400 : null,
+    trial_start: status === 'trialing' ? T0 : prev?.trial_start ?? null, // Stripe keeps trial_start for life
+    items: { data: [{ price: { id: priceId } }] }, ...extra,
+  });
 }
 let seq = 0;
 const ev = (type: string, object: any, id = `evt_${++seq}`) => webhooks.handleEvent({ id, type, data: { object } } as any).then(() => id);
@@ -321,13 +329,16 @@ describe('Checkout guard across the lifecycle', () => {
     expect(subRow).toBeNull();
   });
 
-  it('after the subscription ends, the user can subscribe again', async () => {
+  it('after the subscription ends, the user can subscribe again — WITHOUT a new trial (D1)', async () => {
     stripeHas('sub_A', 'active');
     await updated('sub_A');
     await expect(subscriptions.createCheckoutSession('u1', PLAN.id)).rejects.toThrow(ConflictException);
     stripeHas('sub_A', 'canceled');
     await deleted('sub_A');
     await expect(subscriptions.createCheckoutSession('u1', PLAN.id)).resolves.toHaveProperty('url');
+    const params = lastSession();
+    expect(params).not.toHaveProperty('subscription_data');
+    expect(params.metadata.noetiaTrial).toBe('no');
   });
 });
 
@@ -413,11 +424,24 @@ describe('T-1 — initial cycle of tokens when the 14-day trial begins (PO decis
     expect(tokens).toHaveLength(3 * PLAN.tokensPerCycle);
   });
 
-  it('a $0 proration invoice on an active subscription grants nothing', async () => {
+  it('D4: proration / upgrade invoices (paid or $0) grant nothing; D5: a valid $0 renewal grants the normal cycle', async () => {
     stripeHas('sub_A', 'active');
     await updated('sub_A');
-    await invoicePaid('sub_A', undefined, 'in_prorate', 0);
+    await ev('invoice.paid', { id: 'in_up', subscription: 'sub_A', customer: 'cus_1', amount_paid: 450, billing_reason: 'subscription_update' });
+    await ev('invoice.paid', { id: 'in_up0', subscription: 'sub_A', customer: 'cus_1', amount_paid: 0, billing_reason: 'subscription_update' });
+    await ev('invoice.paid', { id: 'in_manual', subscription: 'sub_A', customer: 'cus_1', amount_paid: 899, billing_reason: 'manual' });
     expect(tokens).toHaveLength(0);
+    await invoicePaid('sub_A', undefined, 'in_zero_renewal', 0); // subscription_cycle at $0
+    expect(tokens).toHaveLength(PLAN.tokensPerCycle);
+  });
+
+  it('D5: a voided-and-reissued invoice for the same billing period grants once', async () => {
+    stripeHas('sub_A', 'active');
+    await updated('sub_A');
+    const line = { lines: { data: [{ type: 'subscription', period: { start: 1_810_000_000 } }] } };
+    await ev('invoice.paid', { id: 'in_orig', subscription: 'sub_A', customer: 'cus_1', amount_paid: 899, billing_reason: 'subscription_cycle', ...line });
+    await ev('invoice.paid', { id: 'in_reissued', subscription: 'sub_A', customer: 'cus_1', amount_paid: 899, billing_reason: 'subscription_cycle', ...line });
+    expect(tokens).toHaveLength(PLAN.tokensPerCycle);
   });
 
   it('a subscription that is not trialing (no trial) gets no trial grant — its first paid invoice grants as before', async () => {
@@ -445,61 +469,147 @@ describe('T-1 — initial cycle of tokens when the 14-day trial begins (PO decis
     expect(processed.has('fulfillment:trial-start-tokens:sub_A')).toBe(false);
   });
 
-  it('re-subscribing after an ended subscription starts a NEW trial that is granted again (repeat-trial eligibility is a documented residual risk)', async () => {
+  it('D1: after a cancelled trial the customer re-subscribes WITHOUT a trial — no second T-1 grant; the first paid invoice grants once', async () => {
     stripeHas('sub_A', 'trialing');
     await created('sub_A');
     stripeHas('sub_A', 'canceled');
     await deleted('sub_A');
-    stripeHas('sub_B', 'trialing');
+    expect(tokens).toHaveLength(PLAN.tokensPerCycle); // trial tokens kept (no claw-back)
+    await subscriptions.createCheckoutSession('u1', PLAN.id);
+    expect(lastSession()).not.toHaveProperty('subscription_data');
+    stripeHas('sub_B', 'active'); // billed immediately — Stripe never reports trialing
     await created('sub_B');
-    expect(tokens).toHaveLength(2 * PLAN.tokensPerCycle);
+    await ev('invoice.paid', { id: 'in_B1', subscription: 'sub_B', customer: 'cus_1', amount_paid: 899, billing_reason: 'subscription_create' });
+    await completed('sub_B');
+    expect(tokens).toHaveLength(2 * PLAN.tokensPerCycle); // trial cycle (kept) + first paid cycle of sub_B
+    expect(processed.has('fulfillment:trial-start-tokens:sub_B')).toBe(false);
+  });
+
+  it('D1: a first-time customer gets the trial from checkout', async () => {
+    await subscriptions.createCheckoutSession('u1', PLAN.id);
+    expect(lastSession().subscription_data).toEqual({ trial_period_days: 14 });
   });
 });
 
-describe('T-1 with annual plans — the 14-day trial and the monthly schedule', () => {
+describe('D2/D3 — annual plans: exactly 12 paid allocations per annual period (+ T-1)', () => {
   const DAY = 86_400_000;
-  const start = new Date('2027-01-01T12:00:00Z').getTime();
+  const start = Date.UTC(2027, 0, 1, 12, 0, 0); // trial starts 2027-01-01 12:00 UTC
+  const sec = (ms: number) => Math.floor(ms / 1000);
   beforeEach(() => {
     jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
     jest.setSystemTime(start);
   });
   afterEach(() => jest.useRealTimers());
-  const at = (day: number) => jest.setSystemTime(start + day * DAY);
-  const cron = () => subscriptions.issueMonthlyTokensForAnnualPlans();
+  const at = (ms: number) => jest.setSystemTime(ms);
+  /** Runs the daily 01:00 UTC scheduler on every day in [fromDay, toDay]. */
+  async function cronDays(fromDay: number, toDay: number, beforeRun?: (runAt: number) => Promise<void>) {
+    for (let d = fromDay; d <= toDay; d++) {
+      const runAt = Date.UTC(2027, 0, 1 + d, 1, 0, 0);
+      if (beforeRun) await beforeRun(runAt);
+      at(runAt);
+      await subscriptions.issueMonthlyTokensForAnnualPlans();
+    }
+  }
+  const reasons = () => tokens.map((t) => t.reason);
+  const paidInPeriod = (fromMs: number, toMs: number) =>
+    tokens.filter((t) => t.reason !== 'Trial start (initial cycle)' && t.issuedAt.getTime() >= fromMs && t.issuedAt.getTime() < toMs).length;
 
-  it('trial grant on day 0; cron during the trial adds nothing; first paid annual invoice on day 14 starts the schedule (+30 days); no extra cycle', async () => {
-    stripeHas('sub_Y', 'trialing', {}, PLAN_ANNUAL.stripePriceId);
+  /** Trial (day 0) → first paid annual invoice when the trial ends (day 14); Stripe period [day 14, day 379). */
+  async function annualSignup() {
+    const trialEnd = start + 14 * DAY;
+    stripeHas('sub_Y', 'trialing', { trial_end: sec(trialEnd), current_period_end: sec(trialEnd) }, PLAN_ANNUAL.stripePriceId);
     await created('sub_Y');
     await trialInvoice('sub_Y');
-    expect(tokens).toHaveLength(1); // day 0: initial cycle
-    expect(subRow.nextTokenIssuanceAt).toBeNull(); // the trial grant does not start the monthly schedule
-    for (const d of [1, 7, 13]) { at(d); await cron(); }
-    expect(tokens).toHaveLength(1);
+    at(trialEnd);
+    const period = { current_period_start: sec(trialEnd), current_period_end: sec(trialEnd + 365 * DAY), billing_cycle_anchor: sec(trialEnd) };
+    stripeHas('sub_Y', 'active', period, PLAN_ANNUAL.stripePriceId);
+    await ev('invoice.paid', { id: 'in_y1', subscription: 'sub_Y', customer: 'cus_1', amount_paid: 8399, billing_reason: 'subscription_cycle', lines: { data: [{ type: 'subscription', period: { start: period.current_period_start } }] } });
+    return { trialEnd, periodEnd: trialEnd + 365 * DAY, period };
+  }
 
-    at(14);
-    stripeHas('sub_Y', 'active', {}, PLAN_ANNUAL.stripePriceId);
-    await invoicePaid('sub_Y', undefined, 'in_year_1', 8399);
-    expect(tokens).toHaveLength(2); // first paid cycle
-    expect(subRow.nextTokenIssuanceAt.getTime()).toBe(start + 44 * DAY);
-
-    for (const d of [15, 30, 43, 44]) { at(d); await cron(); } // day 30 is where a trial-started schedule would have fired
-    expect(tokens).toHaveLength(2); // day 44 at the payment time: not yet due (strict LessThan, as in production)
-    at(45); await cron(); // the next daily run after the due moment
-    expect(tokens).toHaveLength(3); // first scheduled monthly cycle
-    at(46); await cron();
-    expect(tokens).toHaveLength(3); // daily cron cannot double-issue
-    // +30 days via the existing local-time setDate(): may shift by the DST hour depending on the host timezone.
-    expect(Math.abs(subRow.nextTokenIssuanceAt.getTime() - (start + 74 * DAY))).toBeLessThanOrEqual(3_600_000);
+  it('full year: T-1 on day 0, paid cycle 0 on day 14, 11 calendar-month cycles, nothing extra before the renewal — 12 paid', async () => {
+    const { trialEnd, periodEnd } = await annualSignup();
+    expect(reasons()).toEqual(['Trial start (initial cycle)', 'Subscription renewal']);
+    await cronDays(14, 378);
+    expect(paidInPeriod(trialEnd, periodEnd)).toBe(12);
+    expect(tokens).toHaveLength(13); // 12 paid + the T-1 trial allocation
+    const scheduled = tokens.filter((t) => t.reason === 'Annual plan monthly issuance').map((t) => t.issuedAt.toISOString().slice(0, 10));
+    expect(scheduled).toEqual(['2027-02-16', '2027-03-16', '2027-04-16', '2027-05-16', '2027-06-16', '2027-07-16', '2027-08-16', '2027-09-16', '2027-10-16', '2027-11-16', '2027-12-16']);
+    // (each due on the 15th at 12:00 UTC → granted by the next 01:00 UTC run)
   });
 
-  it('annual trial cancelled before day 14: initial cycle kept, cron never issues', async () => {
+  it('renewal: the next period starts with its own paid invoice, never early; year 2 also gets exactly 12', async () => {
+    const { periodEnd, period } = await annualSignup();
+    await cronDays(14, 378);
+    expect(tokens).toHaveLength(13);
+    const period2 = { current_period_start: period.current_period_end, current_period_end: sec(periodEnd + 366 * DAY), billing_cycle_anchor: period.billing_cycle_anchor }; // 2028 is a leap year
+    await cronDays(379, 379, async () => undefined); // day after the period: Stripe still reports the old period until it renews
+    expect(tokens).toHaveLength(13);
+    at(periodEnd);
+    stripeHas('sub_Y', 'active', period2, PLAN_ANNUAL.stripePriceId);
+    await ev('invoice.paid', { id: 'in_y2', subscription: 'sub_Y', customer: 'cus_1', amount_paid: 8399, billing_reason: 'subscription_cycle', lines: { data: [{ type: 'subscription', period: { start: period2.current_period_start } }] } });
+    await cronDays(380, 744);
+    expect(paidInPeriod(periodEnd, periodEnd + 366 * DAY)).toBe(12);
+  });
+
+  it('D3: cancel at period end on day 60 → allocations continue to day 379, none after; no renewal', async () => {
+    const { trialEnd, periodEnd, period } = await annualSignup();
+    await cronDays(14, 59);
+    at(start + 60 * DAY);
+    stripeHas('sub_Y', 'active', { ...period, cancel_at_period_end: true }, PLAN_ANNUAL.stripePriceId);
+    await updated('sub_Y');
+    expect(subRow.status).toBe('canceling');
+    await cronDays(60, 420, async (runAt) => {
+      if (runAt >= periodEnd && subRow.status !== 'canceled') {
+        at(periodEnd);
+        stripeHas('sub_Y', 'canceled', period, PLAN_ANNUAL.stripePriceId);
+        await deleted('sub_Y');
+      }
+    });
+    expect(paidInPeriod(trialEnd, periodEnd)).toBe(12);
+    expect(tokens.filter((t) => t.issuedAt.getTime() >= periodEnd)).toHaveLength(0);
+  });
+
+  it('immediate termination on day 100 stops allocations (paid so far kept)', async () => {
+    const { period } = await annualSignup();
+    await cronDays(14, 99);
+    at(start + 100 * DAY);
+    stripeHas('sub_Y', 'canceled', period, PLAN_ANNUAL.stripePriceId);
+    await deleted('sub_Y');
+    await cronDays(100, 400);
+    expect(tokens).toHaveLength(1 + 1 + 2); // T-1 + cycle 0 + Feb/Mar (day 100 = Apr 11, before the Apr 15 cycle)
+  });
+
+  it('failed renewal payment (past_due) grants nothing in the unpaid period', async () => {
+    const { periodEnd, period } = await annualSignup();
+    await cronDays(14, 378);
+    at(periodEnd);
+    stripeHas('sub_Y', 'past_due', { current_period_start: period.current_period_end, current_period_end: sec(periodEnd + 366 * DAY), billing_cycle_anchor: period.billing_cycle_anchor }, PLAN_ANNUAL.stripePriceId);
+    await ev('invoice.payment_failed', { subscription: 'sub_Y', customer: 'cus_1' });
+    await cronDays(379, 480);
+    expect(tokens).toHaveLength(13);
+  });
+
+  it('cancellation during the unpaid annual trial: T-1 kept, scheduler never issues', async () => {
     stripeHas('sub_Y', 'trialing', {}, PLAN_ANNUAL.stripePriceId);
     await created('sub_Y');
-    at(5);
+    at(start + 5 * DAY);
     stripeHas('sub_Y', 'canceled', {}, PLAN_ANNUAL.stripePriceId);
     await deleted('sub_Y');
-    for (const d of [14, 30, 44, 90]) { at(d); await cron(); }
+    await cronDays(5, 120);
     expect(tokens).toHaveLength(1);
+  });
+
+  it('January 31 anchor: Feb 28, Mar 31, Apr 30 … — still 12 paid in the period', async () => {
+    const anchor = Date.UTC(2027, 0, 31, 8, 0, 0);
+    const end = Date.UTC(2028, 0, 31, 8, 0, 0);
+    at(anchor);
+    stripeHas('sub_J', 'active', { current_period_start: sec(anchor), current_period_end: sec(end), billing_cycle_anchor: sec(anchor) }, PLAN_ANNUAL.stripePriceId);
+    await ev('invoice.paid', { id: 'in_j', subscription: 'sub_J', customer: 'cus_1', amount_paid: 8399, billing_reason: 'subscription_create' });
+    for (let d = 31; d <= Math.floor((end - start) / DAY) - 1; d++) { at(Date.UTC(2027, 0, 1 + d, 9, 0, 0)); await subscriptions.issueMonthlyTokensForAnnualPlans(); }
+    const days = tokens.filter((t) => t.reason === 'Annual plan monthly issuance').map((t) => t.issuedAt.toISOString().slice(5, 10));
+    expect(days.slice(0, 4)).toEqual(['02-28', '03-31', '04-30', '05-31']);
+    expect(tokens).toHaveLength(12);
   });
 });
 

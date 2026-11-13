@@ -21,7 +21,7 @@ import { TokenLedger } from '../../../src/subscriptions/token-ledger.entity';
 import { PushService } from '../../../src/push/push.service';
 
 const mockStripe = {
-  customers: { create: jest.fn() },
+  customers: { create: jest.fn(), list: jest.fn() },
   checkout: { sessions: { create: jest.fn(), list: jest.fn(), expire: jest.fn() } },
   billingPortal: { sessions: { create: jest.fn() } },
   subscriptions: {
@@ -219,7 +219,7 @@ describe('SubscriptionsService', () => {
         line_items: [{ price: 'price_123', quantity: 1 }],
         mode: 'subscription',
         subscription_data: { trial_period_days: 14 },
-        metadata: { noetiaUserId: 'u1', noetiaPlanId: 'plan1' },
+        metadata: { noetiaUserId: 'u1', noetiaPlanId: 'plan1', noetiaTrial: 'yes' },
       }));
       expect(lockQueries[0]).toEqual(['SELECT pg_advisory_xact_lock(hashtext($1))', ['subscription-checkout:u1']]);
     });
@@ -273,7 +273,7 @@ describe('SubscriptionsService', () => {
       mockStripe.subscriptions.list.mockImplementation(async ({ customer }: any) =>
         customer === 'cus_old' ? { data: [{ id: 'sub_x', status: 'trialing' }], has_more: false } : none);
       await expect(service.createCheckoutSession('u1', 'plan1')).rejects.toThrow(ConflictException);
-      expect(mockStripe.subscriptions.list).toHaveBeenCalledWith({ customer: 'cus_old', limit: 100 });
+      expect(mockStripe.subscriptions.list).toHaveBeenCalledWith({ customer: 'cus_old', status: 'all', limit: 100 });
     });
 
     it('canceled / incomplete_expired Stripe subscriptions do not block a new one', async () => {
@@ -449,6 +449,233 @@ describe('SubscriptionsService', () => {
       mockStripe.checkout.sessions.create.mockRejectedValue(err);
       await expect(service.createCheckoutSession('u1', 'plan1')).rejects.toBe(err);
       expect(mockStripe.checkout.sessions.list).toHaveBeenCalledTimes(1); // no recovery listing
+    });
+  });
+
+  describe('createCheckoutSession — D1 one trial per eligible customer', () => {
+    const PLAN = { id: 'plan1', stripePriceId: 'price_123' };
+    const none = { data: [], has_more: false };
+    const created = () => mockStripe.checkout.sessions.create.mock.calls[0][0];
+
+    beforeEach(() => {
+      mockUsersService.findById.mockResolvedValue({ id: 'u1', stripeCustomerId: 'cus_1', email: 'reader@test.invalid' });
+      mockPlansService.findById.mockResolvedValue(PLAN);
+      mockSubRepo.findOneBy.mockResolvedValue(null);
+      mockStripe.checkout.sessions.list.mockResolvedValue(none);
+      mockStripe.subscriptions.list.mockResolvedValue(none);
+      mockStripe.customers.list.mockResolvedValue(none);
+      mockStripe.checkout.sessions.create.mockResolvedValue({ id: 'cs_new', url: 'https://checkout.stripe.com/new' });
+    });
+
+    it('first-time customer (no Noetia or Stripe subscription history) → 14-day trial, tagged noetiaTrial=yes', async () => {
+      await service.createCheckoutSession('u1', 'plan1');
+      expect(created().subscription_data).toEqual({ trial_period_days: 14 });
+      expect(created().metadata).toEqual({ noetiaUserId: 'u1', noetiaPlanId: 'plan1', noetiaTrial: 'yes' });
+      expect(mockStripe.subscriptions.list).toHaveBeenCalledWith({ customer: 'cus_1', status: 'all', limit: 100 });
+      expect(mockStripe.customers.list).toHaveBeenCalledWith({ email: 'reader@test.invalid', limit: 100 });
+    });
+
+    it('returning subscriber (ended Noetia subscription row) → may subscribe again, WITHOUT a trial', async () => {
+      mockSubRepo.findOneBy.mockResolvedValue({ userId: 'u1', status: 'canceled', stripeSubscriptionId: 'sub_old', stripeCustomerId: 'cus_1' });
+      await service.createCheckoutSession('u1', 'plan1');
+      expect(created()).not.toHaveProperty('subscription_data');
+      expect(created().metadata.noetiaTrial).toBe('no');
+    });
+
+    it('cancelled during a previous trial (Stripe: canceled with trial_start) → no new trial', async () => {
+      mockStripe.subscriptions.list.mockResolvedValue({ data: [{ id: 'sub_t', status: 'canceled', trial_start: 1 }], has_more: false });
+      await service.createCheckoutSession('u1', 'plan1');
+      expect(created()).not.toHaveProperty('subscription_data');
+    });
+
+    it('a subscription that never started (only incomplete_expired) does not consume eligibility', async () => {
+      mockStripe.subscriptions.list.mockResolvedValue({ data: [{ id: 'sub_x', status: 'incomplete_expired', trial_start: null }], has_more: false });
+      await service.createCheckoutSession('u1', 'plan1');
+      expect(created().subscription_data).toEqual({ trial_period_days: 14 });
+    });
+
+    it('gift and token-package purchases alone do not consume eligibility (they are not subscriptions)', async () => {
+      // A buyer of one-time payments has a Stripe customer but no subscription history at all.
+      await service.createCheckoutSession('u1', 'plan1');
+      expect(created().subscription_data).toEqual({ trial_period_days: 14 });
+    });
+
+    it('linked Duo/Family member who never held an own subscription stays eligible', async () => {
+      mockSubRepo.findOneBy.mockResolvedValue(null); // members have no own row; the owner's row is not theirs
+      await service.createCheckoutSession('u1', 'plan1');
+      expect(created().subscription_data).toEqual({ trial_period_days: 14 });
+    });
+
+    it('deleted-and-recreated account: another Stripe customer with the same e-mail has history → no trial, and its live subscription is NOT a duplicate block', async () => {
+      mockStripe.customers.list.mockResolvedValue({ data: [{ id: 'cus_1' }, { id: 'cus_previous' }], has_more: false });
+      mockStripe.subscriptions.list.mockImplementation(async ({ customer }: any) =>
+        customer === 'cus_previous' ? { data: [{ id: 'sub_prev', status: 'active', trial_start: 1 }], has_more: false } : none);
+      await service.createCheckoutSession('u1', 'plan1');
+      expect(created()).not.toHaveProperty('subscription_data');
+      expect(mockStripe.subscriptions.list).toHaveBeenCalledTimes(2); // own customer + the other one (cus_1 not scanned twice)
+    });
+
+    it.each([
+      ['a truncated subscription history', () => mockStripe.subscriptions.list.mockResolvedValue({ data: [{ id: 's', status: 'canceled' }], has_more: true })],
+      ['a truncated customer list', () => mockStripe.customers.list.mockResolvedValue({ data: [], has_more: true })],
+      ['a Stripe error on the customer lookup', () => mockStripe.customers.list.mockRejectedValue(new Error('stripe down'))],
+    ])('history cannot be verified (%s) → 503, no session, never a surprise charge', async (_label, arrange) => {
+      arrange();
+      await expect(service.createCheckoutSession('u1', 'plan1')).rejects.toThrow(ServiceUnavailableException);
+      expect(mockStripe.checkout.sessions.create).not.toHaveBeenCalled();
+    });
+
+    it('an open session carrying a trial is NOT reused for a now-ineligible customer: it is expired and a no-trial session is created', async () => {
+      mockSubRepo.findOneBy.mockResolvedValue({ userId: 'u1', status: 'canceled', stripeSubscriptionId: 'sub_old', stripeCustomerId: 'cus_1' });
+      mockStripe.checkout.sessions.list.mockResolvedValue({ data: [{ id: 'cs_trial', mode: 'subscription', url: 'u', metadata: { noetiaPlanId: 'plan1' } }], has_more: false });
+      mockStripe.checkout.sessions.expire.mockResolvedValue({});
+      await service.createCheckoutSession('u1', 'plan1');
+      expect(mockStripe.checkout.sessions.expire).toHaveBeenCalledWith('cs_trial');
+      expect(created().metadata.noetiaTrial).toBe('no');
+    });
+
+    it('a matching open session (same plan, same trial offer) is reused', async () => {
+      mockStripe.checkout.sessions.list.mockResolvedValue({ data: [{ id: 'cs_ok', mode: 'subscription', url: 'https://checkout.stripe.com/ok', metadata: { noetiaPlanId: 'plan1', noetiaTrial: 'yes' } }], has_more: false });
+      await expect(service.createCheckoutSession('u1', 'plan1')).resolves.toEqual({ url: 'https://checkout.stripe.com/ok' });
+      expect(mockStripe.checkout.sessions.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getTrialEligibility / GET /subscriptions/me?trialEligibility=1 (D1, D6)', () => {
+    beforeEach(() => {
+      mockUsersService.findById.mockResolvedValue({ id: 'u1', stripeCustomerId: 'cus_1', email: 'reader@test.invalid' });
+      mockSubRepo.findOneBy.mockResolvedValue(null);
+      mockStripe.subscriptions.list.mockResolvedValue({ data: [], has_more: false });
+      mockStripe.customers.list.mockResolvedValue({ data: [], has_more: false });
+    });
+
+    it('first-time customer → true', async () => {
+      await expect(service.getTrialEligibility('u1')).resolves.toBe(true);
+    });
+
+    it('own Noetia subscription history → false without calling Stripe', async () => {
+      mockSubRepo.findOneBy.mockResolvedValue({ userId: 'u1', stripeSubscriptionId: 'sub_old', status: 'canceled' });
+      await expect(service.getTrialEligibility('u1')).resolves.toBe(false);
+      expect(mockStripe.subscriptions.list).not.toHaveBeenCalled();
+    });
+
+    it('Stripe history only → false', async () => {
+      mockStripe.subscriptions.list.mockResolvedValue({ data: [{ id: 's', status: 'canceled', trial_start: 1 }], has_more: false });
+      await expect(service.getTrialEligibility('u1')).resolves.toBe(false);
+    });
+
+    it('unverifiable (Stripe error) → null, so no trial is advertised', async () => {
+      jest.spyOn((service as any).logger, 'warn').mockImplementation(() => undefined);
+      mockStripe.subscriptions.list.mockRejectedValue(new Error('down'));
+      await expect(service.getTrialEligibility('u1')).resolves.toBeNull();
+    });
+
+    it('a user without a Stripe customer is checked by e-mail only', async () => {
+      mockUsersService.findById.mockResolvedValue({ id: 'u1', stripeCustomerId: null, email: 'new@test.invalid' });
+      await expect(service.getTrialEligibility('u1')).resolves.toBe(true);
+      expect(mockStripe.subscriptions.list).not.toHaveBeenCalled();
+      expect(mockStripe.customers.list).toHaveBeenCalledWith({ email: 'new@test.invalid', limit: 100 });
+    });
+
+    it('getSubscriptionStatus adds trialEligible ONLY when asked (other callers make no Stripe call)', async () => {
+      mockSubRepo.findOne.mockResolvedValue(null);
+      const plain = await service.getSubscriptionStatus('u1');
+      expect(plain).toEqual({ status: 'none' });
+      expect(mockStripe.customers.list).not.toHaveBeenCalled();
+      await expect(service.getSubscriptionStatus('u1', { includeTrialEligibility: true })).resolves.toEqual({ status: 'none', trialEligible: true });
+    });
+  });
+
+  describe('issueDueAnnualCycles — one annual period, Stripe-anchored (D2, D3)', () => {
+    const at = (s: string) => new Date(`${s}Z`);
+    const sec = (s: string) => Math.floor(at(s).getTime() / 1000);
+    const stripeSub = (over: any = {}) => ({
+      id: 'sub_y', status: 'active', cancel_at_period_end: false,
+      current_period_start: sec('2027-01-15T12:00:00'), current_period_end: sec('2028-01-15T12:00:00'),
+      billing_cycle_anchor: sec('2027-01-15T12:00:00'), ...over,
+    });
+    beforeEach(() => {
+      mockSubRepo.findOne.mockResolvedValue({ id: 'row1', userId: 'u1', status: 'active', plan: { interval: 'year', tokensPerCycle: 2 } });
+      mockTokenRepo.create.mockImplementation((d: any) => d);
+      mockTokenRepo.save.mockResolvedValue([]);
+      mockSubRepo.update.mockResolvedValue(undefined);
+    });
+
+    it('grants every cycle due so far (catch-up), each claimed once; sets the hint to the next anniversary', async () => {
+      mockStripe.subscriptions.retrieve.mockResolvedValue(stripeSub());
+      const n = await service.issueDueAnnualCycles('sub_y', at('2027-04-20T00:00:00'));
+      expect(n).toBe(3); // Feb 15, Mar 15, Apr 15
+      expect(mockTokenRepo.save).toHaveBeenCalledTimes(3);
+      expect(mockTokenRepo.save.mock.calls[0][0]).toHaveLength(2); // tokensPerCycle unchanged
+      expect([...claimed]).toEqual([1, 2, 3].map((k) => `fulfillment:annual-cycle:sub_y:${sec('2027-01-15T12:00:00')}:${k}`));
+      expect(mockSubRepo.update).toHaveBeenCalledWith('row1', { nextTokenIssuanceAt: at('2027-05-15T12:00:00') });
+      // Re-run (another instance, or tomorrow): nothing new.
+      expect(await service.issueDueAnnualCycles('sub_y', at('2027-04-21T00:00:00'))).toBe(0);
+    });
+
+    it('D3: cancel at period end (Stripe active + cancel_at_period_end, local canceling) keeps the allocations', async () => {
+      mockStripe.subscriptions.retrieve.mockResolvedValue(stripeSub({ cancel_at_period_end: true }));
+      mockSubRepo.findOne.mockResolvedValue({ id: 'row1', userId: 'u1', status: 'canceling', plan: { interval: 'year', tokensPerCycle: 1 } });
+      expect(await service.issueDueAnnualCycles('sub_y', at('2027-12-31T00:00:00'))).toBe(11);
+    });
+
+    it('never after the paid period expired, never the next period early', async () => {
+      mockStripe.subscriptions.retrieve.mockResolvedValue(stripeSub());
+      expect(await service.issueDueAnnualCycles('sub_y', at('2028-01-16T00:00:00'))).toBe(0);
+      expect(mockSubRepo.update).toHaveBeenCalledWith('row1', { nextTokenIssuanceAt: at('2028-01-15T12:00:00') });
+    });
+
+    it.each([['past_due'], ['unpaid'], ['canceled'], ['trialing']])('Stripe status %s → nothing', async (status) => {
+      mockStripe.subscriptions.retrieve.mockResolvedValue(stripeSub({ status }));
+      expect(await service.issueDueAnnualCycles('sub_y', at('2027-06-01T00:00:00'))).toBe(0);
+      expect(mockTokenRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('reads the period from the subscription item in the newer Stripe API shape', async () => {
+      const s = stripeSub();
+      mockStripe.subscriptions.retrieve.mockResolvedValue({ ...s, current_period_start: undefined, current_period_end: undefined, items: { data: [{ current_period_start: s.current_period_start, current_period_end: s.current_period_end }] } });
+      expect(await service.issueDueAnnualCycles('sub_y', at('2027-02-16T00:00:00'))).toBe(1);
+    });
+
+    it('local row no longer live, or not an annual plan → nothing', async () => {
+      mockStripe.subscriptions.retrieve.mockResolvedValue(stripeSub());
+      mockSubRepo.findOne.mockResolvedValueOnce({ id: 'row1', userId: 'u1', status: 'canceled', plan: { interval: 'year', tokensPerCycle: 1 } });
+      expect(await service.issueDueAnnualCycles('sub_y', at('2027-03-01T00:00:00'))).toBe(0);
+      mockSubRepo.findOne.mockResolvedValueOnce({ id: 'row1', userId: 'u1', status: 'active', plan: { interval: 'month', tokensPerCycle: 1 } });
+      expect(await service.issueDueAnnualCycles('sub_y', at('2027-03-01T00:00:00'))).toBe(0);
+    });
+
+    it('a crash after the grant but before COMMIT leaves the cycle unclaimed for the retry (the claim is in the same transaction)', async () => {
+      mockStripe.subscriptions.retrieve.mockResolvedValue(stripeSub());
+      mockTokenRepo.save.mockRejectedValueOnce(new Error('crash'));
+      await expect(service.issueDueAnnualCycles('sub_y', at('2027-02-16T00:00:00'))).rejects.toThrow('crash');
+    });
+  });
+
+  describe('issueTokensForNewSubscription — once per billing period (D5)', () => {
+    beforeEach(() => {
+      mockSubRepo.findOne.mockResolvedValue({ id: 'sub1', userId: 'u1', plan: { tokensPerCycle: 1, interval: 'month' } });
+      mockTokenRepo.create.mockImplementation((d: any) => d);
+      mockTokenRepo.save.mockResolvedValue([]);
+    });
+
+    it('a reissued invoice (new id) for the same period grants nothing', async () => {
+      await service.issueTokensForNewSubscription('sub_s', txEm as any, 'in_1', 1800000000);
+      await service.issueTokensForNewSubscription('sub_s', txEm as any, 'in_1_reissued', 1800000000);
+      expect(mockTokenRepo.save).toHaveBeenCalledTimes(1);
+      expect(claimed.has('fulfillment:period-tokens:sub_s:1800000000')).toBe(true);
+    });
+
+    it('the next period grants again', async () => {
+      await service.issueTokensForNewSubscription('sub_s', txEm as any, 'in_1', 1800000000);
+      await service.issueTokensForNewSubscription('sub_s', txEm as any, 'in_2', 1802592000);
+      expect(mockTokenRepo.save).toHaveBeenCalledTimes(2);
+    });
+
+    it('without a period (no subscription line) the invoice-id key still guards duplicates', async () => {
+      await service.issueTokensForNewSubscription('sub_s', txEm as any, 'in_9', null);
+      await service.issueTokensForNewSubscription('sub_s', txEm as any, 'in_9', null);
+      expect(mockTokenRepo.save).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -783,39 +1010,80 @@ describe('SubscriptionsService', () => {
     });
   });
 
-  describe('redeemToken', () => {
-    it('redeems oldest active token (FIFO) and records book unlock', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue({ id: 'bk1', isPublished: true });
-      mockTokenRepo.update.mockResolvedValue(undefined);
-      mockTokenRepo.findOne.mockResolvedValue({ id: 'tok1', status: 'active' });
-      mockUserBookRepo.existsBy.mockResolvedValue(false);
-      mockUserBookRepo.insert.mockResolvedValue(undefined);
+  describe('redeemToken — atomic (one token, one book; payment-safety correction)', () => {
+    // SQL-aware transaction stand-in: per-owner token queues, ownership rows, and a log of the statements.
+    function redeemTx(opts: { pools: Record<string, string[]>; owned?: boolean; insertConflict?: boolean; ownerSub?: any }) {
+      const pools = Object.fromEntries(Object.entries(opts.pools).map(([k, v]) => [k, [...v]]));
+      const log: string[] = [];
+      const ownedRows: string[] = [];
+      const em = {
+        getRepository: (entity: unknown) => {
+          if (entity === UserBook) return { existsBy: async () => !!opts.owned };
+          if (entity === TokenLedger) return { update: async () => { log.push('expire'); } };
+          if (entity === Subscription) return { createQueryBuilder: () => ({ where() { return this; }, andWhere() { return this; }, getOne: async () => opts.ownerSub ?? null }) };
+          return {};
+        },
+        query: async (sql: string, params: any[]) => {
+          if (sql.startsWith('UPDATE token_ledger')) {
+            const owner = params[0];
+            const id = pools[owner]?.shift();
+            log.push(`consume ${owner} ${sql.includes('SKIP LOCKED') ? 'skip-locked' : 'wait'} → ${id ?? 'none'}`);
+            return id ? [[{ id }], 1] : [[], 0];
+          }
+          if (sql.startsWith('SELECT count(*)')) return [{ n: pools[params[0]]?.length ?? 0 }];
+          if (sql.startsWith('INSERT INTO user_books')) {
+            log.push(`insert ${params[0]} ${params[1]} ${opts.insertConflict ? 'conflict' : 'ok'}`);
+            if (opts.insertConflict) return [];
+            ownedRows.push(`${params[0]}:${params[1]}`);
+            return [{ id: 'ub1' }];
+          }
+          return [];
+        },
+      };
+      mockSubRepo.manager.transaction.mockImplementationOnce(async (fn: any) => fn(em));
+      return { log, ownedRows, pools };
+    }
+    beforeEach(() => mockBookRepo.findOneBy.mockResolvedValue({ id: 'b1', isPublished: true }));
 
-      await service.redeemToken('u1', 'bk1');
-      expect(mockTokenRepo.update).toHaveBeenCalledWith('tok1', expect.objectContaining({ status: 'redeemed', bookId: 'bk1' }));
-      expect(mockUserBookRepo.insert).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 'u1', bookId: 'bk1', purchaseType: 'token' }),
-      );
+    it('consumes the oldest active token with a row lock and creates ownership in the SAME transaction', async () => {
+      const tx = redeemTx({ pools: { u1: ['tok1', 'tok2'] } });
+      await service.redeemToken('u1', 'b1');
+      expect(tx.log).toEqual(['expire', 'consume u1 skip-locked → tok1', 'insert u1 b1 ok']);
+      expect(tx.ownedRows).toEqual(['u1:b1']);
+      expect(mockSubRepo.manager.transaction).toHaveBeenCalledTimes(1);
     });
 
-    it('throws NotFoundException for unknown book', async () => {
+    it('throws NotFoundException for an unknown book (no transaction)', async () => {
       mockBookRepo.findOneBy.mockResolvedValue(null);
       await expect(service.redeemToken('u1', 'ghost')).rejects.toThrow(NotFoundException);
+      expect(mockSubRepo.manager.transaction).not.toHaveBeenCalled();
     });
 
-    it('throws ForbiddenException when no active tokens remain', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue({ id: 'bk1', isPublished: true });
-      mockTokenRepo.update.mockResolvedValue(undefined);
-      mockTokenRepo.findOne.mockResolvedValue(null);
-      await expect(service.redeemToken('u1', 'bk1')).rejects.toThrow(ForbiddenException);
+    it('already owned (fast path) → BadRequest already_owned, no token consumed', async () => {
+      const tx = redeemTx({ pools: { u1: ['tok1'] }, owned: true });
+      await expect(service.redeemToken('u1', 'b1')).rejects.toMatchObject({ response: { error: 'already_owned' } });
+      expect(tx.pools.u1).toEqual(['tok1']);
     });
 
-    it('throws BadRequestException when book is already owned', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue({ id: 'bk1', isPublished: true });
-      mockTokenRepo.update.mockResolvedValue(undefined);
-      mockTokenRepo.findOne.mockResolvedValue({ id: 'tok1', status: 'active' });
-      mockUserBookRepo.existsBy.mockResolvedValue(true);
-      await expect(service.redeemToken('u1', 'bk1')).rejects.toThrow(BadRequestException);
+    it('ownership insert conflicts (a concurrent redemption of the same book won) → throws, so the token consumption rolls back', async () => {
+      const tx = redeemTx({ pools: { u1: ['tok1'] }, insertConflict: true });
+      await expect(service.redeemToken('u1', 'b1')).rejects.toMatchObject({ response: { error: 'already_owned' } });
+      expect(tx.log).toContain('insert u1 b1 conflict'); // thrown inside the transaction → PostgreSQL rolls back the UPDATE
+    });
+
+    it('no tokens anywhere → ForbiddenException no_tokens_remaining', async () => {
+      redeemTx({ pools: { u1: [] } });
+      await expect(service.redeemToken('u1', 'b1')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('linked Duo/Family member without own tokens draws from the plan owner pool (unchanged order)', async () => {
+      const tx = redeemTx({ pools: { member: [], owner1: ['owner-tok'] }, ownerSub: { id: 'owner-sub', userId: 'owner1', status: 'active' } });
+      await service.redeemToken('member', 'b1');
+      expect(tx.log).toEqual([
+        'expire', 'consume member skip-locked → none', 'consume member wait → none',
+        'expire', 'consume owner1 skip-locked → owner-tok', 'insert member b1 ok',
+      ]);
+      expect(tx.ownedRows).toEqual(['member:b1']); // the book belongs to the member who redeemed it
     });
   });
 
@@ -915,7 +1183,7 @@ describe('SubscriptionsService', () => {
       expect(mockTokenRepo.save).not.toHaveBeenCalled();
     });
 
-    it('sets nextTokenIssuanceAt +30 days for annual plans', async () => {
+    it('annual plans: the paid invoice is cycle 0 and resets the scheduler hint so the new period is read from Stripe', async () => {
       mockSubRepo.findOne.mockResolvedValue({
         id: 'sub1',
         userId: 'u1',
@@ -927,7 +1195,7 @@ describe('SubscriptionsService', () => {
       mockTokenRepo.save.mockResolvedValue([]);
 
       await service.issueTokensForNewSubscription('sub_stripe_1');
-      expect(mockSubRepo.update).toHaveBeenCalledWith('sub1', expect.objectContaining({ nextTokenIssuanceAt: expect.any(Date) }));
+      expect(mockSubRepo.update).toHaveBeenCalledWith('sub1', { nextTokenIssuanceAt: null });
     });
 
     it('in the webhook transaction, claims the invoice once: a second call for the same invoice issues nothing', async () => {
@@ -950,41 +1218,39 @@ describe('SubscriptionsService', () => {
     });
   });
 
-  describe('issueMonthlyTokensForAnnualPlans', () => {
-    it('issues tokens and advances nextTokenIssuanceAt for a due annual sub', async () => {
-      const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  describe('issueMonthlyTokensForAnnualPlans — candidate selection (D2/D3)', () => {
+    it('checks active AND canceling annual rows with Stripe; skips monthly plans, rows without a Stripe id and rows whose hint is in the future', async () => {
+      const now = new Date('2027-06-01T12:00:00Z');
       mockSubRepo.find.mockResolvedValue([
-        { id: 'subA', userId: 'uA', plan: { interval: 'year', tokensPerCycle: 2 }, nextTokenIssuanceAt: past },
+        { id: 'a', stripeSubscriptionId: 'sub_a', status: 'active', plan: { interval: 'year' }, nextTokenIssuanceAt: null },
+        { id: 'c', stripeSubscriptionId: 'sub_c', status: 'canceling', plan: { interval: 'year' }, nextTokenIssuanceAt: new Date('2027-05-01T00:00:00Z') },
+        { id: 'm', stripeSubscriptionId: 'sub_m', status: 'active', plan: { interval: 'month' }, nextTokenIssuanceAt: null },
+        { id: 'n', stripeSubscriptionId: null, status: 'active', plan: { interval: 'year' }, nextTokenIssuanceAt: null },
+        { id: 'f', stripeSubscriptionId: 'sub_f', status: 'active', plan: { interval: 'year' }, nextTokenIssuanceAt: new Date('2027-07-01T00:00:00Z') },
       ]);
-      const issueSpy = jest.spyOn(service, 'issueTokens').mockResolvedValue(undefined as any);
-
-      await service.issueMonthlyTokensForAnnualPlans();
-
-      expect(issueSpy).toHaveBeenCalledWith('uA', 2, 'paid', expect.objectContaining({ subscriptionId: 'subA' }));
-      const [, patch] = mockSubRepo.update.mock.calls[0];
-      // next issuance advanced ~30 days past the previous due date
-      expect(patch.nextTokenIssuanceAt.getTime()).toBeGreaterThan(past.getTime());
+      const due = jest.spyOn(service, 'issueDueAnnualCycles').mockResolvedValue(0);
+      await service.issueMonthlyTokensForAnnualPlans(now);
+      expect(mockSubRepo.find.mock.calls[0][0].where.status.value).toEqual(['active', 'canceling']);
+      expect(due.mock.calls.map((c) => c[0])).toEqual(['sub_a', 'sub_c']);
     });
 
-    it('skips non-annual (monthly) plans', async () => {
+    it('a failure for one subscription is logged and does not stop the others', async () => {
       mockSubRepo.find.mockResolvedValue([
-        { id: 'subM', userId: 'uM', plan: { interval: 'month', tokensPerCycle: 1 }, nextTokenIssuanceAt: new Date(0) },
+        { id: 'a', stripeSubscriptionId: 'sub_a', status: 'active', plan: { interval: 'year' }, nextTokenIssuanceAt: null },
+        { id: 'b', stripeSubscriptionId: 'sub_b', status: 'active', plan: { interval: 'year' }, nextTokenIssuanceAt: null },
       ]);
-      const issueSpy = jest.spyOn(service, 'issueTokens').mockResolvedValue(undefined as any);
-
+      const logError = jest.spyOn((service as any).logger, 'error').mockImplementation(() => undefined);
+      const due = jest.spyOn(service, 'issueDueAnnualCycles').mockRejectedValueOnce(new Error('stripe down')).mockResolvedValueOnce(1);
       await service.issueMonthlyTokensForAnnualPlans();
-
-      expect(issueSpy).not.toHaveBeenCalled();
-      expect(mockSubRepo.update).not.toHaveBeenCalled();
+      expect(due).toHaveBeenCalledTimes(2);
+      expect(logError).toHaveBeenCalledWith(expect.stringContaining('sub_a: stripe down'));
     });
 
-    it('does nothing when no subscriptions are due', async () => {
+    it('does nothing when there are no candidates', async () => {
       mockSubRepo.find.mockResolvedValue([]);
-      const issueSpy = jest.spyOn(service, 'issueTokens').mockResolvedValue(undefined as any);
-
+      const due = jest.spyOn(service, 'issueDueAnnualCycles');
       await service.issueMonthlyTokensForAnnualPlans();
-
-      expect(issueSpy).not.toHaveBeenCalled();
+      expect(due).not.toHaveBeenCalled();
     });
   });
 
@@ -1148,47 +1414,6 @@ describe('SubscriptionsService', () => {
       const entry = mockTokenRepo.create.mock.calls[0][0];
       expect(entry.activatedAt).not.toBeNull();
       expect(entry.type).toBe('courtesy');
-    });
-  });
-
-  describe('redeemToken', () => {
-    it('redeems oldest active token (FIFO) and records book unlock', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue({ id: 'b1', isPublished: true });
-      mockTokenRepo.update.mockResolvedValue({});
-      mockTokenRepo.findOne.mockResolvedValue({ id: 'tok1', status: 'active' });
-      mockUserBookRepo.existsBy.mockResolvedValue(false);
-      mockUserBookRepo.insert.mockResolvedValue({});
-
-      await service.redeemToken('u1', 'b1');
-
-      expect(mockTokenRepo.update).toHaveBeenCalledWith('tok1', expect.objectContaining({ status: 'redeemed', bookId: 'b1' }));
-      expect(mockUserBookRepo.insert).toHaveBeenCalledWith(expect.objectContaining({ purchaseType: 'token' }));
-    });
-
-    it('throws ForbiddenException when no active tokens remain', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue({ id: 'b1', isPublished: true });
-      mockTokenRepo.update.mockResolvedValue({});
-      mockTokenRepo.findOne.mockResolvedValue(null);
-      await expect(service.redeemToken('u1', 'b1')).rejects.toThrow(ForbiddenException);
-    });
-
-    it('throws NotFoundException when book does not exist', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue(null);
-      await expect(service.redeemToken('u1', 'b1')).rejects.toThrow(NotFoundException);
-    });
-
-    it('uses owner token pool when linked user has no own tokens', async () => {
-      mockBookRepo.findOneBy.mockResolvedValue({ id: 'b1', isPublished: true });
-      mockUserBookRepo.existsBy.mockResolvedValue(false);
-      mockTokenRepo.update.mockResolvedValue({});
-      mockTokenRepo.findOne
-        .mockResolvedValueOnce(null) // linked user has no tokens
-        .mockResolvedValueOnce({ id: 'owner-tok', status: 'active' }); // owner has tokens
-      mockQb.getOne.mockResolvedValue({ id: 'owner-sub', userId: 'owner1', status: 'active' });
-      mockUserBookRepo.insert.mockResolvedValue({});
-
-      await service.redeemToken('linked-user', 'b1');
-      expect(mockTokenRepo.update).toHaveBeenCalledWith('owner-tok', expect.objectContaining({ status: 'redeemed' }));
     });
   });
 

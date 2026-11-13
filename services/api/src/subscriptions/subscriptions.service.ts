@@ -21,6 +21,7 @@ import { UserBook } from '../library/user-book.entity';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { PlansService } from './plans.service';
+import { annualScheduledCycles, subscriptionEverStarted } from './billing-cycles';
 import { claimStripeKey, fulfillmentKey, lockSubscriptionIdentity } from './stripe-fulfillment-ledger';
 import { Subscription, SubscriptionStatus } from './subscription.entity';
 import { SubscriptionInvite } from './subscription-invite.entity';
@@ -38,6 +39,7 @@ export const LIVE_SUBSCRIPTION_STATUSES: SubscriptionStatus[] = ['active', 'tria
 /** Stripe subscription statuses that can still bill (or are about to): a second checkout would duplicate them. */
 const STRIPE_BILLABLE_STATUSES = ['active', 'trialing', 'past_due', 'unpaid', 'incomplete', 'paused'];
 
+const TRIAL_PERIOD_DAYS = 14;
 const TOKEN_EXPIRY_DAYS = 90;
 const PROMOTIONAL_EXPIRY_DAYS = 30;
 const COURTESY_EXPIRY_DAYS = 30;
@@ -113,62 +115,100 @@ export class SubscriptionsService {
     });
   }
 
-  private async expireStaleTokens(userId: string): Promise<void> {
-    await this.tokenRepo.update(
+  private async expireStaleTokens(userId: string, em?: EntityManager): Promise<void> {
+    await (em ? em.getRepository(TokenLedger) : this.tokenRepo).update(
       { userId, status: 'active', expiresAt: LessThan(new Date()) },
       { status: 'expired' },
     );
   }
 
+  /**
+   * Redeems ONE token for ONE book, atomically (payment-safety correction, PO authorization 2026-11-13).
+   *
+   * One transaction: pick and consume the oldest active token with a row lock (the user's own pool first, then the
+   * pool of the Duo/Family plan the user is linked to — unchanged order), then create the ownership row. If the
+   * ownership row cannot be created (already owned — including a concurrent redemption of the same book), the
+   * transaction rolls back and the token is NOT consumed. Two concurrent redemptions can therefore never spend one
+   * token twice, and two members drawing from one shared pool get distinct tokens. Token economics, expiry and
+   * permanent ownership are unchanged. No migration.
+   */
   async redeemToken(userId: string, bookId: string): Promise<void> {
     const book = await this.bookRepo.findOneBy({ id: bookId, isPublished: true });
     if (!book) throw new NotFoundException('Book not found');
 
-    const alreadyOwned = await this.userBookRepo.existsBy({ userId, bookId });
-    if (alreadyOwned) throw new BadRequestException({ error: 'already_owned' });
-
-    await this.expireStaleTokens(userId);
-
-    // Try the user's own token pool first; fall back to linked plan owner's pool
-    let tokenOwnerId = userId;
-    let token = await this.tokenRepo.findOne({
-      where: { userId, status: 'active', expiresAt: MoreThan(new Date()) },
-      order: { issuedAt: 'ASC' },
-    });
-
-    if (!token) {
-      const ownerSub = await this.subRepo
-        .createQueryBuilder('sub')
-        .where(':userId = ANY(sub."linkedUserIds")', { userId })
-        .andWhere('sub.status IN (:...statuses)', { statuses: ACTIVE_STATUSES })
-        .getOne();
-
-      if (ownerSub) {
-        tokenOwnerId = ownerSub.userId;
-        await this.expireStaleTokens(tokenOwnerId);
-        token = await this.tokenRepo.findOne({
-          where: { userId: tokenOwnerId, status: 'active', expiresAt: MoreThan(new Date()) },
-          order: { issuedAt: 'ASC' },
-        });
+    await this.subRepo.manager.transaction(async (tx) => {
+      // Fast path; the authoritative check is the ON CONFLICT insert below.
+      if (await tx.getRepository(UserBook).existsBy({ userId, bookId })) {
+        throw new BadRequestException({ error: 'already_owned' });
       }
-    }
 
-    if (!token) throw new ForbiddenException({ error: 'no_tokens_remaining' });
+      await this.expireStaleTokens(userId, tx);
+      let consumed = await this.consumeOldestToken(tx, userId, bookId);
 
-    await this.tokenRepo.update(token.id, { status: 'redeemed', redeemedAt: new Date(), bookId });
-    await this.userBookRepo.insert({ userId, bookId, purchaseType: 'token' });
+      if (!consumed) {
+        const ownerSub = await tx.getRepository(Subscription)
+          .createQueryBuilder('sub')
+          .where(':userId = ANY(sub."linkedUserIds")', { userId })
+          .andWhere('sub.status IN (:...statuses)', { statuses: ACTIVE_STATUSES })
+          .getOne();
+        if (ownerSub) {
+          await this.expireStaleTokens(ownerSub.userId, tx);
+          consumed = await this.consumeOldestToken(tx, ownerSub.userId, bookId);
+        }
+      }
+
+      if (!consumed) throw new ForbiddenException({ error: 'no_tokens_remaining' });
+
+      const inserted = await tx.query(
+        `INSERT INTO user_books ("userId", "bookId", "purchaseType") VALUES ($1, $2, 'token')
+         ON CONFLICT ("userId", "bookId") DO NOTHING RETURNING id`,
+        [userId, bookId],
+      );
+      // Already owned (e.g. a concurrent redemption of the same book won): throwing rolls the token back.
+      if (!Array.isArray(inserted) || inserted.length === 0) throw new BadRequestException({ error: 'already_owned' });
+    });
   }
 
   /**
-   * Daily scheduler for the annual-plan monthly token drip.
-   *
-   * Annual subscriptions are billed once a year, so Stripe fires `invoice.paid`
-   * only once — the 11 subsequent monthly token grants must be issued internally.
-   * Without this trigger, annual subscribers receive ~1/12 of their token
-   * entitlement. `issueMonthlyTokensForAnnualPlans()` is idempotent per 30-day
-   * window (guarded by `nextTokenIssuanceAt < now`), so a daily run is safe and
-   * will not double-issue. Errors are caught so a failure never crashes the
-   * scheduler. Runs at 01:00 (distinct from the 02:00 persona cron).
+   * Consumes the oldest active, unexpired token of `ownerId` inside `tx`. SKIP LOCKED lets concurrent redemptions
+   * take DIFFERENT tokens of a shared pool without waiting. When every remaining candidate is locked by another
+   * redemption, it then waits for that one (plain FOR UPDATE): if it committed, the token is gone (none returned);
+   * if it rolled back, the token is still active and is consumed here — so a rolled-back competitor never causes a
+   * false "no tokens remaining".
+   */
+  private async consumeOldestToken(tx: EntityManager, ownerId: string, bookId: string): Promise<string | null> {
+    const consume = (lockClause: string) => tx.query(
+      `UPDATE token_ledger SET status = 'redeemed', "redeemedAt" = now(), "bookId" = $2
+        WHERE id = (SELECT id FROM token_ledger
+                     WHERE "userId" = $1 AND status = 'active' AND "expiresAt" > now()
+                     ORDER BY "issuedAt" ASC, id ASC LIMIT 1 ${lockClause})
+        RETURNING id`,
+      [ownerId, bookId],
+    );
+    // TypeORM returns [rows, rowCount] for UPDATE on PostgreSQL.
+    const idOf = (res: any): string | null => {
+      const rows = Array.isArray(res?.[0]) ? res[0] : res;
+      return Array.isArray(rows) && rows.length > 0 ? rows[0].id : null;
+    };
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const free = idOf(await consume('FOR UPDATE SKIP LOCKED'));
+      if (free) return free;
+      const waited = idOf(await consume('FOR UPDATE'));
+      if (waited) return waited;
+      // The token we waited for was consumed by the competitor; stop when no active token remains at all.
+      const left = await tx.query(
+        `SELECT count(*)::int AS n FROM token_ledger WHERE "userId" = $1 AND status = 'active' AND "expiresAt" > now()`,
+        [ownerId],
+      );
+      if (!left?.[0]?.n) return null;
+    }
+    return null;
+  }
+
+  /**
+   * Daily scheduler for the annual-plan monthly allocations (D2, D3). Errors are caught per subscription so a
+   * failure never crashes the scheduler or blocks other subscribers. Runs at 01:00 (distinct from the 02:00
+   * persona cron). Safe to run on any number of API instances and to re-run: see issueDueAnnualCycles.
    */
   @Cron(CronExpression.EVERY_DAY_AT_1AM)
   async issueAnnualPlanTokensCron(): Promise<void> {
@@ -182,23 +222,75 @@ export class SubscriptionsService {
     }
   }
 
-  async issueMonthlyTokensForAnnualPlans(): Promise<void> {
-    const now = new Date();
-    const subs = await this.subRepo.find({
-      where: { status: 'active', nextTokenIssuanceAt: LessThan(now) },
+  /**
+   * Annual plans are billed once a year: the annual invoice grants paid cycle 0 (issueTokensForNewSubscription)
+   * and this scheduler grants cycles 1…11 on calendar-month anniversaries of the paid period — exactly 12 paid
+   * allocations per annual billing period (D2; the T-1 trial allocation is separate and additional).
+   *
+   * Candidates are local annual rows that are `active` or `canceling` (D3: a subscription cancelled at period end
+   * keeps its allocations until the paid period expires). `nextTokenIssuanceAt` is only a hint — the earliest
+   * moment anything can be due — so a subscription is checked with Stripe at most when something may be due.
+   */
+  async issueMonthlyTokensForAnnualPlans(now: Date = new Date()): Promise<void> {
+    const rows = await this.subRepo.find({
+      where: { status: In(['active', 'canceling']) },
       relations: ['plan'],
     });
-
-    for (const sub of subs) {
-      if (!sub.plan || sub.plan.interval !== 'year') continue;
-      await this.issueTokens(sub.userId, sub.plan.tokensPerCycle, 'paid', {
-        subscriptionId: sub.id,
-        reason: 'Annual plan monthly issuance',
-      });
-      const next = new Date(sub.nextTokenIssuanceAt!);
-      next.setDate(next.getDate() + 30);
-      await this.subRepo.update(sub.id, { nextTokenIssuanceAt: next });
+    for (const row of rows) {
+      if (row.plan?.interval !== 'year' || !row.stripeSubscriptionId) continue;
+      if (row.nextTokenIssuanceAt && row.nextTokenIssuanceAt > now) continue; // nothing can be due yet
+      try {
+        await this.issueDueAnnualCycles(row.stripeSubscriptionId, now);
+      } catch (err) {
+        this.logger.error(`[annual-cycles] ${row.stripeSubscriptionId}: ${(err as Error)?.message}`);
+      }
     }
+  }
+
+  /**
+   * Grants the due scheduled cycles of ONE annual subscription's CURRENT paid period.
+   *
+   * Authoritative data comes from Stripe at run time: status, `current_period_start` / `current_period_end` and
+   * `billing_cycle_anchor` (UTC). Cycle k is due at the k-th calendar-month anniversary (monthlyAnniversary:
+   * Jan 31 → Feb 28/29…, Feb 29 → Mar 29…), only if strictly inside the paid period — the next period's tokens are
+   * never granted early, and nothing is granted once the period has expired (D2, D3).
+   *
+   * Eligible Stripe statuses: `active` (which includes cancel-at-period-end, D3). Not `past_due`/`unpaid` (failed
+   * renewal), `canceled` (immediate termination or expired), or `trialing` (the trial grant is T-1).
+   *
+   * Exactly once, across any number of scheduler instances and crashes: each cycle is claimed with
+   * `fulfillment:annual-cycle:<sub>:<periodStart>:<k>` in the same transaction as its tokens.
+   */
+  async issueDueAnnualCycles(stripeSubscriptionId: string, now: Date = new Date()): Promise<number> {
+    const s = (await this.requireStripe().subscriptions.retrieve(stripeSubscriptionId)) as any;
+    const item = s.items?.data?.[0];
+    const start = s.current_period_start ?? item?.current_period_start;
+    const end = s.current_period_end ?? item?.current_period_end;
+    if (s.status !== 'active' || !start || !end) return 0;
+    const periodStart = new Date(start * 1000);
+    const periodEnd = new Date(end * 1000);
+    const anchor = new Date((s.billing_cycle_anchor ?? start) * 1000);
+    const cycles = annualScheduledCycles(periodStart, periodEnd, anchor);
+    const due = now < periodEnd ? cycles.filter((c) => c.due <= now) : [];
+    const upcoming = cycles.find((c) => c.due > now)?.due ?? periodEnd; // next hint: next cycle or renewal
+
+    return this.subRepo.manager.transaction(async (tx) => {
+      const subRepo = tx.getRepository(Subscription);
+      const row = await subRepo.findOne({ where: { stripeSubscriptionId }, relations: ['plan'] });
+      if (!row?.plan || row.plan.interval !== 'year' || !['active', 'canceling'].includes(row.status)) return 0;
+      let granted = 0;
+      for (const { k } of due) {
+        const key = fulfillmentKey('annual-cycle', `${stripeSubscriptionId}:${start}:${k}`);
+        if (!(await claimStripeKey(tx, key, 'fulfillment:annual-cycle'))) continue;
+        await this.issueTokens(row.userId, row.plan.tokensPerCycle, 'paid', {
+          subscriptionId: row.id,
+          reason: 'Annual plan monthly issuance',
+        }, tx);
+        granted++;
+      }
+      await subRepo.update(row.id, { nextTokenIssuanceAt: upcoming });
+      return granted;
+    });
   }
 
   // ── Stripe / subscriptions ──────────────────────────────────────────────────
@@ -250,31 +342,36 @@ export class SubscriptionsService {
       const customerIds = [...new Set([customerId, local?.stripeCustomerId].filter((c): c is string => !!c))];
 
       let openSessions: Array<{ id: string; url: string | null; metadata?: Record<string, string> | null }>;
+      let trialEligible: boolean;
       try {
         const sessions = await stripe.checkout.sessions.list({ customer: customerId, status: 'open', limit: 100 });
         // A first page is not an inventory: with more pages, an unseen open session could still complete.
         if (sessions.has_more) throw new Error('checkout session list truncated'); // → 503, fail safe
         openSessions = sessions.data.filter((cs) => cs.mode === 'subscription');
-        for (const customer of customerIds) {
-          // Default listing = every subscription that is not canceled (newest first).
-          const subs = await stripe.subscriptions.list({ customer, limit: 100 });
-          const billable = subs.data.find((sub) => STRIPE_BILLABLE_STATUSES.includes(sub.status));
-          if (billable) {
-            this.logger.warn(
-              `[checkout-guard] blocked: Stripe subscription ${billable.id} (${billable.status}) exists for user ${userId}; ` +
-              `local status ${local?.status ?? 'missing'}`,
-            );
-            throw new ConflictException({ error: 'subscription_exists', status: this.mapStripeStatus(billable.status, billable.cancel_at_period_end) });
-          }
-          if (subs.has_more) throw new Error('subscription list truncated'); // cannot prove "none" → fail safe
+        const user = await this.usersService.findById(userId);
+        const history = await this.inspectStripeSubscriptionHistory(stripe, customerIds, user?.email ?? null);
+        if (history.billable) {
+          const billable = history.billable;
+          this.logger.warn(
+            `[checkout-guard] blocked: Stripe subscription ${billable.id} (${billable.status}) exists for user ${userId}; ` +
+            `local status ${local?.status ?? 'missing'}`,
+          );
+          throw new ConflictException({ error: 'subscription_exists', status: this.mapStripeStatus(billable.status, billable.cancel_at_period_end) });
         }
+        // D1: one 14-day trial per eligible customer — none for anyone with own subscription history.
+        trialEligible = !local?.stripeSubscriptionId && !history.started;
       } catch (err) {
         if (err instanceof HttpException) throw err;
         this.logger.error(`[checkout-guard] could not verify Stripe subscription state for user ${userId}: ${(err as Error)?.message}`);
         throw new ServiceUnavailableException({ error: 'subscription_status_unavailable' });
       }
 
-      const reusable = openSessions.find((cs) => cs.metadata?.noetiaPlanId === planId && cs.url);
+      // Reuse only a session with the same plan AND the same trial offer (a session from before D1 has no
+      // `noetiaTrial` tag and carried a trial).
+      const trialTag = trialEligible ? 'yes' : 'no';
+      const reusable = openSessions.find(
+        (cs) => cs.metadata?.noetiaPlanId === planId && (cs.metadata?.noetiaTrial ?? 'yes') === trialTag && cs.url,
+      );
       if (reusable) return { url: reusable.url! };
       for (const cs of openSessions) {
         try {
@@ -290,14 +387,15 @@ export class SubscriptionsService {
           payment_method_types: ['card'],
           line_items: [{ price: plan.stripePriceId, quantity: 1 }],
           mode: 'subscription',
-          subscription_data: { trial_period_days: 14 },
-          metadata: { noetiaUserId: userId, noetiaPlanId: planId },
+          // D1: the 14-day trial only for an eligible first-time customer; a returning subscriber is billed now.
+          ...(trialEligible ? { subscription_data: { trial_period_days: TRIAL_PERIOD_DAYS } } : {}),
+          metadata: { noetiaUserId: userId, noetiaPlanId: planId, noetiaTrial: trialTag },
           success_url: `${this.webUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${this.webUrl}/billing/cancel`,
         });
         return { url: session.url! };
       } catch (err) {
-        return this.recoverAmbiguousCheckoutCreate(stripe, customerId, planId, userId, err);
+        return this.recoverAmbiguousCheckoutCreate(stripe, customerId, planId, userId, err, trialTag);
       }
     });
   }
@@ -316,18 +414,75 @@ export class SubscriptionsService {
     planId: string,
     userId: string,
     err: unknown,
+    trialTag: 'yes' | 'no' = 'yes',
   ): Promise<{ url: string }> {
     const type = (err as { type?: string } | null)?.type;
     if (type !== 'StripeConnectionError' && type !== 'StripeAPIError') throw err;
     this.logger.warn(`[checkout-guard] ambiguous session create for user ${userId} (${type}); checking for a created session`);
     try {
       const sessions = await stripe.checkout.sessions.list({ customer: customerId, status: 'open', limit: 100 });
-      const created = sessions.data.find((cs) => cs.mode === 'subscription' && cs.metadata?.noetiaPlanId === planId && cs.url);
+      const created = sessions.data.find(
+        (cs) => cs.mode === 'subscription' && cs.metadata?.noetiaPlanId === planId && (cs.metadata?.noetiaTrial ?? 'yes') === trialTag && cs.url,
+      );
       if (created) return { url: created.url! };
     } catch {
       // fall through: still unknown → do not create
     }
     throw new ConflictException({ error: 'checkout_pending' });
+  }
+
+  /**
+   * D1 — one Stripe pass over the customer's FULL subscription history (`status: 'all'`, including canceled):
+   *   - `billable`: a subscription that can still bill (the duplicate guard, unchanged rule);
+   *   - `started`: any subscription that ever started (trial received, or past `incomplete_expired`).
+   * Customers searched: every Stripe customer id known for this Noetia user, plus other Stripe customers carrying
+   * the same account e-mail (a deterred-but-not-proven signal for a deleted-and-recreated account; only the
+   * e-mail the person gave Noetia, no fingerprinting). Only `started` is read from those other customers — a live
+   * subscription there belongs to a different Noetia account, not a duplicate of this one.
+   * Any truncated list or Stripe error throws → the caller fails safe (no checkout, never a surprise charge).
+   */
+  private async inspectStripeSubscriptionHistory(
+    stripe: InstanceType<typeof Stripe>,
+    customerIds: string[],
+    email: string | null,
+  ): Promise<{ billable: any | null; started: boolean }> {
+    let billable: any = null;
+    let started = false;
+    const scan = async (customer: string, own: boolean) => {
+      const subs = await stripe.subscriptions.list({ customer, status: 'all', limit: 100 });
+      if (subs.has_more) throw new Error('subscription history truncated'); // cannot prove the history → fail safe
+      for (const sub of subs.data as any[]) {
+        if (own && !billable && STRIPE_BILLABLE_STATUSES.includes(sub.status)) billable = sub;
+        if (subscriptionEverStarted(sub)) started = true;
+      }
+    };
+    for (const customer of customerIds) await scan(customer, true);
+    if (email) {
+      const others = await stripe.customers.list({ email, limit: 100 });
+      if (others.has_more) throw new Error('customer list truncated');
+      for (const c of others.data) if (!customerIds.includes(c.id)) await scan(c.id, false);
+    }
+    return { billable, started };
+  }
+
+  /**
+   * D1 / D6 — whether a 14-day trial would be offered to this user right now (same rules as checkout, read-only,
+   * no lock). `null` when it cannot be verified (Stripe unavailable or not configured): callers must then not
+   * advertise a trial, and checkout itself fails safe.
+   */
+  async getTrialEligibility(userId: string): Promise<boolean | null> {
+    const local = await this.subRepo.findOneBy({ userId });
+    if (local?.stripeSubscriptionId) return false; // own subscription history in Noetia
+    if (!this.stripe) return null;
+    try {
+      const user = await this.usersService.findById(userId);
+      const customerIds = [user?.stripeCustomerId, local?.stripeCustomerId].filter((c): c is string => !!c);
+      const history = await this.inspectStripeSubscriptionHistory(this.stripe, [...new Set(customerIds)], user?.email ?? null);
+      return !history.started;
+    } catch (err) {
+      this.logger.warn(`[trial-eligibility] could not verify for user ${userId}: ${(err as Error)?.message}`);
+      return null;
+    }
   }
 
   /**
@@ -421,16 +576,19 @@ export class SubscriptionsService {
   }
 
   /**
-   * Cycle tokens for a PAID invoice (monthly renewals; annual plans' yearly invoice, which also starts the
-   * monthly schedule). Requires the row's plan. When the invoice id is known, the grant is claimed once per
-   * invoice (fulfillment key in the webhook transaction), so two different events for the same invoice grant
-   * once. $0 invoices — including the trial's — never reach here (WebhooksService.handleInvoicePaid); the trial
-   * grant is issueTrialStartTokens.
+   * Cycle tokens for an ELIGIBLE invoice — a renewal (`subscription_cycle`, including a valid $0 renewal) or a paid
+   * creation without a trial; WebhooksService.handleInvoicePaid classifies (D4, D5). Requires the row's plan.
+   *
+   * Exactly once per billing period: claims `fulfillment:period-tokens:<sub>:<periodStart>` (the period the invoice
+   * pays for) AND the invoice-id key, in the webhook transaction — so duplicate deliveries, different event ids
+   * and a voided-and-reissued invoice for the same period all grant once. Annual plans: this is paid cycle 0 of the
+   * period; the scheduler grants cycles 1…11 (its hint is reset so the new period is checked promptly).
    */
   async issueTokensForNewSubscription(
     stripeSubscriptionId: string,
     em?: EntityManager,
     invoiceId?: string | null,
+    periodStart?: number | null,
   ): Promise<void> {
     const subRepo = em ? em.getRepository(Subscription) : this.subRepo;
     const sub = await subRepo.findOne({
@@ -439,6 +597,10 @@ export class SubscriptionsService {
     });
     if (!sub?.plan) return;
 
+    if (em && periodStart && !(await claimStripeKey(em, fulfillmentKey('period-tokens', `${stripeSubscriptionId}:${periodStart}`), 'fulfillment:period-tokens'))) {
+      this.logger.warn(`Tokens for period ${periodStart} of ${stripeSubscriptionId} already issued — not issuing again`);
+      return;
+    }
     if (em && invoiceId && !(await claimStripeKey(em, fulfillmentKey('invoice-tokens', invoiceId), 'fulfillment:invoice-tokens'))) {
       this.logger.warn(`Tokens for invoice ${invoiceId} already issued — not issuing again`);
       return;
@@ -450,13 +612,22 @@ export class SubscriptionsService {
     }, em);
 
     if (sub.plan.interval === 'year') {
-      const next = new Date();
-      next.setDate(next.getDate() + 30);
-      await subRepo.update(sub.id, { nextTokenIssuanceAt: next });
+      // Paid cycle 0 granted; let the scheduler read the new period from Stripe at its next run.
+      await subRepo.update(sub.id, { nextTokenIssuanceAt: null });
     }
   }
 
-  async getSubscriptionStatus(userId: string) {
+  /**
+   * @param options.includeTrialEligibility — D6: adds `trialEligible` (true / false / null = unverifiable). Opt-in,
+   *   because it may call Stripe; only the pricing page and the mobile paywall ask for it.
+   */
+  async getSubscriptionStatus(userId: string, options: { includeTrialEligibility?: boolean } = {}) {
+    const status = await this.readSubscriptionStatus(userId);
+    if (!options.includeTrialEligibility) return status;
+    return { ...status, trialEligible: await this.getTrialEligibility(userId) };
+  }
+
+  private async readSubscriptionStatus(userId: string) {
     const sub = await this.subRepo.findOne({ where: { userId }, relations: ['plan'] });
     if (!sub) {
       // Check if user is a linked member on someone else's plan
