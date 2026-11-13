@@ -49,4 +49,9 @@ describe('/causas copy (PO-053)', () => {
     const text = await render(lang);
     expect(text).not.toMatch(/aleator|random|hasta dos|up to two|primer día|day one|sin excepción|without exception|Publicamos|We publish|activa automáticamente|automatically activates|Apoyamos|We support|donad|donated/i);
   });
+
+  it.each(['es', 'en'] as const)('shows no unsourced statistics on the cause cards (%s)', async (lang) => {
+    const text = await render(lang);
+    expect(text).not.toMatch(/70 millones|70 million|1 de cada 3|1 in 3|40%|2,6 millones|2\.6 million/);
+  });
 });

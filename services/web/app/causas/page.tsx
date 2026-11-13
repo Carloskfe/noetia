@@ -14,12 +14,10 @@ const STRATEGIC_LINES = [
     es: {
       name: 'Bienestar Animal',
       description: 'Línea dedicada a iniciativas de rescate, cuidado, rehabilitación y protección de animales en América Latina.',
-      stat: 'Más de 70 millones de perros y gatos viven en condición de abandono en América Latina.',
     },
     en: {
       name: 'Animal Welfare',
       description: 'A line dedicated to rescue, care, rehabilitation and protection initiatives for animals in Latin America.',
-      stat: 'More than 70 million dogs and cats live in abandonment in Latin America.',
     },
     color: 'from-amber-900/30 to-amber-950/10 border-amber-500/20',
     accent: 'text-amber-400',
@@ -30,12 +28,10 @@ const STRATEGIC_LINES = [
     es: {
       name: 'Niñez y Juventud',
       description: 'Línea dedicada a proyectos que amplían el acceso a la educación, la lectura y las oportunidades para niños y jóvenes.',
-      stat: '1 de cada 3 niños en América Latina no tiene acceso a libros fuera del aula escolar.',
     },
     en: {
       name: 'Children & Youth',
       description: 'A line dedicated to projects that expand access to education, reading and opportunities for children and young people.',
-      stat: '1 in 3 children in Latin America has no access to books outside the classroom.',
     },
     color: 'from-blue-900/30 to-blue-950/10 border-blue-500/20',
     accent: 'text-blue-400',
@@ -46,12 +42,10 @@ const STRATEGIC_LINES = [
     es: {
       name: 'Medio Ambiente',
       description: 'Línea dedicada a la protección de los ecosistemas, la biodiversidad y los recursos naturales de nuestra región.',
-      stat: 'América Latina alberga el 40% de la biodiversidad del planeta, pero pierde más de 2,6 millones de hectáreas de bosque al año.',
     },
     en: {
       name: 'Environment',
       description: 'A line dedicated to protecting the ecosystems, biodiversity and natural resources of our region.',
-      stat: 'Latin America holds 40% of the planet\'s biodiversity, but loses more than 2.6 million hectares of forest each year.',
     },
     color: 'from-emerald-900/30 to-emerald-950/10 border-emerald-500/20',
     accent: 'text-emerald-400',
@@ -160,10 +154,7 @@ export default function CausasPage() {
               <div key={line.slug} className={`rounded-2xl border bg-gradient-to-b ${line.color} p-6`}>
                 <span className="text-4xl block mb-4">{line.icon}</span>
                 <h2 className={`text-base font-bold mb-2 ${line.accent}`}>{copy.name}</h2>
-                <p className="text-slate-300 text-sm leading-relaxed mb-4">{copy.description}</p>
-                <div className="bg-white/5 rounded-xl p-3">
-                  <p className="text-xs text-slate-400 italic leading-relaxed">&ldquo;{copy.stat}&rdquo;</p>
-                </div>
+                <p className="text-slate-300 text-sm leading-relaxed">{copy.description}</p>
               </div>
             );
           })}

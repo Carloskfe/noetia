@@ -22,8 +22,8 @@ const VALUES = [
     en: { title: 'Execution is the strategy', body: 'Categories are not declared. They are built, feature by feature, with products that work.' },
   },
   {
-    es: { title: 'Compartir es ayudar', body: 'Noetia es una plataforma de compartir conocimiento. Ese acto debe tener consecuencias reales. El 2,22% de cada compra apoya causas sociales — desde el primer día, de forma estructural.' },
-    en: { title: 'Sharing is helping', body: 'Noetia is a platform for sharing knowledge. That act should have real consequences. 2.22% of every purchase supports social causes — from day one, structurally.' },
+    es: { title: 'Compartir es ayudar', body: 'Noetia es una plataforma de compartir conocimiento. Ese acto debe tener consecuencias reales. Destinamos el 2,22% de cada pago a Causas Noetia: bienestar animal, niñez y juventud, y medio ambiente.' },
+    en: { title: 'Sharing is helping', body: 'Noetia is a platform for sharing knowledge. That act should have real consequences. We commit 2.22% of every payment to Causas Noetia: animal welfare, children and youth, and the environment.' },
   },
   {
     es: { title: 'Honestidad sobre lo que somos', body: 'Somos un equipo pequeño construyendo algo serio. Lo decimos sin apología.' },
