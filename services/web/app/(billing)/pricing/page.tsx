@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import CauseSelector from '@/components/CauseSelector';
 import { apiFetch } from '@/lib/api';
+import { formatUsd } from '@/lib/currency';
 import { useTranslation } from '@/lib/i18n';
 
 type Plan = {
@@ -71,9 +72,8 @@ async function loadPreference(): Promise<PreferenceState> {
   }
 }
 
-function formatPrice(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
+// USD, always marked explicitly (PO decision 2026-11-13) — see lib/currency.
+const formatPrice = formatUsd;
 
 export default function PricingPage() {
   const { t } = useTranslation();

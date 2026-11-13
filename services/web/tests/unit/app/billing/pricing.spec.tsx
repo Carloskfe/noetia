@@ -147,6 +147,14 @@ describe('/pricing — guest (public page, optional authentication)', () => {
     expect(req('GET', '/causes/preferences')).toHaveLength(0);
   });
 
+  it('prices are shown in explicitly marked US dollars (USD — PO decision 2026-11-13), never a bare "$"', async () => {
+    await render();
+    const text = document.body.textContent ?? '';
+    expect(text).toContain('US$8.99'); // plan
+    expect(text).toContain('US$4.99'); // token package
+    expect(text).not.toMatch(/(^|[^S])\$\d/); // no "$8.99" without the US marker
+  });
+
   it('choosing a plan sends the guest to /login?next=/pricing (no selector, no checkout)', async () => {
     await render();
     await click(planButton());

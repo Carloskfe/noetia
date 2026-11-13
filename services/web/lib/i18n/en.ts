@@ -841,7 +841,7 @@ export const en = {
       footer: 'The recipient will receive an email with their gift. Tokens are valid for 1 year.',
       backToPlans: '← View subscription plans',
       unlocks1: 'Unlocks 1 book',
-      unlocks3: 'Unlocks 3 books — $8.33 ea.',
+      unlocks3: 'Unlocks 3 books — US$8.33 ea.',
       occasions: {
         birthday: '🎂 Birthday',
         graduation: '🎓 Graduation',

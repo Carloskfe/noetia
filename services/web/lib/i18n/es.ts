@@ -838,7 +838,7 @@ export const es: Translations = {
       footer: 'El destinatario recibirá un email con su regalo. Los tokens son válidos por 1 año.',
       backToPlans: '← Ver planes de suscripción',
       unlocks1: 'Desbloquea 1 libro',
-      unlocks3: 'Desbloquea 3 libros — $8.33 c/u',
+      unlocks3: 'Desbloquea 3 libros — US$8.33 c/u',
       occasions: {
         birthday: '🎂 Cumpleaños',
         graduation: '🎓 Graduación',

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { formatUsd } from '@/lib/currency';
 import { useTranslation } from '@/lib/i18n';
 
 const PACKAGES = [
@@ -9,9 +10,8 @@ const PACKAGES = [
   { tokenCount: 3 as const, amountCents: 2499 },
 ];
 
-function formatPrice(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
-}
+// USD, always marked explicitly (PO decision 2026-11-13) — see lib/currency.
+const formatPrice = formatUsd;
 
 export default function GiftPage() {
   const { t } = useTranslation();
