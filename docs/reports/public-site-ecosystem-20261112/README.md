@@ -134,3 +134,83 @@ The PO confirmed that every account holding preferences from the old model (two 
 - **PO-053 continues to govern:** one selected cause receives 100% of the 2.22% allocation; no selection means an equal split across the three causes; no other options.
 
 This removes the legacy-data decision (OP-2) from the selector/API alignment. That work stays **out of scope** for this PR, as does all production financial-allocation logic.
+
+## 8. Authorized implementation — PO-053 Causas alignment (2026-11-12)
+
+The PO authorized this bounded change on Draft PR #59. Out of scope and unchanged: the 2.22% percentage, Stripe and subscription economics, allocation and payout logic, premium AI, Noetia+/NoetiaX entitlements, NEM-024, the Terms of Service and Privacy Policy, infrastructure and PRs #56/#57/#58.
+
+### 8.1 Selector (`services/web/components/CauseSelector.tsx`)
+
+- **Choice:** a native radio group in a `fieldset` inside an `aria-modal` dialog. Only one cause can be selected, and picking another replaces the previous one. There is no random option and no second cause.
+- **Copy:** the approved PO-053 wording in ES and EN, through the new `causeSelector` i18n namespace. Cause names are localized by slug and fall back to the API name. Descriptions reuse the `/causas` mission text.
+- **Loading:** shown with `role="status"`. If the causes fail to load, an error with a retry button appears.
+- **Confirming:** the confirm button stays disabled until a cause is chosen.
+- **Save success:** the selector shows a "Cause saved" confirmation, and only then calls `onSave` (which leads to checkout).
+- **Save failure:** an error appears with `role="alert"` and the selection is kept. The confirm button becomes "Try again", and the selector **never proceeds on its own**.
+- **"Continue without choosing":** proceeds to checkout with **no** preference request, so any earlier preference is left as it was. The dialog states the equal-split default.
+- **Pricing page:** `app/(billing)/pricing/page.tsx` is unchanged. Its `onSave`/`onSkip` contract already sends both paths to the same `checkout()`, and the bug was only in the selector, which called `onSave` from its `catch` block.
+
+### 8.2 API and persistence (no migration)
+
+- **`SavePreferencesDto`:** `cause1Id` is an optional UUID (null or absent means no preference). `cause2Id` must be empty (`@IsEmpty`). `randomDistribution` must be absent or `false` (`@Equals(false)`).
+  - Both fields stay declared on purpose. The global `ValidationPipe` strips undeclared fields instead of failing, so declaring them is what makes the API **reject** two-cause and random requests with a 400 error.
+- **`CausesService.savePreferences`:**
+  - rejects a second cause or a random request (defence in depth);
+  - rejects an unknown or inactive cause with a 400 error, without writing anything;
+  - stores `cause1Id` (with its relation), `cause2Id = null` and `randomDistribution = false`.
+- **Schema:** unchanged, because the existing columns represent PO-053 exactly. **No migration was created.** Legacy test-account rows are not touched. They take the single-cause shape only if that account saves again (§7).
+
+### 8.3 Public copy
+
+- **`/causas`:** the three unsourced statistics were removed. The cards keep the cause names and mission descriptions, and no figures were added.
+- **About:** now reads "Destinamos el 2,22% de cada pago a Causas Noetia: bienestar animal, niñez y juventud, y medio ambiente." / "We commit 2.22% of every payment to Causas Noetia: …".
+- **Milestones:** "donado automáticamente … desde el primer día" was replaced with "Compromiso del 2,22% de cada pago con Causas Noetia, parte del modelo financiero desde el inicio." / "A 2.22% commitment …, built into the financial model from the start."
+- **Company:** "cada compra" / "every purchase" → "cada pago" / "every payment".
+
+### 8.4 Tests
+
+| Suite | Covers |
+|---|---|
+| `web tests/unit/components/CauseSelector.spec.tsx` (12) | dialog and radio group; loading and load error with retry; confirm disabled until a choice; single selection replaced; save payload `{cause1Id, cause2Id: null, randomDistribution: false}` and the confirmation; failure keeps the selection, with no `onSave`, then retry succeeds; skip makes no API call; skip after a failure; EN rendering; slug fallback; PO-053 wording; ES/EN key parity |
+| `web tests/unit/app/billing/pricing.spec.tsx` (3) | an existing preference goes straight to checkout (request unchanged); skip leads to checkout with no save; a failed save means no checkout, then retry leads to checkout |
+| `web tests/unit/app/corporate-causas-copy.spec.tsx` (5) | About, Milestones and Company in ES/EN make no "donated / automatically / day one / every purchase" claims; commitment wording present |
+| `web tests/unit/app/causas.spec.tsx` (+2) | no unsourced statistics (ES/EN) |
+| `api tests/unit/causes/causes.service.spec.ts` (11) | create; change selection; no preference; legacy row normalized on save; rejection of a second cause, random, and unknown or inactive causes; repository failure propagates |
+| `api tests/unit/causes/dto/save-preferences.dto.spec.ts` (6) | single cause accepted; none accepted; explicit single shape accepted; second cause, random and non-UUID rejected |
+
+### 8.5 Local verification
+
+- **Web:** 347/347 tests pass; `tsc` is clean; `next lint` reports no errors or warnings in the changed files; `next build` passes.
+- **API:** the causes suites pass 17/17 with 100% coverage of `causes.service.ts`; `tsc` is clean; eslint reports 0 errors.
+- **API failures, both environmental and unrelated to this change:**
+  - `auth.controller.spec` cannot load the `bcrypt` native binding, which is not built in this local worktree (it runs on CI).
+  - `wikisource-fetcher.service.spec` timed out under load but passes 42/42 when run on its own.
+- **Coverage gates:** the global API branch gate (68.88% vs 80%) and the web coverage gate were already failing on `main`. Thresholds were not changed.
+- **Screenshots:** taken against a local production build with mocked API responses (fictional cause UUIDs; no staging, production or real accounts). There is no horizontal overflow at 1280 px or 390 px. The live POST body was checked as `{"cause1Id":"…","cause2Id":null,"randomDistribution":false}`.
+
+| Selector | ES | EN |
+|---|---|---|
+| Default (none chosen) | [desktop](screenshots/selector-default--es--desktop.jpg) · [mobile](screenshots/selector-default--es--mobile.jpg) | [desktop](screenshots/selector-default--en--desktop.jpg) · [mobile](screenshots/selector-default--en--mobile.jpg) |
+| One cause selected | [desktop](screenshots/selector-selected--es--desktop.jpg) · [mobile](screenshots/selector-selected--es--mobile.jpg) | [desktop](screenshots/selector-selected--en--desktop.jpg) · [mobile](screenshots/selector-selected--en--mobile.jpg) |
+| Save failed, with retry | [desktop](screenshots/selector-error--es--desktop.jpg) · [mobile](screenshots/selector-error--es--mobile.jpg) | [desktop](screenshots/selector-error--en--desktop.jpg) · [mobile](screenshots/selector-error--en--mobile.jpg) |
+
+| Page | ES | EN |
+|---|---|---|
+| `/causas` | [desktop](screenshots/causas--es--desktop.jpg) · [mobile](screenshots/causas--es--mobile.jpg) | [desktop](screenshots/causas--en--desktop.jpg) · [mobile](screenshots/causas--en--mobile.jpg) |
+| About | [desktop](screenshots/about--es--desktop.jpg) · [mobile](screenshots/about--es--mobile.jpg) | [desktop](screenshots/about--en--desktop.jpg) · [mobile](screenshots/about--en--mobile.jpg) |
+| Milestones | [desktop](screenshots/milestones--es--desktop.jpg) · [mobile](screenshots/milestones--es--mobile.jpg) | [desktop](screenshots/milestones--en--desktop.jpg) · [mobile](screenshots/milestones--en--mobile.jpg) |
+
+### 8.6 Not changed, and remaining concerns
+
+- **Pricing and billing strings (out of the authorized copy scope):**
+  - `t.pricing.causasText` reads "2,22% de cada pago apoya" / "2.22% of every payment supports".
+  - `t.billing.causas` reads "… supports social causes".
+  - Both are present tense, so a follow-up alignment to commitment wording is recommended.
+- **Open points still not decided:**
+  - "Qualifying payment" (OP-1).
+  - Wording of Terms §3 (OP-3, counsel).
+  - The allocation, ledger, rounding and reporting design (OP-4).
+- **Existing pricing-page behaviour, unchanged:**
+  - `/pricing` checks for a preference with an unauthenticated `fetch('/api/causes/preferences')`. A Bearer-token session can therefore look like "no preference", and the selector may reappear before checkout.
+  - The preference is a recorded intent only. Nothing allocates or pays out yet.
+- **Release status:** E-1 remains OPEN and BLOCKED, Checkpoint E remains NOT QUALIFIED, and release remains BLOCKED. Not merged, not deployed.
