@@ -1,9 +1,12 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
+  HttpException,
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -23,6 +26,16 @@ import { SubscriptionInvite } from './subscription-invite.entity';
 import { TokenLedger } from './token-ledger.entity';
 
 const ACTIVE_STATUSES = ['active', 'trialing', 'canceling'];
+
+/**
+ * Local statuses that still hold a billable Stripe subscription. A new subscription checkout is refused for
+ * these (and a webhook for a different Stripe subscription may not replace them). Entitlement is unchanged:
+ * access is still decided by ACTIVE_STATUSES / SubscriptionGuard.
+ */
+export const LIVE_SUBSCRIPTION_STATUSES: SubscriptionStatus[] = ['active', 'trialing', 'canceling', 'past_due'];
+
+/** Stripe subscription statuses that can still bill (or are about to): a second checkout would duplicate them. */
+const STRIPE_BILLABLE_STATUSES = ['active', 'trialing', 'past_due', 'unpaid', 'incomplete', 'paused'];
 
 const TOKEN_EXPIRY_DAYS = 90;
 const PROMOTIONAL_EXPIRY_DAYS = 30;
@@ -204,20 +217,91 @@ export class SubscriptionsService {
     return customer.id;
   }
 
+  /**
+   * Creates a subscription Checkout session — only when the user provably holds no billable subscription.
+   *
+   * Invariant (enforced here, independently of the web client): one Noetia user never starts a second
+   * billable Stripe subscription. Under a per-user transaction-scoped advisory lock (no schema change):
+   *   1. local record in a live status → 409 `subscription_exists` (fail closed; `POST /subscriptions/sync`
+   *      reconciles a stale record);
+   *   2. open subscription-mode Checkout sessions are listed BEFORE the subscription check, so a session that
+   *      completes mid-request is either still listed (and handled in step 4) or already a subscription (step 3);
+   *   3. Stripe is asked for the customer's billable subscriptions — this covers a missing/stale local record
+   *      and a delayed webhook. Any Stripe failure → 503 `subscription_status_unavailable`, never "no subscription";
+   *   4. an open session for the same plan is reused (repeated clicks, retries); any other open session is
+   *      expired first — if it can no longer be expired it may be completing → 409 `checkout_pending`.
+   * Nothing is ever cancelled. Price, trial length and terms are unchanged.
+   */
   async createCheckoutSession(userId: string, planId: string): Promise<{ url: string }> {
     const plan = await this.plansService.findById(planId);
     if (!plan) throw new BadRequestException({ error: 'invalid_plan' });
-    const customerId = await this.getOrCreateStripeCustomer(userId);
-    const session = await this.requireStripe().checkout.sessions.create({
-      customer: customerId,
-      payment_method_types: ['card'],
-      line_items: [{ price: plan.stripePriceId, quantity: 1 }],
-      mode: 'subscription',
-      subscription_data: { trial_period_days: 14 },
-      success_url: `${this.webUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${this.webUrl}/billing/cancel`,
+    const stripe = this.requireStripe();
+
+    return this.withCheckoutLock(userId, async () => {
+      const local = await this.subRepo.findOneBy({ userId });
+      if (local && LIVE_SUBSCRIPTION_STATUSES.includes(local.status)) {
+        throw new ConflictException({ error: 'subscription_exists', status: local.status });
+      }
+
+      const customerId = await this.getOrCreateStripeCustomer(userId);
+      const customerIds = [...new Set([customerId, local?.stripeCustomerId].filter((c): c is string => !!c))];
+
+      let openSessions: Array<{ id: string; url: string | null; metadata?: Record<string, string> | null }>;
+      try {
+        const sessions = await stripe.checkout.sessions.list({ customer: customerId, status: 'open', limit: 100 });
+        openSessions = sessions.data.filter((cs) => cs.mode === 'subscription');
+        for (const customer of customerIds) {
+          // Default listing = every subscription that is not canceled (newest first).
+          const subs = await stripe.subscriptions.list({ customer, limit: 100 });
+          const billable = subs.data.find((sub) => STRIPE_BILLABLE_STATUSES.includes(sub.status));
+          if (billable) {
+            this.logger.warn(
+              `[checkout-guard] blocked: Stripe subscription ${billable.id} (${billable.status}) exists for user ${userId}; ` +
+              `local status ${local?.status ?? 'missing'}`,
+            );
+            throw new ConflictException({ error: 'subscription_exists', status: this.mapStripeStatus(billable.status, billable.cancel_at_period_end) });
+          }
+          if (subs.has_more) throw new Error('subscription list truncated'); // cannot prove "none" → fail safe
+        }
+      } catch (err) {
+        if (err instanceof HttpException) throw err;
+        this.logger.error(`[checkout-guard] could not verify Stripe subscription state for user ${userId}: ${(err as Error)?.message}`);
+        throw new ServiceUnavailableException({ error: 'subscription_status_unavailable' });
+      }
+
+      const reusable = openSessions.find((cs) => cs.metadata?.noetiaPlanId === planId && cs.url);
+      if (reusable) return { url: reusable.url! };
+      for (const cs of openSessions) {
+        try {
+          await stripe.checkout.sessions.expire(cs.id);
+        } catch {
+          throw new ConflictException({ error: 'checkout_pending' });
+        }
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+        mode: 'subscription',
+        subscription_data: { trial_period_days: 14 },
+        metadata: { noetiaUserId: userId, noetiaPlanId: planId },
+        success_url: `${this.webUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${this.webUrl}/billing/cancel`,
+      });
+      return { url: session.url! };
     });
-    return { url: session.url! };
+  }
+
+  /**
+   * Serializes subscription-checkout attempts per user with a PostgreSQL transaction-scoped advisory lock
+   * (released on commit/rollback, works across API instances, needs no table or migration).
+   */
+  private withCheckoutLock<T>(userId: string, fn: () => Promise<T>): Promise<T> {
+    return this.subRepo.manager.transaction(async (em) => {
+      await em.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`subscription-checkout:${userId}`]);
+      return fn();
+    });
   }
 
   async createPortalSession(userId: string): Promise<{ url: string }> {
@@ -510,6 +594,19 @@ export class SubscriptionsService {
     return this.getSubscriptionStatus(userId);
   }
 
+  /**
+   * Applies a webhook-derived subscription state to the user's single subscription row.
+   *
+   * Identity guard: the row may only switch to a DIFFERENT Stripe subscription when the current one is no
+   * longer live AND the incoming one is live (a legitimate re-subscription). Otherwise the event is ignored
+   * and logged — never silently overwriting a live subscription (duplicate) and never letting a late event
+   * from an old subscription corrupt the current one. Nothing is cancelled or deleted.
+   *
+   * `planId` is written only when the caller passes it (unchanged behaviour: only
+   * `customer.subscription.updated` does — see the trial-token STOP gate in the stabilization report).
+   *
+   * @returns true when the state was applied.
+   */
   async upsertFromWebhook(
     stripeEventId: string,
     stripeCustomerId: string,
@@ -518,17 +615,66 @@ export class SubscriptionsService {
     currentPeriodEnd: Date,
     trialEnd: Date | null,
     planId?: string | null,
-  ): Promise<void> {
-    const existing = await this.subRepo.findOneBy({ stripeSubscriptionId });
-    if (existing?.stripeEventId === stripeEventId) return;
+  ): Promise<boolean> {
     const user = await this.userRepo.findOneBy({ stripeCustomerId });
     if (!user) {
       this.logger.warn(`No user found for stripeCustomerId: ${stripeCustomerId}`);
-      return;
+      return false;
     }
+    const existing = await this.subRepo.findOneBy({ userId: user.id });
+    if (existing?.stripeEventId === stripeEventId) return false;
+
+    if (existing?.stripeSubscriptionId && existing.stripeSubscriptionId !== stripeSubscriptionId) {
+      const currentLive = LIVE_SUBSCRIPTION_STATUSES.includes(existing.status);
+      const incomingLive = LIVE_SUBSCRIPTION_STATUSES.includes(status);
+      if (currentLive || !incomingLive) {
+        const detail =
+          `user=${user.id} current=${existing.stripeSubscriptionId}(${existing.status}) ` +
+          `incoming=${stripeSubscriptionId}(${status}) event=${stripeEventId}`;
+        if (currentLive && incomingLive) {
+          // Two billable subscriptions for one user: needs manual review (refund/cancel is a human decision).
+          this.logger.error(`[subscription-identity] DUPLICATE_LIVE_SUBSCRIPTION ${detail}`);
+        } else {
+          this.logger.warn(`[subscription-identity] IGNORED_OTHER_SUBSCRIPTION_EVENT ${detail}`);
+        }
+        return false;
+      }
+    }
+
     await this.subRepo.upsert(
       { userId: user.id, stripeCustomerId, stripeSubscriptionId, status, currentPeriodEnd, trialEnd, stripeEventId, ...(planId !== undefined ? { planId } : {}) },
       { conflictPaths: ['userId'] },
+    );
+    return true;
+  }
+
+  /**
+   * Re-reads a subscription from Stripe and applies its CURRENT state through the identity guard, so the
+   * result does not depend on webhook delivery order (a late or replayed event writes today's truth, not the
+   * state captured in its payload). A Stripe failure throws, so the webhook is retried by Stripe.
+   */
+  async applyStripeSubscription(
+    stripeEventId: string,
+    stripeSubscriptionId: string,
+    options: { includePlan?: boolean } = {},
+  ): Promise<boolean> {
+    const sub = (await this.requireStripe().subscriptions.retrieve(stripeSubscriptionId)) as any;
+    const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
+    if (!customerId) return false;
+    const periodEnd = sub.current_period_end ?? sub.items?.data?.[0]?.current_period_end;
+    let planId: string | null | undefined;
+    if (options.includePlan) {
+      const priceId = sub.items?.data?.[0]?.price?.id;
+      planId = priceId ? await this.findPlanByStripePriceId(priceId) : null;
+    }
+    return this.upsertFromWebhook(
+      stripeEventId,
+      customerId,
+      sub.id,
+      this.mapStripeStatus(sub.status, !!sub.cancel_at_period_end),
+      periodEnd ? new Date(periodEnd * 1000) : new Date(),
+      sub.trial_end ? new Date(sub.trial_end * 1000) : null,
+      planId,
     );
   }
 
