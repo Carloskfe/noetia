@@ -17,7 +17,7 @@ const OPERATIONS = [
   { es: 'Comunidades de lectura (Clubes, Escucha Juntos)', en: 'Reading communities (Clubs, Escucha Juntos)' },
   { es: 'Compartir contenido — fragmentos visuales para redes', en: 'Content sharing — visual fragments for social networks' },
   { es: 'Infraestructura editorial (revisión, analíticas, derechos)', en: 'Editorial infrastructure (review, analytics, rights)' },
-  { es: 'Impacto social — Causas Noetia (2,22% de cada compra)', en: 'Social impact — Causas Noetia (2.22% of every purchase)' },
+  { es: 'Impacto social — Causas Noetia (2,22% de cada pago)', en: 'Social impact — Causas Noetia (2.22% of every payment)' },
 ];
 
 const FUTURE = [

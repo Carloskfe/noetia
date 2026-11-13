@@ -167,4 +167,63 @@ describe('apiFetch', () => {
     expect(refreshCalls).toBe(1);                       // the whole point
     results.forEach((r) => expect(r).toEqual({ ok: 1 })); // all retried successfully
   });
+
+  describe('redirectOnAuthFailure option', () => {
+    const originalLocation = window.location;
+    beforeEach(() => {
+      delete (window as any).location;
+      (window as any).location = { href: '/pricing' };
+    });
+    afterEach(() => { (window as any).location = originalLocation; });
+
+    function unauthorizedEverywhere() {
+      global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) })) as unknown as typeof fetch;
+    }
+
+    it('default: redirects to /login when the session cannot be refreshed (unchanged behaviour)', async () => {
+      jest.resetModules();
+      const { apiFetch } = await import('../../../lib/api');
+      localStorageMock.getItem.mockImplementation((k: string) => mockStorage[k] ?? null);
+      unauthorizedEverywhere();
+      await expect(apiFetch('/subscriptions/me')).rejects.toMatchObject({ status: 401 });
+      expect(window.location.href).toBe('/login');
+    });
+
+    it('false: throws 401 without navigating', async () => {
+      jest.resetModules();
+      const { apiFetch } = await import('../../../lib/api');
+      localStorageMock.getItem.mockImplementation((k: string) => mockStorage[k] ?? null);
+      unauthorizedEverywhere();
+      await expect(apiFetch('/subscriptions/me', {}, { redirectOnAuthFailure: false })).rejects.toMatchObject({ status: 401 });
+      expect(window.location.href).toBe('/pricing');
+      expect((global.fetch as jest.Mock).mock.calls.map(([u]) => u)).toEqual([
+        expect.stringContaining('/subscriptions/me'),
+        expect.stringContaining('/auth/refresh'),
+      ]);
+    });
+
+    it('no stored access token but a valid refresh session: refreshes, stores the token and retries with Bearer', async () => {
+      jest.resetModules();
+      const { apiFetch } = await import('../../../lib/api');
+      localStorageMock.getItem.mockImplementation((k: string) => mockStorage[k] ?? null);
+      global.fetch = jest.fn((url: string, init?: any) => {
+        if (url.includes('/auth/refresh')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ accessToken: 'fresh' }) });
+        if (init?.headers?.Authorization === 'Bearer fresh') return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ planId: 'p1' }) });
+        return Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) });
+      }) as unknown as typeof fetch;
+
+      const res = await apiFetch('/subscriptions/me', {}, { redirectOnAuthFailure: false });
+
+      expect(res).toEqual({ planId: 'p1' });
+      expect(mockStorage['access_token']).toBe('fresh');
+      expect(window.location.href).toBe('/pricing');
+    });
+
+    it('maps an empty 200 body to {} (callers must not read it as a record)', async () => {
+      jest.resetModules();
+      const { apiFetch } = await import('../../../lib/api');
+      global.fetch = jest.fn(() => Promise.resolve({ ok: true, status: 200, json: () => Promise.reject(new SyntaxError('Unexpected end of JSON input')) })) as unknown as typeof fetch;
+      await expect(apiFetch('/causes/preferences')).resolves.toEqual({});
+    });
+  });
 });

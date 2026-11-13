@@ -1,23 +1,28 @@
 import type { Metadata } from 'next';
 import LandingContent from './LandingContent';
+import { displayFont } from './fonts';
 
 export const metadata: Metadata = {
-  title: 'Noetia — Where knowledge becomes visible',
+  title: 'Noetia — Lee, escucha y comparte las ideas que te mueven',
   description:
-    'Lee, escucha, resalta y comparte. Noetia transforma lo que aprendes en una identidad intelectual visible — frase por frase.',
+    'Lee y escucha con texto y audio sincronizados, guarda los pasajes que te mueven y compártelos como tarjetas visuales. Read, listen, capture and share.',
   openGraph: {
-    title: 'Noetia — Where knowledge becomes visible',
-    description: 'The first Knowledge Expression Platform. Read, listen, highlight, and share what defines you.',
+    title: 'Noetia — Lee, escucha y comparte las ideas que te mueven',
+    description: 'Lectura y audio sincronizados, fragmentos y tarjetas visuales. Synchronized reading and audio, saved passages and visual cards.',
     type: 'website',
     locale: 'es_LA',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Noetia — Where knowledge becomes visible',
-    description: 'The first Knowledge Expression Platform. Read, listen, highlight, and share what defines you.',
+    title: 'Noetia — Lee, escucha y comparte las ideas que te mueven',
+    description: 'Lectura y audio sincronizados, fragmentos y tarjetas visuales. Synchronized reading and audio, saved passages and visual cards.',
   },
 };
 
 export default function LandingPage() {
-  return <LandingContent />;
+  return (
+    <div className={displayFont.variable}>
+      <LandingContent />
+    </div>
+  );
 }

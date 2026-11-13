@@ -38,15 +38,25 @@ async function refreshAccessToken(): Promise<boolean> {
   return refreshInFlight;
 }
 
-export async function apiFetch(path: string, init: RequestInit = {}): Promise<any> {
+export interface ApiFetchOptions {
+  /**
+   * Default `true` (unchanged behaviour): when the session cannot be refreshed, navigate to /login.
+   * Pass `false` where authentication is optional (e.g. the public /pricing page): the call then throws
+   * `{ status: 401 }` and the caller decides — a guest opening the page is never redirected.
+   */
+  redirectOnAuthFailure?: boolean;
+}
+
+export async function apiFetch(path: string, init: RequestInit = {}, opts: ApiFetchOptions = {}): Promise<any> {
   let res = await fetchWithToken(path, init);
 
-  // Auto-refresh expired access token once (shared/de-duped), then retry.
+  // Auto-refresh an expired (or absent) access token once (shared/de-duped), then retry.
+  // With no stored token the request still 401s and a valid httpOnly refresh cookie re-issues one.
   if (res.status === 401 && !path.startsWith('/auth/')) {
     if (await refreshAccessToken()) {
       res = await fetchWithToken(path, init);
     } else {
-      if (typeof window !== 'undefined') window.location.href = '/login';
+      if (opts.redirectOnAuthFailure !== false && typeof window !== 'undefined') window.location.href = '/login';
       throw Object.assign(new Error('Session expired'), { status: 401 });
     }
   }

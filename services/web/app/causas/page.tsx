@@ -13,13 +13,11 @@ const STRATEGIC_LINES = [
     icon: '🐾',
     es: {
       name: 'Bienestar Animal',
-      description: 'Apoyamos iniciativas de rescate, cuidado, rehabilitación y protección de animales en América Latina.',
-      stat: 'Más de 70 millones de perros y gatos viven en condición de abandono en América Latina.',
+      description: 'Línea dedicada a iniciativas de rescate, cuidado, rehabilitación y protección de animales en América Latina.',
     },
     en: {
       name: 'Animal Welfare',
-      description: 'We support rescue, care, rehabilitation, and protection initiatives for animals in Latin America.',
-      stat: 'More than 70 million dogs and cats live in abandonment in Latin America.',
+      description: 'A line dedicated to rescue, care, rehabilitation and protection initiatives for animals in Latin America.',
     },
     color: 'from-amber-900/30 to-amber-950/10 border-amber-500/20',
     accent: 'text-amber-400',
@@ -29,13 +27,11 @@ const STRATEGIC_LINES = [
     icon: '📚',
     es: {
       name: 'Niñez y Juventud',
-      description: 'Impulsamos proyectos que amplían el acceso a la educación, la lectura y las oportunidades para niños y jóvenes.',
-      stat: '1 de cada 3 niños en América Latina no tiene acceso a libros fuera del aula escolar.',
+      description: 'Línea dedicada a proyectos que amplían el acceso a la educación, la lectura y las oportunidades para niños y jóvenes.',
     },
     en: {
       name: 'Children & Youth',
-      description: 'We drive projects that expand access to education, reading, and opportunities for children and young people.',
-      stat: '1 in 3 children in Latin America has no access to books outside the classroom.',
+      description: 'A line dedicated to projects that expand access to education, reading and opportunities for children and young people.',
     },
     color: 'from-blue-900/30 to-blue-950/10 border-blue-500/20',
     accent: 'text-blue-400',
@@ -45,13 +41,11 @@ const STRATEGIC_LINES = [
     icon: '🌿',
     es: {
       name: 'Medio Ambiente',
-      description: 'Contribuimos a proteger los ecosistemas, la biodiversidad y los recursos naturales de nuestra región.',
-      stat: 'América Latina alberga el 40% de la biodiversidad del planeta, pero pierde más de 2,6 millones de hectáreas de bosque al año.',
+      description: 'Línea dedicada a la protección de los ecosistemas, la biodiversidad y los recursos naturales de nuestra región.',
     },
     en: {
       name: 'Environment',
-      description: 'We help protect the ecosystems, biodiversity, and natural resources of our region.',
-      stat: 'Latin America holds 40% of the planet\'s biodiversity, but loses more than 2.6 million hectares of forest each year.',
+      description: 'A line dedicated to protecting the ecosystems, biodiversity and natural resources of our region.',
     },
     color: 'from-emerald-900/30 to-emerald-950/10 border-emerald-500/20',
     accent: 'text-emerald-400',
@@ -61,23 +55,18 @@ const STRATEGIC_LINES = [
 const HOW_IT_WORKS = [
   {
     step: '01',
-    es: 'Cada suscripción o compra en Noetia activa automáticamente tu aporte.',
-    en: 'Every subscription or purchase on Noetia automatically activates your contribution.',
+    es: 'Cada pago en Noetia incluye el compromiso de Causas Noetia.',
+    en: 'Every payment on Noetia carries the Causas Noetia commitment.',
   },
   {
     step: '02',
-    es: 'El 2,22% de ese pago se asigna a proyectos sociales reales — del total de la transacción, no de las ganancias.',
-    en: '2.22% of that payment goes to real social projects — from the total transaction, not from profits.',
+    es: 'Destinamos el 2,22% de ese pago a Causas Noetia, calculado sobre el total del pago y no sobre las ganancias.',
+    en: 'We commit 2.22% of that payment to Causas Noetia, calculated on the total payment, not on profits.',
   },
   {
     step: '03',
-    es: 'Tú decides: elige hasta dos líneas estratégicas que quieres apoyar, o distribuye tu aporte de forma aleatoria entre las tres.',
-    en: 'You decide: choose up to two strategic lines to support, or distribute your contribution randomly across all three.',
-  },
-  {
-    step: '04',
-    es: 'Publicamos informes periódicos de impacto para que veas exactamente a dónde va cada peso de la comunidad.',
-    en: 'We publish periodic impact reports so you can see exactly where every dollar from the community goes.',
+    es: 'Tú eliges una causa para recibir ese aporte. Si no eliges ninguna, se distribuye por igual entre las tres.',
+    en: 'You choose one cause to receive that contribution. If you don\'t choose one, it is distributed equally among all three.',
   },
 ];
 
@@ -141,17 +130,17 @@ export default function CausasPage() {
         </h1>
         <p className="text-slate-300 text-lg leading-relaxed max-w-xl mx-auto">
           {l === 'es' ? (
-            <>Construimos Noetia para compartir conocimiento. Pero creemos que compartir
-              tiene que significar algo más que alcance. Por eso el{' '}
-              <strong className="text-white">2,22%</strong> de cada compra en nuestra plataforma
-              apoya proyectos sociales reales — desde el primer día, sin excepción,
-              como parte de cómo operamos.</>
+            <>Construimos Noetia para compartir conocimiento, y creemos que compartir
+              tiene que significar algo más que alcance. Destinamos el{' '}
+              <strong className="text-white">2,22%</strong> de cada pago a Causas Noetia. Tú eliges
+              una causa para recibir ese aporte. Si no eliges ninguna, se distribuye por igual
+              entre las tres.</>
           ) : (
-            <>We built Noetia to share knowledge. But we believe sharing must mean something
-              more than reach. That is why{' '}
-              <strong className="text-white">2.22%</strong> of every purchase on our platform
-              supports real social projects — from day one, without exception,
-              as part of how we operate.</>
+            <>We built Noetia to share knowledge, and we believe sharing must mean something
+              more than reach. We commit{' '}
+              <strong className="text-white">2.22%</strong> of every payment to Causas Noetia. You
+              choose one cause to receive that contribution. If you don&apos;t choose one, it is
+              distributed equally among all three.</>
           )}
         </p>
       </section>
@@ -165,10 +154,7 @@ export default function CausasPage() {
               <div key={line.slug} className={`rounded-2xl border bg-gradient-to-b ${line.color} p-6`}>
                 <span className="text-4xl block mb-4">{line.icon}</span>
                 <h2 className={`text-base font-bold mb-2 ${line.accent}`}>{copy.name}</h2>
-                <p className="text-slate-300 text-sm leading-relaxed mb-4">{copy.description}</p>
-                <div className="bg-white/5 rounded-xl p-3">
-                  <p className="text-xs text-slate-400 italic leading-relaxed">&ldquo;{copy.stat}&rdquo;</p>
-                </div>
+                <p className="text-slate-300 text-sm leading-relaxed">{copy.description}</p>
               </div>
             );
           })}
@@ -236,24 +222,6 @@ export default function CausasPage() {
         </div>
       </section>
 
-      {/* Footer strip */}
-      <footer className="border-t border-white/10 py-8">
-        <div className="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
-          <span className="font-bold tracking-widest text-slate-400">NOETIA</span>
-          <nav className="flex gap-6">
-            <Link href="/library" className="hover:text-slate-300 transition">
-              {l === 'es' ? 'Biblioteca' : 'Library'}
-            </Link>
-            <Link href="/pricing" className="hover:text-slate-300 transition">
-              {l === 'es' ? 'Planes' : 'Plans'}
-            </Link>
-            <a href="mailto:info@noetia.app" className="hover:text-slate-300 transition">
-              {l === 'es' ? 'Contacto' : 'Contact'}
-            </a>
-          </nav>
-          <span>© {new Date().getFullYear()} Noetia</span>
-        </div>
-      </footer>
 
     </main>
   );
