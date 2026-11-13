@@ -94,7 +94,9 @@ export const en = {
   },
   paywall: {
     title: 'Noetia Premium',
-    subtitle: '14-day free trial. Cancel anytime.',
+    subtitle: "Your 14-day free trial includes your plan's first tokens. Cancel anytime.",
+    subtitleReturning: "Welcome back. You've already had your free trial, so your subscription starts when you subscribe.",
+    subtitleNeutral: 'Prices in US dollars. Cancel anytime.',
     subscribe: 'View plans and subscribe →',
     alreadySubscribed: 'I already subscribed',
     hint: 'Subscribe at noetia.app, then come back and tap "I already subscribed".',

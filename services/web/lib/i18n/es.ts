@@ -377,6 +377,18 @@ export const es: Translations = {
     equivalent: 'equivale a',
     currentPlan: 'Tu plan actual',
     startTrial: 'Comenzar prueba gratuita',
+    subscribe: 'Suscribirme',
+    getStarted: 'Empezar',
+    // D1/D6 — la prueba se ofrece una vez por cliente; nunca se anuncia a quien regresa.
+    trialOffer: {
+      guest: 'Los nuevos suscriptores tienen 14 días de prueba gratuita con los primeros tokens de su plan incluidos. Cancela cuando quieras.',
+      eligible: 'Tu prueba gratuita de 14 días incluye los primeros tokens de tu plan. Cancela cuando quieras.',
+      returning: 'Qué bueno verte de nuevo. Ya disfrutaste tu prueba gratuita, así que tu suscripción comienza hoy.',
+      unknown: 'Precios en dólares estadounidenses. Cancela cuando quieras.',
+    },
+    trialTokens: (n: number) => `Incluye ${n} ${n === 1 ? 'token' : 'tokens'} para empezar tu prueba`,
+    trialOwnership: 'Los libros que canjees durante la prueba son tuyos para siempre, aunque canceles.',
+    renewal: 'Los planes se renuevan automáticamente. Si cancelas, conservas tu acceso y los tokens de tu plan hasta el final del período que pagaste.',
     paymentError: 'No pudimos iniciar el pago. Intenta de nuevo.',
     prefLookup: {
       title: 'No pudimos consultar tu elección de Causas Noetia',

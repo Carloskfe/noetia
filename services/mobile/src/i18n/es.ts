@@ -96,7 +96,9 @@ export const es: MobileTranslations = {
   },
   paywall: {
     title: 'Noetia Premium',
-    subtitle: '14 días de prueba gratuita. Cancela cuando quieras.',
+    subtitle: 'Tu prueba gratuita de 14 días incluye los primeros tokens de tu plan. Cancela cuando quieras.',
+    subtitleReturning: 'Qué bueno verte de nuevo. Ya disfrutaste tu prueba gratuita, así que tu suscripción comienza al suscribirte.',
+    subtitleNeutral: 'Precios en dólares estadounidenses. Cancela cuando quieras.',
     subscribe: 'Ver planes y suscribirme →',
     alreadySubscribed: 'Ya me suscribí',
     hint: 'Suscríbete en noetia.app, luego regresa y toca "Ya me suscribí".',

@@ -47,7 +47,19 @@ const isAuthError = (e: unknown) => (e as { status?: number } | null)?.status ==
  * - `auth`: no authenticated session (guest), even after the refresh attempt.
  */
 type StatusState = 'known' | 'unknown' | 'auth';
-type StatusResult = { state: StatusState; planId: string | null };
+type StatusResult = { state: StatusState; planId: string | null; trialEligible?: boolean | null };
+
+/**
+ * D1/D6 (PO 2026-11-13): which trial offer the page may show. A trial is advertised only to a signed-in customer
+ * the API confirms as eligible; guests see it qualified as "for new subscribers"; returning customers are told
+ * plainly there is no new trial; when eligibility cannot be confirmed, no trial is mentioned.
+ */
+type TrialOffer = 'guest' | 'eligible' | 'returning' | 'unknown';
+function trialOfferFor(s: StatusResult): TrialOffer {
+  if (s.state === 'auth') return 'guest';
+  if (s.state !== 'known') return 'unknown';
+  return s.trialEligible === true ? 'eligible' : s.trialEligible === false ? 'returning' : 'unknown';
+}
 
 // Statuses that still hold a Stripe subscription: starting another checkout for these would duplicate it.
 // `canceled` / `none` leave the plan purchasable again.
@@ -55,9 +67,10 @@ const LIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing', 'canceling', 'past_due
 
 async function loadStatus(): Promise<StatusResult> {
   try {
-    const s = await apiFetch('/subscriptions/me', {}, OPTIONAL_AUTH);
+    const s = await apiFetch('/subscriptions/me?trialEligibility=1', {}, OPTIONAL_AUTH);
     const live = !!s && LIVE_SUBSCRIPTION_STATUSES.includes(s.status);
-    return { state: 'known', planId: live ? s.planId ?? null : null };
+    const trialEligible = typeof s?.trialEligible === 'boolean' ? s.trialEligible : null;
+    return { state: 'known', planId: live ? s.planId ?? null : null, trialEligible };
   } catch (e) {
     return { state: isAuthError(e) ? 'auth' : 'unknown', planId: null };
   }
@@ -91,6 +104,7 @@ export default function PricingPage() {
   const [retryingLookup, setRetryingLookup] = useState(false);
   const [buyingPackageId, setBuyingPackageId] = useState<string | null>(null);
   const [status, setStatus] = useState<StatusState>('auth');
+  const [trialOffer, setTrialOffer] = useState<TrialOffer>('guest');
   const statusRef = useRef<StatusState>('auth'); // read by checkout(), which callbacks may hold from an earlier render
   const [statusFailedPlanId, setStatusFailedPlanId] = useState<string | null>(null);
   const [retryingStatus, setRetryingStatus] = useState(false);
@@ -99,6 +113,7 @@ export default function PricingPage() {
     statusRef.current = s.state;
     setStatus(s.state);
     setCurrentPlanId(s.planId);
+    setTrialOffer(trialOfferFor(s));
   }
 
   useEffect(() => {
@@ -226,7 +241,11 @@ export default function PricingPage() {
       {/* Header */}
       <div className="text-center mb-10">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">{t.pricing.title}</h1>
-        <p className="text-gray-500 text-sm mb-1">{t.pricing.trial}</p>
+        <p className="text-gray-500 text-sm mb-1" data-trial-offer={trialOffer}>{t.pricing.trialOffer[trialOffer]}</p>
+        {(trialOffer === 'eligible' || trialOffer === 'guest') && (
+          <p className="text-xs text-slate-500 mb-1">{t.pricing.trialOwnership}</p>
+        )}
+        <p className="text-xs text-slate-500 mb-1">{t.pricing.renewal}</p>
         <p className="text-xs text-slate-400">
           {t.pricing.causasText}{' '}
           <Link href="/causas" className="underline hover:text-slate-600">{t.pricing.causasLink}</Link>.
@@ -313,6 +332,9 @@ export default function PricingPage() {
                   </p>
                 )}
                 <p className="text-sm text-gray-500 mb-4">{meta.tagline}</p>
+                {trialOffer === 'eligible' && plan.tokensPerCycle > 0 && (
+                  <p className="text-xs text-emerald-700 mb-3">{t.pricing.trialTokens(plan.tokensPerCycle)}</p>
+                )}
                 <ul className="space-y-2 mb-6 flex-1">
                   {meta.highlights.map((h) => (
                     <li key={h} className="flex items-start gap-2 text-sm text-gray-700">
@@ -332,7 +354,13 @@ export default function PricingPage() {
                       : 'bg-gray-900 text-white hover:bg-gray-800'
                   }`}
                 >
-                  {isCurrent ? t.pricing.currentPlan : t.pricing.startTrial}
+                  {isCurrent
+                    ? t.pricing.currentPlan
+                    : trialOffer === 'eligible'
+                    ? t.pricing.startTrial
+                    : trialOffer === 'guest'
+                    ? t.pricing.getStarted
+                    : t.pricing.subscribe}
                 </button>
               </div>
             );

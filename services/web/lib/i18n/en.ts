@@ -375,6 +375,18 @@ export const en = {
     equivalent: 'equivalent to',
     currentPlan: 'Your current plan',
     startTrial: 'Start free trial',
+    subscribe: 'Subscribe',
+    getStarted: 'Get started',
+    // D1/D6 — the trial is offered once per customer; never advertised to a returning customer.
+    trialOffer: {
+      guest: "New subscribers get a 14-day free trial with their plan's first tokens included. Cancel anytime.",
+      eligible: "Your 14-day free trial includes your plan's first tokens. Cancel anytime.",
+      returning: "Welcome back. You've already had your free trial, so your subscription starts today.",
+      unknown: 'Prices in US dollars. Cancel anytime.',
+    },
+    trialTokens: (n: number) => `Includes ${n} ${n === 1 ? 'token' : 'tokens'} to start your trial`,
+    trialOwnership: 'Books you redeem during the trial are yours to keep, even if you cancel.',
+    renewal: "Plans renew automatically. If you cancel, you keep your access and your plan's tokens until the end of the period you paid for.",
     paymentError: 'Could not start payment. Please try again.',
     prefLookup: {
       title: "We couldn't check your Causas Noetia choice",
