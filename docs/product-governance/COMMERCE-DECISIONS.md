@@ -56,3 +56,16 @@ Durable record of **Product Owner decisions** on Noetia's commercial model: subs
 | Subscription plan prices and token-package prices (Stripe Price objects referenced by ID) | **PENDING.** Currency is set in Stripe and could not be verified from the available environment (no Stripe access). The PO should confirm in the Stripe Dashboard that every referenced price is `usd`. |
 | Web pricing, gift and token displays; pricing metadata; mobile paywall | **Marked as US$** (PR #60) |
 | Terms of Service | Already state `USD` explicitly. The annual figures are pending the separate legal-gated PR #22 |
+
+---
+
+## Pending PO decisions (not yet decided)
+
+Raised in the PR #60 report §12 (2026-11-13). **None is implemented, and none is policy until the PO decides:**
+1. **Trial eligibility:** one free trial per person (Noetia account and Stripe customer; optional e-mail check). Do linked Duo/Family members remain eligible?
+2. **Annual plans:** confirm 12 monthly cycles per paid annual period. Today's code grants 13.
+3. **Annual cancel-at-period-end:** do monthly cycles continue until the period ends, as the Terms' cancellation clause implies? Today they stop.
+4. **Mid-cycle upgrades:** no extra cycle (recommended), or a token difference?
+5. **$0 renewal invoices** (if discounts are ever introduced): grant the cycle or not?
+6. **T-1 customer disclosure** copy (then legal review, OP-3).
+
