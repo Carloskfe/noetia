@@ -25,9 +25,28 @@ describe('stripe-fulfillment-ledger', () => {
     await expect(claimStripeKey(em as any, 'evt_1', 'x')).rejects.toThrow('db down');
   });
 
-  it('fulfillmentKey namespaces keys so they never collide with Stripe event ids (evt_…)', () => {
+  it('fulfillmentKey formats are stable (rows already written in the ledger depend on them)', () => {
     expect(fulfillmentKey('invoice-tokens', 'in_1')).toBe('fulfillment:invoice-tokens:in_1');
     expect(fulfillmentKey('checkout-session', 'cs_1')).toBe('fulfillment:checkout-session:cs_1');
+    expect(fulfillmentKey('trial-start-tokens', 'sub_1')).toBe('fulfillment:trial-start-tokens:sub_1');
+  });
+
+  it('regression: fulfillment keys never collide with Stripe event ids or with each other', () => {
+    const kinds = ['invoice-tokens', 'checkout-session', 'trial-start-tokens'] as const;
+    const keys = kinds.map((k) => fulfillmentKey(k, 'x_1'));
+    expect(new Set(keys).size).toBe(kinds.length);
+    for (const key of keys) {
+      expect(key.startsWith('evt_')).toBe(false);
+      expect(key).toMatch(/^fulfillment:[a-z-]+:x_1$/);
+    }
+    // The trial grant (per subscription) and a renewal grant (per invoice) are distinct identities.
+    expect(fulfillmentKey('trial-start-tokens', 'sub_1')).not.toBe(fulfillmentKey('invoice-tokens', 'sub_1'));
+  });
+
+  it('regression: the type column of a fulfillment row names its kind', async () => {
+    const em = { query: jest.fn().mockResolvedValue([{ eventId: 'k' }]) };
+    await claimStripeKey(em as any, fulfillmentKey('trial-start-tokens', 'sub_1'), 'fulfillment:trial-start-tokens');
+    expect(em.query.mock.calls[0][1]).toEqual(['fulfillment:trial-start-tokens:sub_1', 'fulfillment:trial-start-tokens']);
   });
 
   it('lockSubscriptionIdentity takes a transaction-scoped advisory lock keyed by user', async () => {

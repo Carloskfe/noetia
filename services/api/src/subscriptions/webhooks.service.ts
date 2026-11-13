@@ -64,9 +64,9 @@ export class WebhooksService {
    * duplicated or out-of-order deliveries converge on Stripe's current state and a different Stripe
    * subscription can never silently replace a live one.
    *
-   * Unchanged on purpose (trial-token STOP gate, PO decision pending): `planId` is still written only by
-   * `customer.subscription.updated`, and tokens are still issued only from `invoice.paid` via
-   * issueTokensForNewSubscription — so when tokens are granted is exactly as before.
+   * Tokens (T-1, PO decision 2026-11-13): every subscription event records the plan, and the first one that
+   * sees the subscription `trialing` grants the initial cycle once (SubscriptionsService.issueTrialStartTokens).
+   * Paid invoices grant the renewal cycle once per invoice; $0 invoices (the trial's) grant no renewal cycle.
    */
   private async dispatch(event: any, em: EntityManager, afterCommit: AfterCommit): Promise<void> {
     switch (event.type) {
@@ -78,17 +78,15 @@ export class WebhooksService {
         }
         break;
       case 'customer.subscription.created':
-        await this.subscriptionsService.applyStripeSubscription(event.id, event.data.object.id, {}, em);
-        break;
       case 'customer.subscription.updated':
-        await this.subscriptionsService.applyStripeSubscription(event.id, event.data.object.id, { includePlan: true }, em);
+        await this.subscriptionsService.applyStripeSubscription(event.id, event.data.object.id, em);
         break;
       case 'invoice.paid':
         await this.handleInvoicePaid(event, em);
         break;
       case 'invoice.payment_failed': {
         const subId = this.invoiceSubscriptionId(event.data.object);
-        if (subId) await this.subscriptionsService.applyStripeSubscription(event.id, subId, {}, em);
+        if (subId) await this.subscriptionsService.applyStripeSubscription(event.id, subId, em);
         break;
       }
       case 'customer.subscription.deleted':
@@ -127,17 +125,19 @@ export class WebhooksService {
     const session = event.data.object;
     if (!session.subscription || !session.customer) return;
     const stripeSubId = typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
-    await this.subscriptionsService.applyStripeSubscription(event.id, stripeSubId, {}, em);
+    await this.subscriptionsService.applyStripeSubscription(event.id, stripeSubId, em);
   }
 
   private async handleInvoicePaid(event: any, em: EntityManager): Promise<void> {
     const invoice = event.data.object;
     const subId = this.invoiceSubscriptionId(invoice);
     if (!subId) return;
-    await this.subscriptionsService.applyStripeSubscription(event.id, subId, {}, em);
-    // Token issuance timing unchanged (trial-token STOP gate): looks the row up by this Stripe subscription id
-    // and needs its plan. A subscription rejected by the identity guard has no row, so no tokens are attached
-    // to an untracked one. The invoice id makes the grant once-per-invoice.
+    await this.subscriptionsService.applyStripeSubscription(event.id, subId, em);
+    // A $0 invoice (the trial's subscription_create invoice, or a $0 proration) grants no renewal cycle: under
+    // T-1 the trial's initial cycle is the trial-start grant made above, and must not be granted twice.
+    if (invoice?.amount_paid === 0) return;
+    // Paid cycle: looks the row up by this Stripe subscription id and needs its plan. A subscription rejected by
+    // the identity guard has no row, so no tokens are attached to an untracked one. Once per invoice id.
     await this.subscriptionsService.issueTokensForNewSubscription(subId, em, invoice?.id ?? null);
   }
 

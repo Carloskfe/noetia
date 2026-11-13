@@ -645,7 +645,8 @@ describe('SubscriptionsService', () => {
       mockSubRepo.findOneBy.mockResolvedValue(null);
     });
 
-    it('writes the CURRENT Stripe status/period/trial (trialing stays trialing), without planId by default', async () => {
+    it('writes the CURRENT Stripe status/period/trial (trialing stays trialing) and the plan from the price (T-1: every event)', async () => {
+      mockPlansService.findAll.mockResolvedValue([{ id: 'plan1', stripePriceId: 'price_123' }]);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
         id: 'sub_1', customer: 'cus_1', status: 'trialing', cancel_at_period_end: false,
         current_period_end: now + 86400, trial_end: now + 86400, items: { data: [{ price: { id: 'price_123' } }] },
@@ -654,16 +655,23 @@ describe('SubscriptionsService', () => {
       const row = mockSubRepo.upsert.mock.calls[0][0];
       expect(row).toMatchObject({ stripeSubscriptionId: 'sub_1', status: 'trialing', stripeCustomerId: 'cus_1' });
       expect(row.currentPeriodEnd).toEqual(new Date((now + 86400) * 1000));
-      expect(row).not.toHaveProperty('planId');
+      expect(row.planId).toBe('plan1');
     });
 
-    it('with includePlan maps the price to the plan (unchanged customer.subscription.updated behaviour)', async () => {
+    it('an unknown price records no plan (null), as customer.subscription.updated always did', async () => {
+      mockPlansService.findAll.mockResolvedValue([]);
+      mockStripe.subscriptions.retrieve.mockResolvedValue({ id: 'sub_1', customer: 'cus_1', status: 'active', items: { data: [{ price: { id: 'price_x' } }] } });
+      await service.applyStripeSubscription('evt_1', 'sub_1');
+      expect(mockSubRepo.upsert.mock.calls[0][0].planId).toBeNull();
+    });
+
+    it('maps cancel_at_period_end, the item-level period end and the plan', async () => {
       mockPlansService.findAll.mockResolvedValue([{ id: 'plan1', stripePriceId: 'price_123' }]);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
         id: 'sub_1', customer: { id: 'cus_1' }, status: 'active', cancel_at_period_end: true,
         items: { data: [{ price: { id: 'price_123' }, current_period_end: now + 10 }] }, trial_end: null,
       });
-      await service.applyStripeSubscription('evt_1', 'sub_1', { includePlan: true });
+      await service.applyStripeSubscription('evt_1', 'sub_1');
       expect(mockSubRepo.upsert.mock.calls[0][0]).toMatchObject({ status: 'canceling', planId: 'plan1', currentPeriodEnd: new Date((now + 10) * 1000) });
     });
 
@@ -676,6 +684,58 @@ describe('SubscriptionsService', () => {
     it('ignores a subscription without a customer', async () => {
       mockStripe.subscriptions.retrieve.mockResolvedValue({ id: 'sub_1', status: 'active' });
       expect(await service.applyStripeSubscription('evt_1', 'sub_1')).toBe(false);
+    });
+
+    describe('T-1 trial-start grant', () => {
+      const trialing = { id: 'sub_1', customer: 'cus_1', status: 'trialing', cancel_at_period_end: false, current_period_end: now + 14 * 86400, trial_end: now + 14 * 86400, items: { data: [{ price: { id: 'price_123' } }] } };
+      beforeEach(() => {
+        mockPlansService.findAll.mockResolvedValue([{ id: 'plan1', stripePriceId: 'price_123' }]);
+        mockSubRepo.findOne.mockResolvedValue({ id: 'row1', userId: 'u1', plan: { tokensPerCycle: 2, interval: 'month' } });
+        mockTokenRepo.create.mockImplementation((d: any) => d);
+        mockTokenRepo.save.mockResolvedValue([]);
+      });
+
+      it('a trialing subscription applied in the webhook transaction grants tokensPerCycle once', async () => {
+        mockStripe.subscriptions.retrieve.mockResolvedValue(trialing);
+        await service.applyStripeSubscription('evt_1', 'sub_1', txEm as any);
+        await service.applyStripeSubscription('evt_2', 'sub_1', txEm as any);
+        expect(mockTokenRepo.save).toHaveBeenCalledTimes(1);
+        expect(mockTokenRepo.save.mock.calls[0][0]).toHaveLength(2);
+        expect(mockTokenRepo.save.mock.calls[0][0][0]).toMatchObject({ userId: 'u1', subscriptionId: 'row1', type: 'paid', reason: 'Trial start (initial cycle)' });
+        expect(claimed.has('fulfillment:trial-start-tokens:sub_1')).toBe(true);
+      });
+
+      it('not trialing (active) → no trial grant', async () => {
+        mockStripe.subscriptions.retrieve.mockResolvedValue({ ...trialing, status: 'active', trial_end: null });
+        await service.applyStripeSubscription('evt_1', 'sub_1', txEm as any);
+        expect(mockTokenRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('an identity-rejected (duplicate) subscription gets no trial grant', async () => {
+        mockSubRepo.findOneBy.mockResolvedValue({ id: 'row1', stripeSubscriptionId: 'sub_other', status: 'active' });
+        jest.spyOn((service as any).logger, 'error').mockImplementation(() => undefined);
+        mockStripe.subscriptions.retrieve.mockResolvedValue(trialing);
+        expect(await service.applyStripeSubscription('evt_1', 'sub_1', txEm as any)).toBe(false);
+        expect(mockTokenRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('outside a webhook transaction (no em) never grants', async () => {
+        mockStripe.subscriptions.retrieve.mockResolvedValue(trialing);
+        await service.applyStripeSubscription('evt_1', 'sub_1');
+        expect(mockTokenRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('issueTrialStartTokens: no plan on the row → nothing issued and the key stays unclaimed', async () => {
+        mockSubRepo.findOne.mockResolvedValue({ id: 'row1', userId: 'u1', plan: null });
+        expect(await service.issueTrialStartTokens('sub_1', txEm as any)).toBe(false);
+        expect(claimed.size).toBe(0);
+      });
+
+      it('issueTrialStartTokens does not touch nextTokenIssuanceAt (annual schedule starts at the first paid invoice)', async () => {
+        mockSubRepo.findOne.mockResolvedValue({ id: 'row1', userId: 'u1', plan: { tokensPerCycle: 1, interval: 'year' } });
+        expect(await service.issueTrialStartTokens('sub_1', txEm as any)).toBe(true);
+        expect(mockSubRepo.update).not.toHaveBeenCalled();
+      });
     });
   });
 

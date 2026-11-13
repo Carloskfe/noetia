@@ -75,12 +75,12 @@ describe('WebhooksService', () => {
     // and the identity guard are tested in subscriptions.service.spec / payment-lifecycle.spec).
     it('checkout.session.completed (subscription, string id) → re-reads that subscription, no plan', async () => {
       await service.handleEvent(makeEvent('checkout.session.completed', { subscription: 'sub_1', customer: 'cus_1' }) as any);
-      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_1', {}, em);
+      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_1', em);
     });
 
     it('checkout.session.completed (subscription, object id) → re-reads that subscription', async () => {
       await service.handleEvent(makeEvent('checkout.session.completed', { subscription: { id: 'sub_2' }, customer: { id: 'cus_2' } }) as any);
-      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_2', {}, em);
+      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_2', em);
     });
 
     it('skips checkout.session.completed when subscription or customer missing', async () => {
@@ -122,14 +122,30 @@ describe('WebhooksService', () => {
       mockSubscriptionsService.applyStripeSubscription.mockImplementationOnce(async () => { order.push('apply'); return true; });
       mockSubscriptionsService.issueTokensForNewSubscription.mockImplementationOnce(async () => { order.push('tokens'); });
       await service.handleEvent(makeEvent('invoice.paid', { id: 'in_1', subscription: 'sub_1', customer: 'cus_1' }) as any);
-      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_1', {}, em);
+      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_1', em);
       expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledWith('sub_1', em, 'in_1');
       expect(order).toEqual(['apply', 'tokens']);
     });
 
+    it('T-1: a $0 invoice (the trial invoice) re-reads the subscription but grants NO renewal cycle', async () => {
+      await service.handleEvent(makeEvent('invoice.paid', { id: 'in_trial', subscription: 'sub_1', amount_paid: 0, billing_reason: 'subscription_create' }) as any);
+      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_1', em); // trial grant happens in here
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).not.toHaveBeenCalled();
+    });
+
+    it('a $0 proration invoice grants no cycle either', async () => {
+      await service.handleEvent(makeEvent('invoice.paid', { id: 'in_prorate', subscription: 'sub_1', amount_paid: 0, billing_reason: 'subscription_update' }) as any);
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).not.toHaveBeenCalled();
+    });
+
+    it('the first PAID invoice after the trial grants the renewal cycle (once per invoice id)', async () => {
+      await service.handleEvent(makeEvent('invoice.paid', { id: 'in_first', subscription: 'sub_1', amount_paid: 899, billing_reason: 'subscription_cycle' }) as any);
+      expect(mockSubscriptionsService.issueTokensForNewSubscription).toHaveBeenCalledWith('sub_1', em, 'in_first');
+    });
+
     it('invoice.paid reads the subscription id from the newer invoice shape (parent.subscription_details)', async () => {
       await service.handleEvent(makeEvent('invoice.paid', { parent: { subscription_details: { subscription: 'sub_9' } } }) as any);
-      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_9', {}, em);
+      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_9', em);
     });
 
     it('skips invoice.paid without a subscription (one-off invoice)', async () => {
@@ -140,7 +156,7 @@ describe('WebhooksService', () => {
 
     it('invoice.payment_failed → re-reads the subscription (Stripe decides past_due), no tokens', async () => {
       await service.handleEvent(makeEvent('invoice.payment_failed', { subscription: { id: 'sub_1' }, customer: 'cus_1' }) as any);
-      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_1', {}, em);
+      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_1', em);
       expect(mockSubscriptionsService.issueTokensForNewSubscription).not.toHaveBeenCalled();
     });
 
@@ -151,12 +167,12 @@ describe('WebhooksService', () => {
 
     it('customer.subscription.created → re-reads the subscription WITHOUT writing planId (trial-token gate)', async () => {
       await service.handleEvent(makeEvent('customer.subscription.created', { id: 'sub_new', customer: 'cus_1' }) as any);
-      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_new', {}, em);
+      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_new', em);
     });
 
     it('customer.subscription.updated → re-reads the subscription and writes planId (unchanged)', async () => {
       await service.handleEvent(makeEvent('customer.subscription.updated', { id: 'sub_1', customer: 'cus_1' }) as any);
-      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_1', { includePlan: true }, em);
+      expect(mockSubscriptionsService.applyStripeSubscription).toHaveBeenCalledWith('evt_test_1', 'sub_1', em);
     });
 
     it('handles customer.subscription.deleted and cancels', async () => {

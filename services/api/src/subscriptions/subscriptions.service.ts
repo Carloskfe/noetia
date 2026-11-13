@@ -421,11 +421,11 @@ export class SubscriptionsService {
   }
 
   /**
-   * Cycle tokens for a paid invoice. When/whether tokens are issued is unchanged (trial-token STOP gate): only
-   * when the row already has a plan. When the invoice id is known, the grant is claimed once per invoice
-   * (fulfillment key in the webhook transaction), so two different events for the same invoice grant once.
-   * The claim is taken only when tokens are actually issued, so an invoice that grants nothing today does not
-   * change behaviour later.
+   * Cycle tokens for a PAID invoice (monthly renewals; annual plans' yearly invoice, which also starts the
+   * monthly schedule). Requires the row's plan. When the invoice id is known, the grant is claimed once per
+   * invoice (fulfillment key in the webhook transaction), so two different events for the same invoice grant
+   * once. $0 invoices — including the trial's — never reach here (WebhooksService.handleInvoicePaid); the trial
+   * grant is issueTrialStartTokens.
    */
   async issueTokensForNewSubscription(
     stripeSubscriptionId: string,
@@ -729,23 +729,24 @@ export class SubscriptionsService {
    * Re-reads a subscription from Stripe and applies its CURRENT state through the identity guard, so the
    * result does not depend on webhook delivery order (a late or replayed event writes today's truth, not the
    * state captured in its payload). A Stripe failure throws, so the webhook is retried by Stripe.
+   *
+   * T-1 (PO decision, 2026-11-13): `planId` is recorded from Stripe's current price on EVERY subscription event
+   * (previously only `customer.subscription.updated`), and when Stripe reports the subscription `trialing`, the
+   * plan's initial cycle of tokens is granted once per Stripe subscription (issueTrialStartTokens) — whichever
+   * event (created / checkout completed / updated / the $0 trial invoice) is processed first.
    */
   async applyStripeSubscription(
     stripeEventId: string,
     stripeSubscriptionId: string,
-    options: { includePlan?: boolean } = {},
     em?: EntityManager,
   ): Promise<boolean> {
     const sub = (await this.requireStripe().subscriptions.retrieve(stripeSubscriptionId)) as any;
     const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
     if (!customerId) return false;
     const periodEnd = sub.current_period_end ?? sub.items?.data?.[0]?.current_period_end;
-    let planId: string | null | undefined;
-    if (options.includePlan) {
-      const priceId = sub.items?.data?.[0]?.price?.id;
-      planId = priceId ? await this.findPlanByStripePriceId(priceId) : null;
-    }
-    return this.upsertFromWebhook(
+    const priceId = sub.items?.data?.[0]?.price?.id;
+    const planId = priceId ? await this.findPlanByStripePriceId(priceId) : null;
+    const applied = await this.upsertFromWebhook(
       stripeEventId,
       customerId,
       sub.id,
@@ -755,6 +756,35 @@ export class SubscriptionsService {
       planId,
       em,
     );
+    // Only for the subscription the row now tracks (an identity-rejected duplicate gets nothing), and only
+    // inside the webhook transaction, so the grant and its fulfillment key commit or roll back together.
+    if (applied && em && sub.status === 'trialing' && sub.trial_end) {
+      await this.issueTrialStartTokens(sub.id, em);
+    }
+    return applied;
+  }
+
+  /**
+   * T-1: the plan's first cycle of tokens when a valid free trial begins — exactly once per Stripe subscription,
+   * enforced by the `fulfillment:trial-start-tokens:<stripeSubscriptionId>` key in the webhook transaction
+   * (distinct from the per-invoice renewal keys). Same quantity (`tokensPerCycle`), type (`paid`) and 90-day
+   * expiry as a renewal grant. Does not touch `nextTokenIssuanceAt`: annual plans start their monthly schedule
+   * from the first PAID invoice, exactly as before, so the trial cannot shift or add a scheduled cycle.
+   * Nothing is clawed back if the trial is cancelled (cancellation behaviour unchanged).
+   *
+   * @returns true when tokens were issued by this call.
+   */
+  async issueTrialStartTokens(stripeSubscriptionId: string, em: EntityManager): Promise<boolean> {
+    const row = await em.getRepository(Subscription).findOne({ where: { stripeSubscriptionId }, relations: ['plan'] });
+    if (!row?.plan) return false; // unknown price → no plan → nothing to grant (and the key stays unclaimed)
+    if (!(await claimStripeKey(em, fulfillmentKey('trial-start-tokens', stripeSubscriptionId), 'fulfillment:trial-start-tokens'))) {
+      return false;
+    }
+    await this.issueTokens(row.userId, row.plan.tokensPerCycle, 'paid', {
+      subscriptionId: row.id,
+      reason: 'Trial start (initial cycle)',
+    }, em);
+    return true;
   }
 
   /** Same per-user identity lock as upsertFromWebhook, so a delete and a concurrent switch are serialized. */
