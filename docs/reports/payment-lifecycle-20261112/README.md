@@ -12,6 +12,8 @@
 > **Round 3 (2026-11-13), PA review of `b320561`:** T-1 and USD were accepted for their bounded scope. Analysis and design only, no code changes: trial eligibility, annual cycle accuracy (13 cycles per year today; 20/20 double grants with two scheduler instances), paid-invoice eligibility, and launch-safeguard plans. See **§12**, including the PO decisions it needs.
 >
 > **Round 4 (2026-11-13), PO authorization D1–D6:** implemented. One trial per eligible customer; exactly 12 paid annual allocations; cancellation preserves paid entitlements; no tokens from upgrades; valid $0 renewals; bilingual disclosures. Also atomic token redemption and a scheduler that is safe across instances. See **§13**, which supersedes §12's open decisions.
+>
+> **PA follow-up F-01 / F-02 (2026-11-13):** F-02 was demonstrated and corrected: a renewal is never allocated without an authoritative billing period, and the event fails closed. F-01 was verified with no change; one case awaits a PO decision. See **§14**.
 
 ## 0. Summary
 
@@ -1175,3 +1177,184 @@ The copy keeps the existing page styles (small grey and emerald notes) in the es
 - **Protected systems:** reader / Escucha Activa; production and staging systems.
 
 **STOP for independent Product Architecture review.**
+
+---
+
+## 14. PA follow-up: F-01 / F-02 verification and conditional remediation (mission of 2026-11-13)
+
+Bounded verify-then-remediate mission. **No new business rules.**
+
+### 14.A Baseline
+
+| | |
+|---|---|
+| Branch / PR | `fix/payment-lifecycle-stabilization-20261112` / PR #60 (**Draft**), base `feat/public-ecosystem-site-20261112` (PR #59, Draft, head `e326b81`, **unchanged**) |
+| `main` | `6a5e5c0` |
+| Expected baseline = initial HEAD | `38752e7378b9323422d54cf177582ed4aac7ccce`: local, remote and PR head all matched; the working tree was clean |
+| Overlap check | No other open branch (PR #59, NEM-016/019/022/024 branches) touches `services/api/src/subscriptions` or `gifts` |
+| Code commits | `5936cb5` F-02 correction + F-01/F-02 tests; `72b4507` PostgreSQL script F-02 scenarios |
+| Final HEAD | the report commit that adds this section (SHA given in the PR comment) |
+
+**Files changed (code):**
+- `services/api/src/subscriptions/subscriptions.service.ts`: F-02, plus the new `resolveInvoicePeriodStart`;
+- `services/api/src/subscriptions/billing-cycles.ts`: doc comment only;
+- tests: `subscriptions.service.spec.ts`, `payment-lifecycle.spec.ts`, `billing-cycles.spec.ts`;
+- `services/api/scripts/payment-safety-pg-check.ts`.
+
+**Evidence:**
+- `f02-reproduction-before-fix.txt` (new);
+- `payment-safety-pg-check.txt` (regenerated);
+- `payment-safety-pg-check.negative-control.txt` (regenerated against `38752e7`).
+
+### 14.B F-01: trial eligibility. Verdict: **STOP for a PO decision** (no behaviour change)
+
+**Sources, verbatim:**
+- **PO authorization D1** (2026-11-13):
+  - "Implement one 14-day trial per eligible customer."
+  - "**A customer who already received a subscription trial is not entitled to another.**"
+  - "**A returning subscriber may purchase another subscription, without a new trial.**"
+  - "T-1 tokens are granted only when an eligible trial actually begins."
+  - "Reuse existing Noetia account and Stripe customer history."
+- **Governance record** (`COMMERCE-DECISIONS.md` §D1) restates the same.
+- **Report §12.2** (the recommendation that preceded D1) proposed: "One free trial per person … Returning subscribers start paying on day 1."
+
+**Trace:**
+- `/pricing` and the mobile paywall call `GET /subscriptions/me?trialEligibility=1`, which goes to `getTrialEligibility`.
+- `POST /subscriptions/checkout` calls `createCheckoutSession`, under the checkout lock.
+- Both apply `trialEligible = !local.stripeSubscriptionId && !history.started`, where `history.started` is any Stripe subscription with `subscriptionEverStarted(sub)`, i.e. `trial_start` set or status ≠ `incomplete_expired`.
+- `subscriptionEverStarted` has a single call site (`inspectStripeSubscriptionHistory`).
+
+**Policy-to-code matrix.** Every row is pinned by the new "F-01 matrix" tests in `subscriptions.service.spec.ts` (7 cases + 3 unverifiable cases, all passing).
+
+| Case | Current behaviour | Expected under D1 | Source | Verdict |
+|---|---|---|---|---|
+| First-time customer, no history | trial | trial | "one 14-day trial per eligible customer" | ✅ matches |
+| Previously received a trial (incl. cancelled during the trial) | no trial | no trial | "already received a subscription trial is not entitled to another" | ✅ matches |
+| **Previously subscribed and paid, never had a trial** | **no trial** | **not clearly determined** | Sentence 2 ("returning subscriber … without a new trial") points to *no trial*; sentence 1 (the entitlement is lost by *receiving* a trial) points to *trial* | ⚠ **PO decision** |
+| Previous subscription never activated (`incomplete_expired`) | trial | trial (no subscription, no trial ever began) | "one trial per eligible customer"; T-1 "only when an eligible trial actually begins" | ✅ matches |
+| **Never activated but `canceled`** (an incomplete subscription cancelled before it expired; no trial, never paid) | **no trial** (current signal can't tell it from a paid one) | **not clearly determined** (D1 doesn't address it) | — | ⚠ **PO decision** |
+| Returning customer with a cancelled Noetia subscription row | no trial | no trial | "returning subscriber … without a new trial" | ✅ matches |
+| Duo/Family member subscribing independently (no own subscription) | trial | trial | "Linked Duo/Family members who have never held their own subscription remain eligible" | ✅ matches |
+| Stripe history unavailable / incomplete / truncated | checkout **503**, no session; eligibility `null` → no trial advertised | fail safe, never charge unexpectedly | "If the history cannot be verified, fail safely" | ✅ matches |
+
+**Why no correction.** D1's two sentences give different answers for a former paid subscriber who never received a trial, and D1 is silent on a never-activated subscription that ended `canceled`. Per mission §3 and STOP gate 1, F-01 stops here. The current behaviour is the conservative reading (no trial) and is **unchanged**; the tests only characterize it.
+
+**How much the decision matters in practice.** Until D1, every Checkout-created subscription included a 14-day trial (`trial_period_days: 14`). Since D1, Checkout omits the trial only for customers who are already ineligible. So **for every subscription that came through Noetia's Checkout, both readings give the same result.** The two rules differ only for:
+- subscriptions created outside Checkout (Stripe Dashboard or API);
+- incomplete subscriptions cancelled before they expired.
+
+**Decision required (PO).** Should a customer whose only subscription history has **no trial** be offered a trial?
+
+| Option | Rule | Smallest code change (if chosen; not implemented) |
+|---|---|---|
+| **A** | "Trial received" rule: eligible unless a previous subscription **received a trial** | `subscriptionEverStarted` → `trial_start != null`. The local-row check (any own subscription) is relaxed to rely on that Stripe signal; local rows don't keep trial history across re-subscriptions. Tests flip on the two PENDING-PO rows |
+| **B** | "Returning subscriber" rule: any previously **started** own subscription (paid or trial) ends eligibility | Current code; for the never-activated `canceled` case, the PO may also accept it as returning. No code change |
+| B′ | B, but a never-activated `canceled` subscription doesn't count | Needs a reliable "was ever active/paid" signal from Stripe (e.g. checking the subscription's paid invoices): one more Stripe read per historical subscription; to be designed only if chosen |
+
+No option requires fingerprinting, identity tracking, a schema change or new personal data.
+
+### 14.C F-02: invoice period identity. Verdict: **defect demonstrated; corrected (fail-closed)**
+
+**Proof that the fallback is reachable** (shapes from the repository's own Stripe library, stripe-node 22.1.0, API `2026-04-22.dahlia`):
+- `Invoice.lines` doc: "sorted as follows: (1) pending invoice items (including prorations) …, (2) subscription items …".
+- `Invoices.listLineItems` doc: "When retrieving an invoice, you'll get a lines property containing the total count of line items and the **first handful** of those items."
+- A renewal after several plan changes therefore arrives with ten `{ parent: { type: 'invoice_item_details', invoice_item_details: { proration: true } } }` lines, `has_more: true`, and **no subscription line**, so `invoicePeriodStart()` returns `null`.
+- **Pinned by** `billing-cycles.spec` "F-02 reachability" (and the sibling "dahlia subscription-item proration lines are not the billed period").
+
+**Execution path, before the fix (`38752e7`):**
+1. `handleInvoicePaid`: `classifyInvoice` gives `renewal`, and `grantsCycle` is true.
+2. `issueTokensForNewSubscription(sub, em, invoiceId, null)`.
+3. The period key is **skipped** because the period is `null`; only `fulfillment:invoice-tokens:<invoiceId>` is claimed.
+4. A **different** invoice id for the same period claims its own invoice key, so it allocates again.
+
+**Demonstrated on the unchanged code:**
+- `f02-reproduction-before-fix.txt` (payment-lifecycle "F-02" test: **2 allocations, expected 1**);
+- real-PostgreSQL negative control F2a: **10 of 10 rounds** double-allocated.
+
+**Caveat, stated honestly:** under Stripe's documented behaviour, one renewal period produces one `subscription_cycle` invoice, and staff-created replacement invoices are `manual` (never allocated). So two *distinct* grant-eligible invoices for one period are not a documented Stripe outcome. The reproduction uses synthetic invoices. The defect is that D5's once-per-period guarantee rested on that Stripe invariant instead of the ledger whenever the period was missing. The correction removes that dependence.
+
+**Correction** (`subscriptions.service.ts issueTokensForNewSubscription` + new `resolveInvoicePeriodStart`; no schema, no persistent state, no policy change, no new infrastructure):
+1. **Period in the payload:** used as before; no Stripe call.
+2. **Otherwise**, inside the same webhook transaction, read the period from **Stripe's own line items for that invoice** (`invoices.listLineItems`, limit 100, paginated, bounded to 20 pages), using the same subscription-line rule. This is Stripe's authoritative identifier; nothing is invented or inferred from timestamps.
+3. **Still unknown,** or a Stripe error: **throw**. The webhook transaction rolls back, so **nothing is allocated and nothing is recorded as fulfilled**: no event row, no invoice key, no period key. Stripe retries the event, and a legitimately unfulfilled cycle is never marked fulfilled.
+
+Unchanged:
+- the invoice-id key (kept as a second guard);
+- classification: D4 exclusions, D5 $0 renewals, paid creations;
+- the T-1 trial grant;
+- annual cycle 0 and the D2/D3 scheduler.
+
+Non-allocating invoice classes never reach the new path, so they cause no Stripe call.
+
+**Invoice structures tested:**
+
+| Structure | Unit | Lifecycle (real services) | PostgreSQL |
+|---|---|---|---|
+| Renewal with an identifiable subscription line (legacy `type:'subscription'`, dahlia `parent.subscription_item_details`) | ✅ | ✅ | ✅ (A1, I1) |
+| Valid $0 renewal, truncated payload | — | ✅ once | — |
+| Absent / malformed period (10 proration lines, `has_more`) | ✅ null | ✅ resolved from line items | ✅ F2a |
+| Subscription line only on page 2 of Stripe line items | ✅ pagination | — | — |
+| Reissued invoice (different id), same period | ✅ | ✅ | ✅ F2a (and I1) |
+| Two concurrent events for the same period | — | — | ✅ F2a (4 deliveries × 10 rounds) |
+| Proration / `subscription_update`, manual | ✅ | ✅ (no line-item read) | ✅ I1 |
+| Trial creation ($0) and paid creation | ✅ | ✅ | ✅ (T1–T5) |
+| Crash/rollback before commit | ✅ (throw → no claims) | ✅ fail closed, then retry allocates once | ✅ F2b; S6/A3 crash scenarios |
+| Delayed / out-of-order delivery | — | ✅ later period first, then earlier: one each | ✅ (S-series re-reads) |
+| No invoice id and no period | ✅ fails closed | — | — |
+
+**Remaining risks:**
+- **Persistent failure.** If an allocating invoice never has a subscription line, which isn't expected for `subscription_cycle` or paid `subscription_create`, the event keeps failing until Stripe stops retrying (about 3 days in live mode). It is logged as `[invoice-period] … could not be determined`. Recovery is manual replay after investigation. Nothing is ever double-allocated.
+- **Extra Stripe read.** There is one extra Stripe read, only when the payload lacks the subscription line. It is not recurring infrastructure.
+- **Webhook API version.** The production webhook endpoint's Stripe API version is not visible here. Both legacy and dahlia line shapes are recognized in payloads, and `listLineItems` always uses stripe-node's pinned dahlia version.
+
+### 14.D Verification
+
+**Commands** (all from `services/api` unless noted; Node 20; synthetic data; fake Stripe):
+- `npx tsc --noEmit -p tsconfig.json` → pass
+- `npx eslint src/subscriptions src/gifts scripts tests/unit/subscriptions` → **0 errors** (241 `any` warnings, existing style)
+- `npx nest build` → exit 0
+- `TZ=UTC npx jest --maxWorkers=2 --coverage` → **1207/1207 tests pass**. 73 of 74 suites load; `auth.controller.spec` **does not load** because the `bcrypt` native binding isn't built in this worktree. That is environmental, not a test failure, and **not a green full suite**.
+- `TZ=America/New_York npx jest tests/unit/subscriptions` → 370/370
+- **Real PostgreSQL** (disposable `postgres:16-alpine`, 68 migrations, removed afterwards): `PGH_PORT=55432 PGH_PASS=… npx ts-node --transpile-only -P tsconfig.json scripts/payment-safety-pg-check.ts`, **three runs: 27/27, 27/27, 27/27** (F2a and F2b pass in each)
+- Negative control (`PGH_SRC=<checkout of 38752e7>`): **25/27**; only F2a (10/10 rounds double-allocated) and F2b (allocated on an undeterminable period) fail
+
+**Suites changed:**
+
+| Suite | Tests | Result |
+|---|---|---|
+| `subscriptions.service.spec` | 165 | +6 F-02, +10 F-01 matrix; 2 existing tests updated to the authoritative-period path; all pass |
+| `payment-lifecycle.spec` | 73 | +6 F-02; all pass |
+| `billing-cycles.spec` | 34 | +2; all pass |
+| `webhooks.service.spec` | 39 | unchanged; pass |
+| `stripe-fulfillment-ledger.spec` | 8 | unchanged; pass |
+
+**Coverage:** `subscriptions.service.ts` 92.4% statements / 85.1% branches; `webhooks.service.ts` 100 / 95.6. Thresholds unchanged.
+
+**Web and mobile:** no code changed in this mission; not re-run (round-4 results stand: 448/448, 182/182, `next build` pass).
+
+### 14.E Scope compliance
+
+**Not performed:**
+- no merge;
+- no deployment;
+- no production, staging, Stripe-account or real-payment access;
+- no customer transactions;
+- no change to prices, Price IDs or currency;
+- no change to the 14-day trial, token quantities, 90-day expiry or ownership;
+- no reinterpretation of T-1 or D1–D6;
+- no change to Causas / PO-053 / 2.22%;
+- no Noetia+/NoetiaX, reader, Escucha Activa or research-orchestration changes;
+- no new infrastructure, libraries, migrations or persistent storage;
+- no unrelated refactoring;
+- no Terms or Privacy Policy change;
+- PR #59 untouched; PR #60 stays Draft.
+
+**Open:** **F-01 policy decision (PO)**, 14.B. No architectural decision is open from F-02.
+
+### 14.F Requested PA verdict (advisory, not PA approval)
+
+**ACCEPT WITH FOLLOW-UP:**
+- **F-02:** corrected, fail-closed, with proof and regression evidence.
+- **F-01:** behaviour verified and pinned, with **no change**. The paid-without-trial and never-activated-`canceled` cases need a Product Owner decision (options A / B / B′ in 14.B) before any code change.
+
+**STOP for independent PA review.**

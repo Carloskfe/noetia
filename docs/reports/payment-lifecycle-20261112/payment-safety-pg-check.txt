@@ -1,9 +1,9 @@
-=== run 1 (2026-11-13T19:28:46Z) ===
+=== run 1 (2026-11-13T20:11:47Z) ===
 payment-safety-pg-check — code under test: services/api/src
 PostgreSQL: PostgreSQL 16.13 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
 
 PASS  S1 eight CONCURRENT deliveries of the same invoice.paid event
-      tokens=1 (expected 1); deliveries ok=8, failed=0; 101 ms
+      tokens=1 (expected 1); deliveries ok=8, failed=0; 70 ms
 PASS  S2 six CONCURRENT events with DIFFERENT ids for the same invoice
       tokens=1 (expected 1); ok=6, failed=0
 PASS  S3 token-package purchase: 4 duplicate + 4 distinct-id CONCURRENT deliveries of one session
@@ -15,13 +15,13 @@ PASS  S5 first-subscription race (no row yet): 25 rounds of two CONCURRENT live 
 PASS  S5b re-subscription race (previous row ended): 25 rounds of two CONCURRENT live subscriptions for one user
       silent replacements=0 (expected 0); rounds with no subscription applied=0 (expected 0); row/event mismatch=0
 PASS  S5c legitimate re-subscription after the old subscription ended still works
-      row=sub_new_5c747cc6(trialing) (expected sub_new_5c747cc6(trialing))
+      row=sub_new_d648e189(trialing) (expected sub_new_d648e189(trialing))
 PASS  S6 process killed (SIGKILL) after granting tokens, before the event is recorded; then Stripe retries
       child: tokens inserted, exit signal=SIGKILL; after crash: tokens=0, event rows=0, invoice-claim rows=0 (expected 0/0/0 — legacy code shows tokens=1, event rows=0); after retry + redelivery: tokens=1 (expected 1)
 PASS  S7 transaction fails after the token insert; the legitimate retry grants exactly once
       first delivery threw=true; tokens after failure=0 (expected 0); after retry=1 (expected 1)
 PASS  S8 a duplicate arriving mid-transaction blocks until the first commits, then skips
-      tokens=1; Stripe reads=1 (expected 1: the duplicate never ran the handler); completion times ms=453, 454
+      tokens=1; Stripe reads=1 (expected 1: the duplicate never ran the handler); completion times ms=431, 433
 PASS  T1 T-1: 15 rounds × 11 CONCURRENT signup deliveries (created/completed/updated/$0 invoice, duplicates + new ids)
       rounds with a token count other than 1: 0 (expected 0); failed deliveries: 0
 PASS  T2 T-1: all 24 delivery orders of the four signup events
@@ -52,14 +52,18 @@ PASS  R2 Duo shared pool: plan owner and linked member redeem at the same moment
       1-token rounds wrong: 0; 2-token rounds wrong: 0 (expected 0/0 — one token never serves two books; two tokens serve both)
 PASS  R3 the same book redeemed four times at once (3 tokens available)
       succeeded=1; owned=1; tokens redeemed=1, still active=2 (expected 1/1/1/2 — losers' tokens rolled back)
+PASS  F2a two different renewal invoices for the SAME period, truncated payloads, 4 concurrent deliveries (10 rounds)
+      rounds with a count other than 1: 0 (expected 0); failed deliveries: 0
+PASS  F2b period undeterminable → fail closed (Stripe error, then no subscription line); then the retry
+      deliveries failed: 2/2 (stripe unavailable | [invoice-period] billing period of invoi); after failures: tokens=0, event rows=0, period keys=0, invoice key=0 (expected 0/0/0/0); after retry + redelivery: tokens=1 (expected 1)
 
-25/25 scenarios passed
-=== run 2 (2026-11-13T19:29:53Z) ===
+27/27 scenarios passed
+=== run 2 (2026-11-13T20:12:08Z) ===
 payment-safety-pg-check — code under test: services/api/src
 PostgreSQL: PostgreSQL 16.13 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
 
 PASS  S1 eight CONCURRENT deliveries of the same invoice.paid event
-      tokens=1 (expected 1); deliveries ok=8, failed=0; 67 ms
+      tokens=1 (expected 1); deliveries ok=8, failed=0; 69 ms
 PASS  S2 six CONCURRENT events with DIFFERENT ids for the same invoice
       tokens=1 (expected 1); ok=6, failed=0
 PASS  S3 token-package purchase: 4 duplicate + 4 distinct-id CONCURRENT deliveries of one session
@@ -71,13 +75,13 @@ PASS  S5 first-subscription race (no row yet): 25 rounds of two CONCURRENT live 
 PASS  S5b re-subscription race (previous row ended): 25 rounds of two CONCURRENT live subscriptions for one user
       silent replacements=0 (expected 0); rounds with no subscription applied=0 (expected 0); row/event mismatch=0
 PASS  S5c legitimate re-subscription after the old subscription ended still works
-      row=sub_new_f9df657d(trialing) (expected sub_new_f9df657d(trialing))
+      row=sub_new_51e16b99(trialing) (expected sub_new_51e16b99(trialing))
 PASS  S6 process killed (SIGKILL) after granting tokens, before the event is recorded; then Stripe retries
       child: tokens inserted, exit signal=SIGKILL; after crash: tokens=0, event rows=0, invoice-claim rows=0 (expected 0/0/0 — legacy code shows tokens=1, event rows=0); after retry + redelivery: tokens=1 (expected 1)
 PASS  S7 transaction fails after the token insert; the legitimate retry grants exactly once
       first delivery threw=true; tokens after failure=0 (expected 0); after retry=1 (expected 1)
 PASS  S8 a duplicate arriving mid-transaction blocks until the first commits, then skips
-      tokens=1; Stripe reads=1 (expected 1: the duplicate never ran the handler); completion times ms=453, 456
+      tokens=1; Stripe reads=1 (expected 1: the duplicate never ran the handler); completion times ms=457, 458
 PASS  T1 T-1: 15 rounds × 11 CONCURRENT signup deliveries (created/completed/updated/$0 invoice, duplicates + new ids)
       rounds with a token count other than 1: 0 (expected 0); failed deliveries: 0
 PASS  T2 T-1: all 24 delivery orders of the four signup events
@@ -108,14 +112,18 @@ PASS  R2 Duo shared pool: plan owner and linked member redeem at the same moment
       1-token rounds wrong: 0; 2-token rounds wrong: 0 (expected 0/0 — one token never serves two books; two tokens serve both)
 PASS  R3 the same book redeemed four times at once (3 tokens available)
       succeeded=1; owned=1; tokens redeemed=1, still active=2 (expected 1/1/1/2 — losers' tokens rolled back)
+PASS  F2a two different renewal invoices for the SAME period, truncated payloads, 4 concurrent deliveries (10 rounds)
+      rounds with a count other than 1: 0 (expected 0); failed deliveries: 0
+PASS  F2b period undeterminable → fail closed (Stripe error, then no subscription line); then the retry
+      deliveries failed: 2/2 (stripe unavailable | [invoice-period] billing period of invoi); after failures: tokens=0, event rows=0, period keys=0, invoice key=0 (expected 0/0/0/0); after retry + redelivery: tokens=1 (expected 1)
 
-25/25 scenarios passed
-=== run 3 (2026-11-13T19:31:05Z) ===
+27/27 scenarios passed
+=== run 3 (2026-11-13T20:12:32Z) ===
 payment-safety-pg-check — code under test: services/api/src
 PostgreSQL: PostgreSQL 16.13 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
 
 PASS  S1 eight CONCURRENT deliveries of the same invoice.paid event
-      tokens=1 (expected 1); deliveries ok=8, failed=0; 103 ms
+      tokens=1 (expected 1); deliveries ok=8, failed=0; 60 ms
 PASS  S2 six CONCURRENT events with DIFFERENT ids for the same invoice
       tokens=1 (expected 1); ok=6, failed=0
 PASS  S3 token-package purchase: 4 duplicate + 4 distinct-id CONCURRENT deliveries of one session
@@ -127,13 +135,13 @@ PASS  S5 first-subscription race (no row yet): 25 rounds of two CONCURRENT live 
 PASS  S5b re-subscription race (previous row ended): 25 rounds of two CONCURRENT live subscriptions for one user
       silent replacements=0 (expected 0); rounds with no subscription applied=0 (expected 0); row/event mismatch=0
 PASS  S5c legitimate re-subscription after the old subscription ended still works
-      row=sub_new_5e15b20a(trialing) (expected sub_new_5e15b20a(trialing))
+      row=sub_new_14b3f1dc(trialing) (expected sub_new_14b3f1dc(trialing))
 PASS  S6 process killed (SIGKILL) after granting tokens, before the event is recorded; then Stripe retries
       child: tokens inserted, exit signal=SIGKILL; after crash: tokens=0, event rows=0, invoice-claim rows=0 (expected 0/0/0 — legacy code shows tokens=1, event rows=0); after retry + redelivery: tokens=1 (expected 1)
 PASS  S7 transaction fails after the token insert; the legitimate retry grants exactly once
       first delivery threw=true; tokens after failure=0 (expected 0); after retry=1 (expected 1)
 PASS  S8 a duplicate arriving mid-transaction blocks until the first commits, then skips
-      tokens=1; Stripe reads=1 (expected 1: the duplicate never ran the handler); completion times ms=468, 469
+      tokens=1; Stripe reads=1 (expected 1: the duplicate never ran the handler); completion times ms=442, 443
 PASS  T1 T-1: 15 rounds × 11 CONCURRENT signup deliveries (created/completed/updated/$0 invoice, duplicates + new ids)
       rounds with a token count other than 1: 0 (expected 0); failed deliveries: 0
 PASS  T2 T-1: all 24 delivery orders of the four signup events
@@ -164,5 +172,9 @@ PASS  R2 Duo shared pool: plan owner and linked member redeem at the same moment
       1-token rounds wrong: 0; 2-token rounds wrong: 0 (expected 0/0 — one token never serves two books; two tokens serve both)
 PASS  R3 the same book redeemed four times at once (3 tokens available)
       succeeded=1; owned=1; tokens redeemed=1, still active=2 (expected 1/1/1/2 — losers' tokens rolled back)
+PASS  F2a two different renewal invoices for the SAME period, truncated payloads, 4 concurrent deliveries (10 rounds)
+      rounds with a count other than 1: 0 (expected 0); failed deliveries: 0
+PASS  F2b period undeterminable → fail closed (Stripe error, then no subscription line); then the retry
+      deliveries failed: 2/2 (stripe unavailable | [invoice-period] billing period of invoi); after failures: tokens=0, event rows=0, period keys=0, invoice key=0 (expected 0/0/0/0); after retry + redelivery: tokens=1 (expected 1)
 
-25/25 scenarios passed
+27/27 scenarios passed
