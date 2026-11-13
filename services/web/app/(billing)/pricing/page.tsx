@@ -82,6 +82,7 @@ export default function PricingPage() {
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
   const [interval, setInterval] = useState<'month' | 'year'>('month');
   const [error, setError] = useState<string | null>(null);
+  const [errorShowsBilling, setErrorShowsBilling] = useState(false);
   const [loading, setLoading] = useState(true);
   const [signedIn, setSignedIn] = useState(false);
   const [preference, setPreference] = useState<PreferenceState>('auth');
@@ -133,6 +134,7 @@ export default function PricingPage() {
 
   async function checkout(planId: string) {
     setError(null);
+    setErrorShowsBilling(false);
     if (statusRef.current !== 'known') return setStatusFailedPlanId(planId); // never checkout on an unknown status
     try {
       const { url } = await apiFetch(
@@ -143,13 +145,21 @@ export default function PricingPage() {
       if (!url) throw new Error('No checkout URL');
       window.location.href = url;
     } catch (e) {
-      if (isAuthError(e)) goToLogin();
+      if (isAuthError(e)) return goToLogin();
+      // The API refuses a second subscription (409) and refuses to guess when Stripe is unreachable (503).
+      const code = (e as { data?: { error?: string } } | null)?.data?.error;
+      if (code === 'subscription_exists') {
+        setError(t.pricing.subscriptionExists);
+        setErrorShowsBilling(true);
+      } else if (code === 'checkout_pending') setError(t.pricing.checkoutPending);
+      else if (code === 'subscription_status_unavailable') setError(t.pricing.statusUnavailable);
       else setError(t.pricing.paymentError);
     }
   }
 
   async function buyTokenPackage(packageId: string) {
     setError(null);
+    setErrorShowsBilling(false);
     setBuyingPackageId(packageId);
     try {
       const { url } = await apiFetch(
@@ -241,7 +251,17 @@ export default function PricingPage() {
         </div>
       </div>
 
-      {error && <p className="text-center text-red-600 mb-6 text-sm">{error}</p>}
+      {error && (
+        <p role="alert" data-testid="pricing-error" className="text-center text-red-600 mb-6 text-sm">
+          {error}
+          {errorShowsBilling && (
+            <>
+              {' '}
+              <Link href="/account/billing" className="underline font-medium">{t.pricing.goToBilling}</Link>
+            </>
+          )}
+        </p>
+      )}
 
       {!loading && signedIn && status === 'unknown' && (
         <div

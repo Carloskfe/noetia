@@ -34,6 +34,7 @@ type Server = {
   prefLookup: Array<'ok' | 'fail'>;    // queued outcomes for GET /causes/preferences (default ok)
   saveResults: Array<'ok' | 'fail'>;   // queued outcomes for POST /causes/preferences (default ok)
   checkoutStatus: number;
+  checkoutBody?: unknown;              // error body for a non-200 checkout (e.g. the API's 409/503 codes)
   planId: string | null;
   subStatus: string;                   // subscription status returned by /subscriptions/me
   meResults: Array<'ok' | 'fail' | 'network'>; // queued outcomes for GET /subscriptions/me (default ok)
@@ -89,7 +90,7 @@ function installFetch() {
       return res(200, { ok: true });
     }
     if (method === 'POST' && path === '/subscriptions/checkout') {
-      return server.checkoutStatus === 200 ? res(200, { url: 'https://checkout.test/sub' }) : res(server.checkoutStatus, { message: 'x' });
+      return server.checkoutStatus === 200 ? res(200, { url: 'https://checkout.test/sub' }) : res(server.checkoutStatus, server.checkoutBody ?? { message: 'x' });
     }
     if (method === 'POST' && path === '/subscriptions/tokens/purchase') return res(200, { url: 'https://checkout.test/tokens' });
     return res(404, {});
@@ -455,5 +456,40 @@ describe('/pricing — which statuses count as a current plan', () => {
     expect(byText(en.pricing.currentPlan)).toBeUndefined();
     await click(planButton());
     expect(href()).toBe('https://checkout.test/sub');
+  });
+});
+
+describe('/pricing — server-side duplicate-subscription guard responses', () => {
+  beforeEach(() => {
+    localStorage.setItem('access_token', 'valid');
+    server.savedCause = CAUSE.id;
+  });
+  const pricingError = () => container.querySelector('[data-testid="pricing-error"]');
+
+  it('409 subscription_exists → explains and links to billing; no redirect, no generic payment error', async () => {
+    server.checkoutStatus = 409;
+    server.checkoutBody = { statusCode: 409, error: 'subscription_exists', status: 'trialing' };
+    await render();
+    await click(planButton());
+    expect(pricingError()?.textContent).toContain(en.pricing.subscriptionExists);
+    expect(pricingError()?.querySelector('a')?.getAttribute('href')).toBe('/account/billing');
+    expect(href()).toBe('http://localhost/pricing');
+  });
+
+  it('409 checkout_pending → asks to wait and retry', async () => {
+    server.checkoutStatus = 409;
+    server.checkoutBody = { statusCode: 409, error: 'checkout_pending' };
+    await render();
+    await click(planButton());
+    expect(pricingError()?.textContent).toBe(en.pricing.checkoutPending);
+    expect(pricingError()?.querySelector('a')).toBeNull();
+  });
+
+  it('503 subscription_status_unavailable → says the status could not be confirmed', async () => {
+    server.checkoutStatus = 503;
+    server.checkoutBody = { statusCode: 503, error: 'subscription_status_unavailable' };
+    await render();
+    await click(planButton());
+    expect(pricingError()?.textContent).toBe(en.pricing.statusUnavailable);
   });
 });
