@@ -61,7 +61,8 @@ const fakeStripe = {
       if (!s) throw new Error(`No such subscription ${id}`);
       return {
         id: s.id, customer: s.customer, status: s.status, cancel_at_period_end: false,
-        current_period_end: Math.floor(Date.now() / 1000) + 30 * 86400, trial_end: null,
+        current_period_end: Math.floor(Date.now() / 1000) + 30 * 86400,
+        trial_end: s.status === 'trialing' ? Math.floor(Date.now() / 1000) + 14 * 86400 : null,
         items: { data: [{ price: { id: s.priceId } }] },
       };
     },
@@ -97,6 +98,7 @@ function build() {
 const q = async (sql: string, params: unknown[] = []) => ds.query(sql, params);
 const one = async (sql: string, params: unknown[] = []) => Number((await q(sql, params))[0].n);
 const PRICE = 'price_harness_individual_monthly';
+const PRICE_ANNUAL = 'price_harness_individual_annual';
 let PLAN_ID = '';
 let PACKAGE: { id: string; tokenCount: number } = { id: '', tokenCount: 0 };
 
@@ -133,7 +135,7 @@ async function activeSubscriber(webhooks: any, tag: string) {
 // ── scenarios ───────────────────────────────────────────────────────────────
 async function s1SameEventConcurrent(webhooks: any) {
   const u = await activeSubscriber(webhooks, 's1');
-  const e = ev(`evt_s1_inv_${u.id.slice(0, 8)}`, 'invoice.paid', { id: `in_s1_${u.id.slice(0, 8)}`, subscription: u.sub, customer: u.cus });
+  const e = ev(`evt_s1_inv_${u.id.slice(0, 8)}`, 'invoice.paid', { id: `in_s1_${u.id.slice(0, 8)}`, subscription: u.sub, customer: u.cus, amount_paid: 899 });
   const t0 = Date.now();
   const r = await settle(Array.from({ length: 8 }, () => webhooks.handleEvent(e)));
   const n = await tokensOf(u.id);
@@ -145,7 +147,7 @@ async function s2DistinctEventsSameInvoice(webhooks: any) {
   const u = await activeSubscriber(webhooks, 's2');
   const inv = `in_s2_${u.id.slice(0, 8)}`;
   const r = await settle(Array.from({ length: 6 }, (_, i) =>
-    webhooks.handleEvent(ev(`evt_s2_${i}_${u.id.slice(0, 8)}`, 'invoice.paid', { id: inv, subscription: u.sub, customer: u.cus }))));
+    webhooks.handleEvent(ev(`evt_s2_${i}_${u.id.slice(0, 8)}`, 'invoice.paid', { id: inv, subscription: u.sub, customer: u.cus, amount_paid: 899 }))));
   const n = await tokensOf(u.id);
   record('S2 six CONCURRENT events with DIFFERENT ids for the same invoice', n === 1 && r.failed.length === 0,
     `tokens=${n} (expected 1); ok=${r.ok}, failed=${r.failed.length}`);
@@ -236,7 +238,7 @@ async function s6Crash(webhooks: any) {
   // PostgreSQL rolls back the dead client's transaction when it notices the closed socket.
   for (let i = 0; i < 50 && (await one(`SELECT count(*) n FROM pg_stat_activity WHERE application_name = 'pgh-crash-child'`)) > 0; i++) await new Promise((r) => setTimeout(r, 100));
   const afterCrash = { tokens: await tokensOf(u.id), event: await processed(eventId), invoice: await processed(`fulfillment:invoice-tokens:${invoiceId}`) };
-  const e = ev(eventId, 'invoice.paid', { id: invoiceId, subscription: u.sub, customer: u.cus });
+  const e = ev(eventId, 'invoice.paid', { id: invoiceId, subscription: u.sub, customer: u.cus, amount_paid: 899 });
   await webhooks.handleEvent(e); // Stripe retry
   await webhooks.handleEvent(e); // and a duplicate redelivery
   const afterRetry = await tokensOf(u.id);
@@ -249,7 +251,7 @@ async function s6Crash(webhooks: any) {
 
 async function s7FailedThenRetry(webhooks: any, subs: any) {
   const u = await activeSubscriber(webhooks, 's7');
-  const e = ev(`evt_s7_${u.id.slice(0, 8)}`, 'invoice.paid', { id: `in_s7_${u.id.slice(0, 8)}`, subscription: u.sub, customer: u.cus });
+  const e = ev(`evt_s7_${u.id.slice(0, 8)}`, 'invoice.paid', { id: `in_s7_${u.id.slice(0, 8)}`, subscription: u.sub, customer: u.cus, amount_paid: 899 });
   const real = subs.issueTokens.bind(subs);
   subs.issueTokens = async (...args: unknown[]) => { await real(...args); throw new Error('injected failure after token insert'); };
   let firstFailed = false;
@@ -266,7 +268,7 @@ async function s8LockWait(webhooks: any) {
   // Evidence that a duplicate delivery WAITS for the first transaction instead of reading "not processed".
   const u = await activeSubscriber(webhooks, 's8');
   const sub = stripeSubs.get(u.sub)!;
-  const e = ev(`evt_s8_${u.id.slice(0, 8)}`, 'invoice.paid', { id: `in_s8_${u.id.slice(0, 8)}`, subscription: u.sub, customer: u.cus });
+  const e = ev(`evt_s8_${u.id.slice(0, 8)}`, 'invoice.paid', { id: `in_s8_${u.id.slice(0, 8)}`, subscription: u.sub, customer: u.cus, amount_paid: 899 });
   const realRetrieve = fakeStripe.subscriptions.retrieve;
   let calls = 0;
   fakeStripe.subscriptions.retrieve = async (id: string) => { calls++; if (calls === 1) await new Promise((r) => setTimeout(r, 400)); return realRetrieve(id); };
@@ -283,10 +285,147 @@ async function s8LockWait(webhooks: any) {
     `tokens=${n}; Stripe reads=${calls} (expected 1: the duplicate never ran the handler); completion times ms=${timings.join(', ')}`);
 }
 
+// ── T-1 scenarios (initial cycle when the trial begins) ────────────────────
+const TPC = 1; // tokensPerCycle of the Individual plans (seeded)
+function trialSignup(u: { id: string; cus: string }, sub: string) {
+  const t = u.id.slice(0, 8);
+  return {
+    created: (n = 0) => ev(`evt_t_cr${n}_${t}`, 'customer.subscription.created', { id: sub, customer: u.cus }),
+    completed: (n = 0) => ev(`evt_t_co${n}_${t}`, 'checkout.session.completed', { mode: 'subscription', subscription: sub, customer: u.cus }),
+    updated: (n = 0) => ev(`evt_t_up${n}_${t}`, 'customer.subscription.updated', { id: sub, customer: u.cus }),
+    trialInvoice: (n = 0) => ev(`evt_t_in${n}_${t}`, 'invoice.paid', { id: `in_trial_${t}`, subscription: sub, customer: u.cus, amount_paid: 0, billing_reason: 'subscription_create' }),
+  };
+}
+
+async function t1ConcurrentSignup(webhooks: any, rounds: number) {
+  let wrong = 0; let failed = 0;
+  for (let i = 0; i < rounds; i++) {
+    const u = await newUser('t1');
+    const sub = `sub_t1_${u.id.slice(0, 8)}`;
+    stripeSubs.set(sub, { id: sub, customer: u.cus, status: 'trialing', priceId: PRICE });
+    const e = trialSignup(u, sub);
+    // every signup event, each delivered twice with the same id and once more with a new id, all at once
+    const all = [e.created(), e.created(), e.created(1), e.completed(), e.completed(), e.completed(1), e.updated(), e.updated(1), e.trialInvoice(), e.trialInvoice(), e.trialInvoice(1)];
+    const r = await settle(all.map((x) => webhooks.handleEvent(x)));
+    failed += r.failed.length;
+    if ((await tokensOf(u.id)) !== TPC) wrong++;
+  }
+  record(`T1 T-1: ${rounds} rounds × 11 CONCURRENT signup deliveries (created/completed/updated/$0 invoice, duplicates + new ids)`, wrong === 0 && failed === 0,
+    `rounds with a token count other than ${TPC}: ${wrong} (expected 0); failed deliveries: ${failed}`);
+}
+
+async function t2AllOrders(webhooks: any) {
+  const names = ['created', 'completed', 'updated', 'trialInvoice'] as const;
+  const perms = (xs: readonly string[]): string[][] => (xs.length <= 1 ? [xs.slice()] : xs.flatMap((x, i) => perms([...xs.slice(0, i), ...xs.slice(i + 1)]).map((p) => [x, ...p])));
+  const bad: string[] = [];
+  for (const order of perms(names)) {
+    const u = await newUser('t2');
+    const sub = `sub_t2_${u.id.slice(0, 8)}`;
+    stripeSubs.set(sub, { id: sub, customer: u.cus, status: 'trialing', priceId: PRICE });
+    const e = trialSignup(u, sub) as any;
+    for (const n of order) await webhooks.handleEvent(e[n]());
+    const n = await tokensOf(u.id);
+    if (n !== TPC) bad.push(`${order.join('→')}=${n}`);
+  }
+  record('T2 T-1: all 24 delivery orders of the four signup events', bad.length === 0,
+    `orders with a token count other than ${TPC}: ${bad.length} (expected 0)${bad.length ? ' — ' + bad.slice(0, 4).join(', ') : ''}`);
+}
+
+async function t3TrialCrash(webhooks: any) {
+  const u = await newUser('t3');
+  const sub = `sub_t3_${u.id.slice(0, 8)}`;
+  const eventId = `evt_t3_${u.id.slice(0, 8)}`;
+  const child = fork(__filename, ['--trial-crash-child', u.cus, sub, eventId], { execArgv: process.execArgv, env: process.env, stdio: ['ignore', 'pipe', 'inherit', 'ipc'] });
+  let out = '';
+  child.stdout!.on('data', (d) => { out += d; });
+  const signal: string | null = await new Promise((r) => child.on('exit', (_c, sg) => r(sg)));
+  for (let i = 0; i < 50 && (await one(`SELECT count(*) n FROM pg_stat_activity WHERE application_name = 'pgh-crash-child'`)) > 0; i++) await new Promise((r) => setTimeout(r, 100));
+  const after = { tokens: await tokensOf(u.id), claim: await processed(`fulfillment:trial-start-tokens:${sub}`), row: await one(`SELECT count(*) n FROM subscriptions WHERE "userId" = $1`, [u.id]) };
+  stripeSubs.set(sub, { id: sub, customer: u.cus, status: 'trialing', priceId: PRICE });
+  await webhooks.handleEvent(ev(eventId, 'customer.subscription.created', { id: sub, customer: u.cus })); // Stripe retry
+  const e = trialSignup(u, sub);
+  await webhooks.handleEvent(e.completed());
+  await webhooks.handleEvent(e.trialInvoice());
+  const final = await tokensOf(u.id);
+  record('T3 T-1: SIGKILL after the trial grant inserted tokens, before COMMIT; then retry + other signup events',
+    signal === 'SIGKILL' && out.includes('TOKENS_INSERTED') && after.tokens === 0 && after.claim === 0 && after.row === 0 && final === TPC,
+    `exit signal=${signal}; after crash: tokens=${after.tokens}, trial claim rows=${after.claim}, subscription rows=${after.row} (expected 0/0/0); after retry: tokens=${final} (expected ${TPC})`);
+}
+
+async function t4TrialCancelled(webhooks: any) {
+  const u = await newUser('t4');
+  const sub = `sub_t4_${u.id.slice(0, 8)}`;
+  stripeSubs.set(sub, { id: sub, customer: u.cus, status: 'trialing', priceId: PRICE });
+  const e = trialSignup(u, sub);
+  await webhooks.handleEvent(e.created());
+  stripeSubs.get(sub)!.status = 'canceled';
+  await webhooks.handleEvent(ev(`evt_t4_del_${u.id.slice(0, 8)}`, 'customer.subscription.deleted', { id: sub }));
+  await webhooks.handleEvent(e.updated());
+  await webhooks.handleEvent(e.completed());
+  await webhooks.handleEvent(e.trialInvoice());
+  const n = await tokensOf(u.id);
+  const st = (await q(`SELECT status FROM subscriptions WHERE "userId" = $1`, [u.id]))[0]?.status;
+  const active = await one(`SELECT count(*) n FROM token_ledger WHERE "userId" = $1 AND status = 'active'`, [u.id]);
+  record('T4 T-1: trial cancelled before paying, then late events', n === TPC && active === TPC && st === 'canceled',
+    `tokens=${n}, still active=${active} (expected ${TPC}, no claw-back); row status=${st}`);
+}
+
+async function t5FirstPaidInvoice(webhooks: any) {
+  const u = await newUser('t5');
+  const sub = `sub_t5_${u.id.slice(0, 8)}`;
+  stripeSubs.set(sub, { id: sub, customer: u.cus, status: 'trialing', priceId: PRICE });
+  const e = trialSignup(u, sub);
+  await webhooks.handleEvent(e.created());
+  stripeSubs.get(sub)!.status = 'active';
+  const inv = (id: string, invoiceId: string) => ev(id, 'invoice.paid', { id: invoiceId, subscription: sub, customer: u.cus, amount_paid: 899, billing_reason: 'subscription_cycle' });
+  const t = u.id.slice(0, 8);
+  const r = await settle([inv(`evt_t5_a_${t}`, `in_first_${t}`), inv(`evt_t5_a_${t}`, `in_first_${t}`), inv(`evt_t5_b_${t}`, `in_first_${t}`), inv(`evt_t5_c_${t}`, `in_first_${t}`)].map((x) => webhooks.handleEvent(x)));
+  const afterFirst = await tokensOf(u.id);
+  await webhooks.handleEvent(inv(`evt_t5_m2_${t}`, `in_second_${t}`));
+  const afterSecond = await tokensOf(u.id);
+  record('T5 T-1: first paid invoice (4 concurrent deliveries, 3 ids) then the next monthly invoice',
+    afterFirst === 2 * TPC && afterSecond === 3 * TPC && r.failed.length === 0,
+    `after trial + first paid: ${afterFirst} (expected ${2 * TPC}); after second invoice: ${afterSecond} (expected ${3 * TPC})`);
+}
+
+async function t6Annual(webhooks: any, subs: any) {
+  const u = await newUser('t6');
+  const sub = `sub_t6_${u.id.slice(0, 8)}`;
+  stripeSubs.set(sub, { id: sub, customer: u.cus, status: 'trialing', priceId: PRICE_ANNUAL });
+  const e = trialSignup(u, sub);
+  await Promise.all([webhooks.handleEvent(e.created()), webhooks.handleEvent(e.trialInvoice())]);
+  const steps: string[] = [];
+  const snap = async (label: string) => {
+    const row = (await q(`SELECT status, "nextTokenIssuanceAt" n FROM subscriptions WHERE "userId" = $1`, [u.id]))[0];
+    steps.push(`${label}: tokens=${await tokensOf(u.id)} status=${row.status} next=${row.n ? 'set' : 'null'}`);
+    return { tokens: await tokensOf(u.id), next: row.n as Date | null };
+  };
+  const a = await snap('trial start');
+  // Cron during the trial — even with an overdue pointer forced, a trialing row is never issued.
+  await subs.issueMonthlyTokensForAnnualPlans();
+  await q(`UPDATE subscriptions SET "nextTokenIssuanceAt" = now() - interval '1 day' WHERE "userId" = $1`, [u.id]);
+  await subs.issueMonthlyTokensForAnnualPlans();
+  await q(`UPDATE subscriptions SET "nextTokenIssuanceAt" = NULL WHERE "userId" = $1`, [u.id]);
+  const b = await snap('cron during trial (incl. forced overdue pointer)');
+  stripeSubs.get(sub)!.status = 'active';
+  await webhooks.handleEvent(ev(`evt_t6_y1_${u.id.slice(0, 8)}`, 'invoice.paid', { id: `in_t6_y1_${u.id.slice(0, 8)}`, subscription: sub, customer: u.cus, amount_paid: 8399, billing_reason: 'subscription_cycle' }));
+  const c = await snap('first paid annual invoice');
+  const daysAhead = c.next ? (new Date(c.next).getTime() - Date.now()) / 86_400_000 : -1;
+  await subs.issueMonthlyTokensForAnnualPlans();
+  const d = await snap('cron right after (not due)');
+  await q(`UPDATE subscriptions SET "nextTokenIssuanceAt" = now() - interval '1 minute' WHERE "userId" = $1`, [u.id]);
+  await subs.issueMonthlyTokensForAnnualPlans();
+  const f = await snap('cron when due (simulated day 45)');
+  await subs.issueMonthlyTokensForAnnualPlans();
+  const g = await snap('cron again same day');
+  const pass = a.tokens === 1 && a.next === null && b.tokens === 1 && c.tokens === 2 && daysAhead > 29.9 && daysAhead < 30.1 && d.tokens === 2 && f.tokens === 3 && g.tokens === 3;
+  record('T6 T-1 annual plan: trial grant, cron during trial, first paid annual invoice, scheduled monthly issuance', pass,
+    `${steps.join(' | ')} | schedule after first paid invoice = +${daysAhead.toFixed(2)} days (expected 30)`);
+}
+
 // ── crash child ─────────────────────────────────────────────────────────────
 async function crashChild(cus: string, sub: string, eventId: string, invoiceId: string) {
   (ds.options as any).applicationName = 'pgh-crash-child';
-  (ds.driver as any).options.applicationName = 'pgh-crash-child';
   await ds.initialize();
   const { subs, webhooks } = build();
   stripeSubs.set(sub, { id: sub, customer: cus, status: 'active', priceId: PRICE });
@@ -296,15 +435,32 @@ async function crashChild(cus: string, sub: string, eventId: string, invoiceId: 
     process.stdout.write('TOKENS_INSERTED\n', () => process.kill(process.pid, 'SIGKILL'));
     await new Promise(() => undefined); // never continue to COMMIT
   };
-  await webhooks.handleEvent(ev(eventId, 'invoice.paid', { id: invoiceId, subscription: sub, customer: cus }));
+  await webhooks.handleEvent(ev(eventId, 'invoice.paid', { id: invoiceId, subscription: sub, customer: cus, amount_paid: 899 }));
+}
+
+/** Child for T3: killed right after the TRIAL grant inserted its tokens, before COMMIT. */
+async function trialCrashChild(cus: string, sub: string, eventId: string) {
+  (ds.options as any).applicationName = 'pgh-crash-child';
+  await ds.initialize();
+  const { subs, webhooks } = build();
+  stripeSubs.set(sub, { id: sub, customer: cus, status: 'trialing', priceId: PRICE });
+  const real = subs.issueTokens.bind(subs);
+  subs.issueTokens = async (...args: unknown[]) => {
+    await real(...args);
+    process.stdout.write('TOKENS_INSERTED\n', () => process.kill(process.pid, 'SIGKILL'));
+    await new Promise(() => undefined);
+  };
+  await webhooks.handleEvent(ev(eventId, 'customer.subscription.created', { id: sub, customer: cus }));
 }
 
 async function main() {
   if (process.argv[2] === '--crash-child') return crashChild(process.argv[3], process.argv[4], process.argv[5], process.argv[6]);
+  if (process.argv[2] === '--trial-crash-child') return trialCrashChild(process.argv[3], process.argv[4], process.argv[5]);
   await ds.initialize();
   console.log(`payment-safety-pg-check — code under test: ${SRC}`);
   console.log(`PostgreSQL: ${(await q('SELECT version() v'))[0].v}\n`);
   await q(`UPDATE plans SET "stripePriceId" = $1 WHERE name = 'Individual Monthly'`, [PRICE]);
+  await q(`UPDATE plans SET "stripePriceId" = $1 WHERE name = 'Individual Annual'`, [PRICE_ANNUAL]);
   PLAN_ID = (await q(`SELECT id FROM plans WHERE "stripePriceId" = $1`, [PRICE]))[0].id;
   PACKAGE = (await q(`SELECT id, "tokenCount" FROM token_packages ORDER BY "tokenCount" DESC LIMIT 1`))[0];
   void PLAN_ID;
@@ -320,6 +476,12 @@ async function main() {
   await s6Crash(webhooks);
   await s7FailedThenRetry(webhooks, subs);
   await s8LockWait(webhooks);
+  await t1ConcurrentSignup(webhooks, 15);
+  await t2AllOrders(webhooks);
+  await t3TrialCrash(webhooks);
+  await t4TrialCancelled(webhooks);
+  await t5FirstPaidInvoice(webhooks);
+  await t6Annual(webhooks, subs);
 
   const failed = results.filter((r) => !r.pass);
   console.log(`\n${results.length - failed.length}/${results.length} scenarios passed`);
