@@ -10,8 +10,13 @@ import { useTranslation } from '@/lib/i18n';
  * only READS it (POST /subscriptions/sync re-reads Stripe for a subscription the webhook already recorded, then
  * GET /subscriptions/me is polled a bounded number of times). It never creates a subscription or a charge.
  *
- * "Subscription activated" is shown only once the backend reports an entitled status. One-time purchases
- * (tokens, book, gift) arrive with `?purchase=…` and get a neutral "payment received" message instead.
+ * Query parameters are UNTRUSTED: neither `?purchase=` nor `?session_id=` is verified here (PR #60 PA review, P1 —
+ * server-side Checkout-session verification is a STOP-gated design awaiting PA review). So this page never claims
+ * that a payment was received:
+ *   - subscription: "Your subscription is active" only when the backend reports an entitled status — a statement
+ *     about the ACCOUNT (re-read from Stripe by /subscriptions/sync), not proof that this Checkout session paid;
+ *   - one-time purchases (tokens, book, gift): neutral "we're confirming your purchase" copy, conditional on the
+ *     payment being confirmed. Fulfillment stays webhook-only; this page grants nothing.
  */
 type View = 'checking' | 'confirmed' | 'pending' | 'problem' | 'auth' | 'error' | 'purchase';
 type PurchaseKind = 'tokens' | 'book' | 'gift';

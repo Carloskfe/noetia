@@ -214,7 +214,7 @@ describe('/billing/success — subscription confirmation', () => {
 });
 
 describe('/billing/success — one-time purchases (?purchase=…)', () => {
-  it.each([['tokens'], ['book'], ['gift']] as const)('purchase=%s → "payment received", no subscription calls', async (kind) => {
+  it.each([['tokens'], ['book'], ['gift']] as const)('purchase=%s → neutral "confirming your purchase" (unverified query parameter), no subscription calls', async (kind) => {
     await render(`?purchase=${kind}&session_id=cs_test_synthetic`);
     expect(view()).toBe('purchase');
     expect(text()).toContain(en.billing.success.purchaseTitle);
@@ -223,9 +223,24 @@ describe('/billing/success — one-time purchases (?purchase=…)', () => {
     expect(calls).toHaveLength(0);
   });
 
+  it('an unauthenticated gift buyer sees only generic copy — no account or transaction details, no API calls', async () => {
+    await render('?purchase=gift&session_id=cs_test_someone_else');
+    expect(text()).toContain(en.billing.success.purchaseBody.gift);
+    expect(text()).not.toMatch(/cs_test_someone_else|@|\$\d/);
+    expect(calls).toHaveLength(0);
+  });
+
   it('an unknown purchase value falls back to subscription verification', async () => {
     server.sync = [ok('active')];
     await render('?purchase=other');
     expect(view()).toBe('confirmed');
+  });
+});
+
+describe('/billing/success — copy never claims an unverified payment (PR #60 P1)', () => {
+  const flatten = (v: unknown): string[] => (typeof v === 'string' ? [v] : typeof v === 'object' && v ? Object.values(v).flatMap(flatten) : []);
+  it.each([['en', en], ['es', es]] as const)('%s: no billing.success string says the payment was received', (_lang, dict) => {
+    const strings = flatten(dict.billing.success).join(' | ');
+    expect(strings).not.toMatch(/payment received|pago recibido|won't be charged again|no se te cobrará de nuevo|activated|activada/i);
   });
 });
