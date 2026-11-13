@@ -6,13 +6,15 @@
 **STOP:** independent Product Architecture review is required before any merge, deployment or activation.
 
 > **Correction round 1 (2026-11-13), PA independent review of `9a8b4d8`:** Checkpoints A and D were accepted provisionally; B and C needed correction. The corrections, real-PostgreSQL evidence, open STOP gates and the T-1/T-2 decision packet are in **§10**. Where §10 and earlier sections disagree, §10 is current. Reviewed head for this round: **`9a8b4d8`**. New head: see §10.1.
+>
+> **Round 2 (2026-11-13), PA review of `220e33d`:** the transactional webhook fulfillment and the atomic identity corrections were **provisionally accepted**. The **PO decided T-1** (initial cycle of tokens when the 14-day trial begins) and **USD** as the commercial currency; both are **final**. Round 2 implements T-1, verifies and marks USD, and records both decisions in [`docs/product-governance/COMMERCE-DECISIONS.md`](../../product-governance/COMMERCE-DECISIONS.md). See **§11**, which supersedes every earlier mention of a pending trial-token decision.
 
 ## 0. Summary
 
 | Checkpoint | Result |
 |---|---|
 | **A**: duplicate-billing protection | **Done.** The server refuses a second subscription. The check covers the local record and Stripe itself, runs under a per-user database lock, reuses or expires open Checkout sessions, and fails safe (503) when Stripe can't be read. **No migration.** |
-| **B**: webhook identity and consistency | **Done, except one part that is behind a STOP gate.** Subscription events re-read Stripe, so the result no longer depends on delivery order. A different Stripe subscription can never silently replace a live one. Duplicates are logged. **Recording `planId` earlier is NOT done:** it would change when trial tokens are issued (§3.4). PO decision needed. |
+| **B**: webhook identity and consistency | **Done, except one part that is behind a STOP gate.** Subscription events re-read Stripe, so the result no longer depends on delivery order. A different Stripe subscription can never silently replace a live one. Duplicates are logged. *(Round 1:)* recording `planId` earlier was held for a PO decision. **Done in round 2:** the PO decided T-1, the plan is recorded on every event, and the trial grant is implemented (§11). |
 | **C**: post-payment confirmation | **Done.** `/billing/success` authenticates and has distinct states: confirmed, pending (limited polling), payment problem, sign-in required, and verification error. "Subscription activated" appears only once the backend reports an entitled status. |
 | **D**: account billing | **Done.** Every protected call is authenticated. A failed load is never shown as "no active plan", and the portal never navigates to `/undefined`. Every action shows its errors and refreshes state on success. ES and EN. |
 
@@ -151,9 +153,11 @@ after rollback:  acquired in 1ms
 
 **Negative control:** with the original `createCheckoutSession` and `upsertFromWebhook` restored, **33 of the 37** new guard and identity tests fail. The 4 that pass are regression guards: an invalid plan is still rejected; canceled subscriptions don't block; nothing is cancelled; `planId` is written only when passed.
 
-### 3.4 Trial-token behaviour: STOP gate (PO decision required)
+### 3.4 Trial-token behaviour (historical: resolved by the PO's T-1 decision, implemented in §11)
 
-**Current behaviour, unchanged by this mission.** It is pinned by the two "Trial-token behaviour" tests.
+> **Resolved.** The PO chose **T-1** on 2026-11-13. The order-dependent behaviour below is the **pre-round-2** state and no longer applies on this branch; see §11. The table of alternatives is kept only as a record of what was presented.
+
+**Behaviour before round 2:**
 - Tokens are issued only from `invoice.paid`, via `issueTokensForNewSubscription`. They are issued only when the subscription row already has a `planId`.
 - `planId` is written only from `customer.subscription.updated`.
 - **So whether a new trial receives its cycle tokens on the $0 trial invoice depends on webhook delivery order:**
@@ -176,7 +180,7 @@ after rollback:  acquired in 1ms
 | **T-2** | Tokens only after the **first paid invoice** (`amount_paid > 0`) | No unpaid redemption | The trial gives library access but no token until day 15. Must be stated in plan copy and Terms |
 | **T-3** | Keep today's behaviour | Unpredictable | Some trials get tokens and some don't; not defensible |
 
-**Recommendation: decide between T-1 and T-2.** Either is a few lines in `handleInvoicePaid`/`issueTokensForNewSubscription` plus early `planId` recording, with tests. Both need consistent wording in `/pricing` and the Terms; the Terms are still under legal review (OP-3).
+**Outcome:** the PO decided **T-1**, which is final (§11). The customer wording for `/pricing` and the Terms still goes through the Terms review (OP-3).
 
 ## 4. Checkpoint C: post-payment confirmation (`/billing/success`)
 
@@ -284,7 +288,7 @@ All earlier `/pricing` tests still pass unchanged: authentication, Causas lookup
 
 ## 8. Remaining Product Owner decisions
 
-1. **Trial tokens (§3.4):** T-1 or T-2. This also unblocks recording `planId` at creation.
+1. ~~**Trial tokens (§3.4)**~~ — **decided: T-1** (PO, 2026-11-13); implemented in §11.
 2. **Existing duplicate subscriptions, if any:** how to resolve accounts flagged `DUPLICATE_LIVE_SUBSCRIPTION` (refund or cancel; manual). A read-only Stripe audit before activation is recommended.
 3. **Plan changes:** with duplicates refused, changing plan means the Stripe portal (or a future in-app flow). Confirm that the portal's plan-switching configuration is what the PO wants.
 4. **Stale "live" local records:** checkout fails closed until "Refresh status" runs. Confirm this trade-off is acceptable.
@@ -313,7 +317,7 @@ All earlier `/pricing` tests still pass unchanged: authentication, Causas lookup
 
 **Release remains BLOCKED:**
 - PA review of this mission and PR #59;
-- the PO trial-token decision;
+- ~~the PO trial-token decision~~ (decided T-1, 2026-11-13; implemented in §11);
 - PO merge and deploy authorization; merging to `main` is a production deploy;
 - Stripe production configuration, including the webhook endpoint subscribing to `customer.subscription.created`;
 - Terms legal review (OP-3);
@@ -478,7 +482,7 @@ All earlier `/pricing` tests still pass unchanged: authentication, Causas lookup
 | S8 | Duplicate arrives 50 ms into a 400 ms transaction | blocks until the first commits: the two finish within 1–3 ms of each other (425–451 ms in the three runs); Stripe read **once**; tokens 1 | not blocked; Stripe read twice; tokens **2** |
 | | **Total** | **10/10, 3 of 3 runs** | **1/10** |
 
-Logs: `payment-safety-pg-check.txt` (three runs) and `payment-safety-pg-check.negative-control.txt`. **Not covered by the script:** the book purchase. It relies on the `UQ_user_books_user_book` constraint plus the session key, and is covered by unit tests.
+Logs: `payment-safety-pg-check.txt` and `payment-safety-pg-check.negative-control.txt`. Both were **regenerated in round 2** with the extended script (§11.5). In the regenerated negative control, `9a8b4d8` shows 19/25 and 16/25 silent replacements for S5/S5b; the 15/25 figures above come from the round-1 run. Interleaving varies between runs. **Not covered by the script:** the book purchase. It relies on the `UQ_user_books_user_book` constraint plus the session key, and is covered by unit tests.
 
 ### 10.6 Checkout guard edge cases (§5)
 
@@ -503,8 +507,8 @@ Logs: `payment-safety-pg-check.txt` (three runs) and `payment-safety-pg-check.ne
 | # | Item | Owner | State |
 |---|---|---|---|
 | G-1 | **P1 server-side Checkout-session verification** (new endpoint, 10.4) | PA | Design ready; **not implemented**. Interim neutral copy shipped |
-| G-2 | **Trial tokens T-1 vs T-2** (10.9) | PO | **Not implemented**; behaviour unchanged and pinned by tests |
-| G-3 | **Fulfillment keys in `stripe_processed_events`** (10.2): confirm, or request the dedicated table | PA | Implemented without schema change. **Alternative (migration, not prepared as code):** `stripe_fulfillments("key" varchar PK, kind varchar, "stripeObjectId" varchar, "eventId" varchar, "createdAt" timestamptz default now())`, used identically |
+| G-2 | Trial tokens | PO | **Closed in round 2:** the PO decided **T-1**; implemented in §11 |
+| G-3 | **Fulfillment keys in `stripe_processed_events`** (10.2): confirm, or request the dedicated table | PA | **Closed in round 2:** the PA allowed reusing the table, conditional on updating the entity comment and adding regression tests (both done, §11.3). Originally implemented without schema change. **Alternative (migration, not prepared as code):** `stripe_fulfillments("key" varchar PK, kind varchar, "stripeObjectId" varchar, "eventId" varchar, "createdAt" timestamptz default now())`, used identically |
 | G-4 | **Pending-checkout record** to close the 10.6 residual | PA | Proposal only: `checkout_attempts("userId" uuid PK, "sessionId" varchar, "planId" uuid, "createdAt")`, written under the existing lock |
 | G-5 | **Location of the verification script** (`services/api/scripts/`, outside `tests/unit`, because it uses a real database) | PA | Keep or drop. It doesn't run in `npm test` |
 | G-6 | Pre-existing items from §8 (duplicate-account resolution, portal plan-switching, stale live records) | PO | Unchanged |
@@ -522,30 +526,11 @@ Logs: `payment-safety-pg-check.txt` (three runs) and `payment-safety-pg-check.ne
 - **[L] Annual cron.** The annual-plan monthly cron is not guarded against two API instances running it at once (pre-existing).
 - **Evidence gap from round 1, now closed.** Round 1 cited `advisory-lock-check.log` and `browser-run.log`, but `*.log` is gitignored, so those files were never in the PR. They are re-added as `.txt` from the local workspace, unmodified.
 
-### 10.9 Trial tokens: decision packet for the PO (T-1 / T-2)
+### 10.9 Trial tokens (superseded)
 
-**Today (unchanged):** tokens come only from `invoice.paid`, and only if the row already has a `planId`, which only `customer.subscription.updated` writes. Whether a trial gets tokens on its $0 invoice depends on delivery order (§3.4). Tokens are `paid`, expire in **90 days**, and books redeemed with them are **owned permanently**.
+The round-1 decision packet was presented to the PO, who decided **T-1** on 2026-11-13. That decision is final and is recorded in [`docs/product-governance/COMMERCE-DECISIONS.md`](../../product-governance/COMMERCE-DECISIONS.md). The implementation, tests, evidence and customer-disclosure draft are in **§11**. The comparison table and the round-1 recommendation have been withdrawn from this report.
 
-| | **T-1: tokens when the trial begins** | **T-2: tokens after the first paid invoice** |
-|---|---|---|
-| Rule | Record `planId` when the subscription is created; issue `tokensPerCycle` on the $0 trial invoice | Record `planId` when the subscription is created; issue only for `invoice.paid` with `amount_paid > 0` (from day 15) |
-| Per-trial grant | Individual **1**, Duo **2**, Family **4** tokens (seeded plan values) | Same counts, but only after payment |
-| Cost exposure | A trial user can redeem and cancel before paying, and **keeps the books permanently** (ownership principle). Exposure per trial = up to one cycle of tokens, plus any per-redemption author/narrator payout the PO's rules attach to an unpaid redemption (payout rule to be confirmed by the PO) | No unpaid redemption |
-| Abuse surface | Repeat trials. Mitigation would need a per-customer trial limit, which Stripe can't do by itself | None new |
-| Annual plans | First cycle at trial start; monthly drip as today | First cycle at the first paid invoice |
-| Implementation (after approval) | Small: `planId` at creation plus the existing issuance path. Tests for both orders | Small: `planId` at creation plus an `amount_paid > 0` condition. Tests for both orders |
-
-**Required customer disclosures (draft; `/pricing` and the Terms; the Terms are under legal review, OP-3):**
-- **T-1**
-  - EN: *"Your 14-day free trial includes {n} token(s). Books you redeem are yours to keep, even if you cancel during the trial."*
-  - ES: *"Tu prueba gratuita de 14 días incluye {n} token(s). Los libros que canjees son tuyos para siempre, aunque canceles durante la prueba."*
-- **T-2**
-  - EN: *"Your plan's tokens arrive with your first payment, when the 14-day free trial ends. During the trial you have your plan's access, without tokens."*
-  - ES: *"Los tokens de tu plan llegan con tu primer pago, al terminar la prueba gratuita de 14 días. Durante la prueba tienes el acceso de tu plan, sin tokens."*
-
-**Recommendation:** **T-2**. It is the only option with no unpaid, permanent value transfer and no new abuse surface, and its disclosure is a single sentence. T-1 is defensible only with an accepted per-trial cost and a repeat-trial control. **Neither option is implemented.**
-
-### 10.10 Validation (local)
+### 10.10 Validation (local, round 1; round-2 results are in §11.8)
 
 | Check | Result |
 |---|---|
@@ -572,3 +557,173 @@ Logs: `payment-safety-pg-check.txt` (three runs) and `payment-safety-pg-check.ne
 - **Disposable database:** the container was removed after the evidence runs.
 
 **STOP for independent Product Architecture review.**
+
+---
+
+## 11. Round 2: T-1 implementation and USD verification (PA review of `220e33d`, 2026-11-13)
+
+**PA decision being implemented:**
+- The transactional webhook fulfillment and the per-user identity lock are **provisionally accepted**, and are kept unchanged here.
+- **PO decisions, final:**
+  - **T-1:** the plan's initial cycle of tokens is granted when a valid 14-day free trial begins.
+  - **USD** is Noetia's commercial and financial currency.
+- **Governance record:** [`docs/product-governance/COMMERCE-DECISIONS.md`](../../product-governance/COMMERCE-DECISIONS.md) (new; the PO has not assigned decision numbers). `docs/production-safety/03-webhook-idempotency.md` now carries a status note pointing here.
+
+**Not done, by instruction:** no merge, no deploy, no live purchase, no premium activation, no migration, no change to trial duration, prices or economics. NEM-024: E-1 stays **OPEN / BLOCKED**, and Checkpoint E stays **NOT QUALIFIED**. The PR stays **Draft**, stacked on PR #59.
+
+### 11.1 Commits and changed files
+
+| Commit | Scope |
+|---|---|
+| `70f626a` | API: T-1 (plan on every event, once-per-subscription trial grant, $0 invoices grant no cycle), entity comment, unit tests |
+| `dbf2748` | API: T-1 scenarios in the real-PostgreSQL verification script |
+| `232b574` | Web and mobile: prices shown as explicitly marked US dollars; pricing metadata corrected to US$8.99 |
+| (report commit) | This section, the governance record, the production-safety status note, regenerated evidence, USD screenshots |
+
+**Code files:**
+- **API source:**
+  - `services/api/src/subscriptions/subscriptions.service.ts`
+  - `services/api/src/subscriptions/webhooks.service.ts`
+  - `services/api/src/subscriptions/stripe-fulfillment-ledger.ts`
+  - `services/api/src/subscriptions/stripe-processed-event.entity.ts` (comment only)
+- **API tests:**
+  - `services/api/tests/unit/subscriptions/{subscriptions.service,webhooks.service,payment-lifecycle,stripe-fulfillment-ledger}.spec.ts`
+- **API verification script:** `services/api/scripts/payment-safety-pg-check.ts`
+- **Web:**
+  - `services/web/lib/currency.ts` (new)
+  - `services/web/tests/unit/lib/currency.spec.ts` (new)
+  - `services/web/app/(billing)/pricing/{page,layout}.tsx`
+  - `services/web/app/(billing)/gift/page.tsx`
+  - `services/web/lib/i18n/{en,es}.ts`
+  - `services/web/tests/unit/app/billing/pricing.spec.tsx`
+- **Mobile:** `services/mobile/src/i18n/{en,es}.ts` (paywall price strings only)
+
+### 11.2 T-1 design (on the accepted transactional architecture)
+
+1. **Plan recorded on every subscription event.** `applyStripeSubscription` maps Stripe's current price to `planId` for **every** event: created, Checkout completed, updated, `invoice.paid`, `invoice.payment_failed`. Before, only `updated` did this. This removes the delivery-order dependence. An unknown price records `null`, as `updated` always did.
+2. **Trial-start grant: once per Stripe subscription.** After the identity-guarded upsert, inside the same webhook transaction, the grant happens when Stripe reports the subscription `trialing` with a `trial_end`.
+   - `issueTrialStartTokens` claims **`fulfillment:trial-start-tokens:<stripeSubscriptionId>`** and issues `tokensPerCycle` `paid` tokens with reason "Trial start (initial cycle)" and the 90-day expiry.
+   - The key is **distinct from the per-invoice renewal keys** (`fulfillment:invoice-tokens:<in_…>`).
+   - **Whichever signup event is processed first grants it;** all others find the key taken.
+   - **No grant** for an identity-rejected duplicate subscription, a row without a plan (the key stays unclaimed), or a call outside a webhook transaction.
+3. **$0 invoices grant no cycle.** `handleInvoicePaid` skips the renewal grant when `amount_paid === 0`. This covers the trial's `subscription_create` invoice and $0 prorations, so neither can produce a second initial grant.
+4. **Paid cycles are unchanged.** The first paid invoice (day 15) and every later paid invoice grant `tokensPerCycle` once per invoice id, as before.
+5. **Annual plans.** The trial grant does **not** touch `nextTokenIssuanceAt`. The monthly schedule starts at the first **paid** annual invoice (+30 days), exactly as before. The cron only issues to `active` rows, so it can never issue during a trial.
+6. **Cancellation is unchanged.** A trial cancelled before payment keeps its initial tokens (`paid`, 90 days) and any books redeemed. No claw-back, and no paid cycle.
+7. **No browser path.** Grants come only from verified webhooks, inside the transaction. `/billing/success` grants nothing.
+8. **No migration.** Existing columns and the existing `stripe_processed_events` primary key.
+
+**Behaviour change to note:** a $0 invoice that isn't a trial (for example a 100%-off coupon cycle) now grants no cycle. No such coupons exist today. Before T-1 the trial grant depended on delivery order (§3.4), and a paid invoice with no prior `updated` event granted nothing; the negative control shows both (11.5).
+
+### 11.3 Ledger reuse: PA conditions met
+
+- **Entity comment updated.** `stripe-processed-event.entity.ts` no longer says rows are written "only after" processing. It describes the claim-first transaction and the two kinds of key (Stripe event id; `fulfillment:<kind>:<id>` with `type = fulfillment:<kind>`). Deployed migration 066 is **not** edited.
+- **Regression tests** (`stripe-fulfillment-ledger.spec.ts`, 8 tests):
+  - stable key formats for all three kinds;
+  - no collision with `evt_…` ids or between kinds;
+  - the trial key is distinct from an invoice key for the same id;
+  - the `type` column names the kind;
+  - a database error propagates (rollback);
+  - an unexpected driver result fails safe (no fulfillment).
+
+### 11.4 USD verification
+
+| Item | Where | Result |
+|---|---|---|
+| Gift Checkout amount | `gifts.service.ts`, `price_data.currency: 'usd'` | **Verified (code)** |
+| Book purchase Checkout amount | `subscriptions.service.ts`, `price_data.currency: 'usd'` | **Verified (code)** |
+| Subscription plans (6 rows) | Stripe Price objects referenced by `plans.stripePriceId` | **PENDING.** Currency is defined in Stripe. There is no Stripe access from this environment, and no credentials were used or exposed. The PO should confirm in the Stripe Dashboard that each referenced price has currency `usd` |
+| Token packages | Stripe Price objects referenced by `token_packages.stripePriceId` | **PENDING** (same reason) |
+| Stored display amounts | `plans.amountCents`, `token_packages.amountCents` | Integer US cents; read as USD everywhere. Unchanged |
+| Terms of Service | `lib/legal/terms-of-service.ts` | States `USD` explicitly in both languages ✔. The annual figures there are the subject of the separate legal-gated PR #22 (NOF-004); not touched |
+| **Display: web `/pricing`** (plan cards, annual equivalent, token packages) | `formatUsd` | **Corrected:** bare `$8.99` → **`US$8.99`** in ES and EN |
+| **Display: web `/gift`** | `formatUsd` | **Corrected** to `US$` |
+| **Display: web token copy** (`unlocks3`) | `en.ts` / `es.ts` | **Corrected:** `US$8.33` |
+| **Display: `/pricing` metadata** | `pricing/layout.tsx` | **Corrected:** "desde $9.99/mes" was both bare and outdated → "desde US$8.99/mes", matching migration 067 |
+| **Display: mobile paywall** | `mobile/src/i18n/{en,es}.ts` | **Corrected:** `US$8.99/mo` etc. |
+| E-mails and API copy | `services/api/src` | No price amounts rendered |
+
+**Why `US$`:** in much of Latin America (MXN, COP, ARS, CLP…), a bare `$` is the local peso, so `$8.99` would misstate the price for Spanish-speaking readers.
+
+**Browser check** (`browser-run-usd.txt`): `/pricing` and `/gift`, ES/EN, desktop/mobile, 8/8 runs. Every amount is `US$…`, **0 bare-`$` amounts**, no horizontal overflow. Screenshots: `screenshots/{pricing,gift}-usd--{es,en}--{desktop,mobile}.jpg`.
+
+**Pricing inaccuracies that are not about currency (recorded, not changed; owned by the NOF-004 presentation PR #21):**
+- the Family card says "Hasta 5 usuarios / Up to 5 users" on web and mobile, but the plan allows 4 profiles;
+- plan cards show raw names ("Individual Monthly", "Dual Reader");
+- the mobile paywall lists "Full library access".
+
+`components/PlanCard.tsx` / `lib/plan-utils.ts` also format prices without a currency marker, but no page uses them (dead code).
+
+### 11.5 Real PostgreSQL evidence
+
+Same method as 10.5: a disposable `postgres:16-alpine` container (removed afterwards), all **68 migrations**, the real services, fake Stripe/e-mail only, separate pool connections, and a `SIGKILL`ed child for crashes. The script now has **16 scenarios**: S1–S8 from round 1 plus T1–T6.
+
+| # | T-1 scenario | Corrected (`70f626a`, 3 runs) | `220e33d` (pre-T-1) |
+|---|---|---|---|
+| T1 | 15 rounds × **11 concurrent** signup deliveries (created/completed/updated/$0 invoice; duplicates + new ids) | **0** rounds ≠ 1 token | 5/15 rounds wrong |
+| T2 | **All 24 delivery orders** of the four signup events | **0** orders ≠ 1 token | **12/24** orders grant **0** (order dependence) |
+| T3 | `SIGKILL` right after the trial grant inserted tokens, before COMMIT; then retry + other events | after crash: tokens 0, trial claim 0, row 0 → after retry: **1** | no trial grant at all (tokens 0) |
+| T4 | Trial cancelled before paying, then late events | **1** token kept and active; row `canceled` | "passes" by accident: the $0 invoice granted a token on an already-cancelled subscription |
+| T5 | First paid invoice (4 concurrent deliveries, 3 ids), then next month | **2** → **3** | **0 → 0** (no `updated` event → no plan → no tokens at all) |
+| T6 | Annual: trial grant → cron during trial (even with a forced overdue pointer) → first paid annual invoice → cron not due → cron when due → cron again | 1 → 1 → **2** (schedule **+30.00 days**) → 2 → **3** → 3 | 0 throughout |
+
+**S1–S8** (round-1 guarantees) still pass on the corrected code: **16/16 in each of 3 runs**. Negative controls with the same script:
+- `220e33d`: **11/16** (all S scenarios pass; T-1 scenarios fail);
+- `9a8b4d8`: **2/16**.
+
+Logs: `payment-safety-pg-check.txt` and `payment-safety-pg-check.negative-control.txt`.
+
+### 11.6 Residual risks: follow-up recommendations (not implemented)
+
+| Risk | Recommendation |
+|---|---|
+| **Ambiguous Checkout-session visibility window** (10.6) | Persist a pending-checkout record under the existing lock: `checkout_attempts`, a migration needing PA approval (G-4). Until then, the identity guard flags any resulting duplicate and never adopts it silently |
+| **Concurrent redemption of one token for several books** (pre-existing, `redeemToken`) | A conditional `UPDATE token_ledger SET status='redeemed' … WHERE id=$1 AND status='active' RETURNING id`, plus the `user_books` insert in the same transaction. Small, no migration. Needs its own PO authorization |
+| **Repeat free-trial eligibility / T-1 abuse** | Every subscription Checkout currently sets `trial_period_days: 14`, so a returning customer gets another trial and, under T-1, another initial cycle (unit test "re-subscribing … granted again"). Recommend a PO trial-eligibility rule, for example one trial per Noetia user / Stripe customer: omit `trial_period_days` when the user has had any subscription. This is product policy, not implemented |
+| **Server-side verification of Checkout success** (G-1) | Implement the endpoint designed in 10.4 after PA approval. The interim neutral copy stays until then |
+| **Gift e-mail lost after a successful commit** | A resend path: an admin action, or an idempotent "gift e-mail pending" marker (a migration). `EmailService` already swallows SMTP errors, so today a failed send is only logged |
+
+**Other observations (not changed):**
+- **Annual drip cadence (pre-existing, economics).** The monthly schedule advances by 30 days, so a paid annual year receives the invoice grant plus 12 scheduled grants (days 44 … 374 after a day-14 first payment), **13 cycles per 365 days**. With T-1 the trial adds its one initial cycle on top, as decided. The cadence itself predates this mission and is a PO/finance question.
+- **Schedule arithmetic uses local time** (`setDate(+30)`), so `nextTokenIssuanceAt` can move by the daylight-saving hour depending on the server's timezone (pre-existing). The tests tolerate it and also pass under `TZ=UTC`.
+
+### 11.7 Remaining STOP gates
+
+| # | Item | Owner | State |
+|---|---|---|---|
+| G-1 | Server-side Checkout-session verification (new endpoint) | PA | Design in 10.4; not implemented |
+| G-4 | Pending-checkout record (migration) | PA | Proposal only |
+| G-5 | Location of the real-database verification script (`services/api/scripts/`) | PA | Keep or drop |
+| G-6 | §8 items 2–4 (duplicate-account resolution, portal plan-switching, stale live records) | PO | Unchanged |
+| USD-1 | Confirm in Stripe that every referenced subscription and token-package price is `usd` | PO | **Pending verification** |
+| T1-D | T-1 customer disclosure wording on `/pricing` and in the Terms (draft in the governance record) | PO / legal (OP-3) | Not published |
+
+**Closed:** G-2 (T-1 decided and implemented) and G-3 (ledger reuse accepted, conditions met). **No migration** was needed for T-1.
+
+### 11.8 Validation (local)
+
+| Check | Result |
+|---|---|
+| API unit tests (full, `--maxWorkers=2`) | **1110/1110** pass. The one non-loading suite is `auth.controller.spec`: the `bcrypt` native binding isn't built in this worktree (environmental, unrelated, as in rounds 0–1) |
+| API suites changed | `subscriptions.service.spec` 121, `payment-lifecycle.spec` 60 (incl. 24 delivery orders, annual timeline), `webhooks.service.spec` 33, `stripe-fulfillment-ledger.spec` 8, `gifts.service.spec` 15; all also pass under `TZ=UTC` |
+| API coverage (changed files) | `webhooks.service.ts` 100% statements / 95.3% branches; `subscriptions.service.ts` 92.0 / 82.2; `gifts.service.ts` 97.3 / 84.6. Global branches 71.05%: the gate (80%) was failing on `main` before this mission; threshold unchanged |
+| API `tsc --noEmit` / eslint | pass / 0 errors (`any` warnings, existing style) |
+| Real PostgreSQL script | **16/16** in 3 consecutive runs; negative controls 11/16 (`220e33d`), 2/16 (`9a8b4d8`) |
+| Web unit tests (full) | **441/441** pass (28 suites), incl. i18n en/es parity, `currency.spec`, and the `/pricing` USD assertion |
+| Web `tsc` / `next lint` (changed files) | pass / no warnings or errors |
+| Mobile unit tests (full) | **179/179** pass (24 suites). Run with the main checkout's `node_modules` linked temporarily, because this worktree has none; the link was removed afterwards |
+| Browser | `/pricing` and `/gift` USD display: 8/8 runs, 0 bare-`$` amounts, no overflow |
+| CI | **Did not run** (stacked PR, §9). No green CI is claimed |
+
+### 11.9 Release restrictions (unchanged)
+
+- **No merge, deployment, live purchase or premium activation.** Merging to `main` is a production deploy and needs a PO merge instruction naming the PR.
+- **Protected systems untouched:**
+  - the reader / Escucha Activa;
+  - permanent book ownership;
+  - the Causas 2.22% policy and PO-053;
+  - prices;
+  - NEM-024 (E-1 **OPEN / BLOCKED**, Checkpoint E **NOT QUALIFIED**);
+  - production and staging data and infrastructure.
+
+**STOP for independent PA review.**
