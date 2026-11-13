@@ -934,6 +934,27 @@ export const en = {
       cta: 'Create free account',
     },
   },
+  causeSelector: {
+    eyebrow: 'Causas Noetia',
+    title: 'Choose where your 2.22% goes',
+    body: 'We commit 2.22% of every payment to Causas Noetia. Choose one cause to receive that contribution.',
+    defaultNote: "If you don't choose one, it is distributed equally among all three.",
+    groupLabel: 'Causas Noetia causes',
+    loading: 'Loading causes…',
+    loadError: "We couldn't load the causes.",
+    retryLoad: 'Try again',
+    confirm: 'Save and continue',
+    saving: 'Saving…',
+    saveError: "We couldn't save your cause. Your selection is still here — try again, or continue without choosing.",
+    retrySave: 'Try again',
+    saved: 'Cause saved',
+    skip: 'Continue without choosing',
+    causes: {
+      'bienestar-animal': { name: 'Animal welfare', description: 'Rescue, care, rehabilitation and protection initiatives for animals in Latin America.' },
+      'ninez-y-juventud': { name: 'Children and youth', description: 'Projects that expand access to education, reading and opportunities for children and young people.' },
+      'medio-ambiente': { name: 'Environment', description: 'Protecting the ecosystems, biodiversity and natural resources of our region.' },
+    },
+  },
 };
 
 export type Translations = typeof en;
