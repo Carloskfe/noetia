@@ -73,7 +73,7 @@ Full-page captures of the local production build, 2026-11-12. The existing cooki
 
 | # | Item | Owner |
 |---|---|---|
-| U-1 | **Causas alignment.** The landing page states the PO-053 policy (one cause; equal default). The existing **cause selector still allows two causes and a "random" option**, and the `/causas` page body still describes "up to two… or randomly" and "from day one". Both are out of this PR's scope and planned in PR #58 (`causas-policy-alignment-plan.md`, steps S1–S4). Until aligned, the product is inconsistent with the landing wording | PO (authorize alignment) |
+| U-1 | **Causas alignment** (`/causas` copy resolved in §6; legacy data clarified in §7). The landing page states the PO-053 policy (one cause; equal default). The existing **cause selector still allows two causes and a "random" option**, and the `/causas` page body still describes "up to two… or randomly" and "from day one". Both are out of this PR's scope and planned in PR #58 (`causas-policy-alignment-plan.md`, steps S1–S4). Until aligned, the product is inconsistent with the landing wording | PO (authorize alignment) |
 | U-2 | "Every payment" (approved public wording) vs "each qualifying payment" (PO-053 rule 1) | PO (OP-1), legal |
 | U-3 | Cookie banner overlaps the hero on first visit, asks analytics consent although no analytics exist, and gives "Aceptar todo" more prominence than "Solo esenciales". Unchanged by design (consent behaviour preserved) | Legal, PO (Appendix G LP-07/LP-08) |
 | U-4 | English footer label "Noetia Causes" vs the brand name "Causas Noetia" (existing i18n; unchanged) | PO (LPD-9) |
@@ -123,3 +123,14 @@ Full-page captures of the local production build, 2026-11-12. The existing cooki
 | Premium cards | still **0** links or buttons |
 | Footers | 1 per page; no overflow at 360/390/1440; all internal links HTTP 200 |
 | Screenshots | `screenshots/causas--{es,en}--{desktop,mobile}.jpg` and `home--*` regenerated |
+
+## 7. PO clarification — legacy Causas preferences (2026-11-12)
+
+The PO confirmed that every account holding preferences from the old model (two causes or `randomDistribution`) is a **testing account**. As a result:
+
+- No customer-data preservation strategy and **no special legacy-preference migration** are required.
+- Testing accounts are **not** modified, deleted or reset to resolve those preferences.
+- If a future, separately authorized API or schema change needs a technical migration, it is handled safely and documented then.
+- **PO-053 continues to govern:** one selected cause receives 100% of the 2.22% allocation; no selection means an equal split across the three causes; no other options.
+
+This removes the legacy-data decision (OP-2) from the selector/API alignment. That work stays **out of scope** for this PR, as does all production financial-allocation logic.
