@@ -1358,3 +1358,35 @@ Non-allocating invoice classes never reach the new path, so they cause no Stripe
 - **F-01:** behaviour verified and pinned, with **no change**. The paid-without-trial and never-activated-`canceled` cases need a Product Owner decision (options A / B / B′ in 14.B) before any code change.
 
 **STOP for independent PA review.**
+
+### 14.G Governance closure (PO Option B decision, 2026-11-13)
+
+Documentation-only follow-up on baseline `aac79ef`. No code, tests, scripts, migrations or configuration were changed.
+
+**F-01: RESOLVED by the Product Owner.** On 2026-11-13 the PO approved **Option B, the returning-subscriber rule**, as final policy.
+- **Not eligible for another trial:** any customer who previously **started** a subscription. That includes previous trial subscribers, previous paid subscribers who never had a trial, and subscriptions **canceled before activation**.
+- **Does not use up eligibility:** a subscription that ended as **`incomplete_expired`** without starting.
+- **Still eligible:** customers who only bought books, gifts or token packages, and linked Duo/Family members with no own subscription history.
+- **Unverifiable history:** stays fail-closed.
+
+**Where it is recorded:** `docs/product-governance/COMMERCE-DECISIONS.md`, section **D1**, subsection "D1 clarification: F-01 Option B, the returning-subscriber rule (PO, 2026-11-13, final)".
+
+**Current implementation retained:** it already applies Option B, so **no production code change is required**.
+
+**The §14.B matrix and investigation are kept unchanged as the historical record.** The two rows marked "⚠ PO decision" there, and the test names labelled `PENDING-PO` in `subscriptions.service.spec.ts`, are now decided as **B (no trial)**, which is exactly what those tests pin. The test labels were deliberately left as written, because this closure may not modify tests.
+
+**F-02: accepted by Product Architecture for development progression,** at the bounded fail-closed correction in `5936cb5` / `72b4507` (§14.C). This is **not** approval for production release.
+
+**Remaining launch blockers (unchanged):**
+- PA review and a PO merge/deploy instruction naming PR #60 (merging to `main` is a production deploy);
+- server-side Checkout-session verification (G-1);
+- Checkout ambiguity after Stripe timeouts (G-4);
+- the verification-script location (G-5);
+- gift-email recovery;
+- the Stripe USD price-object check (USD-1, needs Stripe access);
+- the Stripe portal configuration check (D4);
+- Stripe production webhook configuration;
+- Terms wording for T-1 and D1–D6 (legal review, OP-3);
+- NEM-024: E-1 **OPEN / BLOCKED**, Checkpoint E **NOT QUALIFIED**.
+
+PR #60 stays **Draft**. **STOP for independent PA review.**

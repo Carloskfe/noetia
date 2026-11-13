@@ -82,6 +82,26 @@ Durable record of **Product Owner decisions** on Noetia's commercial model: subs
 - **Fail safe:** if the history can't be verified, checkout returns 503 and **never charges unexpectedly**. The pricing page then doesn't mention a trial.
 - **Known limit, no claim of perfect identification:** someone who deletes their account and signs up again with a **different e-mail**, or with different capitalization (e-mails aren't normalized at registration), isn't recognized. Closing that gap would need a new persistent identity mechanism, which isn't proposed.
 
+#### D1 clarification: F-01 Option B, the returning-subscriber rule (PO, 2026-11-13, final)
+
+Resolves the F-01 ambiguity raised in the PR #60 report §14.B. **Final product policy:** it may not be reopened or reinterpreted without a new explicit PO decision.
+
+- **Rule:** a customer who has **previously started a subscription** is **not eligible** for another free trial. This covers:
+  - previous free-trial subscribers;
+  - previous **paid subscribers who never received a trial**;
+  - previously started subscriptions that were **canceled before activation**.
+- **Exception kept:** a subscription that expired as **`incomplete_expired`** without ever starting does **not** use up eligibility.
+- **Still eligible:**
+  - customers who only bought **books, gifts or token packages** (one-time payments, not subscriptions);
+  - linked **Duo/Family members** with no subscription history of their own.
+- **Unverifiable history:** the existing fail-closed behaviour applies. No checkout (503), never an unexpected charge, and no trial advertised.
+- **Evidence used:** only existing subscription history, the Noetia account's own subscription record and the Stripe customers' subscription history. **No new identity-tracking mechanism is authorized.** The known limit above (an account recreated under a different e-mail) still stands.
+- **No production code change is required.** The implementation at PR #60 head `aac79ef` already applies this rule:
+  - `billing-cycles.ts subscriptionEverStarted`: any subscription other than `incomplete_expired` counts as started;
+  - the own-subscription check in `subscriptions.service.ts`.
+
+  The F-01 matrix tests in `subscriptions.service.spec.ts` pin it.
+
 ### D2: exactly 12 paid annual allocations
 - **12 paid allocations per annual billing period.**
   - The paid annual invoice gives allocation 1.
