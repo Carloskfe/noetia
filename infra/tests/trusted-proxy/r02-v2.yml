@@ -1,0 +1,12 @@
+# G1-I1 Checkpoint IV R-02 fixture: the "after" file requires an external edge network that does NOT exist
+# (same declaration style as docker-compose.server.yml's noetia_api_edge). `up -d` must fail BEFORE replacing
+# the running service.
+services:
+  api:
+    image: node:20-alpine
+    command: ["sleep", "3600"]
+    networks: [default, edge]
+networks:
+  edge:
+    external: true
+    name: g1q4-r02-missing-edge

@@ -1,0 +1,20 @@
+# G1-I1 Checkpoint IV disposable harness — Traefik v2.11 static config.
+# Mirrors production (infra/server/traefik/traefik.yml): entrypoint with NO forwardedHeaders settings (default:
+# client X-Forwarded-* not trusted). Differences, all harness-only:
+#   - plain HTTP on :80 (no TLS/ACME), clients address it by container name on the disposable "ext" network;
+#   - file provider instead of the Docker provider: mounting the Docker socket into test containers is not
+#     allowed, so the upstream address Traefik's Docker provider would read from the Docker API for the
+#     `traefik.docker.network` network is written into the dynamic file (render-dynamic.sh) instead;
+#   - dialTimeout 3s (production default 30s) so unreachable-upstream scenarios finish quickly.
+log:
+  level: ERROR
+entryPoints:
+  web:
+    address: ":80"
+serversTransport:
+  forwardingTimeouts:
+    dialTimeout: 3s
+providers:
+  file:
+    directory: /dynamic
+    watch: true
