@@ -260,6 +260,7 @@ Key variables:
 | `JWT_EXPIRES_IN` | `15m` | Access token lifetime |
 | `WEB_URL` | `http://localhost:3000` | Used in email confirmation + reset links |
 | `API_URL` | `http://localhost:4000` | Used as OAuth callback base URL |
+| `TRUSTED_PROXY_CIDRS` | _(empty)_ | G1-I1. Peers whose `X-Forwarded-For` is trusted (rate-limit client IP). Empty = no trust (client = TCP peer). Production, **only after** the `noetia_api_edge` network exists with Traefik attached: `10.211.75.8/29` (its allocation range). Never `true`, keywords, hop counts or broad/private ranges — invalid values are ignored with a WARN. See [Trusted proxy (G1-I1)](#trusted-proxy-g1-i1). |
 
 ### Email (SMTP)
 | Variable | Default | Notes |
@@ -403,6 +404,14 @@ cd /opt/traefik && touch acme.json && chmod 600 acme.json && docker compose up -
 - **Container gotchas** (both already fixed in `docker-compose.server.yml`): Next.js requires `HOSTNAME: "0.0.0.0"` (else it binds one interface → Traefik 502); Alpine healthchecks must use `127.0.0.1`, not `localhost` (`busybox wget` resolves `localhost` as IPv6 `::1` → unhealthy → Traefik drops the route).
 
 Full diagnosis + fix commands — Traefik 502/404, config corruption (nano/base64 edit procedure), crash loops, DB/MinIO outages — are in [`docs/incident-response.md`](docs/incident-response.md).
+
+### Trusted proxy (G1-I1)
+
+**Prepared in PR #60, NOT deployed.** Rate limits key on the client IP. Behind Traefik the API sees Traefik's address unless it trusts `X-Forwarded-For` — and trusting it from the wrong peer lets that peer forge client IPs.
+- **Network:** the API leaves the shared `proxy` network for the internal `noetia_api_edge` (`10.211.75.0/28`, allocation range `10.211.75.8/29`, created and validated by `infra/server/noetia-api-edge-network.sh`). **Members: `traefik` and the API only** — any other member would be trusted. Check with `noetia-api-edge-network.sh members traefik noetia-api-1` at every deploy.
+- **API:** `TRUSTED_PROXY_CIDRS=10.211.75.8/29` (`services/api/src/common/trusted-proxy.ts`). Unset/invalid → no trust (safe, shared limits). Never `trust proxy: true`.
+- **Traefik:** must stay attached to `proxy`, `proxy_staging` (already live) **and** `noetia_api_edge`; the API label is `traefik.docker.network=noetia_api_edge`. Attach live with `docker network connect`; never `compose up` in `/opt/traefik`.
+- **Order (merge = production deploy):** create network → attach Traefik → set `TRUSTED_PROXY_CIDRS` → persist `/opt/traefik/docker-compose.yml` → merge. Traefik must keep forwarded-header defaults (no `forwardedHeaders.insecure`/`trustedIPs`). Failures and rollback: [`docs/incident-response.md` §1a](docs/incident-response.md).
 
 ---
 

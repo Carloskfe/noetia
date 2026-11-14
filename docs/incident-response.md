@@ -27,11 +27,13 @@ docker inspect <container> --format '{{range .State.Health.Log}}Exit={{.ExitCode
 docker exec traefik wget -qO- http://<container_ip>:3000   # web
 docker exec traefik wget -qO- http://<container_ip>:4000/health  # api
 
-# 4. Is the container on the proxy network?
+# 4. Is the container on the proxy network? (web, storage)
 docker network inspect proxy | grep -A3 '"Name": "noetia'
+# 4b. API only (G1-I1): the API is on noetia_api_edge, NOT on proxy — see §1a.
 ```
 
 **Known root causes:**
+- **API 502/504 after the G1-I1 edge-network change** — see §1a
 - **Next.js binds to wrong interface** — needs `HOSTNAME: "0.0.0.0"` in compose (already set in `docker-compose.server.yml`; verify if containers were recreated outside compose)
 - **Alpine wget resolves `localhost` as `::1`** — healthchecks must use `127.0.0.1`, not `localhost`; a failing healthcheck marks container unhealthy → Traefik drops it
 - **Traefik config corrupted** — see §2 below
@@ -40,6 +42,47 @@ docker network inspect proxy | grep -A3 '"Name": "noetia'
 ```bash
 docker compose --env-file .env.production -f docker-compose.server.yml up -d --force-recreate web api
 ```
+
+---
+
+## 1a. API unreachable (502/504) or rate limits shared — trusted-proxy edge network (G1-I1)
+
+**Applies only once G1-I1 is deployed** (until then the API is still on `proxy`). Design and evidence:
+`docs/reports/payment-lifecycle-20261112/g1-trusted-proxy-correction-design.md`, `g1-checkpoint-iv-qualification.md`.
+
+**Invariant:** the API reaches Traefik only over the internal network `noetia_api_edge`
+(subnet `10.211.75.0/28`, gateway `.1`, allocation range `10.211.75.8/29`), whose ONLY members are `traefik` and
+`noetia-api-1`. The API trusts `X-Forwarded-For` only from `TRUSTED_PROXY_CIDRS=10.211.75.8/29`. Any other container
+attached to that network would also be trusted — membership is the security boundary.
+
+**Symptom → cause:**
+
+| Symptom | Likely cause |
+|---|---|
+| `/api/*` 504 (after ~30 s) or 502; web, storage and staging fine | Traefik not attached to `noetia_api_edge` (e.g. Traefik recreated from a compose file that doesn't list it), or the API's label `traefik.docker.network` doesn't name `noetia_api_edge` (Traefik then falls back to the API's *first available* network, possibly `noetia_net`, which it can't reach) |
+| `/api/*` 502 briefly during a deploy | Normal API recreation gap (container replaced) |
+| Every client shares one rate-limit bucket (`X-RateLimit-Remaining-global` decrements across different clients) | `TRUSTED_PROXY_CIDRS` unset/invalid/stale, or Traefik's edge address outside it — fails SAFE (no spoofing), but shared limits |
+| API boot log `WARN [TrustedProxy] [trusted-proxy] disabled (...)` | Invalid value (keyword, hop count, too broad, > 4 entries) — fix the value; never use `true` |
+
+**Diagnose (read-only):**
+```bash
+docker inspect traefik --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}={{$v.IPAddress}} {{end}}'  # must include noetia_api_edge, proxy, proxy_staging
+bash infra/server/noetia-api-edge-network.sh members traefik noetia-api-1   # IPAM + EXACTLY these two members
+docker logs noetia-api-1 2>&1 | grep '\[trusted-proxy\]'                    # expected: honoured only from 10.211.75.8/29
+docker exec traefik wget -qO- http://<api noetia_api_edge address>:4000/health
+```
+
+**Recover:**
+- Traefik not on the edge network → `docker network connect noetia_api_edge traefik` (live, **no restart**). Then make sure
+  `/opt/traefik/docker-compose.yml` lists `proxy`, `proxy_staging` **and** `noetia_api_edge` (edit with nano). **Never**
+  `docker compose up` in `/opt/traefik` — it recreates Traefik.
+- Extra member on `noetia_api_edge` → `docker network disconnect noetia_api_edge <container>` and find out how it got there.
+- Wrong IPAM → the helper prints `STOP: ...`; do **not** recreate the network while the API is attached — escalate.
+
+**Rollback (restores pre-G1-I1 routing):** revert `docker-compose.server.yml` (API back on `proxy`, label
+`traefik.docker.network=proxy`), remove `TRUSTED_PROXY_CIDRS` from `.env.production`, redeploy. Traefik stays on
+`proxy`, so routing resumes after the API recreation; rate limits return to shared-per-proxy. Leaving
+`noetia_api_edge` and Traefik's attachment in place is harmless.
 
 ---
 
