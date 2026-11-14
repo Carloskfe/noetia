@@ -132,7 +132,7 @@ export default function BillingSuccessPage() {
   /**
    * Verified state → copy (§R4.4). New G-1 messages render WITHOUT a heading (no unapproved heading is added);
    * existing approved headings are used only where §R4.4 maps an existing view (subscription active / pending /
-   * problem, sign-in).
+   * problem). The sign-in state uses the G1-I2 neutral sentence (design §R4.11).
    */
   function renderSession(): React.ReactNode {
     const st = s.status;
@@ -180,14 +180,9 @@ export default function BillingSuccessPage() {
             {toBilling}
           </>
         );
-      case 'auth':
-        return (
-          <>
-            <h1 className="text-2xl font-bold mb-3">{s.authTitle}</h1>
-            <p className="text-gray-500 mb-8" data-copy="auth">{s.authBody}</p>
-            <a href={signInHref} className={primary}>{s.signIn}</a>
-          </>
-        );
+      // G1-I2: one neutral sentence for every Checkout kind (the kind is unknown before sign-in) and no heading;
+      // it claims no payment, fulfillment or entitlement outcome. The no-session `auth` view is unchanged.
+      case 'auth': return message(st.signInToVerify, <a href={signInHref} className={primary}>{s.signIn}</a>);
       default:
         return message(st.unavailable, checkAgain);
     }

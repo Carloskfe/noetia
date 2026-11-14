@@ -197,3 +197,20 @@ describe('existing billing.success copy outside G-1 is unchanged', () => {
     expect(rest).toEqual(base);
   });
 });
+
+describe('§R4.11 — G1-I2 follow-up sign-in sentence matches the design document', () => {
+  it('EN and ES equal the §R4.11 table row exactly', () => {
+    const doc = readFileSync(DESIGN, 'utf8');
+    const r411 = doc.slice(doc.indexOf('### R4.11 Follow-up wording decision'));
+    const m = /^\| `billing\.success\.status\.signInToVerify` \| (.+?) \| (.+?) \|$/m.exec(r411);
+    expect(m).not.toBeNull();
+    expect(en.billing.success.status.signInToVerify).toBe(m![1]);
+    expect(es.billing.success.status.signInToVerify).toBe(m![2]);
+  });
+  it('the status namespace holds the 13 PO-2 groups plus only this sentence', () => {
+    const keys = (d: typeof en) => Object.keys(d.billing.success.status).sort();
+    const expected = ['checkoutExpired', 'checkoutOpen', 'delivered', 'notFound', 'paidPending', 'paidProcessing', 'paymentNotConfirmed', 'signInToVerify', 'subscriptionActive', 'subscriptionEnded', 'subscriptionOther', 'tokenPaymentConfirmed', 'unavailable', 'unconfirmed'];
+    expect(keys(en)).toEqual(expected);
+    expect(keys(es)).toEqual(expected);
+  });
+});

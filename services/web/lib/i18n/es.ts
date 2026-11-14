@@ -346,6 +346,8 @@ export const es: Translations = {
         subscriptionOther: "Esta compra no está vinculada a tu suscripción actual. Consulta tu página de facturación para obtener más información.",
         notFound: "No pudimos verificar esta compra con tu cuenta actual. Si utilizaste otra cuenta, inicia sesión con ella.",
         unavailable: "No podemos verificar tu compra en este momento. Inténtalo de nuevo en unos instantes.",
+        // G1-I2 (Checkpoint I, PO 2026-11-14): sign-in state of the session flow — neutral, no payment claim
+        signInToVerify: "Inicia sesión para verificar tu compra.",
       },
     },
     loading: 'Cargando…',

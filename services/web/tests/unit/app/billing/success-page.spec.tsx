@@ -181,6 +181,10 @@ describe('/billing/success — account-status flow without a session id (unchang
     localStorage.clear();
     await render();
     expect(view()).toBe('auth');
+    // Unchanged by G1-I2: the no-session view keeps its existing title, body and return link.
+    expect(text()).toContain(en.billing.success.authTitle);
+    expect(text()).toContain(en.billing.success.authBody);
+    expect(text()).not.toContain(en.billing.success.status.signInToVerify);
     expect(link(en.billing.success.signIn)?.getAttribute('href')).toBe('/login?next=%2Fbilling%2Fsuccess');
     expect((window.location as any).href).toContain('/billing/success');
   });

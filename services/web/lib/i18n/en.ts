@@ -344,6 +344,8 @@ export const en = {
         subscriptionOther: "This checkout isn't linked to your current subscription. Please review your billing page for more information.",
         notFound: "We couldn't verify this purchase with your current account. If you used another account, please sign in with it.",
         unavailable: "We can't verify your purchase right now. Please try again in a moment.",
+        // G1-I2 (Checkpoint I, PO 2026-11-14): sign-in state of the session flow — neutral, no payment claim
+        signInToVerify: "Please sign in to verify your purchase.",
       },
     },
     loading: 'Loading…',

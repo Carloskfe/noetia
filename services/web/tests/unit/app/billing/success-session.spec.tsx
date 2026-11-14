@@ -156,11 +156,11 @@ describe('§R4.4 state → approved copy (EN and ES); terminal states make one r
     });
   }
 
-  it('401 (refresh fails) → existing sign-in copy; the link keeps session_id and the permitted purchase; no redirect', async () => {
+  it('401 (refresh fails) → the G1-I2 neutral sign-in sentence; the link keeps session_id and the permitted purchase; no redirect', async () => {
     localStorage.clear();
     await render(`?purchase=book&session_id=${SID}&evil=1`);
     expect(copy()).toBe('auth');
-    expect(text()).toContain(en.billing.success.authTitle);
+    expect(text()).toContain(en.billing.success.status.signInToVerify);
     expect(link(en.billing.success.signIn)?.getAttribute('href')).toBe(`/login?next=${encodeURIComponent(`/billing/success?session_id=${SID}&purchase=book`)}`);
     expect((window.location as any).href).toContain('/billing/success');
   });
@@ -364,5 +364,77 @@ describe('polling: budget, transitions, retry, cancellation', () => {
     await flush();
     await advance(60_000);
     expect(copy()).toBe('tokenPaymentConfirmed');
+  });
+});
+
+// ── G1-I2 (Checkpoint I): neutral sign-in wording for the session flow (design §R4.11) ───────────────────────────
+describe('G1-I2 — session-flow sign-in state', () => {
+  const EXACT = { en: 'Please sign in to verify your purchase.', es: 'Inicia sesión para verificar tu compra.' };
+  const PAYMENT_OUTCOME = /payment|pago|charged|cobr|isn't affected|no se ve afectad|confirm|refund|reembols|subscription|suscripci|token|book|libro/i;
+
+  async function renderSignedOut(search: string, lang: 'en' | 'es' = 'en') {
+    mockLang = lang;
+    localStorage.clear(); // no access token and the refresh is refused → 401 on the status request
+    await render(search);
+  }
+
+  it('the dictionaries hold exactly the PO-agreed sentences', () => {
+    expect(en.billing.success.status.signInToVerify).toBe(EXACT.en);
+    expect(es.billing.success.status.signInToVerify).toBe(EXACT.es);
+  });
+
+  it.each([
+    ['token Checkout', `?purchase=tokens&session_id=${SID}`, '&purchase=tokens'],
+    ['book Checkout', `?purchase=book&session_id=${SID}`, '&purchase=book'],
+    ['subscription Checkout (no purchase parameter)', `?session_id=${SID}`, ''],
+  ])('%s → the same neutral sentence, EN and ES, no heading, sign-in keeps the session', async (_l, search, purchase) => {
+    for (const lang of ['en', 'es'] as const) {
+      act(() => root.unmount());
+      root = createRoot(container);
+      calls = [];
+      await renderSignedOut(search, lang);
+      const S = (lang === 'en' ? en : es).billing.success;
+      expect(view()).toBe('session');
+      expect(copy()).toBe('auth');
+      expect(container.querySelector('[data-copy="auth"]')?.textContent).toBe(EXACT[lang]);
+      expect(headings()).toEqual([]); // no heading added
+      expect(text()).not.toContain(S.authTitle);
+      expect(text()).not.toContain(S.authBody);
+      expect(link(S.signIn)?.getAttribute('href')).toBe(`/login?next=${encodeURIComponent(`/billing/success?session_id=${SID}${purchase}`)}`);
+      expect(statusCalls()).toHaveLength(1); // 401 is terminal: no polling
+    }
+  });
+
+  it('neither language claims a payment, fulfillment or entitlement outcome', () => {
+    expect(EXACT.en).not.toMatch(PAYMENT_OUTCOME);
+    expect(EXACT.es).not.toMatch(PAYMENT_OUTCOME);
+    // Rendered page text = the sentence + the existing sign-in label only.
+    expect(`${EXACT.en} ${en.billing.success.signIn}`).not.toMatch(PAYMENT_OUTCOME);
+    expect(`${EXACT.es} ${es.billing.success.signIn}`).not.toMatch(PAYMENT_OUTCOME);
+  });
+
+  it('untrusted extra query parameters are discarded from the return URL; an unknown purchase value is dropped', async () => {
+    await renderSignedOut(`?session_id=${SID}&purchase=evil&next=//attacker.example&utm=x`);
+    const href = link(en.billing.success.signIn)?.getAttribute('href') ?? '';
+    expect(href).toBe(`/login?next=${encodeURIComponent(`/billing/success?session_id=${SID}`)}`);
+    expect(decodeURIComponent(href)).not.toMatch(/attacker|utm|evil/);
+  });
+
+  it('a session id with URL-significant characters is encoded, never injected into the return path', async () => {
+    const tricky = 'cs_test_abc&next=//attacker.example';
+    await renderSignedOut(`?session_id=${encodeURIComponent(tricky)}`);
+    const next = new URLSearchParams((link(en.billing.success.signIn)?.getAttribute('href') ?? '').split('?')[1]).get('next')!;
+    expect(next.startsWith('/billing/success?')).toBe(true);
+    expect(new URLSearchParams(next.split('?')[1]).get('session_id')).toBe(tricky);
+    expect([...new URLSearchParams(next.split('?')[1]).keys()]).toEqual(['session_id']);
+  });
+
+  it('?purchase=gift while signed out → still no request and the generic gift copy (G-b unchanged)', async () => {
+    await renderSignedOut(`?purchase=gift&session_id=${SID}`);
+    await advance(60_000);
+    expect(calls).toHaveLength(0);
+    expect(view()).toBe('purchase');
+    expect(text()).toContain(en.billing.success.purchaseBody.gift);
+    expect(text()).not.toContain(EXACT.en);
   });
 });
