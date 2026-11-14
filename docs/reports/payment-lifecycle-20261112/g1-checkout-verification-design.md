@@ -9,6 +9,22 @@
 | **Status** | **Design proposal for independent PA review.** Recommendations here are not approvals. Nothing is merged, deployed or activated. |
 | **Executed by** | Claude Code. Independent reviewer: Product Architecture. |
 
+> **⚠ ROUND 2 SUPERSEDES PARTS OF THIS DOCUMENT. Implementation agents must follow [§R2, Round 2: PA findings resolution and PO-1 G-b closure](#r2-round-2-pa-findings-resolution-and-po-1-g-b-closure) at the end of this file.** Sections 1–15 below are kept unchanged as the round-1 investigation record. Where they conflict with §R2, **§R2 wins**. Superseded passages carry a **⛔ SUPERSEDED (R2)** marker. Superseded passages:
+> - §5.2 S1 terminality and copy, S4 copy, S13 gift wording;
+> - §6.2 response contract;
+> - §6.3 token evidence;
+> - §7.1 gift rows;
+> - **§7.3 recommendation G-a (rejected; the PO chose G-b, final)**;
+> - §8.1 anonymous gift route;
+> - §8.2 stop on S1;
+> - §8.3 `notCompleted`, `expired`, `paidProcessing`, `delivered.tokens`, `giftRecorded` and the `subscriptionActive` body;
+> - §8.4 the G-a gift branch;
+> - §9.1 the two-route recommendation;
+> - §11 T-A4, T-F1 and T-W5;
+> - §12 PA-1, PA-6 and PA-9;
+> - §13 PO-1;
+> - §14 scope.
+
 **Evidence labels used throughout:**
 - **[Verified: code]**: read in the source at the baseline, with a file and line reference.
 - **[Verified: Stripe docs]**: Stripe's public API documentation, read on 2026-11-13 (`docs.stripe.com/api/checkout/sessions/object`, `docs.stripe.com/checkout/fulfillment`). Not checked against Noetia's Stripe account, which is unavailable to this agent.
@@ -162,10 +178,10 @@ The mobile app does not create Checkout sessions. Its paywall opens `https://noe
 
 | # | State | Authoritative evidence | Safe API response | Customer interpretation (copy key) | Poll? | Terminal? | Admin? |
 |---|---|---|---|---|---|---|---|
-| S1 | Session open | Stripe `status=open` | `200 { checkout:'open', payment:'unpaid' }` | `notCompleted`: "This checkout hasn't been completed." | No | Yes, for the page | No |
+| S1 ⛔ SUPERSEDED (R2: not terminal, no "no charge" claim) | Session open | Stripe `status=open` | `200 { checkout:'open', payment:'unpaid' }` | `notCompleted`: "This checkout hasn't been completed." | No | Yes, for the page | No |
 | S2 | Complete and paid, not yet fulfilled | `complete` + `paid`; no ledger key / row not linked | `200 { checkout:'complete', payment:'paid', delivery:'pending' }` or `entitlement:'not_recorded'` | `paidProcessing`: "Payment confirmed. We're adding it to your account…" | **Yes** | No | Only if still pending past the polling window **and** Stripe's retry window [§5.3] |
 | S3 | Complete, no payment required | `complete` + `no_payment_required` | Same shape with `payment:'no_payment_required'` | Subscription: as S2 / S7 without "payment confirmed". One-time: not expected under card-only, so treat as S2 without a payment claim | Yes | No | No |
-| S4 | Expired | `status=expired` | `200 { checkout:'expired' }` | `expired`: "This checkout expired without a charge." | No | **Yes** | No |
+| S4 ⛔ SUPERSEDED (R2: copy makes no charge claim) | Expired | `status=expired` | `200 { checkout:'expired' }` | `expired`: "This checkout expired without a charge." | No | **Yes** | No |
 | S5 | Asynchronous payment processing | `complete` + `unpaid` | `200 { checkout:'complete', payment:'unpaid', … }` | `paymentProcessing`: "Your payment is still processing…" Never "payment received". | Yes, at a slower interval | No | No |
 | S6 | Payment failure | Card declines keep the session **`open`** inside Stripe's page, and the customer never reaches `success_url` [Inference from Stripe Checkout behaviour]. A delayed-method failure would be `async_payment_failed`, unhandled (G1-F3) and unreachable under card-only. | As S1 / S5 | As S1 / S5 | — | — | — |
 | S7 | Webhook processed, benefit delivered | One-time: ledger key (+ `user_books` row for books). Subscription: row tracks `session.subscription`, status entitled. | `delivery:'delivered'` / `gift:'recorded'` / `entitlement:'active'` | `delivered.tokens` / `delivered.book` / `giftRecorded` / `subscriptionActive` | No | **Yes** | No |
@@ -196,6 +212,8 @@ The mobile app does not create Checkout sessions. Its paywall opens `https://noe
 
 ### 6.2 Smallest correct alternative: a response that differs by kind [Proposal]
 
+> ⛔ **SUPERSEDED (R2).** The corrected contract is in §R2.4: no gift variant, no `payment` field for subscriptions, and `delivery` can be `unconfirmed`.
+
 ```ts
 type Checkout = 'open' | 'complete' | 'expired';
 type Payment  = 'paid' | 'unpaid' | 'no_payment_required';
@@ -224,7 +242,7 @@ type CheckoutSessionStatus =
 | Kind | Precondition for anything except S1/S4 | `delivered` / `recorded` / `active` when |
 |---|---|---|
 | subscription | `checkout=complete`, `session.subscription` present | `row.stripeSubscriptionId == session.subscription` **and** `row.status ∈ {trialing, active, canceling}`. `past_due` gives `payment_problem`; `canceled` gives `ended`; another id gives `superseded`; no row gives `not_recorded`. |
-| tokens | `complete` and `payment=paid` (`unpaid` gives S5) | Ledger key `fulfillment:checkout-session:<cs>` exists. G1-F4 caveat: a key with nothing issued is possible only when the package was deleted after purchase. Accepted with a documented limitation, or fixed in the webhook separately (PA-9). |
+| tokens ⛔ SUPERSEDED (R2.6: the key alone is not proof) | `complete` and `payment=paid` (`unpaid` gives S5) | Ledger key `fulfillment:checkout-session:<cs>` exists. G1-F4 caveat: a key with nothing issued is possible only when the package was deleted after purchase. Accepted with a documented limitation, or fixed in the webhook separately (PA-9). |
 | book | `complete` and `paid` | Ledger key exists **and** `user_books (metadata.userId, metadata.bookId)` exists. Ownership is permanent, so this cannot regress. |
 | gift | `complete` and `paid` | Ledger key exists. **This means "recorded", never "sent" or "e-mailed" or "claimed"**: the e-mail is best-effort after commit, and its recovery is an open blocker. |
 
@@ -260,6 +278,8 @@ type CheckoutSessionStatus =
 
 ### 7.3 Is a Checkout session id enough to authorise anonymous gift confirmation? **Security trade-off: PA/PO approval required**
 
+> ⛔ **SUPERSEDED (R2).** **PO-1 is decided: Option G-b, final.** G-a is **rejected** and G-c is **rejected / deferred**. No anonymous lookup of any kind is authorised. The analysis below is kept as historical evidence only.
+
 | Option | What the anonymous buyer sees | Exposure if the session id leaks (G1-F9) | New mechanism? |
 |---|---|---|---|
 | **G-a: session id as bearer, minimal response** | `{ kind:'gift', checkout, payment, gift }`, so "payment confirmed, gift recorded" | Someone holding the id learns that *a* gift purchase exists and its state. No recipient, buyer, amount, message or token count. Stripe objects can't be reached without the secret key. | No |
@@ -280,6 +300,8 @@ Because of G1-F2, choosing G-a in practice covers **all** gift buyers.
 
 ### 8.1 API [Proposal]
 
+> ⛔ **SUPERSEDED (R2).** Only the authenticated route remains (§R2.4). The gift route is **removed**.
+
 Two thin routes over one shared read-only verifier (Option 2B, §9).
 
 | | Account purchases | Anonymous gift (only if PO-1 = G-a) |
@@ -297,6 +319,8 @@ Two thin routes over one shared read-only verifier (Option 2B, §9).
 
 ### 8.2 Polling [Proposal]
 
+> ⛔ **SUPERSEDED (R2.8).** `open` is no longer a stop state.
+
 - **Start:** immediately on load.
 - **Interval:** 2 s for 5 attempts, then 4 s for 5 attempts. That is at most 11 requests over about 32 s, inside both throttles.
 - **Stop early on:** S1, S4, S7, S9, S10, S13, S15, or a 401.
@@ -306,6 +330,8 @@ Two thin routes over one shared read-only verifier (Option 2B, §9).
 - **Removed from this page:** `POST /subscriptions/sync` and the `/subscriptions/me` poll. They are replaced by the session endpoint. `/account/billing` keeps `sync`.
 
 ### 8.3 Bilingual copy: **drafts only, requires PO approval (PO-2)**
+
+> ⛔ **SUPERSEDED (R2.10).** Use the corrected drafts in §R2.10.
 
 These restate facts the API can prove. They add no promise, timeline or legal wording beyond the existing strings. Existing keys are reused where possible.
 
@@ -343,6 +369,8 @@ These restate facts the API can prove. They add no promise, timeline or legal wo
 ## 9. Alternatives (Checkpoint G, §11) and the read-only invariant (Checkpoint E)
 
 ### 9.1 Comparison
+
+> ⛔ **SUPERSEDED (R2.4).** The selected architecture is the shared verifier behind **one** authenticated route.
 
 | Criterion | **Option 1: one unified endpoint, optional JWT** | **Option 2B (recommended): two thin routes, one shared verifier** | Option 2A: fully separate verifiers |
 |---|---|---|---|
@@ -397,6 +425,8 @@ Stripe's fulfillment guide **recommends** triggering fulfillment from the landin
 
 ## 11. Mandatory implementation tests (G5)
 
+> ⛔ **SUPERSEDED (R2.9).** The authoritative test list is §R2.9.
+
 **API: `tests/unit/subscriptions/checkout-status.service.spec.ts` plus controller specs, all external dependencies mocked:**
 
 | ID | Test |
@@ -439,6 +469,8 @@ Stripe's fulfillment guide **recommends** triggering fulfillment from the landin
 
 ## 12. Open PA decisions
 
+> ⛔ **SUPERSEDED (R2.12).**
+
 | ID | Decision | Recommendation |
 |---|---|---|
 | PA-1 | Option 1 vs Option 2B vs 2A | **2B** |
@@ -456,6 +488,8 @@ Stripe's fulfillment guide **recommends** triggering fulfillment from the landin
 
 ## 13. Product Owner decisions that are genuinely unavoidable
 
+> ⛔ **SUPERSEDED (R2.3, R2.12).** PO-1 is closed as G-b.
+
 | ID | Decision | Why it can't be avoided |
 |---|---|---|
 | **PO-1** | **Anonymous gift confirmation:** G-a (session id as bearer, minimal four-field response, own throttle) or G-b (no lookup; generic copy as today) | It's a security and privacy trade-off, and it changes behaviour pinned by a test. Explicitly requested by the mission (§6). |
@@ -466,6 +500,8 @@ Stripe's fulfillment guide **recommends** triggering fulfillment from the landin
 ---
 
 ## 14. Recommended bounded implementation mission (for PA/PO consideration, not started)
+
+> ⛔ **SUPERSEDED (R2.13).**
 
 **Proposed title:** "G-1 implementation: read-only Checkout-session status (Option 2B)". It would be bounded as follows.
 
@@ -521,5 +557,413 @@ Stripe's fulfillment guide **recommends** triggering fulfillment from the landin
   - G-4, G-5, gift-email recovery, USD-1, the portal configuration check, and Stripe production webhook configuration;
   - Terms wording (OP-3);
   - NEM-024 E-1 OPEN/BLOCKED, Checkpoint E NOT QUALIFIED.
+
+**STOP for independent PA review.**
+
+---
+
+## R2. Round 2: PA findings resolution and PO-1 G-b closure
+
+| | |
+|---|---|
+| **Mission** | G-1 / Round 2: resolve PA findings G1-R1 to G1-R5 (PO authorization, 2026-11-13). Documentation-only architecture correction. |
+| **Status** | **Authoritative selected design** for G-1. It supersedes the passages marked ⛔ above. **Not implemented; not approved for implementation.** STOP for PA review. |
+
+### R2.1 Baseline verification (2026-11-13)
+
+| Check | Result |
+|---|---|
+| PR #60 | Head `7acd72e2f41929d3b7f04d749665bb42e3c4c788` = expected baseline; **Draft**, open, unmerged |
+| PR #59 | Head `e326b81f262fbe99e10bb3fbeff6232f066eb230`, Draft, the unchanged direct parent |
+| Local branch | `fix/payment-lifecycle-stabilization-20261112` at `7acd72e`, clean, level with `origin` |
+| Governance read | `CLAUDE.md`; `COMMERCE-DECISIONS.md` (T-1, USD, D1–D6, F-01 Option B); this design (§§1–15) |
+| Code re-inspected for R1–R5 | `subscriptions.service.ts` (`issueTokens` :79, `issueTokensForPurchasedPackage` :553, `addPurchasedBook` :568, `applyStripeSubscription` :940, `issueTrialStartTokens` :979, `issueTokensForNewSubscription` :588); `plans.service.ts` (`findTokenPackageById` :26); `token-ledger.entity.ts`; `token-package.entity.ts`; migrations 040 (token_ledger), 015 (user_books), 066 (stripe_processed_events); `webhooks.service.ts`; `stripe-fulfillment-ledger.ts`; `gifts.service.ts`, `gifts.controller.ts`; `success/page.tsx`; the four `checkout.sessions.create` call sites; `tests/` (grep) |
+| Material divergence from the design's assumptions | **One, and it widens G1-F4** (R2.2, R1): the webhook's package lookup filters `active = true`. So a token key without tokens arises when the package is **inactive** at fulfillment, not only when it is deleted. Nothing else diverges, and this is not a baseline change, so no STOP applies. |
+
+### R2.2 Resolution matrix
+
+| Finding | Verdict | Resolution (detail in) | Code change needed? |
+|---|---|---|---|
+| **G1-R1** token fulfillment false positive (High) | **Confirmed, reproduced on real PostgreSQL. Resolved in the read-only design** | Delivery = ledger key **and** token rows written **in the same transaction** as that key. The new `unconfirmed` state covers a key without proven issuance. The frontend never says "tokens added" without proof. (R2.6) | None for G-1. An optional webhook correction (W-1) is proposed separately and is not implemented. |
+| **G1-R2** premature Checkout finality (Medium) | **Confirmed. Resolved** | `open` is non-terminal and polled within the budget, with neutral copy afterwards. No copy claims "no charge" or "failed" for `open` or `expired`. (R2.5, R2.8, R2.10) | None |
+| **G1-R3** entitlement vs token allocation (Medium) | **Confirmed** (active ≠ allocated). **Resolved per PA's provisional position** | No token field in v1. Subscription copy makes **no** token or payment claim. The existing "full access" body is flagged for PO-2. (R2.7) | None |
+| **G1-R4** anonymous gift confirmation | **PO decision final: G-b. Applied** | The anonymous route, bearer authorisation and gift polling are removed. The authenticated route answers no gift session. Gift behaviour is unchanged. G-a is rejected; G-c is rejected or deferred. (R2.3) | None |
+| **G1-R5** payment-method / webhook assumptions (Medium) | **Confirmed: latent, not active.** All four creation paths are card-only in code, but **no test pins it**, and omitting the list would hand the choice to Dashboard settings | Assumptions A1–A5 are documented. G-1 reads `payment_status` independently of the ledger. A STOP gate (SG-PM) is defined, plus a separate narrow corrective mission (W-2), not implemented. (R2.11) | None for G-1 |
+
+### R2.3 PO-1 decision record: **G-b, final**
+
+- **Decision (PO, 2026-11-13, final):** anonymous gift purchasers keep receiving the **existing generic confirmation messaging**.
+- **Not authorised:** an anonymous gift-status endpoint, public session lookup, session-id bearer authorisation, any new credential, or related implementation. This decision is not reopened here.
+- **Alternatives:** **G-a** (session id as bearer) is **rejected**. **G-c** (signed nonce, a new credential) is **rejected / deferred**: it would need a new PO decision and its own mission.
+
+**Effect on the selected architecture:**
+
+| Element | Result |
+|---|---|
+| `GET /gifts/checkout-sessions/:id/status` | **Removed.** Never to be built under G-1. |
+| Authenticated route and gift sessions | A session whose Stripe metadata says `type = 'gift'` is **not answered**: it gets the uniform `404 checkout_session_not_found`, whoever asks. Because of G1-F2, no gift has a buyer account anyway. |
+| Success page with `?purchase=gift` | **Unchanged:** the existing generic copy, **no API call**, nothing personal rendered. The existing test (`success-page.spec.tsx:226`) stays as is. |
+| `POST /gifts/checkout`, gift fulfillment, e-mails, claiming, e-mail recovery | **Unchanged.** No JWT is added. G1-F2 is recorded as a finding only, with no action under G-1. |
+
+`?purchase=gift` only ever **suppresses** the API call and shows conditional copy ("Once your payment is confirmed…"). It never leads to a payment or delivery claim, so this untrusted parameter cannot cause a false statement.
+
+### R2.4 Corrected endpoint and response contract (selected) [Proposal]
+
+**Architecture:** Option 2B's shared verifier behind **one** authenticated route, under the existing `/subscriptions` prefix. No second route is created.
+
+| | |
+|---|---|
+| Route | `GET /subscriptions/checkout-sessions/:id/status` |
+| Guard | `JwtAuthGuard` (existing). No `EmailConfirmedGuard` (rationale in §8.1). |
+| Kinds answered | `subscription`, `tokens`, `book`, determined **only** from Stripe (`mode` and `metadata`). Gift sessions and non-Noetia sessions return 404. |
+| Ownership | §7.1 rows for subscription, tokens and book (metadata user match; customer fallback only for a subscription session without metadata) |
+| Validation | `:id` matches `^cs_(test\|live)_[A-Za-z0-9]{10,200}$`, else 404 with no Stripe call |
+| Throttle | `@Throttle({ default: { limit: 30, ttl: 60_000 } })` per IP, on top of the global 120/min |
+| Headers | `Cache-Control: no-store` |
+| Errors | `401` (guard) · `404 { error: 'checkout_session_not_found' }` (unknown, malformed, not owned, gift, non-Noetia, wrong mode) · `429` · `503 { error: 'checkout_status_unavailable' }` (Stripe or database) |
+
+```ts
+type Checkout = 'open' | 'complete' | 'expired';
+type Payment  = 'paid' | 'unpaid' | 'no_payment_required';
+
+type CheckoutSessionStatus =
+  | { kind: 'subscription';
+      checkout: Checkout;
+      // null unless checkout === 'complete'
+      entitlement: null | 'not_recorded' | 'active' | 'payment_problem' | 'ended' | 'superseded' }
+  | { kind: 'tokens' | 'book';
+      checkout: Checkout;
+      payment: Payment;
+      // null unless checkout === 'complete' AND payment === 'paid'
+      delivery: null | 'pending' | 'delivered' | 'unconfirmed' };
+```
+
+**Changes from §6.2, and why:**
+1. **No gift variant** (G-b).
+2. **No `payment` field for subscriptions.** A trial session reports `paid` for a $0 invoice (G1-F1), so subscription payment state can't support any customer statement. Leaving the field out makes "payment received" for a subscription **impossible to render from the API**. Subscription outcome is expressed only through `entitlement`.
+3. **`delivery` gains `unconfirmed`, and is `null` unless the checkout is complete and paid** (R2.6, R2.11). The frontend can't show delivery for an unpaid or incomplete session, even if a ledger key exists.
+
+**Never returned:** amounts or currency; e-mails or names; customer, subscription, invoice, plan, package or book ids; token counts; timestamps.
+
+### R2.5 Corrected state machine and terminal-state rules
+
+| # | Condition (server evidence) | Response | Poll within budget? | Terminal? | After the budget, or terminal: copy key (R2.10) | Admin? |
+|---|---|---|---|---|---|---|
+| R-S1 | `checkout=open` | `{checkout:'open', …: null}` | **Yes** (it may complete in another window, or the redirect may have outrun Stripe [Inference]) | **No** | `checkoutOpen` + "Check again". **No "no charge" or "failed" claim.** | No |
+| R-S2 | `checkout=expired` | `{checkout:'expired'}` | No | Yes. Stripe: "No further processing will occur" | `checkoutExpired`, with **no charge claim** | No |
+| R-S3 | tokens/book, `complete`, `payment ≠ paid` | `delivery: null` | Yes | No | `paymentNotConfirmed` | If it persists past Stripe's retry window, review (impossible under card-only; see A2) |
+| R-S4 | tokens/book, `complete` + `paid`, **no key** | `delivery:'pending'` | Yes | No | `paidPending.{tokens,book}` + "Check again" | Only if pending past Stripe's retry window (§5.3) |
+| R-S5 | tokens/book, `paid`, key **and** issuance proven (R2.6) | `delivery:'delivered'` | No | **Yes** | `delivered.{tokens,book}` | No |
+| R-S6 | tokens/book, `paid`, key **but issuance not proven** | `delivery:'unconfirmed'`; server logs `WARN [checkout-status] fulfillment key without proven issuance` with user id and truncated session id | No (it can't change without intervention) | **Yes** | `unconfirmed.{tokens,book}` | **Yes**: investigate and grant manually through existing admin tools. The verifier never grants. |
+| R-S7 | subscription, `complete`, no row tracking `session.subscription` | `entitlement:'not_recorded'` | Yes | No | Existing `pendingTitle` / `pendingBody` | As R-S4 |
+| R-S8 | subscription, row tracks it, status `trialing`, `active` or `canceling` | `entitlement:'active'` | No | Yes | `subscriptionActive`, with **no token or payment claim** (R2.7) | No |
+| R-S9 | subscription, row tracks it, `past_due` | `'payment_problem'` | No | Yes | Existing `problem` | No |
+| R-S10 | subscription, row tracks it, `canceled` | `'ended'` | No | Yes | `subscriptionEnded` | No |
+| R-S11 | subscription, row tracks **another** subscription | `'superseded'` | No | Yes | `subscriptionOther` | Only for `DUPLICATE_LIVE_SUBSCRIPTION`, which is already logged |
+| R-S12 | Stripe or database unavailable | `503` | Yes, with backoff | No | `unavailable` | No |
+| R-S13 | Unknown, malformed, not owned, gift, non-Noetia | `404` | No | Yes | `notFound` | No |
+| R-S14 | No JWT or refresh failed | `401` | No | — | Existing `auth` view; the sign-in link **keeps** `session_id` and `purchase` (G1-F5) | No |
+| — | `?purchase=gift` | **no request** | — | — | Existing generic gift copy (G-b) | No |
+
+**Terminal rule.** Polling stops **only** on R-S2, R-S5, R-S6, R-S8 to R-S11, R-S13 and R-S14. Every other state continues until the budget ends, then shows its copy with "Check again". Pressing it starts a new budget.
+
+### R2.6 Corrected fulfillment evidence (G1-R1)
+
+**Trace of the current token transaction [Verified: code]:**
+1. `handleEvent` opens **one** transaction.
+2. `claimStripeKey(event.id)` runs, then `handlePaymentCompleted` claims `fulfillment:checkout-session:<cs>` with `INSERT … VALUES (…, now())`.
+3. `issueTokensForPurchasedPackage` calls `plansService.findTokenPackageById(id)`, which is **`findOneBy({ id, active: true })`**.
+4. If that returns null, it logs a warning and returns. **The transaction commits with the key and no token row.**
+5. Otherwise `issueTokens` calls `tokenRepo.save(...)` with the same `EntityManager`. `token_ledger."createdAt"` is `DEFAULT now()` (migration 040), and TypeORM inserts `DEFAULT` for a `@CreateDateColumn`.
+
+**When a key exists without tokens:** the package is **inactive or deleted** between Checkout creation and webhook processing. For example, an admin deactivates or replaces a package while a customer is paying, or a webhook retry arrives after a deactivation. Reactivating the package later does not undo it. So "the package exists now" is **not** valid evidence either.
+
+**Durable link between tokens and a session (existing data, no migration).** No column references the session: `token_ledger` has `userId`, `subscriptionId` (null for packages), `reason` (`Purchased <name>`), `issuedAt` (application time) and `createdAt` (database `now()`). But PostgreSQL's `now()` is the **transaction start time**, so the key's `"processedAt"` and the token rows' `"createdAt"` are **identical** when, and only when, they were written in the same transaction:
+
+```sql
+-- proof of issuance for a token-package session (read-only)
+SELECT count(*) FROM token_ledger t
+JOIN stripe_processed_events k ON k."eventId" = 'fulfillment:checkout-session:' || $session
+WHERE t."userId" = $metadataUserId
+  AND t."createdAt" = k."processedAt"
+  AND t."subscriptionId" IS NULL AND t.type = 'paid' AND t.reason LIKE 'Purchased %';
+```
+
+**Evidence: real PostgreSQL probe.**
+- **Setup:** disposable `postgres:16-alpine` with all 68 migrations, removed afterwards. The **real** `WebhooksService` and `SubscriptionsService` ran with fake Stripe. The probe was a scratchpad copy of the harness and is **not committed**; no repository script changed.
+
+| Probe | Result |
+|---|---|
+| P1 normal purchase | Key present; correlated rows = package count (10); `createdAt == processedAt` **PASS** |
+| P2 package inactive at fulfillment, reactivated afterwards | Key present, **0 tokens**. A key-only check would report "delivered": **false positive reproduced**. Correlation = 0, so "not proven". **PASS** |
+| P3 40 rounds × 3 concurrent purchases by one user, plus a concurrent non-webhook grant with reason `Purchased forged` | Correlated count wrong in **0/120** sessions; `processedAt` collisions between sessions **0**; the forged grant never matched. **PASS** |
+| P4 tokens later redeemed | Issuance still proven. Rows are never deleted except by account deletion, which removes the requester too. **PASS** |
+
+**Properties and limits (stated plainly):**
+- **Fails safe under refactor.** If issuance ever moved to another transaction, or `createdAt` were set by the application, the timestamps would differ and the result would be `unconfirmed`. That is a **false negative, never a false positive**.
+- **Residual false-positive condition.** All of the following must hold at once:
+  - the session's own fulfillment issued **nothing**;
+  - **another** paid, non-subscription `Purchased …` grant for the **same user** ran in a different transaction that started in the **same microsecond**.
+  
+  0 occurrences in 120 concurrent trials. This is the only known path, and it is far below any practical threshold [Inference]. PA should accept or reject it explicitly (PA-R1).
+- **Implicit coupling.** The design relies on how the webhook writes rows today. The implementation must pin that coupling with a test (T-R1d) so a refactor shows up as a test failure, not silent `unconfirmed` answers.
+- **Read-only.** One extra indexed `SELECT`, using the `token_ledger (userId, …)` index.
+- **Atomicity.** Under READ COMMITTED, the verifier never sees the key without the rows of a transaction still in flight: they commit atomically.
+
+**Fallback if PA rejects the correlation (R1-B):** tokens report only `pending` or `unconfirmed`, **never `delivered`**, until a webhook correction makes the key sufficient. The copy then says "Payment confirmed. Check your token balance." with no arrival claim. This is safe but less informative.
+
+**The four required outcomes:**
+
+| Outcome | Evidence | `delivery` |
+|---|---|---|
+| Payment confirmed, issuance proven | `paid` + key + correlated ≥ 1 | `delivered` |
+| Payment confirmed, fulfillment pending | `paid` + no key | `pending` |
+| Payment confirmed, fulfillment uncertain (verification couldn't run) | Stripe or database error | **HTTP 503**, no `delivery` at all |
+| Key present, issuance not proven | `paid` + key + correlated = 0 | `unconfirmed` |
+
+**Books.** `delivered` needs the key **and** `user_books (metadata.userId, metadata.bookId)`. A key without the row gives `unconfirmed`. A row without the key (the book was already owned) gives `pending` until the key exists (conservative). Ownership is permanent, so `delivered` can't regress, except when the book row itself is deleted, which cascades.
+
+**Subscriptions.** As in §6.3: `session.subscription == row.stripeSubscriptionId` plus status. No token evidence is used (R2.7).
+
+**Separate webhook correction W-1 (proposed, NOT implemented, needs its own authorization).**
+- **Change:** `issueTokensForPurchasedPackage` would **throw** when the package can't be resolved. The transaction (and the key) would roll back, Stripe would retry, and an operator would see the failure.
+- **Policy question first:** should a customer who paid for a package that became inactive mid-checkout receive it (look up by id regardless of `active`), or be held for manual review? That is a **PO policy decision for W-1** (W1-PO), not part of G-1.
+- **After W-1,** a key alone would imply issuance. The correlation can stay as defence in depth.
+
+### R2.7 Subscription entitlement vs token allocation (G1-R3)
+
+**Verified relationships [Verified: code]:**
+
+| Path | Entitlement written | Initial tokens written | Same transaction? |
+|---|---|---|---|
+| Eligible trial (T-1) | `applyStripeSubscription` → `upsertFromWebhook` | `issueTrialStartTokens`, only if `applied && sub.status === 'trialing' && trial_end && row.plan` | **Yes**. But the row can be `trialing` **without** tokens when the price maps to no plan (`row.plan` null; the key stays unclaimed). |
+| Returning subscriber, paid creation (D1 / F-01 Option B) | Any subscription event (created, updated, checkout completed) | `invoice.paid` with `subscription_create` and amount > 0, under the period and invoice keys | **No.** The row can be `active` before `invoice.paid` is processed. F-02's fail-closed path can delay the grant further. |
+| Renewals and annual cycles | — | `invoice.paid` / scheduler | Independent of the session |
+
+**Conclusion.** An active entitlement **does not** prove initial allocation. G-1 v1 **omits** token verification for subscriptions, per PA's provisional position, **on the condition** that no subscription state renders a token-delivery or payment claim.
+
+**Permissible statements when entitlement is active and allocation unknown:**
+- "Your subscription is active."
+- Navigation to billing or the library.
+
+**Not permitted:**
+- any token count or arrival;
+- "payment received" or "confirmed";
+- "full access … start reading right away".
+
+The existing approved interim `body` ("Your account has full access. Start reading right away.") **can be read as a promise that books are available now**, which depends on tokens. It is flagged for PO-2, with a neutral draft in R2.10.
+
+T-1, D1–D6 and F-01 Option B are untouched, because nothing in the verifier writes.
+
+### R2.8 Security, privacy, polling and failure behaviour
+
+**Security and privacy (unchanged from §7 except gifts):**
+- **Authenticated route only.** No anonymous access path exists anywhere in the selected design.
+- **One uniform 404** for unknown, malformed, not owned, gift and non-Noetia sessions.
+- **Error bodies** carry no Stripe messages.
+- **Logs** carry the user id and a truncated session id only.
+- **Never returned:** the fields listed in R2.4.
+- **Sentry:** mask `session_id` before Sentry is ever enabled (PA-7). Existing controls are enough: the throttler, `JwtAuthGuard`, and Stripe's unguessable ids. No privacy risk needs a new control, so the STOP gate is not triggered.
+
+**Polling:**
+- **Start:** immediately on load.
+- **Schedule:** 2 s × 5, then 4 s × 5, so at most 11 requests in about 32 s.
+- **Stop:** only on the terminal states in R2.5.
+- **`open` keeps polling** (R-S1) inside the same budget. There is no longer polling and no redirect back to Checkout: a recovery workflow is **out of scope**, and G-4 stays separate.
+- **503:** backoff inside the budget. **429:** honour `Retry-After`.
+- **Unmount:** abort (`AbortController` plus the existing run counter).
+- **Check again:** starts a new budget.
+- **Not called** on the session flow: `POST /subscriptions/sync` or `/subscriptions/me`.
+- **No `session_id`:** today's account-status flow, unchanged.
+- **`?purchase=gift`:** no request.
+
+**Frontend derivation rule (normative).** The page chooses copy **only** from this function of the API response. `?purchase=` never selects kind or state, except the gift suppression in R2.3. Nothing is inferred from `/subscriptions/me`, `/sync` or any other subscription.
+
+```text
+gift param             → giftGeneric (no request)
+401                    → auth (keep session_id)
+404                    → notFound
+503 / 429 after budget → unavailable
+subscription: checkout open → checkoutOpen | expired → checkoutExpired
+              entitlement null/not_recorded → pending | active → subscriptionActive | payment_problem → problem
+              ended → subscriptionEnded | superseded → subscriptionOther
+tokens|book:  checkout open → checkoutOpen | expired → checkoutExpired
+              delivery null (complete, payment ≠ paid) → paymentNotConfirmed
+              pending → paidPending.<kind> | delivered → delivered.<kind> | unconfirmed → unconfirmed.<kind>
+```
+
+### R2.9 Updated implementation-test requirements (authoritative)
+
+These replace §11. They keep T-A1 to T-A3, T-A5, T-A6, T-F2, T-F3 (moot now), T-S1, T-S2, T-O1, T-E1, T-RO, T-T1, T-L1 and T-W1 to T-W8 as amended below.
+
+| ID | Test |
+|---|---|
+| T-A4′ | **Gift sessions** (empty or non-empty `buyerUserId`) → uniform 404 on the authenticated route, with a body identical to an unknown id. **No gift route exists** (route-table assertion). |
+| T-R1a | Tokens: `paid`, key, correlated rows → `delivered` |
+| T-R1b | Tokens: `paid`, key, **no** rows (package inactive at fulfillment) → **`unconfirmed`**, never `delivered`. Negative control: the same fixture through a key-only check would say delivered, and the test asserts the verifier does not. |
+| T-R1c | Tokens: key plus a same-user `Purchased …` grant with a **different** `createdAt` → `unconfirmed`. A trial or renewal grant at the same instant (non-null `subscriptionId` or another reason) → not counted. |
+| T-R1d | Coupling pin: issuance rows and the key share the transaction timestamp. Real-PostgreSQL scenario in the harness (PA-11), or a unit assertion that `issueTokens` leaves `createdAt` to the database default. |
+| T-R1e | Book: key without a `user_books` row → `unconfirmed`; row without key → `pending`; both → `delivered` |
+| T-R1f | `unconfirmed` emits exactly one WARN log, with no metadata |
+| T-R2a | `open` is **not** terminal: polling continues within the budget; an `open` → `complete` transition during polling reaches the right state |
+| T-R2b | `open` after the budget and `expired` render copy **without** any "no charge", "not charged", "failed" or "sin cargo" wording (dictionary guard on those keys, EN and ES) |
+| T-R3a | Subscription `entitlement:'active'` with **no** trial-start or period key in fixtures → page shows `subscriptionActive` and **no** token or payment wording (dictionary guard: no "token", "pago", "payment", "full access", "acceso completo") |
+| T-R3b | The subscription response has **no `payment` property** (schema snapshot) |
+| T-R5a | Tokens/book `complete` + `unpaid` **with** a ledger key (simulated anomaly) → `delivery: null` and copy `paymentNotConfirmed`, never delivered or "payment confirmed" |
+| T-R5b | `no_payment_required` on tokens/book → `delivery: null` (not paid, so no payment or delivery claim) |
+| T-R5c | `complete` + `paid` + no key → `pending`, regardless of `?purchase=` |
+| T-W5′ | `?purchase=gift` → **no API request**, existing generic copy, no session id, e-mail or amount rendered (the existing test is kept) |
+| T-W9 | Derivation rule: a table-driven test over every response shape in R2.4 → exactly the copy key in R2.8. `?purchase=tokens` with a subscription response renders subscription copy. An entitled account from another source never yields `subscriptionActive` without `entitlement:'active'`. |
+
+**Removed:** T-A4 (anonymous gift 200) and the G-a branch of T-W5.
+
+### R2.10 Draft bilingual copy implications
+
+> **DRAFT — REQUIRES PRODUCT OWNER APPROVAL (PO-2).** Not approved for publication. These replace the §8.3 entries named; other §8.3 entries (`subscriptionEnded`, `subscriptionOther`, `notFound`) stay drafts.
+
+| Key | EN (DRAFT, PO-2) | ES (DRAFT, PO-2) |
+|---|---|---|
+| `checkoutOpen` | This checkout hasn't been completed yet. If you finished paying in another window, check again in a moment. | Este pago aún no se ha completado. Si terminaste de pagar en otra ventana, vuelve a comprobarlo en un momento. |
+| `checkoutExpired` | This checkout expired before it was completed. | Este pago expiró antes de completarse. |
+| `paymentNotConfirmed` | We haven't received confirmation of your payment yet. | Aún no recibimos la confirmación de tu pago. |
+| `paidPending.tokens` | Payment confirmed. Your tokens haven't been added yet. This usually takes less than a minute. | Pago confirmado. Tus tokens aún no se han agregado. Suele tardar menos de un minuto. |
+| `paidPending.book` | Payment confirmed. The book hasn't been added to your library yet. This usually takes less than a minute. | Pago confirmado. El libro aún no se ha agregado a tu biblioteca. Suele tardar menos de un minuto. |
+| `delivered.tokens` | Payment confirmed. Your tokens have been added to your balance. | Pago confirmado. Tus tokens se agregaron a tu saldo. |
+| `delivered.book` | Payment confirmed. The book is in your library. | Pago confirmado. El libro ya está en tu biblioteca. |
+| `unconfirmed.tokens` | Payment confirmed, but we couldn't confirm that your tokens were added. Check your token balance, and contact us if they're missing. | Pago confirmado, pero no pudimos confirmar que tus tokens se agregaran. Revisa tu saldo de tokens y contáctanos si no aparecen. |
+| `unconfirmed.book` | Payment confirmed, but we couldn't confirm that the book was added. Check your library, and contact us if it's missing. | Pago confirmado, pero no pudimos confirmar que el libro se agregara. Revisa tu biblioteca y contáctanos si no aparece. |
+| `subscriptionActive` title | *(existing)* Your subscription is active | *(existing)* Tu suscripción está activa |
+| `subscriptionActive` body | You can manage your plan from your billing page. *(replaces the existing "full access… start reading right away", flagged under R2.7)* | Puedes gestionar tu plan desde tu página de facturación. |
+| `unavailable` | We can't check right now. Your payment isn't affected. Try again in a moment. *(unchanged)* | No podemos verificarlo ahora. Tu pago no se ve afectado. Inténtalo de nuevo en un momento. |
+| gift | *(existing generic copy, unchanged; G-b)* | *(existente, sin cambios)* |
+
+**Rules applied:**
+- **"Payment confirmed" / "Pago confirmado"** appears only in token and book keys reachable with `payment = 'paid'`, **never** in subscription keys.
+- **No key claims** "no charge", "failed", "sent" or "e-mailed".
+- **"Tokens added" or "book in library"** appears only for `delivered`.
+- **"Contact us"** points to the existing `/contact` page; no new channel.
+- **Web only:** `services/web/lib/i18n/{en,es}.ts`. The parity test applies. The "payment received" guard needs a scoped allowance for "Payment confirmed" (PA-10).
+- **Not changed here:** Terms and Privacy Policy.
+
+### R2.11 Payment-method and webhook assumptions (G1-R5)
+
+**Card-only at every creation path [Verified: code]:** `subscriptions.service.ts:387` (subscription), `:516` (book), `:542` (tokens), and `gifts.service.ts:67` (gift) all pass `payment_method_types: ['card']`.
+
+The code sets none of the options that could make a completed payment-mode session unpaid or zero-amount: `allow_promotion_codes`, `discounts`, `payment_intent_data.capture_method` or `payment_method_collection`.
+
+**Could Dashboard settings widen this?** Not while the explicit list is passed [Inference from Stripe docs]. Stripe's dynamic-payment-methods guide tells integrations that list methods explicitly to *"remove `payment_method_types` from your integration code"* to manage them in the Dashboard. The overview says *"If your integration lists payment methods explicitly with `payment_method_types`, you must update your code to add a payment method."* The converse risk is real: **if a future edit drops the parameter, Stripe falls back to Dashboard-managed methods**, which can include delayed-notification methods common in Latin America [Inference]. **No test pins `['card']` at any of the four call sites** (grep of `services/api/tests`: 0 matches). The restriction is enforced by code alone.
+
+**Assumptions under which `checkout.session.completed` is sufficient for today's payment-mode fulfillment:**
+
+| ID | Assumption | Status |
+|---|---|---|
+| A1 | Every payment-mode session is created with `payment_method_types: ['card']` | **Verified: code** (3 sites). Not test-pinned. |
+| A2 | A card Checkout session reaches `complete` only after the card payment succeeded (3DS happens inside Checkout), so `payment_status = 'paid'` | **[Inference / Unverified]**: Stripe's fulfillment guide still checks `payment_status` in its sample |
+| A3 | No manual capture, discounts or promotion codes (amount > 0, captured) | Verified: code (absent) |
+| A4 | Subscription-mode sessions don't depend on it: entitlement comes from re-reading the subscription, and tokens from T-1 (`trialing`) or `invoice.paid` (fires only when an invoice is paid) | Verified: code |
+| A5 | The production webhook endpoint subscribes to `checkout.session.completed` (and the subscription and invoice events) | **Unverified**: Stripe production webhook configuration is an open release blocker |
+
+**How G-1 interprets `payment_status`:**
+- It is read from Stripe on every request and **never** derived from the ledger.
+- `delivery` is evaluated only when `payment === 'paid'`.
+- For subscriptions it is not returned at all.
+
+So even if A1 or A2 were violated, the endpoint **cannot** produce a payment or delivery claim for an unpaid session (T-R5a, T-R5b).
+
+**Future STOP gate SG-PM (to record in the release-blocker list).** Before any of the following:
+- enabling a non-card payment method;
+- removing or widening `payment_method_types` at any call site;
+- adding promotion codes, discounts or manual capture to Checkout;
+
+**STOP for a PA review and complete W-2 first.**
+
+**Separate corrective mission W-2 (proposed, narrowly scoped, NOT implemented):**
+1. **Test-only:** pin `payment_method_types: ['card']` at all four call sites.
+2. **Webhook guard:** `handlePaymentCompleted` claims the session key and fulfills **only** when `session.payment_status === 'paid'`. Otherwise it logs and returns without claiming.
+3. **Async events,** only if delayed methods are ever approved: handle `checkout.session.async_payment_succeeded` through the same path, and log `…async_payment_failed`.
+
+Item 1 is low-risk and could precede launch. Items 2 and 3 change webhook execution and need their own authorization (PA-W2).
+
+### R2.12 Remaining risks, STOP gates and open decisions
+
+**Remaining risks:**
+
+| Risk | Level | Mitigation |
+|---|---|---|
+| Token correlation residual (same-user, same-microsecond, other-transaction grant plus a session that issued nothing) | Negligible [Inference; 0/120 measured] | PA-R1 acceptance, or the R1-B fallback; W-1 removes the cause |
+| A refactor silently breaks the correlation | Low (fails safe to `unconfirmed`) | T-R1d pin |
+| A future edit drops `['card']` | Medium (latent) | SG-PM; W-2 item 1 |
+| Gift buyers never linked (G1-F2) | Recorded only | Out of G-1 (G-b); any change needs a new PO decision |
+| Gift e-mail failure is invisible to the buyer | Unchanged (existing blocker) | Gift-email recovery mission (not G-1) |
+
+**STOP-gate review (mission §12): none triggered.**
+1. No finding needs production code for G-1.
+2. No new field, table or infrastructure.
+3. No commercial policy changed.
+4. The response can't yield a false payment or delivery claim (R2.4, R2.6, R2.11).
+5. Privacy is constrained by existing controls.
+6. G-b is honoured with gift behaviour unchanged.
+7. The baseline is unchanged.
+8. Nothing expands into G-4 or another mission: W-1 and W-2 are proposals only.
+
+**Open PA decisions:**
+
+| ID | Decision | Recommendation |
+|---|---|---|
+| PA-1′ | Selected architecture: Option 2B shared verifier, **one** authenticated route, `/subscriptions` prefix | Accept |
+| PA-2′ | Contract R2.4: no subscription `payment` field, nullable `delivery` / `entitlement`, `unconfirmed` | Accept |
+| **PA-R1** | Token issuance proof by same-transaction timestamp correlation (R2.6), including its stated residual; **or** fallback R1-B (never `delivered` for tokens before W-1) | Accept the correlation |
+| PA-4 / PA-5 | Throttle 30/min/IP; polling ≤ 11 requests over about 32 s, `open` included | Accept |
+| PA-7 | Truncated session ids in logs; mask `session_id` in Sentry before enabling it | Accept |
+| PA-8 | Browser-triggered reconciliation stays out of G-1 (separate decision) | Confirm |
+| PA-10 | Scoped allowance for "Payment confirmed" in the dictionary guard (token and book keys only) | Accept |
+| PA-11 | The real-PostgreSQL harness scenario for T-R1d and read-during-fulfillment | Recommend (makes the coupling pin real) |
+| PA-W1 | Whether to commission W-1 (webhook fail-closed on an unresolved package) | Recommend, after W1-PO |
+| PA-W2 | Whether to commission W-2 (item 1 test pins; items 2–3 webhook payment-status guard) | Recommend item 1 before launch; items 2–3 before SG-PM |
+| PA-SG | Add SG-PM to the release-blocker register | Accept |
+
+**Product Owner decisions:**
+
+| ID | Decision | Status |
+|---|---|---|
+| PO-1 | Anonymous gift confirmation | **Closed: G-b (final, 2026-11-13)** |
+| **PO-2** | EN/ES wording (R2.10 plus the remaining §8.3 drafts), including replacing the existing `subscriptionActive` body | **Open** |
+| W1-PO | *Only if W-1 is commissioned:* should a package purchase that became inactive mid-checkout be honoured, or held for manual review? | Not required for G-1 |
+
+### R2.13 Recommended bounded implementation scope (for PA/PO consideration; not started, not authorised)
+
+**Proposed title:** "G-1 implementation: authenticated read-only Checkout-session status".
+
+**Includes:**
+- `CheckoutStatusService` (shared verifier, R2.4 to R2.6);
+- **one** route: `GET /subscriptions/checkout-sessions/:id/status`;
+- the success-page session flow, following the R2.8 derivation rule;
+- web i18n keys, **only after PO-2 approval**;
+- the tests in R2.9, with T-R1d through the harness if PA-11 is accepted.
+
+**Excludes:**
+- any gift route or gift change;
+- webhook changes (W-1, W-2);
+- reconciliation;
+- G-4;
+- mobile;
+- migrations, configuration and infrastructure;
+- Terms and Privacy Policy;
+- prices and token rules;
+- PR #59.
+
+**Gates:**
+- **Coverage:** ≥ 80% for the new service.
+- **Existing payment suites stay green:** `--maxWorkers=2`.
+- **T-RO and T-R1b** are mandatory.
+- **Evidence:** EN and ES screenshots for every R2.5 state.
+- **Hand-off:** STOP for PA review.
+
+### R2.14 Confirmation: no implementation
+
+- **The only file changed is this design document.** It gained the §R2 section, a superseded-sections banner at the top, and ⛔ markers inline; §§1–15 are otherwise unchanged as historical evidence.
+- **Nothing else changed:** no application code, tests, scripts, migrations, Stripe integration or configuration, webhook execution, token issuance, book ownership, gift flow, frontend, eligibility or economics, Terms, Privacy Policy, Noetia+/NoetiaX, PR #59, infrastructure, staging or production.
+- **The R1 probe** ran from a scratchpad copy against a disposable local container, which has been removed. It made no Stripe requests or transactions.
+- **PR #60 remains Draft.** No merge, deployment or activation.
 
 **STOP for independent PA review.**
