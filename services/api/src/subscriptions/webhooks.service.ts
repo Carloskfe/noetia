@@ -1,9 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { GiftsService } from '../gifts/gifts.service';
+import { classifyInvoice, grantsCycle, invoicePeriodStart } from './billing-cycles';
+import { claimStripeKey, fulfillmentKey } from './stripe-fulfillment-ledger';
 import { StripeProcessedEvent } from './stripe-processed-event.entity';
 import { SubscriptionsService } from './subscriptions.service';
+
+type AfterCommit = Array<() => Promise<void>>;
 
 @Injectable()
 export class WebhooksService {
@@ -17,180 +21,135 @@ export class WebhooksService {
   ) {}
 
   /**
-   * Entry point — idempotent against Stripe's at-least-once redelivery.
+   * Entry point — exactly-once against Stripe's at-least-once (and concurrent) redelivery.
    *
-   * Design (retry-safe): the `stripe_processed_events` ledger records an event
-   * ONLY AFTER its business side effects have fully succeeded. So:
-   *   - a redelivered event whose row already exists is skipped (no duplicate
-   *     side effects — supplements, does not replace, the path-level guards);
-   *   - if dispatch() throws, NO row is written, the controller returns non-2xx,
-   *     and Stripe re-delivers → the event is re-processed (a mid-processing
-   *     failure/crash never permanently suppresses a legitimate retry).
-   * Recording-before-processing was deliberately rejected because a crash between
-   * the insert and the side effects would drop the retry (under-fulfillment).
+   * ONE database transaction holds, in order:
+   *   1. the claim of the Stripe event id in `stripe_processed_events` (INSERT … ON CONFLICT DO NOTHING);
+   *   2. every database side effect of the event (subscription row, tokens, purchased book, gift row), plus a
+   *      second claim on a per-invoice / per-Checkout-session fulfillment key where money is turned into value.
+   * Consequences (see claimStripeKey):
+   *   - concurrent deliveries of the same event: the second blocks on the first's uncommitted claim, then
+   *     sees the conflict and does nothing;
+   *   - crash or error anywhere before COMMIT: everything, including the claim, rolls back → Stripe's retry
+   *     re-processes cleanly (never "tokens granted but event not recorded", never "recorded but not granted");
+   *   - two different event ids for the same invoice / session: the fulfillment key lets only one grant.
+   * Emails are sent only AFTER commit, and only by the delivery that performed the fulfillment.
    */
   async handleEvent(event: any): Promise<void> {
-    const already = await this.processedRepo.findOne({ where: { eventId: event.id } });
-    if (already) {
-      this.logger.log(
-        `Stripe event ${event.id} (${event.type}) already processed — skipping duplicate`,
-      );
+    const afterCommit: AfterCommit = [];
+    const processed = await this.processedRepo.manager.transaction(async (em) => {
+      if (!(await claimStripeKey(em, event.id, event.type))) return false;
+      await this.dispatch(event, em, afterCommit);
+      return true;
+    });
+
+    if (!processed) {
+      this.logger.log(`Stripe event ${event.id} (${event.type}) already processed — skipping duplicate`);
       return;
     }
 
-    // Business side effects first — throws here propagate so Stripe retries.
-    await this.dispatch(event);
-
-    // Mark completed only on success. `orIgnore` guards the rare check-then-insert
-    // race; the PK on eventId is the hard uniqueness guarantee.
-    await this.processedRepo
-      .createQueryBuilder()
-      .insert()
-      .values({ eventId: event.id, type: event.type, processedAt: new Date() })
-      .orIgnore()
-      .execute();
+    // Post-commit notifications are best-effort: the fulfillment is durable and must not be re-run (a throw
+    // here would make Stripe retry an event that is already recorded).
+    for (const task of afterCommit) {
+      try {
+        await task();
+      } catch (err) {
+        this.logger.error(`Post-commit notification failed for Stripe event ${event.id}: ${(err as Error)?.message}`);
+      }
+    }
   }
 
-  private async dispatch(event: any): Promise<void> {
+  /**
+   * Subscription events no longer write the state captured in their payload: each one re-reads the
+   * subscription from Stripe and applies it through SubscriptionsService's identity guard, so delayed,
+   * duplicated or out-of-order deliveries converge on Stripe's current state and a different Stripe
+   * subscription can never silently replace a live one.
+   *
+   * Tokens (T-1, PO decision 2026-11-13): every subscription event records the plan, and the first one that
+   * sees the subscription `trialing` grants the initial cycle once (SubscriptionsService.issueTrialStartTokens).
+   * Renewals (incl. valid $0 renewals) and paid creations grant the cycle once per billing period (D4, D5).
+   */
+  private async dispatch(event: any, em: EntityManager, afterCommit: AfterCommit): Promise<void> {
     switch (event.type) {
       case 'checkout.session.completed':
         if (event.data.object.mode === 'payment') {
-          await this.handlePaymentCompleted(event);
+          await this.handlePaymentCompleted(event, em, afterCommit);
         } else {
-          await this.handleCheckoutCompleted(event);
+          await this.handleCheckoutCompleted(event, em);
         }
         break;
-      case 'invoice.paid':
-        await this.handleInvoicePaid(event);
-        break;
-      case 'invoice.payment_failed':
-        await this.handleInvoicePaymentFailed(event);
-        break;
+      case 'customer.subscription.created':
       case 'customer.subscription.updated':
-        await this.handleSubscriptionUpdated(event);
+        await this.subscriptionsService.applyStripeSubscription(event.id, event.data.object.id, em);
         break;
+      case 'invoice.paid':
+        await this.handleInvoicePaid(event, em);
+        break;
+      case 'invoice.payment_failed': {
+        const subId = this.invoiceSubscriptionId(event.data.object);
+        if (subId) await this.subscriptionsService.applyStripeSubscription(event.id, subId, em);
+        break;
+      }
       case 'customer.subscription.deleted':
-        await this.handleSubscriptionDeleted(event);
+        // Matches the row by its own stripeSubscriptionId: a late delete of an old subscription cannot touch
+        // a newer one.
+        await this.subscriptionsService.cancelFromWebhook(event.data.object.id, em);
         break;
       default:
         this.logger.log(`Unhandled Stripe event: ${event.type}`);
     }
   }
 
-  private async handlePaymentCompleted(event: any): Promise<void> {
+  private async handlePaymentCompleted(event: any, em: EntityManager, afterCommit: AfterCommit): Promise<void> {
     const session = event.data.object;
     const { type, bookId, tokenPackageId, userId } = session.metadata ?? {};
+    const fulfills = type === 'gift' || (!!userId && (!!tokenPackageId || !!bookId));
+    if (!fulfills || !session.id) return;
 
-    if (type === 'gift') {
-      await this.giftsService.fulfillGift(session);
+    // One fulfillment per Checkout session, whatever event id carries it.
+    if (!(await claimStripeKey(em, fulfillmentKey('checkout-session', session.id), 'fulfillment:checkout-session'))) {
+      this.logger.warn(`Checkout session ${session.id} already fulfilled — event ${event.id} grants nothing`);
       return;
     }
 
-    if (!userId) return;
-
-    if (tokenPackageId) {
-      await this.subscriptionsService.issueTokensForPurchasedPackage(tokenPackageId, userId);
-    } else if (bookId) {
-      await this.subscriptionsService.addPurchasedBook(userId, bookId);
+    if (type === 'gift') {
+      const notify = await this.giftsService.fulfillGift(session, em);
+      if (notify) afterCommit.push(notify);
+    } else if (tokenPackageId) {
+      await this.subscriptionsService.issueTokensForPurchasedPackage(tokenPackageId, userId, em);
+    } else {
+      await this.subscriptionsService.addPurchasedBook(userId, bookId, em);
     }
   }
 
-  private async handleCheckoutCompleted(event: any): Promise<void> {
+  private async handleCheckoutCompleted(event: any, em: EntityManager): Promise<void> {
     const session = event.data.object;
     if (!session.subscription || !session.customer) return;
-
-    const stripeSubId =
-      typeof session.subscription === 'string'
-        ? session.subscription
-        : session.subscription.id;
-    const customerId =
-      typeof session.customer === 'string' ? session.customer : session.customer.id;
-
-    await this.subscriptionsService.upsertFromWebhook(
-      event.id,
-      customerId,
-      stripeSubId,
-      'active',
-      new Date(),
-      null,
-    );
+    const stripeSubId = typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
+    await this.subscriptionsService.applyStripeSubscription(event.id, stripeSubId, em);
   }
 
-  private async handleInvoicePaid(event: any): Promise<void> {
+  private async handleInvoicePaid(event: any, em: EntityManager): Promise<void> {
     const invoice = event.data.object;
-    const subId = typeof invoice.subscription === 'string'
-      ? invoice.subscription
-      : invoice.subscription?.id;
-    const customerId = typeof invoice.customer === 'string'
-      ? invoice.customer
-      : invoice.customer?.id;
-
-    if (!subId || !customerId) return;
-
-    const periodEnd = (invoice as any).lines?.data?.[0]?.period?.end;
-    const currentPeriodEnd = periodEnd ? new Date(periodEnd * 1000) : new Date();
-
-    await this.subscriptionsService.upsertFromWebhook(
-      event.id,
-      customerId,
-      subId,
-      'active',
-      currentPeriodEnd,
-      null,
-    );
-    await this.subscriptionsService.issueTokensForNewSubscription(subId);
+    const subId = this.invoiceSubscriptionId(invoice);
+    if (!subId) return;
+    await this.subscriptionsService.applyStripeSubscription(event.id, subId, em);
+    // D4/D5: only a renewal (`subscription_cycle`, including a valid $0 renewal) or a paid creation without a trial
+    // grants a cycle. The trial's $0 creation invoice (T-1 grants the trial), plan changes / prorations
+    // (`subscription_update`) and manual or other invoices never do.
+    const invoiceClass = classifyInvoice(invoice);
+    if (!grantsCycle(invoiceClass)) {
+      this.logger.log(`Invoice ${invoice?.id} (${invoice?.billing_reason ?? 'no billing_reason'}) is ${invoiceClass}: no cycle tokens`);
+      return;
+    }
+    // Looks the row up by this Stripe subscription id and needs its plan (an identity-rejected subscription has no
+    // row → nothing). Once per billing period and per invoice id.
+    await this.subscriptionsService.issueTokensForNewSubscription(subId, em, invoice?.id ?? null, invoicePeriodStart(invoice));
   }
 
-  private async handleInvoicePaymentFailed(event: any): Promise<void> {
-    const invoice = event.data.object;
-    const subId = typeof invoice.subscription === 'string'
-      ? invoice.subscription
-      : invoice.subscription?.id;
-    const customerId = typeof invoice.customer === 'string'
-      ? invoice.customer
-      : invoice.customer?.id;
-
-    if (!subId || !customerId) return;
-
-    await this.subscriptionsService.upsertFromWebhook(
-      event.id,
-      customerId,
-      subId,
-      'past_due',
-      new Date(),
-      null,
-    );
-  }
-
-  private async handleSubscriptionUpdated(event: any): Promise<void> {
-    const sub = event.data.object;
-    const customerId =
-      typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
-
-    const status = sub.cancel_at_period_end ? 'canceling'
-      : sub.status === 'trialing' ? 'trialing'
-      : sub.status === 'active' ? 'active'
-      : sub.status === 'past_due' ? 'past_due'
-      : 'none';
-
-    const priceId = sub.items.data[0]?.price?.id;
-    const planId = priceId
-      ? await this.subscriptionsService.findPlanByStripePriceId(priceId)
-      : null;
-
-    await this.subscriptionsService.upsertFromWebhook(
-      event.id,
-      customerId,
-      sub.id,
-      status as any,
-      new Date(sub.current_period_end * 1000),
-      sub.trial_end ? new Date(sub.trial_end * 1000) : null,
-      planId,
-    );
-  }
-
-  private async handleSubscriptionDeleted(event: any): Promise<void> {
-    const sub = event.data.object;
-    await this.subscriptionsService.cancelFromWebhook(sub.id);
+  private invoiceSubscriptionId(invoice: any): string | null {
+    const sub = invoice?.subscription ?? invoice?.parent?.subscription_details?.subscription;
+    if (!sub) return null;
+    return typeof sub === 'string' ? sub : sub.id ?? null;
   }
 }

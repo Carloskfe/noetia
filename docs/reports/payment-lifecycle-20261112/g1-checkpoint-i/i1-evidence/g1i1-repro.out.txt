@@ -1,0 +1,67 @@
+# G1-I1 local reproduction: raw results (2026-11-14, disposable Docker resources only)
+#
+# Topology (disposable bridge network g1i1-net; no host-published ports; no Docker socket mounted anywhere):
+#   g1i1-traefik   172.22.0.3   traefik:v2.11. Static config = production defaults for the entrypoint
+#                               (no forwardedHeaders.trustedIPs / insecure), file provider only.
+#   g1i1-upstream  172.22.0.2   node:20-alpine running probe-app.ts: NestJS + @nestjs/throttler 6.5.0 with the
+#                               API's exact throttler setup. One throttler 'global' at 120/min; the
+#                               `/limited` handler carries @Throttle({ global: { limit: 30, ttl: 60000 } })
+#                               like CheckoutStatusController. Three instances:
+#                                 :4001 none          = no 'trust proxy' (current API behaviour)
+#                                 :4002 restricted    = trust proxy (addr, i) => i === 0 && isPrivate(addr)
+#                                 :4003 unrestricted  = trust proxy true
+#   g1i1-client-a  172.22.0.4   node:20-alpine, 0.5 CPU / 128 MB, runs client.mjs (sequential, 5 s timeout)
+#   g1i1-client-b  172.22.0.5   node:20-alpine, 0.5 CPU / 128 MB
+# Client addresses are distinct (verified with `docker network inspect g1i1-net`).
+# Each line below is the verbatim stdout of one `docker exec g1i1-client-X node /probe/client.mjs <url> <n> [xff]`.
+
+## E1: what the upstream sees through Traefik
+client-a  /none/whoami          xff=6.6.6.6 → {"mode":"none","reqIp":"172.22.0.3","reqIps":[],"socket":"172.22.0.3","xForwardedFor":"172.22.0.4","xRealIp":"172.22.0.4"}
+client-a  /restricted/whoami    xff=6.6.6.6 → {"mode":"restricted","reqIp":"172.22.0.4","reqIps":["172.22.0.4"],"socket":"172.22.0.3","xForwardedFor":"172.22.0.4","xRealIp":"172.22.0.4"}
+client-a  /unrestricted/whoami  xff=6.6.6.6 → {"mode":"unrestricted","reqIp":"172.22.0.4","reqIps":["172.22.0.4"],"socket":"172.22.0.3","xForwardedFor":"172.22.0.4","xRealIp":"172.22.0.4"}
+client-b  /none/whoami          (no xff)    → {"mode":"none","reqIp":"172.22.0.3","reqIps":[],"socket":"172.22.0.3","xForwardedFor":"172.22.0.5","xRealIp":"172.22.0.5"}
+client-b  /restricted/whoami    (no xff)    → {"mode":"restricted","reqIp":"172.22.0.5","reqIps":["172.22.0.5"],"socket":"172.22.0.3","xForwardedFor":"172.22.0.5","xRealIp":"172.22.0.5"}
+OBSERVED: Traefik dropped the client-supplied X-Forwarded-For (6.6.6.6) and replaced it with the real peer address;
+          it also set X-Real-Ip. With no trust proxy, req.ip = Traefik's address for every client.
+
+## E2: the G-1 route (30/min) with two different clients through Traefik
+none        client-a 20 → {"statuses":{"200":20},"last":200}
+none        client-b 11 → {"statuses":{"200":10,"429":1},"last":429}     ← blocked at the 31st request overall
+restricted  client-a 20 → {"statuses":{"200":20},"last":200}
+restricted  client-b 11 → {"statuses":{"200":11},"last":200}             ← own bucket
+restricted  client-a 11 → {"statuses":{"200":10,"429":1},"last":429}     ← client-a's own 31st
+OBSERVED: no trust → one bucket shared by all clients; restricted trust → one bucket per client.
+
+## E3: any other route (global 120/min)
+none        client-a 60 → {"statuses":{"200":60},"last":200}
+none        client-b 61 → {"statuses":{"200":60,"429":1},"last":429}     ← blocked at the 121st overall
+restricted  client-a 60 → {"statuses":{"200":60},"last":200}
+restricted  client-b 61 → {"statuses":{"200":61},"last":200}
+none        client-b /limited 1 → {"statuses":{"429":1}}  (the E2 bucket, still inside the same minute)
+OBSERVED: the 120/min limit is also shared by all clients with no trust. client-a's 60 /other requests all
+          succeeded although the same tracker had exhausted /limited, so buckets are per route handler
+          (consistent with the source: key = sha256(Class-handler-throttlerName-tracker)).
+
+## E4: forged X-Forwarded-For THROUGH Traefik (restricted mode)
+client-b 25 with rotating xff 9.9.9.<i> → {"statuses":{"200":19,"429":6},"last":429}
+OBSERVED: client-b had used 11 in E2; 11 + 19 = 30, then 429. Forged headers did not create new buckets,
+          because Traefik discards them.
+
+## E5: forged X-Forwarded-For BYPASSING Traefik (simulates another container reaching the API directly)
+client-a direct :4002/limited 35, rotating xff 8.8.8.<i> → {"statuses":{"200":35},"last":200}
+client-a direct :4002/whoami xff="6.6.6.6, 7.7.7.7" → {"mode":"restricted","reqIp":"7.7.7.7","reqIps":["7.7.7.7"],"socket":"172.22.0.4",...}
+client-a direct :4003/whoami xff="6.6.6.6, 7.7.7.7" → {"mode":"unrestricted","reqIp":"6.6.6.6","reqIps":["6.6.6.6","7.7.7.7"],"socket":"172.22.0.4",...}
+client-a direct :4001/whoami xff=6.6.6.6           → {"mode":"none","reqIp":"172.22.0.4","reqIps":[],"socket":"172.22.0.4",...}
+client-a direct :4002/whoami (no xff)              → {"mode":"restricted","reqIp":"172.22.0.4","reqIps":[],"socket":"172.22.0.4",...}
+OBSERVED: under restricted trust, a peer that reaches the upstream directly from a private address can choose
+          its tracker (evading the limit, 35/35 accepted). Restricted trust takes only the LAST (rightmost)
+          entry; unrestricted `true` takes the FIRST (leftmost, client-controlled) entry. With no trust, forged
+          headers are ignored.
+
+## Not observed here (assumptions / limits)
+- Production Docker daemon behaviour for published ports 80/443 (iptables DNAT preserves the client address;
+  docker-proxy, e.g. for IPv6 without ip6tables, would show a Docker gateway address) was NOT verified:
+  no production access.
+- Whether a CDN or other hop sits in front of Traefik in production was not tested. CLAUDE.md records Cloudflare
+  as DNS-only (gray cloud).
+- Staging compose / Traefik attachment is not in this repository branch, so it was not inspected.

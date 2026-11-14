@@ -1,0 +1,74 @@
+// G-1 browser evidence: the production build of /billing/success (next start on :3100) in headless Chromium.
+// Every API request is intercepted in the browser (page.route) and answered with a synthetic G-1 response —
+// no API server, database, Stripe or network access is involved.
+const { chromium } = require(process.env.PW_PATH);
+const fs = require('fs');
+const path = require('path');
+
+const OUT = process.argv[2];
+const WEB = 'http://localhost:3100';
+const SID = 'cs_test_DemoSession0000000000';
+const R = (body, status = 200) => ({ status, body });
+const STATES = [
+  // [file, response, terminal, query]
+  ['01-tokens-paid-confirmed', R({ kind: 'tokens', checkout: 'complete', payment: 'paid', delivery: 'unconfirmed' }), true],
+  ['02-tokens-paid-processing', R({ kind: 'tokens', checkout: 'complete', payment: 'paid', delivery: 'pending' }), false],
+  ['03-book-delivered', R({ kind: 'book', checkout: 'complete', payment: 'paid', delivery: 'delivered' }), true],
+  ['04-book-pending', R({ kind: 'book', checkout: 'complete', payment: 'paid', delivery: 'pending' }), false],
+  ['05-book-unconfirmed', R({ kind: 'book', checkout: 'complete', payment: 'paid', delivery: 'unconfirmed' }), true],
+  ['06-checkout-open', R({ kind: 'tokens', checkout: 'open', payment: 'unpaid', delivery: null }), false],
+  ['07-checkout-expired', R({ kind: 'book', checkout: 'expired', payment: 'unpaid', delivery: null }), true],
+  ['08-payment-not-confirmed', R({ kind: 'tokens', checkout: 'complete', payment: 'unpaid', delivery: null }), false],
+  ['09-subscription-active', R({ kind: 'subscription', checkout: 'complete', entitlement: 'active' }), true],
+  ['10-subscription-pending', R({ kind: 'subscription', checkout: 'complete', entitlement: 'not_recorded' }), false],
+  ['11-subscription-problem', R({ kind: 'subscription', checkout: 'complete', entitlement: 'payment_problem' }), true],
+  ['12-subscription-ended', R({ kind: 'subscription', checkout: 'complete', entitlement: 'ended' }), true],
+  ['13-subscription-other', R({ kind: 'subscription', checkout: 'complete', entitlement: 'superseded' }), true],
+  ['14-not-found', R({ error: 'checkout_session_not_found' }, 404), true],
+  ['15-unavailable', R({ error: 'checkout_status_unavailable' }, 503), false],
+  ['16-sign-in', 'unauth', true],
+  ['17-gift-generic-no-request', R({}), true, `?purchase=gift&session_id=${SID}`],
+];
+
+(async () => {
+  fs.mkdirSync(OUT, { recursive: true });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROME });
+  const log = [];
+  const run = async ([file, resp, terminal, query], lang) => {
+    const ctx = await browser.newContext({ viewport: { width: 760, height: 560 } });
+    await ctx.addInitScript(([lang, unauth]) => {
+      localStorage.setItem('noetia_lang', lang);
+      if (!unauth) localStorage.setItem('access_token', 'demo-token');
+    }, [lang, resp === 'unauth']);
+    const page = await ctx.newPage();
+    const apiCalls = [];
+    await page.route('http://localhost:4000/**', async (route) => {
+      const u = new URL(route.request().url());
+      apiCalls.push(`${route.request().method()} ${u.pathname}`);
+      const cors = { 'access-control-allow-origin': WEB, 'access-control-allow-credentials': 'true', 'access-control-allow-headers': 'authorization,content-type', 'content-type': 'application/json' };
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+      if (resp === 'unauth' || !route.request().headers().authorization) return route.fulfill({ status: 401, headers: cors, body: '{"message":"Unauthorized"}' });
+      return route.fulfill({ status: resp.status, headers: cors, body: JSON.stringify(resp.body) });
+    });
+    await page.route('**/api/users/me', (r) => r.fulfill({ status: 401, body: '{}' }));
+    await page.goto(`${WEB}/billing/success${query ?? `?session_id=${SID}`}`);
+    const want = query ? 'purchase' : 'session';
+    await page.waitForSelector(`main[data-view="${want}"]`, { timeout: terminal ? 15_000 : 45_000 });
+    await page.waitForTimeout(300);
+    const shot = path.join(OUT, `${file}.${lang}.png`);
+    await page.locator('main').screenshot({ path: shot });
+    const text = (await page.locator('main').innerText()).replace(/\s+/g, ' ').trim();
+    const statusCalls = apiCalls.filter((c) => c.startsWith('GET /subscriptions/checkout-sessions/')).length;
+    log.push({ file: path.basename(shot), lang, view: await page.locator('main').getAttribute('data-view'), copy: await page.locator('[data-copy]').first().getAttribute('data-copy').catch(() => null), statusRequests: statusCalls, otherApiCalls: apiCalls.filter((c) => !c.startsWith('GET /subscriptions/checkout-sessions/') && !c.startsWith('OPTIONS')), text });
+    await ctx.close();
+  };
+  const jobs = [];
+  for (const lang of ['en', 'es']) for (const s of STATES) jobs.push([s, lang]);
+  // Small concurrency to respect the 7 GiB VM.
+  const queue = [...jobs];
+  await Promise.all(Array.from({ length: 4 }, async () => { while (queue.length) { const [s, l] = queue.shift(); await run(s, l); } }));
+  log.sort((a, b) => a.file.localeCompare(b.file));
+  fs.writeFileSync(path.join(OUT, 'evidence.json'), JSON.stringify(log, null, 2));
+  await browser.close();
+  console.log(`ok ${log.length} screenshots`);
+})().catch((e) => { console.error(e); process.exit(1); });

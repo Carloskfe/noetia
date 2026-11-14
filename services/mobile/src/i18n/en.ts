@@ -94,16 +94,18 @@ export const en = {
   },
   paywall: {
     title: 'Noetia Premium',
-    subtitle: '14-day free trial. Cancel anytime.',
+    subtitle: "Your 14-day free trial includes your plan's first tokens. Cancel anytime.",
+    subtitleReturning: "Welcome back. You've already had your free trial, so your subscription starts when you subscribe.",
+    subtitleNeutral: 'Prices in US dollars. Cancel anytime.',
     subscribe: 'View plans and subscribe →',
     alreadySubscribed: 'I already subscribed',
     hint: 'Subscribe at noetia.app, then come back and tap "I already subscribed".',
     error: 'No active subscription found. Subscribe at noetia.app/pricing.',
     popular: 'Most popular',
     plans: {
-      Individual: { price: '$8.99/mo', tokens: '1 token/mo', features: ['Full library access', '90 days to use the token', 'Fragments & sharing'] },
-      Duo: { price: '$13.99/mo', tokens: '2 shared tokens/mo', features: ['Everything in Individual', 'Up to 2 users', 'Independent personal libraries'], popular: true },
-      Family: { price: '$18.99/mo', tokens: '4 shared tokens/mo', features: ['Everything in Duo', 'Up to 5 users'] },
+      Individual: { price: 'US$8.99/mo', tokens: '1 token/mo', features: ['Full library access', '90 days to use the token', 'Fragments & sharing'] },
+      Duo: { price: 'US$13.99/mo', tokens: '2 shared tokens/mo', features: ['Everything in Individual', 'Up to 2 users', 'Independent personal libraries'], popular: true },
+      Family: { price: 'US$18.99/mo', tokens: '4 shared tokens/mo', features: ['Everything in Duo', 'Up to 5 users'] },
     } as Record<string, { price: string; tokens: string; features: string[]; popular?: boolean }>,
   },
   download: {

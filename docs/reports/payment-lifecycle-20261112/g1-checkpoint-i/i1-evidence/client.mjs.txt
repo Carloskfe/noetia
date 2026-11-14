@@ -1,0 +1,25 @@
+// G1-I1 diagnostic client (runs inside a disposable g1i1-client-* container).
+// Usage: node /probe/client.mjs <url> <count> [xff]
+//   xff omitted      → no X-Forwarded-For header
+//   xff = "rotate:P" → request i sends X-Forwarded-For: P<i>  (P = prefix, e.g. 9.9.9.)
+//   xff = other      → that fixed X-Forwarded-For value
+// Requests are SEQUENTIAL, each with a 5 s timeout. Prints one JSON line: status counts, last status, and
+// (for count = 1) the response body.
+const [url, countArg, xff] = process.argv.slice(2);
+const count = Math.min(Math.max(Number(countArg) || 1, 1), 200);
+const statuses = {};
+let last = null;
+let body = null;
+for (let i = 1; i <= count; i++) {
+  const headers = {};
+  if (xff) headers['X-Forwarded-For'] = xff.startsWith('rotate:') ? `${xff.slice(7)}${i}` : xff;
+  try {
+    const r = await fetch(url, { headers, signal: AbortSignal.timeout(5000) });
+    last = r.status;
+    if (count === 1) body = await r.text(); else await r.arrayBuffer();
+  } catch (e) {
+    last = `error:${e.name}`;
+  }
+  statuses[last] = (statuses[last] ?? 0) + 1;
+}
+console.log(JSON.stringify({ url, count, xff: xff ?? null, statuses, last, ...(body !== null ? { body } : {}) }));

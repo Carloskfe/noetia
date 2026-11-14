@@ -9,14 +9,17 @@ jest.mock('next/link', () => ({
     return React.createElement('a', { href, ...props }, children);
   },
 }));
+let mockLang: 'en' | 'es' = 'en';
 jest.mock('@/lib/i18n', () => {
   const { en } = require('../../../../lib/i18n/en');
-  return { useTranslation: () => ({ t: en, language: 'en', setLanguage: jest.fn() }) };
+  const { es } = require('../../../../lib/i18n/es');
+  return { useTranslation: () => ({ t: mockLang === 'es' ? es : en, language: mockLang, setLanguage: jest.fn() }) };
 });
 
 import React, { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { en } from '@/lib/i18n/en';
+import { es } from '@/lib/i18n/es';
 import PricingPage from '@/app/(billing)/pricing/page';
 
 (global as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -34,9 +37,11 @@ type Server = {
   prefLookup: Array<'ok' | 'fail'>;    // queued outcomes for GET /causes/preferences (default ok)
   saveResults: Array<'ok' | 'fail'>;   // queued outcomes for POST /causes/preferences (default ok)
   checkoutStatus: number;
+  checkoutBody?: unknown;              // error body for a non-200 checkout (e.g. the API's 409/503 codes)
   planId: string | null;
   subStatus: string;                   // subscription status returned by /subscriptions/me
   meResults: Array<'ok' | 'fail' | 'network'>; // queued outcomes for GET /subscriptions/me (default ok)
+  trialEligible?: boolean | null;      // D1/D6: answer to GET /subscriptions/me?trialEligibility=1 (default true)
 };
 
 let server: Server;
@@ -58,7 +63,8 @@ function installFetch() {
     const method = (init.method ?? 'GET').toUpperCase();
     const auth = ((init.headers ?? {}) as Record<string, string>).Authorization ?? null;
     calls.push({ method, url, auth, body: init.body as string | undefined });
-    const path = url.startsWith(API) ? url.slice(API.length) : url.startsWith('/api/') ? url.slice(4) : url;
+    const fullPath = url.startsWith(API) ? url.slice(API.length) : url.startsWith('/api/') ? url.slice(4) : url;
+    const [path, query = ''] = fullPath.split('?');
     const bearer = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
     const authed = !!bearer && server.validTokens.has(bearer);
 
@@ -75,7 +81,9 @@ function installFetch() {
       const outcome = server.meResults.shift() ?? 'ok';
       if (outcome === 'network') return Promise.reject(new TypeError('Failed to fetch'));
       if (outcome === 'fail') return res(500, { message: 'boom' });
-      return res(200, server.planId ? { status: server.subStatus, planId: server.planId } : { status: 'none' });
+      const body: any = server.planId ? { status: server.subStatus, planId: server.planId } : { status: 'none' };
+      if (query.includes('trialEligibility=1')) body.trialEligible = server.trialEligible === undefined ? true : server.trialEligible;
+      return res(200, body);
     }
     if (method === 'GET' && path === '/causes/preferences') {
       if ((server.prefLookup.shift() ?? 'ok') === 'fail') return res(500, { message: 'boom' });
@@ -89,7 +97,7 @@ function installFetch() {
       return res(200, { ok: true });
     }
     if (method === 'POST' && path === '/subscriptions/checkout') {
-      return server.checkoutStatus === 200 ? res(200, { url: 'https://checkout.test/sub' }) : res(server.checkoutStatus, { message: 'x' });
+      return server.checkoutStatus === 200 ? res(200, { url: 'https://checkout.test/sub' }) : res(server.checkoutStatus, server.checkoutBody ?? { message: 'x' });
     }
     if (method === 'POST' && path === '/subscriptions/tokens/purchase') return res(200, { url: 'https://checkout.test/tokens' });
     return res(404, {});
@@ -104,8 +112,8 @@ const click = async (el: HTMLElement | undefined) => {
   act(() => { el.click(); });
   await flush();
 };
-const planButton = () => byText(en.pricing.startTrial) ?? byText(en.pricing.currentPlan);
-const req = (method: string, path: string) => calls.filter((c) => c.method === method && (c.url === API + path || c.url === '/api' + path));
+const planButton = () => byText(en.pricing.startTrial) ?? byText(en.pricing.getStarted) ?? byText(en.pricing.subscribe) ?? byText(en.pricing.currentPlan);
+const req = (method: string, path: string) => calls.filter((c) => c.method === method && [API + path, '/api' + path].includes(c.url.split('?')[0]));
 const href = () => (window.location as any).href as string;
 const selectorOpen = () => !!container.querySelector('input[type="radio"]');
 const lookupDialogOpen = () => !!container.querySelector('[data-testid="pref-lookup-dialog"]');
@@ -120,6 +128,7 @@ async function render() {
 }
 
 beforeEach(() => {
+  mockLang = 'en';
   server = { validTokens: new Set(['valid']), refreshIssues: null, savedCause: null, prefLookup: [], saveResults: [], checkoutStatus: 200, planId: null, subStatus: 'active', meResults: [] };
   calls = [];
   localStorage.clear();
@@ -144,6 +153,14 @@ describe('/pricing — guest (public page, optional authentication)', () => {
     expect(req('GET', '/subscriptions/me')[0].auth).toBeNull();
     expect(req('POST', '/auth/refresh')).toHaveLength(1);
     expect(req('GET', '/causes/preferences')).toHaveLength(0);
+  });
+
+  it('prices are shown in explicitly marked US dollars (USD — PO decision 2026-11-13), never a bare "$"', async () => {
+    await render();
+    const text = document.body.textContent ?? '';
+    expect(text).toContain('US$8.99'); // plan
+    expect(text).toContain('US$4.99'); // token package
+    expect(text).not.toMatch(/(^|[^S])\$\d/); // no "$8.99" without the US marker
   });
 
   it('choosing a plan sends the guest to /login?next=/pricing (no selector, no checkout)', async () => {
@@ -455,5 +472,115 @@ describe('/pricing — which statuses count as a current plan', () => {
     expect(byText(en.pricing.currentPlan)).toBeUndefined();
     await click(planButton());
     expect(href()).toBe('https://checkout.test/sub');
+  });
+});
+
+describe('/pricing — server-side duplicate-subscription guard responses', () => {
+  beforeEach(() => {
+    localStorage.setItem('access_token', 'valid');
+    server.savedCause = CAUSE.id;
+  });
+  const pricingError = () => container.querySelector('[data-testid="pricing-error"]');
+
+  it('409 subscription_exists → explains and links to billing; no redirect, no generic payment error', async () => {
+    server.checkoutStatus = 409;
+    server.checkoutBody = { statusCode: 409, error: 'subscription_exists', status: 'trialing' };
+    await render();
+    await click(planButton());
+    expect(pricingError()?.textContent).toContain(en.pricing.subscriptionExists);
+    expect(pricingError()?.querySelector('a')?.getAttribute('href')).toBe('/account/billing');
+    expect(href()).toBe('http://localhost/pricing');
+  });
+
+  it('409 checkout_pending → asks to wait and retry', async () => {
+    server.checkoutStatus = 409;
+    server.checkoutBody = { statusCode: 409, error: 'checkout_pending' };
+    await render();
+    await click(planButton());
+    expect(pricingError()?.textContent).toBe(en.pricing.checkoutPending);
+    expect(pricingError()?.querySelector('a')).toBeNull();
+  });
+
+  it('503 subscription_status_unavailable → says the status could not be confirmed', async () => {
+    server.checkoutStatus = 503;
+    server.checkoutBody = { statusCode: 503, error: 'subscription_status_unavailable' };
+    await render();
+    await click(planButton());
+    expect(pricingError()?.textContent).toBe(en.pricing.statusUnavailable);
+  });
+});
+
+describe('/pricing — trial offer (D1/D6: once per customer, never advertised to a returning customer)', () => {
+  const offer = () => container.querySelector<HTMLElement>('[data-trial-offer]');
+  const text = () => container.textContent ?? '';
+
+  it('asks the API for eligibility with the status call', async () => {
+    localStorage.setItem('access_token', 'valid');
+    await render();
+    expect(calls.some((c) => c.url.endsWith('/subscriptions/me?trialEligibility=1'))).toBe(true);
+  });
+
+  it('guest: the trial is described as for NEW subscribers; CTA "Get started"', async () => {
+    await render();
+    expect(offer()?.dataset.trialOffer).toBe('guest');
+    expect(offer()?.textContent).toBe(en.pricing.trialOffer.guest);
+    expect(byText(en.pricing.getStarted)).toBeDefined();
+    expect(byText(en.pricing.startTrial)).toBeUndefined();
+    expect(text()).toContain(en.pricing.trialOwnership);
+  });
+
+  it('eligible first-time customer: trial copy, included tokens per plan, ownership, CTA "Start free trial"', async () => {
+    localStorage.setItem('access_token', 'valid');
+    server.trialEligible = true;
+    await render();
+    expect(offer()?.textContent).toBe(en.pricing.trialOffer.eligible);
+    expect(text()).toContain(en.pricing.trialTokens(1));
+    expect(text()).toContain(en.pricing.trialOwnership);
+    expect(byText(en.pricing.startTrial)).toBeDefined();
+  });
+
+  it('returning subscriber: no trial advertised anywhere; CTA "Subscribe"; renewal/cancellation explained', async () => {
+    localStorage.setItem('access_token', 'valid');
+    server.trialEligible = false;
+    await render();
+    expect(offer()?.textContent).toBe(en.pricing.trialOffer.returning);
+    expect(byText(en.pricing.subscribe)).toBeDefined();
+    expect(byText(en.pricing.startTrial)).toBeUndefined();
+    expect(text()).not.toContain(en.pricing.trialTokens(1));
+    expect(text()).not.toContain(en.pricing.trialOwnership);
+    expect(text()).not.toMatch(/14-day free trial/);
+    expect(text()).toContain(en.pricing.renewal);
+  });
+
+  it('eligibility cannot be verified (null): no trial mentioned; CTA "Subscribe"', async () => {
+    localStorage.setItem('access_token', 'valid');
+    server.trialEligible = null;
+    await render();
+    expect(offer()?.dataset.trialOffer).toBe('unknown');
+    expect(text()).not.toMatch(/free trial/i);
+    expect(byText(en.pricing.subscribe)).toBeDefined();
+  });
+
+  it('subscription status unknown (server failure): no trial mentioned', async () => {
+    localStorage.setItem('access_token', 'valid');
+    server.meResults = ['fail'];
+    await render();
+    expect(offer()?.dataset.trialOffer).toBe('unknown');
+  });
+
+  it('Spanish: returning customer copy and CTA; eligible copy with included tokens', async () => {
+    mockLang = 'es';
+    localStorage.setItem('access_token', 'valid');
+    server.trialEligible = false;
+    await render();
+    expect(offer()?.textContent).toBe(es.pricing.trialOffer.returning);
+    expect(byText(es.pricing.subscribe)).toBeDefined();
+    act(() => root.unmount());
+    root = createRoot(container);
+    server.trialEligible = true;
+    await render();
+    expect(offer()?.textContent).toBe(es.pricing.trialOffer.eligible);
+    expect(text()).toContain(es.pricing.trialTokens(1));
+    expect(text()).toContain(es.pricing.trialOwnership);
   });
 });

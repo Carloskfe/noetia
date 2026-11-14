@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator, Linking, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import { fetchSubscriptionStatus, requiresPaywall } from '../api/subscriptions';
+import { fetchSubscriptionStatus, fetchTrialEligibility, paywallSubtitleKey, requiresPaywall } from '../api/subscriptions';
 import { useTranslation } from '../i18n';
 
 const PRICING_URL = 'https://noetia.app/pricing';
@@ -17,6 +17,13 @@ export function PaywallScreen({ onSubscribed }: Props) {
   const { t } = useTranslation();
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');
+  const [trialEligible, setTrialEligible] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetchTrialEligibility().then((e) => { if (active) setTrialEligible(e); });
+    return () => { active = false; };
+  }, []);
 
   async function handleAlreadySubscribed() {
     setChecking(true);
@@ -33,7 +40,7 @@ export function PaywallScreen({ onSubscribed }: Props) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>{t.paywall.title}</Text>
-      <Text style={styles.subtitle}>{t.paywall.subtitle}</Text>
+      <Text style={styles.subtitle}>{t.paywall[paywallSubtitleKey(trialEligible)]}</Text>
 
       {PLAN_NAMES.map((name) => {
         const plan = t.paywall.plans[name];

@@ -96,16 +96,18 @@ export const es: MobileTranslations = {
   },
   paywall: {
     title: 'Noetia Premium',
-    subtitle: '14 días de prueba gratuita. Cancela cuando quieras.',
+    subtitle: 'Tu prueba gratuita de 14 días incluye los primeros tokens de tu plan. Cancela cuando quieras.',
+    subtitleReturning: 'Qué bueno verte de nuevo. Ya disfrutaste tu prueba gratuita, así que tu suscripción comienza al suscribirte.',
+    subtitleNeutral: 'Precios en dólares estadounidenses. Cancela cuando quieras.',
     subscribe: 'Ver planes y suscribirme →',
     alreadySubscribed: 'Ya me suscribí',
     hint: 'Suscríbete en noetia.app, luego regresa y toca "Ya me suscribí".',
     error: 'No encontramos una suscripción activa. Suscríbete en noetia.app/pricing.',
     popular: 'Más popular',
     plans: {
-      Individual: { price: '$8.99/mes', tokens: '1 token/mes', features: ['Acceso completo a la biblioteca', '90 días para usar el token', 'Fragmentos y compartir'] },
-      Duo: { price: '$13.99/mes', tokens: '2 tokens compartidos/mes', features: ['Todo lo del plan Individual', 'Hasta 2 usuarios', 'Bibliotecas personales independientes'], popular: true },
-      Family: { price: '$18.99/mes', tokens: '4 tokens compartidos/mes', features: ['Todo lo del plan Duo', 'Hasta 5 usuarios'] },
+      Individual: { price: 'US$8.99/mes', tokens: '1 token/mes', features: ['Acceso completo a la biblioteca', '90 días para usar el token', 'Fragmentos y compartir'] },
+      Duo: { price: 'US$13.99/mes', tokens: '2 tokens compartidos/mes', features: ['Todo lo del plan Individual', 'Hasta 2 usuarios', 'Bibliotecas personales independientes'], popular: true },
+      Family: { price: 'US$18.99/mes', tokens: '4 tokens compartidos/mes', features: ['Todo lo del plan Duo', 'Hasta 5 usuarios'] },
     } as Record<string, { price: string; tokens: string; features: string[]; popular?: boolean }>,
   },
   download: {

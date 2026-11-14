@@ -1,0 +1,88 @@
+// TEMPORARY scratch probe (deleted after the run, never committed): the real CheckoutStatusService against a
+// disposable PostgreSQL 16 with all migrations, Stripe faked. Verifies the TypeORM reads map to the real
+// tables/columns and that a read during an uncommitted fulfillment never sees the key without its rows.
+import 'reflect-metadata';
+import { DataSource } from 'typeorm';
+import { CheckoutStatusService } from './src/subscriptions/checkout-status.service';
+import { Subscription } from './src/subscriptions/subscription.entity';
+import { UserBook } from './src/library/user-book.entity';
+import { StripeProcessedEvent } from './src/subscriptions/stripe-processed-event.entity';
+
+const sessions: Record<string, any> = {};
+jest_like_mock();
+function jest_like_mock() {
+  const Module = require('module');
+  const orig = Module.prototype.require;
+  Module.prototype.require = function (id: string) {
+    if (id === 'stripe') return function () { return { checkout: { sessions: { retrieve: async (sid: string) => sessions[sid] } } }; };
+    return orig.apply(this, arguments as any);
+  };
+}
+
+(async () => {
+  const ds = new DataSource({
+    type: 'postgres', host: '127.0.0.1', port: 55433, database: 'noetia', username: 'noetia', password: 'probe',
+    entities: [__dirname + '/src/**/*.entity.ts'], migrations: [__dirname + '/src/migrations/*.ts'], synchronize: false,
+  });
+  await ds.initialize();
+  const ran = await ds.runMigrations();
+  const results: Array<[string, boolean, string]> = [];
+  const check = (name: string, ok: boolean, detail: unknown) => results.push([name, ok, JSON.stringify(detail)]);
+
+  const [u] = await ds.query(`INSERT INTO users (email, "passwordHash") VALUES ('probe@test.invalid', 'x') RETURNING id`).catch(async () =>
+    ds.query(`INSERT INTO users (email) VALUES ('probe@test.invalid') RETURNING id`));
+  const userId = u.id;
+  const [b] = await ds.query(`SELECT id FROM books LIMIT 1`);
+  const bookId = b?.id ?? (await ds.query(`INSERT INTO books (title, author, category) VALUES ('Probe', 'Probe', 'leadership') RETURNING id`))[0].id;
+
+  const svc = new CheckoutStatusService({ get: () => undefined } as any, ds.getRepository(Subscription), ds.getRepository(UserBook), ds.getRepository(StripeProcessedEvent));
+  // Replace the Stripe client with an in-memory fake BEFORE any call (no network).
+  (svc as any).stripe = { checkout: { sessions: { retrieve: async (id: string) => sessions[id] } } };
+  const caller = { id: userId, stripeCustomerId: null };
+  const sid = (n: string) => `cs_test_probe${n}aaaaaaaaaaaa`;
+  const tok = (n: string) => (sessions[sid(n)] = { id: sid(n), mode: 'payment', status: 'complete', payment_status: 'paid', customer: null, metadata: { tokenPackageId: 'pkg', userId } });
+  const book = (n: string) => (sessions[sid(n)] = { id: sid(n), mode: 'payment', status: 'complete', payment_status: 'paid', customer: null, metadata: { bookId, userId } });
+  const claim = (n: string, em = ds.manager) => em.query(`INSERT INTO stripe_processed_events ("eventId", type, "processedAt") VALUES ($1, 'fulfillment:checkout-session', now())`, [`fulfillment:checkout-session:${sid(n)}`]);
+
+  tok('t1');
+  check('tokens, no key → pending', (await svc.getStatus(caller, sid('t1')) as any).delivery === 'pending', await svc.getStatus(caller, sid('t1')));
+  await claim('t1');
+  check('tokens, key committed, zero token rows → unconfirmed (never delivered)', (await svc.getStatus(caller, sid('t1')) as any).delivery === 'unconfirmed', await svc.getStatus(caller, sid('t1')));
+
+  book('b1');
+  await claim('b1');
+  check('book, key without user_books row → unconfirmed', (await svc.getStatus(caller, sid('b1')) as any).delivery === 'unconfirmed', await svc.getStatus(caller, sid('b1')));
+  await ds.query(`INSERT INTO user_books ("userId", "bookId", "purchaseType") VALUES ($1, $2, 'purchase')`, [userId, bookId]);
+  check('book, key + user_books row → delivered', (await svc.getStatus(caller, sid('b1')) as any).delivery === 'delivered', await svc.getStatus(caller, sid('b1')));
+
+  // Transaction visibility: a fulfillment transaction claims the key and adds the book but has NOT committed.
+  book('b2');
+  await ds.query(`DELETE FROM user_books WHERE "userId" = $1`, [userId]);
+  const qr = ds.createQueryRunner();
+  await qr.connect(); await qr.startTransaction();
+  await claim('b2', qr.manager);
+  await qr.query(`INSERT INTO user_books ("userId", "bookId", "purchaseType") VALUES ($1, $2, 'purchase')`, [userId, bookId]);
+  const during = await svc.getStatus(caller, sid('b2')) as any;
+  check('read during an uncommitted fulfillment → pending (key invisible until commit)', during.delivery === 'pending', during);
+  await qr.commitTransaction(); await qr.release();
+  const after = await svc.getStatus(caller, sid('b2')) as any;
+  check('after commit → delivered (key and row become visible together)', after.delivery === 'delivered', after);
+
+  // Subscription entitlement from the real subscriptions table.
+  sessions[sid('s1')] = { id: sid('s1'), mode: 'subscription', status: 'complete', customer: 'cus_probe', subscription: 'sub_probe_this', metadata: { noetiaUserId: userId } };
+  check('subscription, no row → not_recorded', (await svc.getStatus(caller, sid('s1')) as any).entitlement === 'not_recorded', null);
+  await ds.query(`INSERT INTO subscriptions ("userId", "stripeCustomerId", "stripeSubscriptionId", status) VALUES ($1, 'cus_probe', 'sub_probe_other', 'active')`, [userId]);
+  check('subscription, row tracks another live subscription → superseded', (await svc.getStatus(caller, sid('s1')) as any).entitlement === 'superseded', null);
+  await ds.query(`UPDATE subscriptions SET "stripeSubscriptionId" = 'sub_probe_this', status = 'trialing' WHERE "userId" = $1`, [userId]);
+  check('subscription, row tracks this one, trialing → active', (await svc.getStatus(caller, sid('s1')) as any).entitlement === 'active', null);
+
+  // Read-only: the verifier changed nothing.
+  const counts = await ds.query(`SELECT (SELECT count(*) FROM stripe_processed_events)::int AS keys, (SELECT count(*) FROM token_ledger)::int AS tokens, (SELECT count(*) FROM user_books)::int AS books`);
+  check('read-only: key/token/book counts are exactly what the probe itself wrote (3 keys, 0 tokens, 1 book)', counts[0].keys === 3 && counts[0].tokens === 0 && counts[0].books === 1, counts[0]);
+
+  console.log(`migrations applied: ${ran.length}`);
+  for (const [n, ok, d] of results) console.log(`${ok ? 'PASS' : 'FAIL'}  ${n}  ${d}`);
+  console.log(`${results.filter((r) => r[1]).length}/${results.length} PASS`);
+  await ds.destroy();
+  process.exit(results.every((r) => r[1]) ? 0 : 1);
+})().catch((e) => { console.error('PROBE ERROR', e.message); process.exit(2); });
