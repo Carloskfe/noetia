@@ -1,0 +1,146 @@
+# G1-I1 Checkpoint IV — disposable Docker evidence (raw, verbatim client/inspect output)
+# Engine: local, context default unix:///var/run/docker.sock, host <local-dev-vm>, Docker 29.9.3.
+# Topology: g1q4-traefik (traefik:v2.11, file provider, no forwardedHeaders) on g1q4-ext/g1q4-proxy/g1q4-proxy-staging
+# (+ g1q4-edge after R-01). Upstreams run infra/tests/trusted-proxy/upstream.ts = REAL applyTrustedProxy + API throttler config.
+
+## Before state (production today): API on noetia-net(alias api) + proxy, TRUSTED_PROXY_CIDRS unset
+client-a via Traefik, XFF 6.6.6.6 → {"instance":"noetia-api","reqIp":"::ffff:172.23.0.7","socket":"::ffff:172.23.0.7","xForwardedFor":"172.22.0.2"}
+  (Traefik dropped 6.6.6.6 and set XFF=client-a 172.22.0.2; without trust req.ip = Traefik's proxy address → shared bucket)
+
+## R-01 correct preparation order
+traefik StartedAt=2026-11-14T15:27:28.542726447Z (before attach)
+$ EDGE_NETWORK=g1q4-edge bash infra/server/noetia-api-edge-network.sh ensure
+created 'g1q4-edge'
+OK: 'g1q4-edge' bridge, internal, IPv4-only, subnet 10.211.75.0/28, gateway 10.211.75.1, allocation range 10.211.75.8/29
+$ (same, second run — idempotent)
+OK: 'g1q4-edge' bridge, internal, IPv4-only, subnet 10.211.75.0/28, gateway 10.211.75.1, allocation range 10.211.75.8/29
+$ docker network connect g1q4-edge g1q4-traefik
+StartedAt=2026-11-14T15:27:28.542726447Z restarts=0 edge=10.211.75.8 staging=172.24.0.3   ← live attach, no restart, staging kept
+API recreated on noetia-net(alias api) + g1q4-edge, TRUSTED_PROXY_CIDRS=10.211.75.8/29; routes → 10.211.75.9 (g1q4-edge)
+API log: [trusted-proxy] X-Forwarded-For honoured only from 10.211.75.8/29
+$ members g1q4-traefik g1q4-api → OK: 'g1q4-edge' members are exactly [g1q4-api g1q4-traefik]
+client-a via Traefik, XFF 6.6.6.6 → {"instance":"noetia-api","reqIp":"172.22.0.2","socket":"::ffff:10.211.75.8","xForwardedFor":"172.22.0.2"}
+client-b via Traefik            → {"instance":"noetia-api","reqIp":"172.22.0.3","socket":"::ffff:10.211.75.8","xForwardedFor":"172.22.0.3"}
+Monitors on client-b during the whole R-01 (200 ms polling, 150 s):
+  noetia /api/health → {"requests":731,"counts":{"200":728,"404":1,"502":1,"504":1},"failures":3,"failureWindowMs":3214}
+  staging /health    → {"requests":744,"counts":{"200":733,"404":11},"failures":11,"failureWindowMs":2027}
+  Interpretation: 502/504 = API container recreation (old address gone; 504 = harness 3 s dial timeout). Both 404 bursts =
+  HARNESS ARTIFACT: render-dynamic.sh rewrote the route file in place and Traefik's file watcher read it truncated
+  (fixed: atomic write+rename). Production uses the Docker provider (no route file). Not zero-downtime: an API recreation gap exists.
+
+## T-I1-01 / T-I1-02 (fresh buckets after API recreation)
+client-a /api/limited n=30 → {"statuses":{"200":30},"rlFirst":{"limit":"30","remaining":"29"},"rlLast":{"limit":"30","remaining":"0"}}
+client-b /api/limited n=30 → {"statuses":{"200":30},"rlFirst":{"limit":"30","remaining":"29"},"rlLast":{"limit":"30","remaining":"0"}}
+client-a 31st            → {"statuses":{"429":1},"rlFirst":{"retryAfter":"60"},"body":"{\"statusCode\":429,\"message\":\"ThrottlerException: Too Many Requests\"}"}
+
+## T-I1-04 direct internal access (web 172.25.0.3, monitor 172.25.0.4 on noetia-net)
+web  api:4000/whoami XFF [203.0.113.99, 10.211.75.8] → {"instance":"noetia-api","reqIp":"::ffff:172.25.0.3","socket":"::ffff:172.25.0.3","xForwardedFor":"203.0.113.99, 10.211.75.8"}
+web  api:4000/limited n=31 rotate 8.8.8.<i>          → {"statuses":{"200":30,"429":1},"rlFirst":{"limit":"30","remaining":"29"},"rlLast":{"retryAfter":"60"}}
+monitor api:4000/whoami XFF 203.0.113.50             → {"instance":"noetia-api","reqIp":"::ffff:172.25.0.4","socket":"::ffff:172.25.0.4","xForwardedFor":"203.0.113.50"}
+
+## T-I1-05 shared-network isolation (API edge 10.211.75.9, noetia-net 172.25.0.2; agx-api proxy 172.23.0.3)
+agx-web  http://api:4000/whoami          → {"instance":"IMPOSTOR",...}   (name resolves to the impostor alias on proxy, not the API)
+agx-web  http://10.211.75.9:4000/whoami  → {"statuses":{"timeout":1}}    (edge unreachable from proxy)
+agx-web  http://172.25.0.2:4000/whoami   → {"statuses":{"timeout":1}}    (noetia-net unreachable from proxy)
+agx-api  via Traefik noetia.test XFF 203.0.113.77 → {"instance":"noetia-api","reqIp":"172.23.0.3","socket":"::ffff:10.211.75.8","xForwardedFor":"172.23.0.3"}
+web (noetia-net + proxy) `nslookup api` → 172.25.0.2 only (real API in this run; S19-class name ambiguity on proxy is pre-existing, observation only)
+client-a staging.test /whoami XFF 6.6.6.6 → {"instance":"staging-api","reqIp":"::ffff:172.24.0.3","socket":"::ffff:172.24.0.3","xForwardedFor":"172.22.0.2"}
+
+## T-I1-07 state 1 (initial attachment)
+subnet=10.211.75.0/28 gateway=10.211.75.1 range=10.211.75.8/29 | g1q4-traefik=10.211.75.8/28 g1q4-api=10.211.75.9/28
+
+## T-I1-07 state 4 (API restart) → g1q4-traefik=10.211.75.8/28 g1q4-api=10.211.75.9/28
+
+## T-I1-03 external spoofing through Traefik (fresh buckets after API restart)
+client-a /api/limited n=31 rotate 9.9.9.<i> → {"statuses":{"200":30,"429":1},"rlFirst":{"limit":"30","remaining":"29"},"rlLast":{"retryAfter":"60"}}
+client-b /api/limited n=31 XFF lines ["1.1.1.1, 2.2.2.2","not-an-ip","","999.1.1.1","::ffff:zz"] → {"statuses":{"200":30,"429":1}}
+client-b whoami same headers → {"reqIp":"172.22.0.3","socket":"::ffff:10.211.75.8","xForwardedFor":"172.22.0.3"}
+client-a whoami XFF "10.211.75.8, 10.211.75.9" → {"reqIp":"172.22.0.2","socket":"::ffff:10.211.75.8","xForwardedFor":"172.22.0.2"}
+
+## T-I1-06 Traefik restart
+StartedAt=2026-11-14T15:32:07.960862312Z nets=g1q4-edge=10.211.75.8 g1q4-ext=172.22.0.4 g1q4-proxy=172.23.0.2 g1q4-proxy-staging=172.24.0.3
+members → OK exactly [g1q4-api g1q4-traefik]
+client-a whoami XFF 6.6.6.6 → {"reqIp":"172.22.0.2","socket":"::ffff:10.211.75.8"}
+client-a /api/other n=60 → {"statuses":{"200":60},"rlFirst":{"limit":"120","remaining":"119"},"rlLast":{"limit":"120","remaining":"60"}}
+client-b /api/other n=61 → {"statuses":{"200":61},"rlFirst":{"limit":"120","remaining":"119"},"rlLast":{"limit":"120","remaining":"59"}}   ← independent 120/min bucket
+web direct XFF 203.0.113.99 → {"reqIp":"::ffff:172.25.0.3"}; staging.test → instance staging-api 200
+
+## T-I1-07 state 3 (Traefik recreation, 4 networks) → g1q4-traefik=10.211.75.8/28 g1q4-api=10.211.75.9/28
+first request 404 (Traefik still loading its file provider at startup), retry → {"reqIp":"172.22.0.2","socket":"::ffff:10.211.75.8"}
+web direct → {"reqIp":"::ffff:172.25.0.3"}; staging 200; members → OK exactly [g1q4-api g1q4-traefik]
+
+## T-I1-07 state 5 (API recreation) → g1q4-api=10.211.75.9/28 g1q4-traefik=10.211.75.8/28
+before the API finished starting: via Traefik 502 "Bad Gateway"; monitor direct ECONNREFUSED (= the recreation gap)
+after "listening; trust={enabled:true,cidrs:[10.211.75.8/29]}": client-a → {"reqIp":"172.22.0.2"}; monitor direct → {"reqIp":"::ffff:172.25.0.4"}
+(state 6 = states 3 and 5: each container recreated separately)
+
+## T-I1-07 state 7 (combined recreation, reverse order → Traefik address CHANGES)
+gateway=10.211.75.1 range=10.211.75.8/29 | g1q4-api=10.211.75.8/28 g1q4-traefik=10.211.75.9/28
+client-a whoami → {"reqIp":"172.22.0.2","socket":"::ffff:10.211.75.9"}   ← new Traefik address trusted, no config change
+client-b /api/limited n=31 → {"statuses":{"200":30,"429":1},"rlFirst":{"limit":"30","remaining":"29"}}
+web direct → {"reqIp":"::ffff:172.25.0.3"}; members → OK exactly [g1q4-api g1q4-traefik]
+
+## T-I1-07 static address outside R (g1q4-static --ip 10.211.75.3)
+direct to API XFF 203.0.113.66 → {"reqIp":"::ffff:10.211.75.3","socket":"::ffff:10.211.75.3"}   ← untrusted
+members → STOP: 'g1q4-edge' members are [g1q4-api g1q4-static g1q4-traefik], expected exactly [g1q4-api g1q4-traefik]
+
+## T-I1-07 NEGATIVE CONTROL — unauthorized peer attached to the edge network (dynamic address)
+g1q4-api=10.211.75.8/28 g1q4-rogue=10.211.75.10/28 g1q4-traefik=10.211.75.9/28
+rogue direct XFF 203.0.113.66 → {"reqIp":"203.0.113.66","socket":"::ffff:10.211.75.10"}   ← TRUSTED (in R)
+rogue /limited n=35 rotate 192.0.2.<i> → {"statuses":{"200":35},"rlLast":{"remaining":"29"}}   ← evades the limit
+members → STOP: 'g1q4-edge' members are [g1q4-api g1q4-rogue g1q4-traefik], expected exactly [g1q4-api g1q4-traefik]
+=> The CIDR model cannot distinguish a member of the edge network from Traefik. Membership (exactly traefik + api) is
+   the security boundary and MUST be verified (helper `members`) at every deploy; joining requires Docker control.
+
+## T-I1-08 in Docker (stale and invalid configuration)
+stale TRUSTED_PROXY_CIDRS=10.211.75.0/30 (valid syntax, excludes Traefik .9):
+  log: [trusted-proxy] X-Forwarded-For honoured only from 10.211.75.0/30
+  client-a whoami → {"reqIp":"::ffff:10.211.75.9","socket":"::ffff:10.211.75.9","xForwardedFor":"172.22.0.2"}   ← Traefik untrusted
+  client-a /api/limited n=20 → {"statuses":{"200":20},"rlFirst":{"remaining":"29"},"rlLast":{"remaining":"10"}}
+  client-b /api/limited n=11 → {"statuses":{"200":10,"429":1},"rlFirst":{"remaining":"9"}}   ← shared bucket = pre-G1-I1 behaviour, no wider trust
+invalid TRUSTED_PROXY_CIDRS=true:
+  log: WARN [TrustedProxy] [trusted-proxy] disabled (not an explicit IPv4/IPv6 CIDR: "true"); client address = immediate TCP peer
+  upstream noetia-api listening; trust={"enabled":false,"reason":"not an explicit IPv4/IPv6 CIDR: \"true\""}   ← API started
+  client-a whoami → {"reqIp":"::ffff:10.211.75.9"}; web direct XFF 203.0.113.99 → {"reqIp":"::ffff:172.25.0.3"}   ← nobody trusted
+
+## R-03 wrong IPAM (helper never accepts or modifies a wrong network)
+ensure g1q4-wrong-subnet (10.211.76.0/28)           → STOP: 'g1q4-wrong-subnet' subnet is '10.211.76.0/28', expected '10.211.75.0/28' (exit 1)
+check  g1q4-wrong-norange (no --ip-range)           → STOP: 'g1q4-wrong-norange' allocation range is 'invalid Prefix', expected '10.211.77.8/29' (exit 1)
+ensure g1q4-wrong-notinternal                        → STOP: 'g1q4-wrong-notinternal' is not --internal (exit 1)
+check  g1q4-wrong-gateway (gw .2)                    → STOP: 'g1q4-wrong-gateway' gateway is '10.211.79.2', expected '10.211.79.1' (exit 1)
+check  g1q4-does-not-exist                           → STOP: network 'g1q4-does-not-exist' does not exist (exit 1); nothing created
+after: g1q4-wrong-notinternal still internal=false 10.211.78.0/28 10.211.78.8/29; wrong-subnet still 10.211.76.0/28 (unmodified)
+
+## R-04 Traefik missing the edge attachment
+docker network disconnect g1q4-edge g1q4-traefik
+noetia /api/health → {"statuses":{"504":1},"body":"Gateway Timeout"}   (harness dialTimeout 3s; production default 30s)
+staging /health → 200 staging-api; web → api:4000/health 200 (internal unaffected)
+recovery: docker network connect g1q4-edge g1q4-traefik → whoami {"reqIp":"172.22.0.2","socket":"::ffff:10.211.75.9"}; g1q4-api=10.211.75.8 g1q4-traefik=10.211.75.9
+
+## R-05 wrong Traefik network selection
+route forced to the API's noetia-net address 172.25.0.2 (unreachable for Traefik), observed after the file watcher applied it:
+  monitor 12 s @1 s → {"requests":6,"counts":{"200":2,"504":4}}   (first 2 = before reload; then every request 504)
+restored → monitor 8 s → {"requests":6,"counts":{"200":5,"504":1}} (one in-flight timeout, then 200)
+(first attempt raced the file watcher: 200 then 504 — timing artifact, redone with monitors)
+traefik:v2.11 binary contains "Could not find network named" and "Defaulting to first available network":
+  with a label naming a network the container is not on, the Docker provider falls back to the container's FIRST available
+  network (could be noetia_net → unreachable → 504 as above). The label and the networks list must change together.
+
+## Compose validation (parse only; nothing created)
+infra/server/traefik/docker-compose.yml config -q → TRAEFIK_COMPOSE_VALID
+  traefik networks: ['noetia_api_edge', 'proxy', 'proxy_staging']; all external
+docker-compose.server.yml (scratch copy, empty .env.production) config --no-interpolate -q → SERVER_COMPOSE_VALID_NO_INTERPOLATE
+  (full interpolation needs production secrets DB_PASS etc. — deliberately not supplied)
+  api networks: ['noetia_api_edge', 'noetia_net']; traefik.docker.network = noetia_api_edge; all routers/middlewares kept
+  noetia_api_edge external name 'noetia_api_edge'; web/storage still ['noetia_net','proxy']; worker/db/prometheus ['noetia_net']
+
+## R-02 external network missing (disposable compose project g1q4r02)
+up -d r02-v1.yml → g1q4r02-api-1 id=3556f8bc10bd… started=2026-11-14T15:39:19.3228487Z running
+up -d r02-v2.yml → "network g1q4-r02-missing-edge declared as external, but could not be found" (exit 1)
+after → same id=3556f8bc10bd… same started=… running   ← running service NOT replaced
+(production CD uses `up -d --build`; build-vs-network-check ordering not tested — running service is not replaced either way)
+
+## R-08 rollback (API back on noetia-net + proxy, no TRUSTED_PROXY_CIDRS, route via proxy address)
+upstream noetia-api listening; trust={"enabled":false,"reason":"TRUSTED_PROXY_CIDRS not set"}
+client-a XFF 6.6.6.6 → {"reqIp":"::ffff:172.23.0.2","socket":"::ffff:172.23.0.2","xForwardedFor":"172.22.0.2"}   ← original behaviour restored
+web direct → {"reqIp":"::ffff:172.25.0.3"}; staging → 200 staging-api
