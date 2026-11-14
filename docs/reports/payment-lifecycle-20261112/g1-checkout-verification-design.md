@@ -9,6 +9,8 @@
 | **Status** | **Design proposal for independent PA review.** Recommendations here are not approvals. Nothing is merged, deployed or activated. |
 | **Executed by** | Claude Code. Independent reviewer: Product Architecture. |
 
+> **⚠ §R4 IS THE AUTHORITATIVE COPY REFERENCE. All G-1 customer-facing wording comes from [§R4, Final PO-2 bilingual copy approval and governance closure](#r4-final-po-2-bilingual-copy-approval-and-governance-closure).** PO-2 is **CLOSED — FINAL** (PO, 2026-11-14): 13 approved EN/ES message groups. Every earlier copy table (§8.3, §R2.10, §R3.6) is **historical**. §R3 remains the final architecture.
+>
 > **⚠ ROUND 3 IS THE FINAL ARCHITECTURE. Implementation agents must follow [§R3, Round 3: final architecture closure, R1-B and PO-2](#r3-round-3-final-architecture-closure-r1-b-and-po-2) at the end of this file.** It records two final PO decisions: **R1-B** (no timestamp correlation; token packages are never reported `delivered`) and **PO-2** (the two exact approved token-package messages). Where §R3 conflicts with §R2 or §§1–15, **§R3 wins**. Round 2 passages it replaces carry a **⛔ SUPERSEDED (R3)** marker; the Round 2 timestamp investigation is kept as evidence under **SUPERSEDED — PO APPROVED R1-B**.
 >
 > **⚠ ROUND 2 SUPERSEDES PARTS OF THIS DOCUMENT. Implementation agents must follow [§R2, Round 2: PA findings resolution and PO-1 G-b closure](#r2-round-2-pa-findings-resolution-and-po-1-g-b-closure) at the end of this file.** Sections 1–15 below are kept unchanged as the round-1 investigation record. Where they conflict with §R2, **§R2 wins**. Superseded passages carry a **⛔ SUPERSEDED (R2)** marker. Superseded passages:
@@ -827,6 +829,8 @@ These replace §11. They keep T-A1 to T-A3, T-A5, T-A6, T-F2, T-F3 (moot now), T
 
 ### R2.10 Draft bilingual copy implications
 
+> ⛔ **HISTORICAL: SUPERSEDED (R4).** The wording below is not authoritative; the approved text is in §R4.3. *(Round 3 note follows.)*
+>
 > ⛔ **SUPERSEDED (R3): see §R3.6 for the authoritative copy status.** The token rows `paidPending.tokens`, `delivered.tokens` and `unconfirmed.tokens` are **withdrawn**; the confirmed token message is the exact PO-2-approved text in §R3.6. **Every other row below remains DRAFT; PO-2 approval does not extend to it.**
 >
 > **DRAFT — REQUIRES PRODUCT OWNER APPROVAL (PO-2).** Not approved for publication. These replace the §8.3 entries named; other §8.3 entries (`subscriptionEnded`, `subscriptionOther`, `notFound`) stay drafts.
@@ -1085,7 +1089,9 @@ type CheckoutSessionStatus =
 
 **Token-package states (these replace §R2.5 R-S3 to R-S6 for tokens; book rows R-S3 to R-S6 are unchanged):**
 
-| # | Evidence | Response | Poll within budget? | Terminal? | Copy (status in §R3.6) |
+> **Copy column (R4):** the "DRAFT" labels and the "existing `purchaseTitle` + `purchaseBody.tokens`" fallback in R3-T4 are superseded. Each key named is now approved in §R4.3.
+
+| # | Evidence | Response | Poll within budget? | Terminal? | Copy (status in §R3.6; ⛔ superseded by §R4) |
 |---|---|---|---|---|---|
 | R3-T1 | Checkout incomplete (`open`) | `checkout:'open'` | Yes | **No** | `checkoutOpen` (DRAFT) + "Check again". No payment claim. |
 | R3-T2 | Checkout `expired` | `checkout:'expired'` | No | Yes | `checkoutExpired` (DRAFT). No payment or charge claim. |
@@ -1130,6 +1136,8 @@ book:   checkout open → checkoutOpen | expired → checkoutExpired
 The frontend checks all three conditions for `tokenPaymentConfirmed` explicitly, even though the server already guarantees `delivery` is `null` unless the session is complete and paid (defence in depth). `?purchase=` never selects the kind or the state.
 
 ### R3.6 Final customer-facing copy (PO-2)
+
+> ⛔ **HISTORICAL: SUPERSEDED (R4) for copy status and wording.** PO-2 is closed. The single authoritative copy table is §R4.3; the state-to-copy rules are §R4.4. The `tokenPaymentConfirmed` text and display boundary below are unchanged and are restated in §R4.3. The DRAFT list below is historical: every item in it is now either approved (§R4.3) or still requires PO approval (headings, §R4.6).
 
 **APPROVED — PO-2 (PO, 2026-11-13, exact text; do not edit):**
 
@@ -1223,7 +1231,7 @@ No localization file is modified by this mission.
 **Before any G-1 implementation:**
 1. Independent PA review and acceptance of this closure (PA-R3), including PA-2″ (the split contract).
 2. An explicit PO instruction commissioning the implementation mission (CLAUDE.md governance). This design does not authorize it.
-3. **PO-2 approval of the remaining drafts** before any state that needs them ships. Until then, the implementation may use only the approved `tokenPaymentConfirmed` text and existing copy (`purchaseTitle` / `purchaseBody.*`, `pendingTitle` / `pendingBody`, `problem*`, `auth*`, `error*`). For subscriptions, `entitlement:'active'` must not use the flagged `body`.
+3. ⛔ **Satisfied (R4): PO-2 closed, all wording approved (§R4.3).** *(historical:)* **PO-2 approval of the remaining drafts** before any state that needs them ships. Until then, the implementation may use only the approved `tokenPaymentConfirmed` text and existing copy (`purchaseTitle` / `purchaseBody.*`, `pendingTitle` / `pendingBody`, `problem*`, `auth*`, `error*`). For subscriptions, `entitlement:'active'` must not use the flagged `body`.
 
 **Implementation scope (replaces §R2.13; for PA/PO consideration, not started):**
 - **Includes:**
@@ -1287,7 +1295,7 @@ E-1 stays OPEN/BLOCKED and Checkpoint E stays NOT QUALIFIED.
 | PO-1 | Anonymous gift confirmation | **Closed: G-b (final)** |
 | R1-B | Token delivery proof | **Closed: R1-B (final, 2026-11-13)** |
 | PO-2 (tokens) | Confirmed token-package message | **Approved (exact text, §R3.6)** |
-| **PO-2 (remainder)** | All DRAFT wording in §R3.6: open/expired/payment-not-confirmed, `paidProcessing.tokens`, book keys, the `subscriptionActive` body replacement, `subscriptionEnded`, `subscriptionOther`, `notFound`, `unavailable`, any heading | **Open** |
+| **PO-2 (remainder)** ⛔ **CLOSED (R4): approved 2026-11-14** | All DRAFT wording in §R3.6: open/expired/payment-not-confirmed, `paidProcessing.tokens`, book keys, the `subscriptionActive` body replacement, `subscriptionEnded`, `subscriptionOther`, `notFound`, `unavailable`, any heading | **Open** |
 | W-1 | Commission the webhook recovery mission (launch gate) | **Open** |
 | W1-PO | *If W-1 is commissioned:* honour an inactive-package purchase, or hold it for manual review | Open; not required for G-1 |
 
@@ -1316,5 +1324,218 @@ E-1 stays OPEN/BLOCKED and Checkpoint E stays NOT QUALIFIED.
 - staging or production.
 
 No Stripe requests or payments were made. **PR #60 remains Draft; no merge, deployment or activation.**
+
+**STOP for independent PA review.**
+
+
+---
+
+## R4. Final PO-2 bilingual copy approval and governance closure
+
+| | |
+|---|---|
+| **Mission** | G-1 / Round 4: PO-2 final bilingual copy closure (PO authorization, 2026-11-14). Governance and documentation only. |
+| **Status** | **Authoritative copy reference for any future G-1 implementation.** This is the **only** authoritative G-1 copy table. §8.3, §R2.10 and §R3.6 are historical. §R3 remains the final architecture. **Not implemented; not approved for implementation.** |
+
+### R4.1 Verified repository baseline (2026-11-14)
+
+| Check | Result |
+|---|---|
+| PR #60 | `OPEN`, **Draft**, unmerged; head `6dc903ecb05a3c69a0a1271b7345fb58f0752b1d` = expected; base `feat/public-ecosystem-site-20261112` |
+| PR #59 | `OPEN`, Draft, head `e326b81f262fbe99e10bb3fbeff6232f066eb230`: unchanged, the direct dependency |
+| Local branch | `fix/payment-lifecycle-stabilization-20261112` at `6dc903e`, clean, level with `origin`; no concurrent commits |
+| Governance read | `CLAUDE.md` (mission governance; Voice & Style: "tú", sentence case, no `¡`/`!` in errors or loading states); `COMMERCE-DECISIONS.md` (T-1, USD, D1–D6, F-01 Option B); this design §§R2.10, R3.4, R3.5, R3.6, R3.11 |
+| Existing copy and guard checked | Web `billing.success` (EN/ES) and the guard in `tests/unit/app/billing/success-page.spec.tsx:240–246`, which forbids `payment received`, `pago recibido`, `won't be charged again`, `no se te cobrará de nuevo`, `activated` and `activada`. **None of the 13 approved strings matches that guard.** |
+| Conflict with payment or entitlement invariants | **None** (§R4.5). No STOP applies. |
+
+### R4.2 Product Owner decision (dated record)
+
+**PO-2, final (Product Owner, 2026-11-14):** the PO approved all **12 remaining** G-1 customer-facing message groups, in English and Spanish, exactly as recorded in §R4.3. That completes PO-2.
+- The `tokenPaymentConfirmed` wording approved on 2026-11-13 stays unchanged and binding.
+- **The authorization covers documenting the decision only.** It authorizes no production code, localization implementation, tests, schema, payment-behaviour change, infrastructure, merge or deployment.
+
+### R4.3 Approved EN/ES copy (exact; do not paraphrase, shorten, re-translate or edit)
+
+**Newly approved, 12 groups (PO, 2026-11-14):**
+
+| # | Key | EN (APPROVED) | ES (APPROVED) |
+|---|---|---|---|
+| A1 | `checkoutOpen` | Your checkout is still open. If you completed it in another window, please check again in a moment. | Tu proceso de compra sigue abierto. Si lo completaste en otra ventana, vuelve a comprobarlo en un momento. |
+| A2 | `checkoutExpired` | This checkout session has expired. You can start a new purchase whenever you're ready. | Esta sesión de compra ha expirado. Puedes iniciar una nueva compra cuando quieras. |
+| A3 | `paymentNotConfirmed` | We haven't been able to confirm your payment yet. Please check again in a moment. | Aún no hemos podido confirmar tu pago. Vuelve a comprobarlo en un momento. |
+| A4 | `paidProcessing.tokens` | Your purchase is still being processed. Please check again in a moment. | Tu compra aún se está procesando. Vuelve a comprobarlo en un momento. |
+| B1 | `paidPending.book` | Your payment is confirmed. We're still adding the book to your library. Please check again shortly. | Tu pago está confirmado. Aún estamos agregando el libro a tu biblioteca. Vuelve a comprobarlo en un momento. |
+| B2 | `delivered.book` | Your payment is confirmed. The book is now in your library. Enjoy your reading! | Tu pago está confirmado. El libro ya está en tu biblioteca. ¡Disfruta tu lectura! |
+| B3 | `unconfirmed.book` | Your payment is confirmed, but we couldn't verify that the book was added to your library. Please check your library and contact support if it's missing. | Tu pago está confirmado, pero no pudimos verificar que el libro se haya agregado a tu biblioteca. Revisa tu biblioteca y comunícate con soporte si no aparece. |
+| C1 | `subscriptionActive` body (replacement) | Your subscription is active. You can review or manage your plan from your billing page. | Tu suscripción está activa. Puedes consultar o administrar tu plan desde tu página de facturación. |
+| C2 | `subscriptionEnded` | This subscription has ended. You can review its details on your billing page. | Esta suscripción ha finalizado. Puedes consultar los detalles en tu página de facturación. |
+| C3 | `subscriptionOther` | This checkout isn't linked to your current subscription. Please review your billing page for more information. | Esta compra no está vinculada a tu suscripción actual. Consulta tu página de facturación para obtener más información. |
+| D1 | `notFound` | We couldn't verify this purchase with your current account. If you used another account, please sign in with it. | No pudimos verificar esta compra con tu cuenta actual. Si utilizaste otra cuenta, inicia sesión con ella. |
+| D2 | `unavailable` | We can't verify your purchase right now. Please try again in a moment. | No podemos verificar tu compra en este momento. Inténtalo de nuevo en unos instantes. |
+
+C1 replaces only the **body**. The existing `subscriptionActive` title is **kept**: EN "Your subscription is active" / ES "Tu suscripción está activa" (web `billing.success.title`). The old body ("full access… start reading right away") is retired from the proposed implementation specification. The live dictionary is not changed by this mission.
+
+**Previously approved, 1 group (PO, 2026-11-13; preserved exactly):**
+
+| # | Key | EN (APPROVED) | ES (APPROVED) |
+|---|---|---|---|
+| T1 | `tokenPaymentConfirmed` | Your payment is confirmed. Check your token balance to see your available tokens. If they haven't appeared, please contact support. | Tu pago está confirmado. Consulta tu saldo para ver tus tokens disponibles. Si aún no aparecen, comunícate con soporte. |
+
+`tokenPaymentConfirmed` may appear **only** in the Round 3 `unconfirmed` token state:
+- the session is the authenticated owner's token-package Checkout;
+- Stripe verifies `checkout = complete` and `payment_status = paid`.
+
+It is **never** proof that tokens were issued.
+
+**Totals:** 12 newly approved + 1 previously approved = **13 approved G-1 bilingual message groups.**
+
+The existing gift copy (`purchaseTitle` + `purchaseBody.gift`) is **preserved under G-b** and is **not** counted as a PO-2 approval.
+
+### R4.4 State-to-copy mapping (binding)
+
+| State (§R3.5 / §R2.5) | Server evidence | Copy |
+|---|---|---|
+| R-S1 / R3-T1 | Stripe session `open`; **not terminal** during bounded polling | A1 `checkoutOpen` |
+| R-S2 / R3-T2 | Stripe session `expired` | A2 `checkoutExpired` |
+| R-S3 / R3-T3 | Completed token or book Checkout without verified `paid` status | A3 `paymentNotConfirmed` |
+| R3-T4 | Token: complete + `paid`, fulfillment key **absent** (`delivery:'pending'`, non-terminal) | A4 `paidProcessing.tokens` |
+| R3-T5 | Token: complete + `paid`, fulfillment key **present** (`delivery:'unconfirmed'`; issuance unverified) | T1 `tokenPaymentConfirmed` |
+| R-S4 (book) | Book: complete + `paid`, fulfillment key absent (`pending`) | B1 `paidPending.book` |
+| R-S5 (book) | Book: complete + `paid`, key present **and** the matching `user_books (metadata.userId, metadata.bookId)` row exists | B2 `delivered.book` |
+| R-S6 (book) | Book: complete + `paid`, key present, matching ownership **not** verifiable | B3 `unconfirmed.book` |
+| R-S8 | Subscription: the local row tracks the verified session's `subscription` and is entitled (`trialing`, `active`, `canceling`) | C1: existing title + `subscriptionActive` body |
+| R-S10 | Subscription: the matching row has ended (`canceled`) | C2 `subscriptionEnded` |
+| R-S11 | Subscription: the local row tracks a **different** subscription from the verified session's | C3 `subscriptionOther` |
+| R-S13 | `404`: unknown, malformed, not owned, gift or non-Noetia session | D1 `notFound` |
+| R-S12 | `503`: Stripe or Noetia cannot complete verification; also `503`/`429` once the budget is exhausted (§R2.8 rule) | D2 `unavailable` |
+
+**States that keep existing, unchanged UI strings** (no new approval needed; reuse only):
+
+| State | Existing strings |
+|---|---|
+| R-S7, subscription `not_recorded` | `pendingTitle` / `pendingBody` |
+| R-S9, `payment_problem` | `problemTitle` / `problemBody` |
+| R-S14, `401` | `authTitle` / `authBody` / `signIn` (link keeps `session_id`) |
+| `?purchase=gift` | `purchaseTitle` / `purchaseBody.gift`, with no API request (G-b) |
+| Controls | `checking`, `checkAgain`, `viewBilling`, `continue`, `cta` |
+
+**Token rules (R1-B, unchanged):**
+- `delivery: 'delivered'` is never reported for token packages.
+- No timestamp correlation, `reason` text, user identity or existing token balance may establish current-session delivery.
+
+### R4.5 Security and financial-claim restrictions (binding)
+
+**Verification invariant:**
+- **"Payment confirmed" wording** ("Your payment is confirmed" / "Tu pago está confirmado") may appear **only** in T1, B1, B2 and B3. Those are reachable only for the authenticated owner's token or book Checkout that Stripe confirms as `complete` + `paid`.
+- **It never appears in:**
+  - subscription copy;
+  - A1–A4, D1 or D2;
+  - any `401`, `404`, `429` or `503` state.
+
+**Further claim restrictions:**
+- **Delivery claims need durable ownership evidence.** B2 ("The book is now in your library") requires the fulfillment key **and** the matching `user_books` row. No token message claims delivery.
+- **Errors guarantee nothing about payment.** A3, D1 and D2 make no statement about the payment outcome. D2 no longer says "Your payment isn't affected", the §R2.10 draft wording, which is retired. A2 makes no charge or refund claim.
+- **Subscriptions:** C1–C3 claim no token allocation and no amount paid. They contain none of `token`, `payment`, `pago`, `full access` or `acceso completo`, consistent with T-R3a.
+- **Kind comes from the server.** The kind and state come only from the verified server response (§R3.5 derivation rule), never from the untrusted `?purchase=` parameter. Its only effect is the G-b gift suppression.
+
+**Privacy:**
+- Status responses carry no personal information, amounts, currency, or Stripe or internal identifiers (§R2.4 never-returned list).
+- No approved string interpolates any value.
+
+**Anonymous gifts stay G-b:** existing generic confirmation, no API lookup.
+
+**Conformance check performed on the approved strings (documentation review, no tests run):**
+- the existing copy guard: no match;
+- T-R2b: no "no charge", "not charged", "failed" or "sin cargo" in A1/A2;
+- T-R3a: no token or payment words in C1–C3;
+- the payment-confirmed placement above.
+
+**No invariant conflict; no product-policy decision needed.**
+
+**Observations for PA (non-blocking; the approved text is recorded unchanged):**
+- **O-1, Spanish capitalization of "biblioteca".** B1–B3 write "biblioteca" in lowercase. CLAUDE.md's canonical term is "Biblioteca", and the existing `purchaseBody.book` ES uses "tu Biblioteca". Recorded verbatim as approved; any change would need a new PO decision.
+- **O-2, the 404 path for gift sessions.** A gift session reached **without** `?purchase=gift` (parameter stripped) gets D1, which suggests signing in with another account, though gift buyers have no linked account (G1-F2). The message makes no payment claim and G-b is intact; this is wording fit only.
+- **O-3, repeated sentence in C1.** The C1 body begins with the same sentence as the kept title ("Your subscription is active"). Changing either would need PO approval.
+- **O-4, dictionary-guard allowance (PA-10′).** The future implementation's guard needs an allowance for "payment is confirmed" / "pago está confirmado" scoped to T1 and B1–B3. The current guard does not forbid it, so no allowance is needed today.
+
+### R4.6 Rules for any further copy
+
+- **Headings:** any materially new customer-facing text, including **new headings** over the approved messages, still needs explicit PO approval, unless it merely reuses an existing approved UI string.
+- **No misleading reuse:** reuse must not change a string's meaning. For example, `purchaseTitle` ("We're confirming your purchase") must not head B2 or T1.
+- **Navigation:** reuses existing labels (`viewBilling`, `continue`, `checkAgain`). "Contact support" links to the existing `/contact` page; "your billing page", "your library" and "your token balance" link to existing routes.
+- **Where the strings will live:** web only, `services/web/lib/i18n/{en,es}.ts`, in lockstep (the parity test applies). Mobile is out of G-1 scope, since it opens the web `/pricing` and success flow. Nothing is written to localization files by this mission.
+
+### R4.7 Superseded draft references (historical only)
+
+| Passage | Status |
+|---|---|
+| §8.3 bilingual copy drafts | Historical (superseded in R2, again in R4) |
+| §R2.10 draft table and rules | **Historical: SUPERSEDED (R4).** The wording differs from the approved text; do not implement it. |
+| §R3.5 copy column "DRAFT" labels and the R3-T4 `purchaseTitle` / `purchaseBody.tokens` fallback | Superseded: A4 is approved |
+| §R3.6 copy classification and DRAFT list | **Historical: SUPERSEDED (R4).** The T1 text is unchanged and restated in §R4.3. |
+| §R3.10 prerequisite 3 (PO-2 remainder) | Satisfied |
+| §R3.11 "PO-2 (remainder): Open" | Closed |
+| Withdrawn in R3 (`paidPending.tokens`, `delivered.tokens`, `unconfirmed.tokens`, the R1-B fallback line) | Remain withdrawn |
+
+### R4.8 PO-2 status
+
+**PO-2: CLOSED — FINAL** (Product Owner, 2026-11-14).
+
+| | Count |
+|---|---|
+| Newly approved bilingual message groups (A1–A4, B1–B3, C1–C3, D1–D2) | **12** |
+| Previously approved bilingual token-payment message group (T1) | **1** |
+| **Approved G-1 message groups, total** | **13** |
+| Gift copy preserved under G-b (not counted) | — |
+
+**Closed PO decisions:**
+- PO-1: G-b, final;
+- R1-B: final;
+- PO-2: closed, final.
+
+**Open PO decisions:**
+- commissioning **W-1**, and W1-PO if it is commissioned;
+- any future heading or wording change;
+- the explicit instruction commissioning G-1 implementation.
+
+### R4.9 Remaining implementation prerequisites and release blockers
+
+**Before any G-1 implementation:**
+1. Independent PA review of §R3 and §R4 (PA-R3, PA-2″, PA-R4).
+2. An explicit PO instruction commissioning the implementation mission (CLAUDE.md governance).
+3. The implementation uses **only** §R4.3 strings and the existing strings in §R4.4, with the tests in §R3.7 plus the kept §R2.9 tests.
+   - T-R1B-4 and T-W9 assert the exact §R4.3 strings per state.
+   - The guard gets the O-4 scoped allowance.
+
+**Release blockers (unchanged):**
+- **W-1:** token package unavailable at fulfillment (§R3.9).
+- **SG-PM**, with W-2 item 1 recommended before launch.
+- **A5:** production Stripe webhook events.
+- Stripe production keys and configuration.
+- **USD-1:** Stripe Price currency.
+- The Stripe portal check (D4).
+- The Terms review (OP-3).
+- Open **G-4** and **G-5**.
+
+E-1 stays OPEN/BLOCKED and Checkpoint E stays NOT QUALIFIED.
+
+**Open PA decisions:**
+- **PA-R4 (new):** accept §R4 as the authoritative copy reference and note O-1 to O-4.
+- Unchanged from §R3.11: PA-R3, PA-1′, PA-2″, PA-4/5, PA-7, PA-8, PA-10′, PA-W1, PA-W2, PA-SG.
+
+### R4.10 Confirmation: no application-code changes
+
+**Changed:** only this design document. It gained this §R4, an R4 banner at the top, and historical or superseded markers on §R2.10, §R3.5's copy column, §R3.6, §R3.10 item 3 and §R3.11.
+
+**Not changed:**
+- application source code, web or mobile localization files, tests and verification scripts;
+- subscription and payment services, webhook handlers, token issuance, book ownership;
+- gift purchase, delivery and notifications;
+- migrations, Stripe settings, Terms, Privacy Policy, infrastructure;
+- PR #59, Noetia+/NoetiaX.
+
+No endpoint or UI component was created, and no financial transaction was run.
+
+**Intact:** G-b, R1-B, F-01 Option B, F-02, T-1 and D1–D6. PR #60 remains Draft; no merge or deployment.
 
 **STOP for independent PA review.**
