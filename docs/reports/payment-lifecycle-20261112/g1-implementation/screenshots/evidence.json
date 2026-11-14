@@ -1,0 +1,312 @@
+[
+  {
+    "file": "01-tokens-paid-confirmed.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "tokenPaymentConfirmed",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "Your payment is confirmed. Check your token balance to see your available tokens. If they haven't appeared, please contact support. Go to billing"
+  },
+  {
+    "file": "01-tokens-paid-confirmed.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "tokenPaymentConfirmed",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "Tu pago está confirmado. Consulta tu saldo para ver tus tokens disponibles. Si aún no aparecen, comunícate con soporte. Ir a facturación"
+  },
+  {
+    "file": "02-tokens-paid-processing.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "paidProcessingTokens",
+    "statusRequests": 11,
+    "otherApiCalls": [],
+    "text": "Your purchase is still being processed. Please check again in a moment. Check again"
+  },
+  {
+    "file": "02-tokens-paid-processing.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "paidProcessingTokens",
+    "statusRequests": 11,
+    "otherApiCalls": [],
+    "text": "Tu compra aún se está procesando. Vuelve a comprobarlo en un momento. Comprobar de nuevo"
+  },
+  {
+    "file": "03-book-delivered.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "deliveredBook",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "Your payment is confirmed. The book is now in your library. Enjoy your reading! Start reading"
+  },
+  {
+    "file": "03-book-delivered.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "deliveredBook",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "Tu pago está confirmado. El libro ya está en tu biblioteca. ¡Disfruta tu lectura! Comenzar a leer"
+  },
+  {
+    "file": "04-book-pending.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "paidPendingBook",
+    "statusRequests": 11,
+    "otherApiCalls": [],
+    "text": "Your payment is confirmed. We're still adding the book to your library. Please check again shortly. Check again"
+  },
+  {
+    "file": "04-book-pending.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "paidPendingBook",
+    "statusRequests": 11,
+    "otherApiCalls": [],
+    "text": "Tu pago está confirmado. Aún estamos agregando el libro a tu biblioteca. Vuelve a comprobarlo en un momento. Comprobar de nuevo"
+  },
+  {
+    "file": "05-book-unconfirmed.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "unconfirmedBook",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "Your payment is confirmed, but we couldn't verify that the book was added to your library. Please check your library and contact support if it's missing. Continue"
+  },
+  {
+    "file": "05-book-unconfirmed.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "unconfirmedBook",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "Tu pago está confirmado, pero no pudimos verificar que el libro se haya agregado a tu biblioteca. Revisa tu biblioteca y comunícate con soporte si no aparece. Continuar"
+  },
+  {
+    "file": "06-checkout-open.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "checkoutOpen",
+    "statusRequests": 11,
+    "otherApiCalls": [],
+    "text": "Your checkout is still open. If you completed it in another window, please check again in a moment. Check again"
+  },
+  {
+    "file": "06-checkout-open.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "checkoutOpen",
+    "statusRequests": 11,
+    "otherApiCalls": [],
+    "text": "Tu proceso de compra sigue abierto. Si lo completaste en otra ventana, vuelve a comprobarlo en un momento. Comprobar de nuevo"
+  },
+  {
+    "file": "07-checkout-expired.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "checkoutExpired",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "This checkout session has expired. You can start a new purchase whenever you're ready. Continue"
+  },
+  {
+    "file": "07-checkout-expired.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "checkoutExpired",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "Esta sesión de compra ha expirado. Puedes iniciar una nueva compra cuando quieras. Continuar"
+  },
+  {
+    "file": "08-payment-not-confirmed.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "paymentNotConfirmed",
+    "statusRequests": 11,
+    "otherApiCalls": [],
+    "text": "We haven't been able to confirm your payment yet. Please check again in a moment. Check again"
+  },
+  {
+    "file": "08-payment-not-confirmed.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "paymentNotConfirmed",
+    "statusRequests": 11,
+    "otherApiCalls": [],
+    "text": "Aún no hemos podido confirmar tu pago. Vuelve a comprobarlo en un momento. Comprobar de nuevo"
+  },
+  {
+    "file": "09-subscription-active.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "subscriptionActive",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "Your subscription is active Your subscription is active. You can review or manage your plan from your billing page. Go to billing"
+  },
+  {
+    "file": "09-subscription-active.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "subscriptionActive",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "Tu suscripción está activa Tu suscripción está activa. Puedes consultar o administrar tu plan desde tu página de facturación. Ir a facturación"
+  },
+  {
+    "file": "10-subscription-pending.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "subscriptionPending",
+    "statusRequests": 11,
+    "otherApiCalls": [],
+    "text": "We're still confirming your subscription Your subscription isn't active in Noetia yet. If you completed checkout, this usually takes less than a minute. Check again Go to billing"
+  },
+  {
+    "file": "10-subscription-pending.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "subscriptionPending",
+    "statusRequests": 11,
+    "otherApiCalls": [],
+    "text": "Aún estamos confirmando tu suscripción Tu suscripción aún no está activa en Noetia. Si completaste el pago, suele tardar menos de un minuto. Comprobar de nuevo Ir a facturación"
+  },
+  {
+    "file": "11-subscription-problem.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "subscriptionProblem",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "There's a problem with your payment Your subscription payment could not be collected. Update your payment method from your billing page. Go to billing"
+  },
+  {
+    "file": "11-subscription-problem.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "subscriptionProblem",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "Hay un problema con tu pago No se pudo cobrar el pago de tu suscripción. Actualiza tu método de pago desde tu página de facturación. Ir a facturación"
+  },
+  {
+    "file": "12-subscription-ended.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "subscriptionEnded",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "This subscription has ended. You can review its details on your billing page. Go to billing"
+  },
+  {
+    "file": "12-subscription-ended.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "subscriptionEnded",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "Esta suscripción ha finalizado. Puedes consultar los detalles en tu página de facturación. Ir a facturación"
+  },
+  {
+    "file": "13-subscription-other.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "subscriptionOther",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "This checkout isn't linked to your current subscription. Please review your billing page for more information. Go to billing"
+  },
+  {
+    "file": "13-subscription-other.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "subscriptionOther",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "Esta compra no está vinculada a tu suscripción actual. Consulta tu página de facturación para obtener más información. Ir a facturación"
+  },
+  {
+    "file": "14-not-found.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "notFound",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "We couldn't verify this purchase with your current account. If you used another account, please sign in with it. Sign in"
+  },
+  {
+    "file": "14-not-found.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "notFound",
+    "statusRequests": 1,
+    "otherApiCalls": [],
+    "text": "No pudimos verificar esta compra con tu cuenta actual. Si utilizaste otra cuenta, inicia sesión con ella. Iniciar sesión"
+  },
+  {
+    "file": "15-unavailable.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "unavailable",
+    "statusRequests": 11,
+    "otherApiCalls": [],
+    "text": "We can't verify your purchase right now. Please try again in a moment. Check again"
+  },
+  {
+    "file": "15-unavailable.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "unavailable",
+    "statusRequests": 11,
+    "otherApiCalls": [],
+    "text": "No podemos verificar tu compra en este momento. Inténtalo de nuevo en unos instantes. Comprobar de nuevo"
+  },
+  {
+    "file": "16-sign-in.en.png",
+    "lang": "en",
+    "view": "session",
+    "copy": "auth",
+    "statusRequests": 1,
+    "otherApiCalls": [
+      "POST /auth/refresh"
+    ],
+    "text": "Sign in to confirm your subscription Your payment isn't affected. Sign in to see your subscription status. Sign in"
+  },
+  {
+    "file": "16-sign-in.es.png",
+    "lang": "es",
+    "view": "session",
+    "copy": "auth",
+    "statusRequests": 1,
+    "otherApiCalls": [
+      "POST /auth/refresh"
+    ],
+    "text": "Inicia sesión para confirmar tu suscripción Tu pago no se ve afectado. Inicia sesión para ver el estado de tu suscripción. Iniciar sesión"
+  },
+  {
+    "file": "17-gift-generic-no-request.en.png",
+    "lang": "en",
+    "view": "purchase",
+    "copy": null,
+    "statusRequests": 0,
+    "otherApiCalls": [],
+    "text": "We're confirming your purchase Once your payment is confirmed, we email the gift to its recipient and send you a confirmation. Continue"
+  },
+  {
+    "file": "17-gift-generic-no-request.es.png",
+    "lang": "es",
+    "view": "purchase",
+    "copy": null,
+    "statusRequests": 0,
+    "otherApiCalls": [],
+    "text": "Estamos confirmando tu compra Cuando se confirme tu pago, enviaremos el regalo por email a su destinatario y te mandaremos una confirmación. Continuar"
+  }
+]

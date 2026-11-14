@@ -1,0 +1,32 @@
+PASS tests/unit/app/account/billing.spec.tsx
+PASS tests/unit/app/billing/pricing.spec.tsx
+PASS tests/unit/app/billing/success-page.spec.tsx
+PASS tests/unit/app/billing/success-session.spec.tsx
+PASS tests/unit/app/billing/success.spec.ts
+PASS tests/unit/app/causas.spec.tsx
+PASS tests/unit/app/corporate-causas-copy.spec.tsx
+PASS tests/unit/app/LandingContent.spec.tsx
+PASS tests/unit/components/CauseSelector.spec.tsx
+PASS tests/unit/components/Footer.spec.tsx
+PASS tests/unit/components/onboarding/OnboardingTour.spec.tsx
+PASS tests/unit/components/PlanCard.spec.ts
+PASS tests/unit/components/ReaderTopBar.spec.tsx
+PASS tests/unit/components/ShareModal.spec.ts
+PASS tests/unit/components/SharePicker.spec.ts
+PASS tests/unit/components/StatsTab.spec.tsx
+PASS tests/unit/lib/api.spec.ts
+PASS tests/unit/lib/checkout-status.spec.ts
+PASS tests/unit/lib/consent-utils.spec.ts
+PASS tests/unit/lib/currency.spec.ts
+PASS tests/unit/lib/fragment-selection.spec.ts
+PASS tests/unit/lib/i18n.spec.ts
+PASS tests/unit/lib/onboarding.spec.ts
+PASS tests/unit/lib/onboarding-stepper.spec.ts
+PASS tests/unit/lib/reader-preferences.spec.ts
+PASS tests/unit/lib/reader-tutorial.spec.ts
+PASS tests/unit/lib/reader-utils.spec.ts
+PASS tests/unit/lib/share-utils.spec.ts
+PASS tests/unit/lib/tutorial-flags.spec.ts
+PASS tests/unit/reader/reader-utils.spec.ts
+Tests:       587 passed, 587 total
+Test Suites: 30 passed, 30 total
