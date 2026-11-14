@@ -1,6 +1,8 @@
 // /billing/success — post-payment confirmation, exercised at the NETWORK level: the real page and the real
 // apiFetch (Bearer header, shared refresh) run; only global fetch is stubbed, enforcing the API contract
 // (JWT from the Authorization: Bearer header only). Polling runs on Jest fake timers.
+// This file covers the flows WITHOUT a Checkout session id (unchanged by G-1) and the G-b gift rule; the G-1
+// session-verification flow is in success-session.spec.tsx.
 jest.mock('next/link', () => ({
   __esModule: true,
   default: ({ children, href, ...props }: any) => {
@@ -65,7 +67,7 @@ const button = (label: string) => Array.from(container.querySelectorAll('button'
 const link = (label: string) => Array.from(container.querySelectorAll('a')).find((a) => a.textContent === label) as HTMLAnchorElement | undefined;
 const req = (method: string, path: string) => calls.filter((c) => c.method === method && c.path === path);
 
-async function render(search = '?session_id=cs_test_synthetic') {
+async function render(search = '') {
   (window as any).location = { href: `http://localhost/billing/success${search}`, search };
   act(() => { root.render(React.createElement(BillingSuccessPage)); });
   await flush();
@@ -91,7 +93,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-describe('/billing/success — subscription confirmation', () => {
+describe('/billing/success — account-status flow without a session id (unchanged by G-1)', () => {
   it('shows a neutral "confirming" state first — never "activated" while the request is in flight', async () => {
     let release!: () => void;
     (global.fetch as jest.Mock).mockImplementationOnce(() => new Promise((r) => { release = () => r({ ok: true, status: 200, json: async () => ({ status: 'trialing' }) }); }));
@@ -214,8 +216,8 @@ describe('/billing/success — subscription confirmation', () => {
 });
 
 describe('/billing/success — one-time purchases (?purchase=…)', () => {
-  it.each([['tokens'], ['book'], ['gift']] as const)('purchase=%s → neutral "confirming your purchase" (unverified query parameter), no subscription calls', async (kind) => {
-    await render(`?purchase=${kind}&session_id=cs_test_synthetic`);
+  it.each([['tokens', ''], ['book', ''], ['gift', ''], ['gift', '&session_id=cs_test_synthetic1234']] as const)('purchase=%s%s (no verifiable session, or G-b gift) → neutral "confirming your purchase", no API calls', async (kind, extra) => {
+    await render(`?purchase=${kind}${extra}`);
     expect(view()).toBe('purchase');
     expect(text()).toContain(en.billing.success.purchaseTitle);
     expect(text()).toContain(en.billing.success.purchaseBody[kind]);
