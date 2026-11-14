@@ -13,9 +13,21 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik.yml:/traefik.yml:ro
       - ./acme.json:/acme.json
+    # Every network Traefik must stay on. A recreation from this file detaches Traefik from anything NOT listed,
+    # so the list must match the live attachments. NEVER `docker compose up` in /opt/traefik to apply a change
+    # (it recreates Traefik); attach live with `docker network connect <net> traefik`, then persist this file.
     networks:
       - proxy
+      # Staging's dedicated Traefik network (NEM-017 / S19). Already attached LIVE (G1-I1 Checkpoint III, V3).
+      # Identical to the declaration in Draft PR #26 — whichever lands first, the other rebases trivially.
+      - proxy_staging
+      # G1-I1: dedicated Traefik ↔ Noetia API network (create + attach BEFORE deploying the API change).
+      - noetia_api_edge
 
 networks:
   proxy:
+    external: true
+  proxy_staging:
+    external: true
+  noetia_api_edge:
     external: true
