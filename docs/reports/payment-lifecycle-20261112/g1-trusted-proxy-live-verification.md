@@ -25,7 +25,7 @@
 - **The live evidence strengthens the reason for the change.** The production API shares `proxy` with AutoGuildX's `web` and `api` containers, and with Noetia's `web` and `storage`. Any of them can reach `api:4000` without Traefik. A rule that trusts arbitrary private addresses would let them forge client IPs.
 - **Live Traefik configuration matches the repository** for everything relevant here: no `forwardedHeaders` overrides; Docker provider default network `proxy`; `exposedByDefault: false`.
 - **One material repository/live drift:** live Traefik is **also attached to `proxy_staging`**, which the committed Traefik compose file doesn't declare (PR #26 is unmerged). This does not change the architecture, but it **must be reconciled before any Traefik compose file is persisted** (§7).
-- **Candidate `S = 10.211.75.0/28`, `R = 10.211.75.8/29`: accepted for further qualification, not approved for creation.**
+- **Candidate `S = 10.211.75.0/28`, `R = 10.211.75.8/29`: a qualified candidate, not a reservation; not approved for creation.** Disposable Docker allocation tests, including Traefik and API recreation, must pass before implementation qualification (§10).
 - **Recommendation:** the design is **ready for a separately authorized local implementation and qualification mission** (code plus the T-I1-01…12 tests in disposable environments). A **live rollout** should wait for U3 (drift) to be reconciled and for the PR #26/#28 sequencing decision (§10).
 
 ## 2. GitHub baseline [VERIFIED REPOSITORY]
@@ -183,6 +183,16 @@ There is no global IPv6. **[INFERRED]** The proposed design keeps role 1 and rep
 
 **Decision status:** accepted for further qualification. **NOT approved for live creation or configuration.**
 
+**Candidate, not reservation.** `10.211.75.0/28` is a **qualified candidate** based on the live inventory of 2026-11-14 (V1/V2). Nothing reserves it: no network was created, and Docker, the host, Tailscale or a future network could take or route that space before implementation. It must be re-verified free (V1/V2-style read-only checks, plus U8) immediately before any live creation.
+
+**Required before implementation qualification: disposable Docker allocation tests.** The future mission must show, in disposable local Docker resources, that:
+- a network created with `--internal --subnet 10.211.75.0/28 --ip-range 10.211.75.8/29` assigns the Traefik and API containers addresses **inside `10.211.75.8/29`** on first attachment;
+- after **Traefik recreation** and **API recreation** (both, separately and together), and after `docker restart`, every member's address is still inside `R`, and the gateway `10.211.75.1` stays outside it;
+- the API's trust rule then accepts only those members (T-I1-06/07);
+- a static address outside `R`, if ever configured, is not trusted (T-I1-07 negative case).
+
+Until these pass, `R` is not qualified for implementation.
+
 ## 11. Rollout and availability risk assessment (design §8; not executed)
 
 | # | Risk | Status |
@@ -221,10 +231,13 @@ Invariant: **only the genuine Traefik peer may supply a trusted forwarded client
 
 ## 13. PR #26 / #28 coordination [VERIFIED REPOSITORY + VERIFIED LIVE]
 
+*(Corrected after PA review of `1b88569`: committed diffs are now distinguished from runbook proposals.)*
+
 | Item | PR #26 (NEM-017) | PR #28 (NEM-018) | G1-I1 |
 |---|---|---|---|
-| Traefik compose edit | Adds `proxy_staging` to the `networks:` list | Adds `proxy_agx`; its runbook says edit only **after** NEM-017's version lands | Adds `noetia_api_edge` |
-| `init.sh` | — | Adds `docker network create proxy_agx` | Adds `noetia_api_edge` creation |
+| `infra/server/traefik/docker-compose.yml`, **committed in the PR** | **Modified:** adds `proxy_staging` to Traefik's `networks:` list and declares it external [VERIFIED REPOSITORY: PR file list and diff at `02c98f7`] | **Not modified.** PR #28 changes no file under `infra/server/traefik/` [VERIFIED REPOSITORY: PR file list at `35ab50b`] | **Not modified.** No implementation exists |
+| Traefik compose, **proposed for later** | — | Its runbook (`docs/operations/nem-018-autoguildx-network-migration.md`) **proposes** adding `proxy_agx` later, and only after NEM-017's version of the file has landed. That is a runbook proposal, not a change in the PR. | Design §7.3 **proposes** a future addition of `noetia_api_edge` [PROPOSED] |
+| `infra/server/init.sh` | — | Runbook **proposes** adding `docker network create proxy_agx` (not in the PR diff) | Design **proposes** an idempotent `noetia_api_edge` creation [PROPOSED] |
 | Live state | **`proxy_staging` exists and Traefik is attached; no staging container on `proxy`** (partially or fully applied; U3) | **Not applied:** AutoGuildX is still on `proxy` | Not applied |
 | Name or subnet conflict | — | `proxy_agx` would auto-allocate from Docker's pools [INFERRED] | `10.211.75.0/28` is outside those pools |
 
@@ -233,7 +246,9 @@ Invariant: **only the genuine Traefik peer may supply a trusted forwarded client
 2. **NEM-018:** move AutoGuildX to `proxy_agx`.
 3. **G1-I1:** create the edge network and move the API off `proxy`.
 
-Each later change must rebase the same Traefik `networks:` list, and must recheck the actual diffs and the live state right before authorization (U7). G1-I1 does **not** depend on NEM-018 for correctness. Its edge network closes the AutoGuildX → API path by itself. Order 2→3 only reduces how many times the Traefik file changes.
+**Warning (retained):** live Traefik is **already attached to `proxy_staging`** (V3), while the committed Traefik compose file at PR #60 declares only `proxy` (U3). Before any future rollout, the production `/opt/traefik/docker-compose.yml` must be reconciled with the repository, and must keep `proxy_staging`. Otherwise a later Traefik recreation from an outdated file would detach staging.
+
+Today only PR #26 actually edits the Traefik `networks:` list. NEM-018's and G1-I1's additions are future proposals, and each must be written against whatever version of that file has landed by then. Recheck the actual diffs and the live state right before authorization (U7). G1-I1 does **not** depend on NEM-018 for correctness. Its edge network closes the AutoGuildX → API path by itself. Order 2→3 only reduces how many times the Traefik file changes.
 
 ## 14. Repository/live divergence (recorded, not corrected)
 1. **Traefik attachments:** live `proxy` + `proxy_staging`; committed compose `proxy` only (U3).
@@ -268,7 +283,7 @@ None of these is an architecture contradiction, so no STOP applies.
 3. **Next step:** the design is **ready for a separately authorized implementation and qualification mission** that is local and disposable only:
    - the trusted-proxy helper and `main.ts` change;
    - the compose, Traefik, `init.sh` and docs changes **prepared but not applied**;
-   - the T-I1-01…12 tests;
+   - the T-I1-01…12 tests, **including the §10 disposable allocation tests for `10.211.75.8/29` across Traefik and API recreation** (a precondition for qualifying `R`);
    - a rollout and rollback rehearsal against a local mirror of the **verified** topology, including `proxy_staging` and the AutoGuildX containers on `proxy`.
 4. **Before any live rollout:**
    - reconcile U3 (NEM-017 drift);
