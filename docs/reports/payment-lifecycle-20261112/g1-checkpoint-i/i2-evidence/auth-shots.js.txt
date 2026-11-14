@@ -1,0 +1,58 @@
+// G1-I2 browser evidence: production build of /billing/success (next start on 127.0.0.1:3100), headless Chromium.
+// No access token is stored and every API request is intercepted in the browser and answered 401 (refresh
+// refused), so nothing leaves the browser. Records each view, copy key, sign-in href, API calls and visible text.
+const { chromium } = require(process.env.PW_PATH);
+const fs = require('fs');
+const path = require('path');
+
+const OUT = process.argv[2];
+const WEB = 'http://127.0.0.1:3100';
+const SID = 'cs_test_DemoSession0000000000';
+const CASES = [
+  ['01-session-401-tokens', `?purchase=tokens&session_id=${SID}`, 'session'],
+  ['02-session-401-book', `?purchase=book&session_id=${SID}`, 'session'],
+  ['03-session-401-subscription', `?session_id=${SID}`, 'session'],
+  ['04-session-401-extra-params-discarded', `?session_id=${SID}&purchase=evil&next=//attacker.example`, 'session'],
+  ['05-no-session-401-unchanged', ``, 'auth'],
+  ['06-gift-signed-out-no-request', `?purchase=gift&session_id=${SID}`, 'purchase'],
+];
+
+(async () => {
+  fs.mkdirSync(OUT, { recursive: true });
+  const browser = await chromium.launch({ executablePath: process.env.PW_CHROME });
+  const log = [];
+  for (const lang of ['en', 'es']) {
+    for (const [file, query, want] of CASES) {
+      const ctx = await browser.newContext({ viewport: { width: 760, height: 520 } });
+      await ctx.addInitScript((l) => localStorage.setItem('noetia_lang', l), lang);
+      const page = await ctx.newPage();
+      const apiCalls = [];
+      await page.route('http://localhost:4000/**', async (route) => {
+        const u = new URL(route.request().url());
+        apiCalls.push(`${route.request().method()} ${u.pathname}`);
+        const cors = { 'access-control-allow-origin': WEB, 'access-control-allow-credentials': 'true', 'access-control-allow-headers': 'authorization,content-type', 'content-type': 'application/json' };
+        if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+        return route.fulfill({ status: 401, headers: cors, body: '{"message":"Unauthorized"}' });
+      });
+      await page.route('**/api/users/me', (r) => r.fulfill({ status: 401, body: '{}' }));
+      await page.goto(`${WEB}/billing/success${query}`);
+      await page.waitForSelector(`main[data-view="${want}"]`, { timeout: 15_000 });
+      await page.waitForTimeout(300);
+      const shot = path.join(OUT, `${file}.${lang}.png`);
+      await page.locator('main').screenshot({ path: shot });
+      log.push({
+        file: path.basename(shot), lang, query,
+        view: await page.locator('main').getAttribute('data-view'),
+        copy: await page.locator('[data-copy]').first().getAttribute('data-copy', { timeout: 500 }).catch(() => null),
+        headings: await page.locator('main h1').allInnerTexts(),
+        signInHref: await page.locator('main a[href^="/login"]').first().getAttribute('href', { timeout: 500 }).catch(() => null),
+        apiCalls: apiCalls.filter((c) => !c.startsWith('OPTIONS')),
+        text: (await page.locator('main').innerText()).replace(/\s+/g, ' ').trim(),
+      });
+      await ctx.close();
+    }
+  }
+  fs.writeFileSync(path.join(OUT, 'evidence.json'), JSON.stringify(log, null, 2));
+  await browser.close();
+  console.log(`ok ${log.length} screenshots`);
+})().catch((e) => { console.error(e); process.exit(1); });

@@ -1,0 +1,11 @@
+http:
+  middlewares:
+    strip: { stripPrefix: { prefixes: ["/none", "/restricted", "/unrestricted"] } }
+  routers:
+    none:         { rule: "PathPrefix(`/none`)",         entryPoints: [web], service: none,         middlewares: [strip] }
+    restricted:   { rule: "PathPrefix(`/restricted`)",   entryPoints: [web], service: restricted,   middlewares: [strip] }
+    unrestricted: { rule: "PathPrefix(`/unrestricted`)", entryPoints: [web], service: unrestricted, middlewares: [strip] }
+  services:
+    none:         { loadBalancer: { servers: [{ url: "http://g1i1-upstream:4001" }] } }
+    restricted:   { loadBalancer: { servers: [{ url: "http://g1i1-upstream:4002" }] } }
+    unrestricted: { loadBalancer: { servers: [{ url: "http://g1i1-upstream:4003" }] } }

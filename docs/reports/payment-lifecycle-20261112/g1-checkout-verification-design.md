@@ -9,7 +9,7 @@
 | **Status** | **Design proposal for independent PA review.** Recommendations here are not approvals. Nothing is merged, deployed or activated. |
 | **Executed by** | Claude Code. Independent reviewer: Product Architecture. |
 
-> **⚠ §R4 IS THE AUTHORITATIVE COPY REFERENCE. All G-1 customer-facing wording comes from [§R4, Final PO-2 bilingual copy approval and governance closure](#r4-final-po-2-bilingual-copy-approval-and-governance-closure).** PO-2 is **CLOSED — FINAL** (PO, 2026-11-14): 13 approved EN/ES message groups. Every earlier copy table (§8.3, §R2.10, §R3.6) is **historical**. §R3 remains the final architecture.
+> **⚠ §R4 IS THE AUTHORITATIVE COPY REFERENCE. All G-1 customer-facing wording comes from [§R4, Final PO-2 bilingual copy approval and governance closure](#r4-final-po-2-bilingual-copy-approval-and-governance-closure).** PO-2 is **CLOSED — FINAL** (PO, 2026-11-14): 13 approved EN/ES message groups, plus one follow-up sign-in sentence (G1-I2, §R4.11). Every earlier copy table (§8.3, §R2.10, §R3.6) is **historical**. §R3 remains the final architecture.
 >
 > **⚠ ROUND 3 IS THE FINAL ARCHITECTURE. Implementation agents must follow [§R3, Round 3: final architecture closure, R1-B and PO-2](#r3-round-3-final-architecture-closure-r1-b-and-po-2) at the end of this file.** It records two final PO decisions: **R1-B** (no timestamp correlation; token packages are never reported `delivered`) and **PO-2** (the two exact approved token-package messages). Where §R3 conflicts with §R2 or §§1–15, **§R3 wins**. Round 2 passages it replaces carry a **⛔ SUPERSEDED (R3)** marker; the Round 2 timestamp investigation is kept as evidence under **SUPERSEDED — PO APPROVED R1-B**.
 >
@@ -1415,7 +1415,7 @@ The existing gift copy (`purchaseTitle` + `purchaseBody.gift`) is **preserved un
 |---|---|
 | R-S7, subscription `not_recorded` | `pendingTitle` / `pendingBody` |
 | R-S9, `payment_problem` | `problemTitle` / `problemBody` |
-| R-S14, `401` | `authTitle` / `authBody` / `signIn` (link keeps `session_id`) |
+| R-S14, `401` ⛔ **SUPERSEDED for the session flow by §R4.11 (G1-I2)** | ~~`authTitle` / `authBody`~~ → `status.signInToVerify` + existing `signIn` (link keeps `session_id` and a permitted `purchase`). The no-session `auth` view still uses `authTitle` / `authBody`. |
 | `?purchase=gift` | `purchaseTitle` / `purchaseBody.gift`, with no API request (G-b) |
 | Controls | `checking`, `checkAgain`, `viewBilling`, `continue`, `cta` |
 
@@ -1539,3 +1539,24 @@ No endpoint or UI component was created, and no financial transaction was run.
 **Intact:** G-b, R1-B, F-01 Option B, F-02, T-1 and D1–D6. PR #60 remains Draft; no merge or deployment.
 
 **STOP for independent PA review.**
+
+### R4.11 Follow-up wording decision: G1-I2 session-flow sign-in state (Checkpoint I, PO, 2026-11-14)
+
+| | |
+|---|---|
+| **Finding** | G1-I2 (PA, Checkpoint I). The session-verification `401` view reused `authTitle` / `authBody` ("Sign in to confirm your **subscription**" / "Your payment isn't affected"). That is subscription-specific and states a payment outcome the server has not verified. |
+| **Decision** | PO agreed neutral wording for the **G-1 session-flow** sign-in state only. It is recorded verbatim below and is part of the authoritative §R4 copy reference. |
+| **Status** | **Implemented** on PR #60 (Draft) at Checkpoint I. Not merged or deployed. |
+
+| Key | EN | ES |
+|---|---|---|
+| `billing.success.status.signInToVerify` | Please sign in to verify your purchase. | Inicia sesión para verificar tu compra. |
+
+**Binding rules:**
+- **One sentence for every kind.** The same text is used for subscription, token and book Checkout. Before sign-in the kind is unknown, and the page never infers it from `?purchase=`.
+- **No outcome claims.** The sentence says nothing about payment (succeeded, failed or unaffected), fulfillment or entitlement.
+- **No heading.** The sentence renders alone, with the existing `signIn` button, so no new heading is introduced.
+- **Return path.** The sign-in link keeps `session_id` and a permitted `purchase` value (`tokens`, `book` or `gift`). Every other query parameter is discarded, and the id is URL-encoded.
+- **No-session flow unchanged.** The `auth` view without a `session_id` keeps `authTitle` / `authBody`.
+- **G-b unchanged.** `?purchase=gift` sends no request, signed in or not.
+- **Count.** PO-2's 13 approved groups (§R4.3) are unchanged; this is one additional approved sentence, not a change to them.
