@@ -8,6 +8,7 @@
 | **Commits** | `b304516` feat(api) · `5fe5d5a` chore(infra), prepared only · `a4d82bf` test(infra) harness · `6fb9305` docs · this report's commit |
 | **Verdict** | **Implemented and locally qualified, with two documented gaps: NOT fully qualified** (§7). Inactive everywhere until separately authorized. **STOP for independent PA review.** |
 | **PA review update (2026-11-15)** | PA provisionally accepted for development progression, NOT fully qualified. **IV-F1 closed** (environment-only bcrypt repair; `auth.controller.spec.ts` 8/8; full API 78/78 suites, 1382/1382). **IV-F2 open:** R-05 Docker-provider path NOT verified; existing evidence insufficient; exact requirement documented; **STOP for PA decision** (§12). |
+| **Final PA decision (2026-11-15, reviewed `8f74069`)** | **ACCEPTED FOR LOCAL DEVELOPMENT QUALIFICATION WITH A DOCUMENTED EXCEPTION.** IV-F1 CLOSED. IV-F2 ACCEPTED EXCEPTION: R-05 remains **NOT VERIFIED with the real Docker provider** (simulated with the file provider + source analysis); the residual availability risk is retained. Not production-qualified; all production and financial release gates remain closed (§13). |
 
 **Specifications:**
 - [Checkpoint II design](g1-trusted-proxy-correction-design.md)
@@ -277,3 +278,24 @@ Full determination: [`iv-f2-r05-docker-provider.md`](g1-checkpoint-iv/iv-f2-r05-
 - The exact-two-member invariant (`traefik` + `noetia-api-1`, checked at every deploy and after any recreation) is a **mandatory deployment and operational safeguard, not proof of cryptographic Traefik identity.**
 
 **Status:** IV-F1 closed; IV-F2 open. Checkpoint IV is **NOT fully qualified**. No production/staging access, no Docker resources created, no merge, deployment or activation. **STOP for independent PA review.**
+
+## 13. Final PA decision, 2026-11-15 (reviewed `8f74069`)
+
+| Item | PA decision |
+|---|---|
+| **IV-F1** | **CLOSED.** Environment-only bcrypt repair accepted, along with the recorded full API run: 78/78 suites, 1,382/1,382 tests (§12.1) |
+| **IV-F2** | **ACCEPTED EXCEPTION.** No further Docker-provider testing under this mission. R-05 is accepted as **simulated with the file provider plus source analysis** (§5.2, §12.2, [`iv-f2-r05-docker-provider.md`](g1-checkpoint-iv/iv-f2-r05-docker-provider.md)). Status kept: **NOT VERIFIED with the real Docker provider.** The residual availability risk is retained: a wrong or missing `traefik.docker.network` label gives non-deterministic network selection, silent at production `log.level: ERROR` (either masked routing via the edge network, or 504 via `noetia_net`). Trust cannot widen in any branch. Cases V-a…V-d remain unexecuted |
+| **Checkpoint IV** | **ACCEPTED FOR LOCAL DEVELOPMENT QUALIFICATION WITH A DOCUMENTED EXCEPTION** |
+
+**Preserved unchanged by this decision:**
+- original test evidence and matrices (§5, §6, `g1-checkpoint-iv/`);
+- the IV-F2 limitations (§7, §12.2);
+- the threat model (§8), including the confirmed limitation that any container admitted to `noetia_api_edge` can forge forwarding headers. The exact-two-member invariant (`traefik` + `noetia-api-1`) remains a **mandatory deployment and operational safeguard, not proof of cryptographic Traefik identity**;
+- the production rollout prerequisites (§9).
+
+**What this acceptance does not authorize:**
+- It is **not** production qualification. Rollout still needs the §9 prerequisites and a separate infrastructure authorization. The R-05 exception must be carried into any rollout decision; the label and network change stay in one commit.
+- **Not authorized:** further Docker tests, socket access, application-code changes, infrastructure operations, production/staging access, merge or deployment.
+- **All production and financial release gates remain closed.**
+
+**STOP for independent PA verification.**
