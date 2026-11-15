@@ -1,0 +1,150 @@
+# G1-I1 Stage B-1 — sanitized local validation evidence (2026-11-15)
+# Branch release/g1-i1-b1-trusted-proxy-inactive, implementation commit 30db6f9 on main 6a5e5c0.
+# Node v20.20.2, pnpm 10.33.2, local dev VM. No Docker, no network services, no production data.
+
+## Environment
+pnpm install --frozen-lockfile --filter @noetia/api → OK; pnpm-lock.yaml, package.json, services/api/package.json sha256 unchanged.
+pnpm 10 ignoredBuilds skipped bcrypt@5.1.1 → bcrypt's own install script run in place (same environment-only
+procedure PA accepted for IV-F1); binding sha256 69b09b032c70f614e76d2569b9a30d5f907589afb607a27ea651066a08b85149
+(identical to the IV-F1 binding). No tracked file changed.
+
+## Byte identity with Draft PR #60 (d8e61e2), sha256 prefix
+  services/api/src/common/trusted-proxy.ts  B-1=9beec4019358699b  PR60=9beec4019358699b  IDENTICAL
+  services/api/tests/unit/common/trusted-proxy.spec.ts  B-1=5467f95cf92ffd6c  PR60=5467f95cf92ffd6c  IDENTICAL
+  services/api/src/main.ts  B-1=afa7a7a38bdd879e  PR60=afa7a7a38bdd879e  IDENTICAL
+  .env.example  B-1=1d49d28bb1b90136  PR60=1d49d28bb1b90136  IDENTICAL
+
+## Diff vs main (git diff --stat 6a5e5c0 30db6f9)
+   .env.example                                       |   7 +
+   CLAUDE.md                                          |   7 +
+   services/api/src/common/trusted-proxy.ts           |  76 ++++++++
+   services/api/src/main.ts                           |   7 +-
+   .../unit/common/trusted-proxy.integration.spec.ts  | 217 +++++++++++++++++++++
+   .../api/tests/unit/common/trusted-proxy.spec.ts    | 129 ++++++++++++
+   6 files changed, 442 insertions(+), 1 deletion(-)
+  excluded-path grep (compose|traefik|infra/|.github|migrations|subscriptions|webhook|stripe|gift|checkout|web|mobile|.env.production): none
+
+## tsc --noEmit (services/api): exit 0, no output
+
+## Focused: npx jest tests/unit/common --maxWorkers=2 --verbose
+  PASS tests/unit/common/trusted-proxy.spec.ts (6.289 s)
+      ✓ "10.211.75.8/29" → enabled (16 ms)
+      ✓ "  10.211.75.8/29  " → enabled (1 ms)
+      ✓ "10.211.75.8/29,10.211.76.0/24" → enabled (1 ms)
+      ✓ "127.0.0.2/32" → enabled (1 ms)
+      ✓ "fd00:abcd::/112" → enabled (6 ms)
+      ✓ "fd00:abcd::1/128" → enabled (3 ms)
+      ✓ accepts exactly 4 entries (2 ms)
+      ✓ unset/empty undefined → disabled ("not set") (2 ms)
+      ✓ unset/empty null → disabled ("not set")
+      ✓ unset/empty "" → disabled ("not set") (1 ms)
+      ✓ unset/empty "   " → disabled ("not set")
+      ✓ keyword true ("true") → disabled (1 ms)
+      ✓ keyword false ("false") → disabled
+      ✓ keyword loopback ("loopback") → disabled (1 ms)
+      ✓ keyword uniquelocal ("uniquelocal") → disabled (1 ms)
+      ✓ keyword linklocal ("linklocal") → disabled (1 ms)
+      ✓ hop count ("1") → disabled
+      ✓ hop count 2 ("2") → disabled (1 ms)
+      ✓ bare IPv4 address ("10.211.75.9") → disabled
+      ✓ bare IPv6 address ("::1") → disabled
+      ✓ netmask notation ("10.211.75.0/255.255.255.0") → disabled (1 ms)
+      ✓ hostname ("traefik") → disabled
+      ✓ hostname with prefix ("traefik/32") → disabled
+      ✓ invalid IPv4 ("10.211.75.300/29") → disabled (1 ms)
+      ✓ invalid IPv6 ("fd00::zz/120") → disabled
+      ✓ prefix > 32 ("10.211.75.8/33") → disabled (1 ms)
+      ✓ prefix > 128 ("fd00::/129") → disabled (1 ms)
+      ✓ negative prefix ("10.211.75.8/-1") → disabled
+      ✓ trailing comma ("10.211.75.8/29,") → disabled (1 ms)
+      ✓ empty middle entry ("10.211.75.8/29,,10.0.0.0/24") → disabled
+      ✓ mixed valid + keyword ("10.211.75.8/29,loopback") → disabled (1 ms)
+      ✓ mixed valid + invalid ("10.211.75.8/29,nope") → disabled
+      ✓ IPv4-in-IPv6 notation ("::ffff:10.211.75.8/120") → disabled (1 ms)
+      ✓ over-broad all IPv4 ("0.0.0.0/0") → disabled (1 ms)
+      ✓ over-broad RFC1918 10/8 ("10.0.0.0/8") → disabled
+      ✓ over-broad RFC1918 172.16/12 ("172.16.0.0/12") → disabled
+      ✓ over-broad RFC1918 192.168/16 ("192.168.0.0/16") → disabled
+      ✓ over-broad Docker default bridge /16 ("172.17.0.0/16") → disabled (1 ms)
+      ✓ over-broad /23 ("10.211.74.0/23") → disabled (1 ms)
+      ✓ over-broad all IPv6 ("::/0") → disabled
+      ✓ over-broad IPv6 ULA /7 ("fc00::/7") → disabled (1 ms)
+      ✓ over-broad IPv6 /64 ("fd00:abcd::/64") → disabled (1 ms)
+      ✓ over-broad IPv6 /111 ("fd00:abcd::/111") → disabled
+      ✓ more than 4 entries → disabled
+      ✓ valid → Express `trust proxy` compiled from exactly those CIDRs; one log line (11 ms)
+      ✓ unset → trust left at Express default (none), informational log, no warning (2 ms)
+      ✓ invalid "true" → not applied (no trust), one WARN
+      ✓ invalid "loopback" → not applied (no trust), one WARN (3 ms)
+      ✓ invalid "1" → not applied (no trust), one WARN (1 ms)
+      ✓ invalid "10.0.0.0/8" → not applied (no trust), one WARN (1 ms)
+      ✓ invalid "garbage" → not applied (no trust), one WARN (1 ms)
+      ✓ if Express rejects the value, it does not throw and reports disabled with a WARN (1 ms)
+      ✓ logs never contain anything but the configured ranges (1 ms)
+  PASS tests/unit/common/trusted-proxy.integration.spec.ts (8.919 s)
+      ✓ T-I1-01: two external clients behind the trusted peer get independent 30/min buckets (404 ms)
+      ✓ T-I1-02: per-client exhaustion — 1–30 pass, the 31st is 429; headers track the client's own bucket (59 ms)
+      ✓ req.ip is the forwarded client; with several entries only the RIGHTMOST (the one Traefik appends) is used (16 ms)
+      ✓ no X-Forwarded-For from the trusted peer → attributed to the peer itself (13 ms)
+      ✓ the 120/min routes are per client too (and a separate bucket from the 30/min route) (129 ms)
+      ✓ an untrusted peer's X-Forwarded-For is ignored: req.ip = its TCP address (9 ms)
+      ✓ rotating forged headers cannot evade the limit: the 31st is 429 (92 ms)
+      ✓ an internal peer cannot consume an external client's allowance by forging that client's address (121 ms)
+      ✓ a valid range that excludes the actual proxy peer → forwarded headers ignored → shared bucket (70 ms)
+      ✓ TRUSTED_PROXY_CIDRS=undefined → the app boots and trusts nobody (32 ms)
+      ✓ TRUSTED_PROXY_CIDRS="" → the app boots and trusts nobody (7 ms)
+      ✓ TRUSTED_PROXY_CIDRS="true" → the app boots and trusts nobody (7 ms)
+      ✓ TRUSTED_PROXY_CIDRS="loopback" → the app boots and trusts nobody (11 ms)
+      ✓ TRUSTED_PROXY_CIDRS="uniquelocal" → the app boots and trusts nobody (5 ms)
+      ✓ TRUSTED_PROXY_CIDRS="1" → the app boots and trusts nobody (5 ms)
+      ✓ TRUSTED_PROXY_CIDRS="10.0.0.0/8" → the app boots and trusts nobody (5 ms)
+      ✓ TRUSTED_PROXY_CIDRS="127.0.0.0/8" → the app boots and trusts nobody (7 ms)
+      ✓ TRUSTED_PROXY_CIDRS="nonsense" → the app boots and trusts nobody (8 ms)
+      ✓ an IPv4-mapped peer (::ffff:127.0.0.2) matches the IPv4 CIDR 127.0.0.2/32 (10 ms)
+      ✓ an IPv6 peer (::1) does not match an IPv4 range: its forwarded header is ignored (10 ms)
+      ✓ an IPv6 client address forwarded by the trusted peer becomes the tracker (documented: per-/128) (5 ms)
+      ✓ trusted peer, forged client → still 401 without a JWT (12 ms)
+      ✓ trusted peer, claims to be the proxy itself → still 401 without a JWT (6 ms)
+      ✓ untrusted peer, forged client → still 401 without a JWT (7 ms)
+      ✓ untrusted peer, claims loopback → still 401 without a JWT (5 ms)
+      ✓ an invalid or foreign-signed JWT is still 401 regardless of forwarded headers (9 ms)
+      ✓ a valid JWT is required and sufficient exactly as before (the real JwtStrategy resolves the user) (5 ms)
+  Test Suites: 2 passed, 2 total
+  Tests:       80 passed, 80 total
+
+## Auth regression: npx jest tests/unit/auth --maxWorkers=2
+  PASS tests/unit/auth/token.service.spec.ts (5.149 s)
+  PASS tests/unit/auth/auth.service.spec.ts (5.847 s)
+  PASS tests/unit/authors/authors.service.spec.ts
+  PASS tests/unit/authors/authors.controller.spec.ts
+  PASS tests/unit/auth/email.service.spec.ts
+  PASS tests/unit/auth/email-confirmed.guard.spec.ts
+  PASS tests/unit/auth/auth.controller.spec.ts
+  Test Suites: 7 passed, 7 total
+  Tests:       73 passed, 73 total
+
+## Full API: npx jest --maxWorkers=2 (with B-1)
+  Test Suites: 71 passed, 71 total
+  Tests:       1028 passed, 1028 total
+## Full API on main 6a5e5c0 without B-1 (same worktree, change stashed)
+  Test Suites: 69 passed, 69 total
+  Tests:       948 passed, 948 total
+  delta = +2 suites, +80 tests (= the two trusted-proxy suites); no other change
+
+## Coverage: src/common/trusted-proxy.ts → Stmts 100 | Branch 100 | Funcs 100 | Lines 100
+
+## npm run build (nest build): exit 0; dist/common/trusted-proxy.js emitted
+
+## ESLint (changed files)
+  
+  <repo>/services/api/src/main.ts
+    42:3  warning  Unexpected console statement  no-console
+  
+  <repo>/services/api/tests/unit/common/trusted-proxy.integration.spec.ts
+    27:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    38:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  
+  ✖ 3 problems (0 errors, 3 warnings)
+  
+  main.ts:42 no-console = pre-existing line (main.ts:37 on main); the two no-explicit-any are in the test (repository style).
+## npm run lint (whole api): exit 0, 254 problems (0 errors, 254 warnings)
