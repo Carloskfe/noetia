@@ -260,6 +260,7 @@ Key variables:
 | `JWT_EXPIRES_IN` | `15m` | Access token lifetime |
 | `WEB_URL` | `http://localhost:3000` | Used in email confirmation + reset links |
 | `API_URL` | `http://localhost:4000` | Used as OAuth callback base URL |
+| `TRUSTED_PROXY_CIDRS` | _(empty)_ | G1-I1. Peers whose `X-Forwarded-For` is trusted (rate-limit client IP). Empty = no trust (client = TCP peer). **Must stay empty in every environment** until the separately authorized G1-I1 Stage B-2 network change is in place. Never `true`, keywords, hop counts or broad/private ranges — invalid values are ignored with a WARN. See [Trusted proxy (G1-I1)](#trusted-proxy-g1-i1). |
 
 ### Email (SMTP)
 | Variable | Default | Notes |
@@ -403,6 +404,12 @@ cd /opt/traefik && touch acme.json && chmod 600 acme.json && docker compose up -
 - **Container gotchas** (both already fixed in `docker-compose.server.yml`): Next.js requires `HOSTNAME: "0.0.0.0"` (else it binds one interface → Traefik 502); Alpine healthchecks must use `127.0.0.1`, not `localhost` (`busybox wget` resolves `localhost` as IPv6 `::1` → unhealthy → Traefik drops the route).
 
 Full diagnosis + fix commands — Traefik 502/404, config corruption (nano/base64 edit procedure), crash loops, DB/MinIO outages — are in [`docs/incident-response.md`](docs/incident-response.md).
+
+### Trusted proxy (G1-I1)
+
+**Stage B-1 (inactive code).** `services/api/src/common/trusted-proxy.ts` is called once from `main.ts`. With `TRUSTED_PROXY_CIDRS` unset/empty (the required state everywhere today) the API trusts **no** forwarded header: the client address is the TCP peer, exactly as before, and boot logs one informational line. Invalid values (keywords, `true`, hop counts, IPv4 < /24, IPv6 < /112, > 4 entries) are rejected with a WARN and trust stays off. Never `trust proxy: true`.
+- **Do not set the variable** until Stage B-2 (dedicated `noetia_api_edge` Traefik↔API network, exactly two members) is separately authorized and deployed. Trusting a range that other containers can join would let them forge client IPs and evade rate limits.
+- Design, live verification and qualification: `docs/reports/payment-lifecycle-20261112/g1-*` on Draft PR #60 and the Stage B-1 report in this change.
 
 ---
 
