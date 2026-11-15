@@ -7,6 +7,7 @@
 | **Starting HEAD** | `cc448a7a695081b3a2e16c99645019abc60b405c` (verified = expected; Draft, unmerged) |
 | **Commits** | `b304516` feat(api) · `5fe5d5a` chore(infra), prepared only · `a4d82bf` test(infra) harness · `6fb9305` docs · this report's commit |
 | **Verdict** | **Implemented and locally qualified, with two documented gaps: NOT fully qualified** (§7). Inactive everywhere until separately authorized. **STOP for independent PA review.** |
+| **PA review update (2026-11-15)** | PA provisionally accepted for development progression, NOT fully qualified. **IV-F1 closed** (environment-only bcrypt repair; `auth.controller.spec.ts` 8/8; full API 78/78 suites, 1382/1382). **IV-F2 open:** R-05 Docker-provider path NOT verified; existing evidence insufficient; exact requirement documented; **STOP for PA decision** (§12). |
 
 **Specifications:**
 - [Checkpoint II design](g1-trusted-proxy-correction-design.md)
@@ -111,7 +112,7 @@ Raw D output: [`g1-checkpoint-iv/evidence.txt`](g1-checkpoint-iv/evidence.txt).
 | T-I1-07 | Restart / recreation / dynamic allocation | D | **PASS**; negative control documents the boundary | §6 |
 | T-I1-08 | Invalid and stale configuration | U, H, D | **PASS** | U: 37 rejection cases. H: 9 invalid values boot with no trust. D: a stale `10.211.75.0/30` gives a shared bucket (today's behaviour, never wider); `true` gives a WARN, the API boots, nobody trusted |
 | T-I1-09 | IPv4 / IPv6 | U, H, D | **PASS (local)** | `::ffff:127.0.0.2` matches `127.0.0.2/32`; peer `::1` doesn't match an IPv4 range; IPv6 CIDR policy enforced. D: Traefik's peer appears as `::ffff:10.211.75.x` and matches `10.211.75.8/29`. **Production IPv6 ingress (U1/U2) is not resolved by local tests.** |
-| T-I1-10 | Authentication regression | H + existing suites | **PASS with one suite BLOCKED** | H: forged headers from trusted and untrusted peers still get 401 without a JWT; a valid JWT behaves exactly as before. `checkout-status.contract.spec.ts` and `subscriptions-auth.contract.spec.ts` pass. **`tests/unit/auth/auth.controller.spec.ts` did NOT run:** it fails to load (`Cannot find module …/bcrypt_lib.node`), the pre-existing environment issue already present at the baseline in Checkpoints G-1 and I. **Classified BLOCKED, not passed.** |
+| T-I1-10 | Authentication regression | H + existing suites | **PASS with one suite BLOCKED** | H: forged headers from trusted and untrusted peers still get 401 without a JWT; a valid JWT behaves exactly as before. `checkout-status.contract.spec.ts` and `subscriptions-auth.contract.spec.ts` pass. **`tests/unit/auth/auth.controller.spec.ts` did NOT run:** it fails to load (`Cannot find module …/bcrypt_lib.node`), the pre-existing environment issue already present at the baseline in Checkpoints G-1 and I. **Classified BLOCKED, not passed.** **Update 2026-11-15 (IV-F1):** after the environment-only repair, it runs and passes **8/8** (all `tests/unit/auth*` 73/73); see §12.1. |
 | T-I1-11 | G-1 payment-verification regression | Existing suites | **PASS** | Checkout-status service and contract suites (uniform 404, ownership, read-only, `no-store`, R1-B, G-b) pass, as does the web suite (597/597, including the success-page, G1-I2 sign-in and gift-isolation tests) |
 | T-I1-12 | Financial scope isolation | Diff audit + suites | **PASS** | No changed file under subscriptions, webhooks, tokens, gifts, library, auth, migrations, checkout-status or the web app. Webhook, subscription, payment-lifecycle and fulfillment-ledger suites pass (focused run 477/477) |
 
@@ -123,7 +124,7 @@ Raw D output: [`g1-checkpoint-iv/evidence.txt`](g1-checkpoint-iv/evidence.txt).
 | R-02 | Disposable compose project running → `up -d` with a missing external network | `network … declared as external, but could not be found` (exit 1); the **same container ID and `StartedAt`, still running** | No replacement of the running service | **PASS** | Production CD uses `up -d --build`; build-vs-network-check order not tested (the running service is not replaced either way) |
 | R-03 | Four misconfigured networks + a missing one → helper `ensure`/`check` | STOP (exit 1) for wrong subnet, no allocation range, not internal, wrong gateway, and missing network; nothing created or modified | Reject, never "fix" | **PASS** | — |
 | R-04 | Target state → disconnect Traefik from edge | Noetia route **504** (harness 3 s dial timeout; production default 30 s); staging and internal calls OK. `docker network connect` recovers immediately | Routing failure; documented recovery works | **PASS** | Real outage mode until reattached or rolled back; prevented by ordering plus the pre-merge check |
-| R-05 | Target state → route to an address Traefik can't reach (wrong-label simulation) | Once applied, **every request 504**; restored → 200 | Routing failure | **PASS (simulated)** | **Not exercised with the Docker provider** (it needs the Docker socket, prohibited). The `traefik:v2.11` binary contains "Could not find network named" / "Defaulting to first available network", so a wrong label falls back to the container's *first* network, which is non-deterministic. The label and networks must change in one commit. |
+| R-05 | Target state → route to an address Traefik can't reach (wrong-label simulation) | Once applied, **every request 504**; restored → 200 | Routing failure | **PASS (simulated, file provider), NOT verified with the Docker provider** (IV-F2, §12.2) | **Not exercised with the Docker provider** (it needs the Docker socket, prohibited). The `traefik:v2.11` binary contains "Could not find network named" / "Defaulting to first available network", so a wrong label falls back to the container's *first* network, which is non-deterministic. The label and networks must change in one commit. |
 | R-06 | Target state → internal callers | Web and monitor reach `api:4000` over `noetia-net`, attributed to their own addresses | Internal access preserved | **PASS** | — |
 | R-07 | All states → staging route + prepared compose | Staging answered 200 in every state; the prepared Traefik compose lists `proxy_staging` (validated) | Staging preserved | **PASS** | The live `/opt/traefik/docker-compose.yml` content is still unverified (U3) |
 | R-08 | Target state → API back on `noetia-net` + `proxy`, no trust, route via `proxy` | Reachable; attribution back to Traefik's address (pre-change); internal and staging OK. **Monitor:** 282/284 OK, **2 failures in 3.0 s** (the API recreation gap); no 404s | Prior routing restored | **PASS** | Rollback also has a recreation gap |
@@ -136,7 +137,7 @@ Raw D output: [`g1-checkpoint-iv/evidence.txt`](g1-checkpoint-iv/evidence.txt).
 | `npx tsc --noEmit` (api) | 0 errors |
 | ESLint (changed API files) | 0 errors, 2 `no-explicit-any` warnings (in tests; repository style) |
 | `npm run build` (api) | OK, `dist/common/trusted-proxy.js` emitted |
-| Full API suite `npx jest --maxWorkers=2` | **1374/1374 tests pass; 77/78 suites.** `auth.controller.spec.ts` **BLOCKED** (bcrypt binding, pre-existing). [`api-full.txt`](g1-checkpoint-iv/api-full.txt) |
+| Full API suite `npx jest --maxWorkers=2` | **1374/1374 tests pass; 77/78 suites.** `auth.controller.spec.ts` **BLOCKED** (bcrypt binding, pre-existing). [`api-full.txt`](g1-checkpoint-iv/api-full.txt). **Rerun after IV-F1 repair (no code change): 78/78 suites, 1382/1382 tests.** [`api-full-post-repair.txt`](g1-checkpoint-iv/api-full-post-repair.txt) |
 | Focused API (trusted-proxy, checkout-status, subscriptions-auth, webhooks, subscriptions, payment-lifecycle, ledger) | **477/477**. [`api-focused.txt`](g1-checkpoint-iv/api-focused.txt) |
 | Full web suite | **597/597**, 30/30 suites. [`web-full.txt`](g1-checkpoint-iv/web-full.txt) |
 | Traefik compose `config -q` | Valid: `proxy`, `proxy_staging`, `noetia_api_edge`, all external |
@@ -167,8 +168,8 @@ Raw D output: [`g1-checkpoint-iv/evidence.txt`](g1-checkpoint-iv/evidence.txt).
 ## 7. Qualification status and limitations
 
 **Not fully qualified, for two reasons:**
-1. **T-I1-10:** `auth.controller.spec.ts` is **BLOCKED** (it can't load because the `bcrypt` native binding isn't built in this worktree; the same failure exists at the baseline). Everything else that T-I1-10 requires passed. Closing this needs the suite run in an environment with bcrypt built, for example CI or a rebuilt local binding; no code change.
-2. **R-05:** the wrong-label outcome was **simulated** with the file provider. The Docker provider's fallback was established from the Traefik binary, not exercised, because exercising it requires mounting the Docker socket, which is prohibited.
+1. **T-I1-10:** *(closed 2026-11-15 by IV-F1, §12.1; original text kept below)* `auth.controller.spec.ts` is **BLOCKED** (it can't load because the `bcrypt` native binding isn't built in this worktree; the same failure exists at the baseline). Everything else that T-I1-10 requires passed. Closing this needs the suite run in an environment with bcrypt built, for example CI or a rebuilt local binding; no code change.
+2. **R-05:** *(still open, IV-F2, §12.2)* the wrong-label outcome was **simulated** with the file provider. The Docker provider's fallback was established from the Traefik binary, not exercised, because exercising it requires mounting the Docker socket, which is prohibited.
 
 **Other limitations:**
 - **Harness differences:** file provider instead of the Docker provider, a 3 s dial timeout instead of 30 s, plain HTTP, and clients on a Docker network instead of published ports. These affect timing and routing mechanics, not trust evaluation, which runs the real code.
@@ -231,3 +232,48 @@ Raw D output: [`g1-checkpoint-iv/evidence.txt`](g1-checkpoint-iv/evidence.txt).
 - **No merge or deployment.** PR #60 remains Draft; PR #59, #26 and #28 are unchanged.
 
 **STOP: independent PA review required before any part of this is considered qualified.**
+
+## 12. PA review update, 2026-11-15 (IV-F1 / IV-F2)
+
+PA review of `1fe93c4`: provisionally accepted for development progression; **NOT fully qualified**. This section answers the two findings. No application code, dependency version, lockfile, harness, architecture or financial file changed.
+
+### 12.1 IV-F1: authentication suite: CLOSED
+
+| | |
+|---|---|
+| Root cause | The repository installs with pnpm (`pnpm-lock.yaml`; CI `pnpm install --frozen-lockfile`). pnpm 10 blocks dependency build scripts unless allow-listed, and `node_modules/.modules.yaml` listed `bcrypt@5.1.1` under `ignoredBuilds`, so bcrypt's install script never placed `bcrypt_lib.node`. Local environment state, not a code defect |
+| Repair | `pnpm rebuild bcrypt` was a silent no-op (allow-list). Ran **bcrypt 5.1.1's own declared install script** (`node-pre-gyp install --fallback-to-build`, locked `@mapbox/node-pre-gyp` 1.0.11) in the installed package. It fetched the upstream v5.1.1 prebuilt `napi-v3-linux-x64-glibc` binding |
+| Integrity | Binding sha256 `69b09b03…85149`, **byte-identical** to the main checkout's npm-installed bcrypt 5.1.1. `package.json`, `package-lock.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.npmrc`: sha256 unchanged. `git diff` empty; the pnpm allow-list is not modified |
+| `auth.controller.spec.ts` | **8/8 pass** |
+| `tests/unit/auth*` | 7/7 suites, 73/73 |
+| Full API regression | **78/78 suites, 1382/1382 tests** (previously 77/78, 1374: the difference is exactly the 8 unblocked tests) |
+| Evidence | [`iv-f1-auth-bcrypt.txt`](g1-checkpoint-iv/iv-f1-auth-bcrypt.txt), [`api-full-post-repair.txt`](g1-checkpoint-iv/api-full-post-repair.txt) |
+
+**T-I1-10 is now PASS** (local). CI still doesn't run on this stacked PR.
+
+### 12.2 IV-F2: R-05 Docker-provider coverage: OPEN, STOP for PA decision
+
+Full determination: [`iv-f2-r05-docker-provider.md`](g1-checkpoint-iv/iv-f2-r05-docker-provider.md).
+
+- **Existing tests and documents are not sufficient.**
+  - R-05 used the file provider.
+  - The harness models only the correct-label path.
+  - The binary-strings check only shows the fallback branch exists.
+  - Production exercises only matching labels.
+- **Source review (`traefik` v2.11.61, `pkg/provider/docker/config.go` `getIPAddress`):**
+  - a wrong label, or a missing label (provider default `proxy`, which the API leaves in the target state), falls back to iterating a Go map of the container's networks, so the selection is **non-deterministic**;
+  - it is logged only at DEBUG and WARN, and **production logs at `ERROR`, so the fallback would be silent.**
+- **Outcome bound (analysis):**
+  - the fallback selects either the edge address, which works and masks the error, or the `noetia_net` address, which gives a 504 (expected, given Docker inter-bridge isolation; not verified on the production daemon);
+  - **trust cannot widen in any branch**, because only peers in `10.211.75.8/29` are trusted.
+- **Remaining requirement:** cases V-a…V-d with the real Docker provider (§4 of the determination). Every route to the Docker Engine API is outside this authorization.
+- **Options for the PA:**
+  - (1) a stub Docker Engine API: no socket and no privilege, but it is a harness change;
+  - (2) a disposable socket-mounted run;
+  - (3) accept R-05 as simulated plus source-analyzed, recorded as a residual rollout risk.
+
+**Retained security limitation:**
+- Any container admitted to `noetia_api_edge` can forge forwarding headers and evade per-client limits (negative control, §6).
+- The exact-two-member invariant (`traefik` + `noetia-api-1`, checked at every deploy and after any recreation) is a **mandatory deployment and operational safeguard, not proof of cryptographic Traefik identity.**
+
+**Status:** IV-F1 closed; IV-F2 open. Checkpoint IV is **NOT fully qualified**. No production/staging access, no Docker resources created, no merge, deployment or activation. **STOP for independent PA review.**
