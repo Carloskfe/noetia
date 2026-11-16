@@ -18,7 +18,7 @@
 | Host routes, policy routing incl. Tailscale table 52, interfaces | No overlap (P-2…P-4) | Subnet candidate stands |
 | Traefik live attachments | `proxy`, `proxy_staging` | Repository Traefik compose lists both, plus the new network |
 | Persisted `/opt/traefik/docker-compose.yml` | Lists `proxy` and `proxy_staging` | Live file needs **one** added entry (`noetia_api_edge`) |
-| Persisted file SHA-256 (as supplied) | `a36142bb07981308bf8a1209ca26572318619eda4ac1f4cda1f4d6bdc490` | **Only 60 hex characters; a SHA-256 has 64.** Re-capture with `sha256sum` before the rollout edit (R-0 below) |
+| Persisted file SHA-256 (historical, operator-supplied; corrected per PA review of `6e22c9f`) | `a36142bb07981308bf8a1209ca26572318619eda4ac1f4cda1f4fcf8d6bdc490` | Historical baseline. **Re-capture the current hash with `sha256sum` before any production edit** (R-0 below); if it differs from this value, STOP and review the file before editing |
 | API | Networks `noetia_noetia_net`, `proxy`; label `proxy` | Pre-change state; rollback target |
 | Stage B-1 | `3b35cb1` deployed; `TRUSTED_PROXY_CIDRS` UNSET; startup log "disabled" | Code path present, inactive |
 
@@ -89,7 +89,7 @@ The **runbook below is PROPOSED and NOT AUTHORIZED.** Run commands one line at a
 | A-2 | Separate infrastructure rollout authorization naming Stage B-2, and a merge instruction naming PR #62 |
 | A-3 | Contabo snapshot (infrastructure change); latest offsite backups confirmed; operator present with rollback authority; no CD running |
 | A-4 | Same-day re-run of P-1…P-4 (no overlap with `10.211.75.0/28`) |
-| A-5 | Record: `/opt/noetia` HEAD (= `main` at merge time) and tracked-change count (0); Traefik `docker inspect -f '{{.Image}} {{.State.StartedAt}}' traefik`; **R-0:** full `sha256sum /opt/traefik/docker-compose.yml` (64 characters) plus a backup copy `cp /opt/traefik/docker-compose.yml /opt/traefik/docker-compose.yml.pre-b2` |
+| A-5 | Record: `/opt/noetia` HEAD (= `main` at merge time) and tracked-change count (0); Traefik `docker inspect -f '{{.Image}} {{.State.StartedAt}}' traefik`; **R-0:** re-capture `sha256sum /opt/traefik/docker-compose.yml` and compare with the historical `a36142bb…d6bdc490` (§1; STOP on mismatch until reviewed), plus a backup copy `cp /opt/traefik/docker-compose.yml /opt/traefik/docker-compose.yml.pre-b2` |
 
 ### Phase B: infrastructure preparation (reversible; API untouched)
 | # | Command | Must print / verify |
@@ -150,7 +150,7 @@ No payment, checkout or Stripe call is made for acceptance.
 | PR #62 PA review | **OPEN** |
 | PO decisions D-V2, D-V3, D-V4 | **OPEN** |
 | Infrastructure rollout authorization (Phase B + merge) | **NOT AUTHORIZED** |
-| R-0: full 64-character SHA-256 and backup of the live Traefik file | **OPEN** (supplied hash is 60 characters) |
+| R-0: re-capture the live Traefik file hash (compare with the historical value in §1) and back it up, immediately before the edit | **OPEN** (rollout step) |
 | Live Traefik file contents, image and `StartedAt`; Docker/Compose versions; `/opt/noetia` HEAD | **OPEN** (before rollout) |
 | B-1 smoke: login, reader, routes | **OPEN** |
 | API egress after the switch | **OPEN** (in-window V-9) |
