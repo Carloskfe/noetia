@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'crypto';
 import Stripe from 'stripe';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { EmailService } from '../email/email.service';
 import { PushService } from '../push/push.service';
 import { TokenLedger } from '../subscriptions/token-ledger.entity';
@@ -82,22 +82,38 @@ export class GiftsService {
         message: message ?? '',
         occasion: occasion ?? '',
       },
-      success_url: `${this.webUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${this.webUrl}/billing/success?purchase=gift&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.webUrl}/gift`,
     });
 
     return { url: session.url! };
   }
 
-  async fulfillGift(session: any): Promise<void> {
+  /**
+   * Records the gift inside the caller's webhook transaction (after the Checkout session's fulfillment key was
+   * claimed) and returns the e-mail step, which the caller runs only AFTER commit — so a rolled-back attempt
+   * never e-mails a claim link that does not exist, and a duplicate delivery never e-mails twice.
+   *
+   * Defence in depth: a gift row already recorded for this Checkout session (e.g. fulfilled before fulfillment
+   * keys existed) is never recorded or e-mailed again.
+   *
+   * @returns the post-commit notification, or null when nothing was recorded.
+   */
+  async fulfillGift(session: any, em?: EntityManager): Promise<(() => Promise<void>) | null> {
     const { buyerUserId, recipientEmail, tokenCount, message, occasion } = session.metadata ?? {};
-    if (!recipientEmail || !tokenCount) return;
+    if (!recipientEmail || !tokenCount) return null;
+
+    const giftRepo = em ? em.getRepository(GiftCard) : this.giftRepo;
+    if (session.id && (await giftRepo.findOneBy({ stripeSessionId: session.id }))) {
+      this.logger.warn(`Gift for Checkout session ${session.id} already recorded — not recording or e-mailing again`);
+      return null;
+    }
 
     const count = parseInt(tokenCount, 10);
     const claimToken = randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + GIFT_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
 
-    const gift = this.giftRepo.create({
+    const gift = giftRepo.create({
       buyerUserId: buyerUserId || null,
       buyerEmail: session.customer_details?.email ?? null,
       recipientEmail,
@@ -109,18 +125,20 @@ export class GiftsService {
       expiresAt,
       stripeSessionId: session.id,
     });
-    await this.giftRepo.save(gift);
+    await giftRepo.save(gift);
 
-    const occasionLabel = OCCASION_LABELS[occasion] ?? null;
-    const buyerName = buyerUserId
-      ? (await this.userRepo.findOneBy({ id: buyerUserId }))?.name ?? 'Alguien'
-      : session.customer_details?.name ?? 'Alguien';
+    return async () => {
+      const occasionLabel = OCCASION_LABELS[occasion] ?? null;
+      const buyerName = buyerUserId
+        ? (await this.userRepo.findOneBy({ id: buyerUserId }))?.name ?? 'Alguien'
+        : session.customer_details?.name ?? 'Alguien';
 
-    await this.emailService.sendGiftCard(recipientEmail, buyerName, count, message || null, occasionLabel, claimToken);
+      await this.emailService.sendGiftCard(recipientEmail, buyerName, count, message || null, occasionLabel, claimToken);
 
-    if (session.customer_details?.email) {
-      await this.emailService.sendGiftConfirmation(session.customer_details.email, buyerName, recipientEmail, count);
-    }
+      if (session.customer_details?.email) {
+        await this.emailService.sendGiftConfirmation(session.customer_details.email, buyerName, recipientEmail, count);
+      }
+    };
   }
 
   async claimGift(claimToken: string, userId: string): Promise<{ tokenCount: number }> {

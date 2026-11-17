@@ -1,0 +1,203 @@
+# PR #60 round 3 — annual token schedule simulated on the REAL WebhooksService + SubscriptionsService at b320561
+# In-memory tables, fake Stripe, fake clock (TZ=UTC); daily cron at 01:00 UTC; trial starts 2027-01-01 12:00 UTC; Individual Annual (tokensPerCycle 1).
+# Run 2026-11-13T18:17:16Z. Throwaway harness — source appended below; not part of the test suite.
+
+=== A — annual plan, 2 years, no cancellation (current code) ===
+day    0.00  Trial start (initial cycle)
+day   14.00  Subscription renewal
+day   44.54  Annual plan monthly issuance
+day   74.54  Annual plan monthly issuance
+day  104.54  Annual plan monthly issuance
+day  134.54  Annual plan monthly issuance
+day  164.54  Annual plan monthly issuance
+day  194.54  Annual plan monthly issuance
+day  224.54  Annual plan monthly issuance
+day  254.54  Annual plan monthly issuance
+day  284.54  Annual plan monthly issuance
+day  314.54  Annual plan monthly issuance
+day  344.54  Annual plan monthly issuance
+day  374.54  Annual plan monthly issuance
+day  379.00  Subscription renewal
+day  409.54  Annual plan monthly issuance
+day  439.54  Annual plan monthly issuance
+day  469.54  Annual plan monthly issuance
+day  499.54  Annual plan monthly issuance
+day  529.54  Annual plan monthly issuance
+day  559.54  Annual plan monthly issuance
+day  589.54  Annual plan monthly issuance
+day  619.54  Annual plan monthly issuance
+day  649.54  Annual plan monthly issuance
+day  679.54  Annual plan monthly issuance
+day  709.54  Annual plan monthly issuance
+day  739.54  Annual plan monthly issuance
+day  744.00  Subscription renewal
+total grants=28; T-1=1; paid cycles inside the first paid annual period [day 14, day 379) = 13
+=== B — cancel_at_period_end set on day 60 (status canceling until day 379) ===
+day    0.00  Trial start (initial cycle)
+day   14.00  Subscription renewal
+day   44.54  Annual plan monthly issuance
+total grants=3; T-1=1; paid cycles inside the first paid annual period [day 14, day 379) = 2
+=== C — subscription deleted on day 100 ===
+day    0.00  Trial start (initial cycle)
+day   14.00  Subscription renewal
+day   44.54  Annual plan monthly issuance
+day   74.54  Annual plan monthly issuance
+total grants=4; T-1=1; paid cycles inside the first paid annual period [day 14, day 379) = 3
+  ✓ A: annual plan, two years, never cancelled (48 ms)
+  ✓ B: cancel at period end requested on day 60 (8 ms)
+  ✓ C: immediate cancellation on day 100 (4 ms)
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+Snapshots:   0 total
+
+----- simulation source -----
+// THROWAWAY simulation (not committed): drives the REAL WebhooksService + SubscriptionsService (code at PR #60
+// head) with in-memory tables and a fake clock to print the annual-plan token schedule. Run with TZ=UTC.
+import { ConfigService } from '@nestjs/config';
+import { Test } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+const SRC = '/home/carloskfe/Noetia-site/services/api/src';
+/* eslint-disable @typescript-eslint/no-var-requires */
+const { Book } = require(`${SRC}/books/book.entity`);
+const { EmailService } = require(`${SRC}/email/email.service`);
+const { GiftsService } = require(`${SRC}/gifts/gifts.service`);
+const { UserBook } = require(`${SRC}/library/user-book.entity`);
+const { PushService } = require(`${SRC}/push/push.service`);
+const { PlansService } = require(`${SRC}/subscriptions/plans.service`);
+const { StripeProcessedEvent } = require(`${SRC}/subscriptions/stripe-processed-event.entity`);
+const { SubscriptionInvite } = require(`${SRC}/subscriptions/subscription-invite.entity`);
+const { Subscription } = require(`${SRC}/subscriptions/subscription.entity`);
+const { SubscriptionsService } = require(`${SRC}/subscriptions/subscriptions.service`);
+const { TokenLedger } = require(`${SRC}/subscriptions/token-ledger.entity`);
+const { WebhooksService } = require(`${SRC}/subscriptions/webhooks.service`);
+const { User } = require(`${SRC}/users/user.entity`);
+const { UsersService } = require(`${SRC}/users/users.service`);
+
+const stripeSub: any = { id: 'sub_Y', customer: 'cus_1', status: 'trialing', cancel_at_period_end: false, current_period_end: 0, trial_end: 0, items: { data: [{ price: { id: 'price_y' } }] } };
+jest.mock('stripe', () => jest.fn().mockImplementation(() => ({ subscriptions: { retrieve: async () => ({ ...stripeSub }) } })));
+
+const PLAN = { id: 'plan-y', stripePriceId: 'price_y', tokensPerCycle: 1, interval: 'year', maxProfiles: 1 };
+const USER = { id: 'u1', stripeCustomerId: 'cus_1' };
+let row: any = null;
+const grants: Array<{ day: number; reason: string }> = [];
+const processed = new Set<string>();
+const DAY = 86_400_000;
+const T0 = Date.UTC(2027, 0, 1, 12, 0, 0); // trial starts 2027-01-01 12:00 UTC
+const dayOf = (ms: number) => Math.round(((ms - T0) / DAY) * 100) / 100;
+
+const subRepo: any = {
+  findOneBy: async (w: any) => (row && (!w.userId || w.userId === row.userId) ? { ...row } : null),
+  findOne: async ({ where }: any) => (row && (!where.stripeSubscriptionId || where.stripeSubscriptionId === row.stripeSubscriptionId) ? { ...row, plan: row.planId === PLAN.id ? PLAN : null } : null),
+  find: async ({ where }: any) => {
+    if (!row) return [];
+    if (where.stripeSubscriptionId) return where.stripeSubscriptionId === row.stripeSubscriptionId ? [{ ...row }] : [];
+    const due = row.status === where.status && row.nextTokenIssuanceAt && row.nextTokenIssuanceAt < where.nextTokenIssuanceAt.value;
+    return due ? [{ ...row, plan: PLAN }] : [];
+  },
+  upsert: async (v: any) => { row = { id: 'row1', linkedUserIds: [], planId: null, nextTokenIssuanceAt: null, ...(row ?? {}), ...v }; },
+  update: async (where: any, v: any) => { if (row && (where === row.id || where.id === row.id || where.stripeSubscriptionId === row.stripeSubscriptionId)) row = { ...row, ...v }; },
+};
+const tokenRepo: any = { create: (v: any) => v, save: async (rows: any[]) => { for (const r of rows) grants.push({ day: dayOf(Date.now()), reason: r.reason }); } };
+const userRepo: any = { findOneBy: async () => USER };
+const em: any = {
+  getRepository: (e: unknown) => (e === Subscription ? subRepo : e === User ? userRepo : e === TokenLedger ? tokenRepo : {}),
+  query: async (sql: string, p: any[]) => {
+    if (!sql.includes('INSERT INTO stripe_processed_events')) return [];
+    if (processed.has(p[0])) return [];
+    processed.add(p[0]);
+    return [{ eventId: p[0] }];
+  },
+};
+subRepo.manager = { transaction: (fn: any) => fn(em) };
+
+let webhooks: any; let subs: any; let seq = 0;
+const at = (ms: number) => jest.setSystemTime(ms);
+const ev = (type: string, object: any) => webhooks.handleEvent({ id: `evt_${++seq}`, type, data: { object } });
+const sec = (ms: number) => Math.floor(ms / 1000);
+
+async function runYearPlan(opts: { cancelAtPeriodEndDay?: number; immediateCancelDay?: number; days: number }) {
+  // Day 0: trial starts (Checkout); trial ends day 14; annual period then runs 365 days.
+  const trialEnd = T0 + 14 * DAY;
+  let periodEnd = trialEnd + 365 * DAY;
+  at(T0);
+  Object.assign(stripeSub, { status: 'trialing', trial_end: sec(trialEnd), current_period_end: sec(trialEnd), cancel_at_period_end: false });
+  await ev('customer.subscription.created', { id: 'sub_Y' });
+  await ev('invoice.paid', { id: 'in_trial', subscription: 'sub_Y', amount_paid: 0, billing_reason: 'subscription_create' });
+  let invoiceN = 0;
+  const payInvoice = async (ms: number) => {
+    at(ms);
+    Object.assign(stripeSub, { status: 'active', trial_end: sec(trialEnd), current_period_end: sec(periodEnd) });
+    await ev('invoice.paid', { id: `in_y${++invoiceN}`, subscription: 'sub_Y', amount_paid: 8399, billing_reason: 'subscription_cycle' });
+  };
+  await payInvoice(trialEnd);
+  for (let d = 1; d <= opts.days; d++) {
+    const cronAt = Date.UTC(2027, 0, 1 + d, 1, 0, 0); // daily 01:00 UTC
+    if (cronAt >= periodEnd && row.status !== 'canceled' && !stripeSub.cancel_at_period_end) {
+      periodEnd += 365 * DAY;
+      await payInvoice(periodEnd - 365 * DAY); // renewal invoice on the old period end
+    }
+    if (opts.cancelAtPeriodEndDay !== undefined && d === opts.cancelAtPeriodEndDay) {
+      at(cronAt - 3600_000);
+      Object.assign(stripeSub, { cancel_at_period_end: true });
+      await ev('customer.subscription.updated', { id: 'sub_Y' });
+    }
+    if (stripeSub.cancel_at_period_end && cronAt >= periodEnd && row.status !== 'canceled') {
+      at(periodEnd);
+      Object.assign(stripeSub, { status: 'canceled' });
+      await ev('customer.subscription.deleted', { id: 'sub_Y' });
+    }
+    if (opts.immediateCancelDay !== undefined && d === opts.immediateCancelDay) {
+      at(cronAt - 3600_000);
+      Object.assign(stripeSub, { status: 'canceled' });
+      await ev('customer.subscription.deleted', { id: 'sub_Y' });
+    }
+    at(cronAt);
+    await subs.issueMonthlyTokensForAnnualPlans();
+  }
+  return { periodEndDay: dayOf(trialEnd + 365 * DAY) };
+}
+
+beforeEach(async () => {
+  jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+  row = null; grants.length = 0; processed.clear(); seq = 0;
+  const mod = await Test.createTestingModule({
+    providers: [
+      SubscriptionsService, WebhooksService,
+      { provide: ConfigService, useValue: { get: (k: string, d?: string) => (k === 'STRIPE_SECRET_KEY' ? 'sk_test_sim' : d ?? '') } },
+      { provide: UsersService, useValue: {} },
+      { provide: PlansService, useValue: { findAll: async () => [PLAN] } },
+      { provide: EmailService, useValue: {} }, { provide: PushService, useValue: {} },
+      { provide: GiftsService, useValue: {} },
+      { provide: getRepositoryToken(Subscription), useValue: subRepo },
+      { provide: getRepositoryToken(User), useValue: userRepo },
+      { provide: getRepositoryToken(Book), useValue: {} }, { provide: getRepositoryToken(UserBook), useValue: {} },
+      { provide: getRepositoryToken(TokenLedger), useValue: tokenRepo },
+      { provide: getRepositoryToken(SubscriptionInvite), useValue: {} },
+      { provide: getRepositoryToken(StripeProcessedEvent), useValue: { manager: subRepo.manager } },
+    ],
+  }).compile();
+  webhooks = mod.get(WebhooksService); subs = mod.get(SubscriptionsService);
+  for (const s of [webhooks, subs]) for (const k of ['log', 'warn', 'error']) jest.spyOn(s.logger, k).mockImplementation(() => undefined);
+});
+afterEach(() => jest.useRealTimers());
+
+function summarize(label: string, periodEndDay: number) {
+  const inFirstPaid = grants.filter((g) => g.day >= 14 && g.day < periodEndDay).length;
+  console.log(`\n=== ${label} ===\n` +
+    grants.map((g) => `day ${g.day.toFixed(2).padStart(7)}  ${g.reason}`).join('\n') +
+    `\ntotal grants=${grants.length}; T-1=${grants.filter((g) => g.reason.startsWith('Trial')).length}; ` +
+    `paid cycles inside the first paid annual period [day 14, day ${periodEndDay}) = ${inFirstPaid}`);
+}
+
+it('A: annual plan, two years, never cancelled', async () => {
+  const { periodEndDay } = await runYearPlan({ days: 760 });
+  summarize('A — annual plan, 2 years, no cancellation (current code)', periodEndDay);
+});
+it('B: cancel at period end requested on day 60', async () => {
+  const { periodEndDay } = await runYearPlan({ days: 420, cancelAtPeriodEndDay: 60 });
+  summarize('B — cancel_at_period_end set on day 60 (status canceling until day 379)', periodEndDay);
+});
+it('C: immediate cancellation on day 100', async () => {
+  const { periodEndDay } = await runYearPlan({ days: 420, immediateCancelDay: 100 });
+  summarize('C — subscription deleted on day 100', periodEndDay);
+});

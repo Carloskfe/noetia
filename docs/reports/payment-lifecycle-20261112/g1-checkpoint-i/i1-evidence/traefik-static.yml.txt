@@ -1,0 +1,6 @@
+# Same entrypoint defaults as production (infra/server/traefik/traefik.yml): no forwardedHeaders settings.
+log: { level: ERROR }
+entryPoints:
+  web: { address: ":80" }
+providers:
+  file: { filename: /etc/traefik/dynamic.yml }

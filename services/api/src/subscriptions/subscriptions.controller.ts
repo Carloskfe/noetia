@@ -6,6 +6,7 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -34,8 +35,9 @@ export class SubscriptionsController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  getStatus(@Request() req: any) {
-    return this.subscriptionsService.getSubscriptionStatus(req.user.id);
+  getStatus(@Request() req: any, @Query('trialEligibility') trialEligibility?: string) {
+    // `?trialEligibility=1` (pricing page, mobile paywall) adds `trialEligible` — D1/D6.
+    return this.subscriptionsService.getSubscriptionStatus(req.user.id, { includeTrialEligibility: trialEligibility === '1' });
   }
 
   @Post('checkout')

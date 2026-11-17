@@ -1,14 +1,17 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 /**
- * Ledger of Stripe webhook events whose business side effects have COMPLETED.
+ * Exactly-once claims for Stripe webhook processing (see stripe-fulfillment-ledger.ts, webhooks.service.ts).
  *
- * Idempotency contract (see webhooks.service.ts): a row is written **only after**
- * an event's processing succeeds. A row's presence therefore means "already
- * fully handled — safe to skip on redelivery". Absence means "not yet completed",
- * so a redelivered event (after a mid-processing failure/crash) is re-processed,
- * preserving Stripe's at-least-once retry. `eventId` is Stripe's globally-unique
- * event id and is the primary key.
+ * A row is INSERTed (ON CONFLICT DO NOTHING) at the START of the webhook transaction and commits only together
+ * with that event's side effects; a crash or error rolls it back with them, so Stripe's retry re-processes the
+ * event. A committed row therefore means "fully handled — skip".
+ *
+ * `eventId` (primary key) holds two kinds of keys, distinguished by `type`:
+ *   - a Stripe event id (`evt_…`), `type` = the Stripe event type;
+ *   - a fulfillment key (`fulfillment:<kind>:<stripe object id>`), `type` = `fulfillment:<kind>` — one per
+ *     economic grant (paid invoice, Checkout session, trial start), so different events cannot grant twice.
+ * The column keeps its historical name; the migration (066) is deployed and is not edited.
  */
 @Entity('stripe_processed_events')
 export class StripeProcessedEvent {

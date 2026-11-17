@@ -21,11 +21,13 @@ import { StripeProcessedEvent } from './stripe-processed-event.entity';
 import { WebhooksController } from './webhooks.controller';
 import { WebhooksService } from './webhooks.service';
 import { AdminTokensController } from './admin-tokens.controller';
+import { CheckoutStatusController } from './checkout-status.controller';
+import { CheckoutStatusService } from './checkout-status.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Subscription, SubscriptionInvite, Plan, User, Book, UserBook, TokenLedger, TokenPackage, CourtesyTokenQuota, StripeProcessedEvent]), UsersModule, EmailModule, GiftsModule, PushModule],
-  providers: [SubscriptionsService, PlansService, WebhooksService, SubscriptionGuard],
-  controllers: [SubscriptionsController, WebhooksController, AdminTokensController],
+  providers: [SubscriptionsService, PlansService, WebhooksService, SubscriptionGuard, CheckoutStatusService],
+  controllers: [SubscriptionsController, WebhooksController, AdminTokensController, CheckoutStatusController],
   exports: [SubscriptionsService, SubscriptionGuard],
 })
 export class SubscriptionsModule {}

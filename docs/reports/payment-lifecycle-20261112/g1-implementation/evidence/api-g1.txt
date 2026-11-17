@@ -1,0 +1,116 @@
+PASS tests/unit/subscriptions/checkout-status.contract.spec.ts (5.105 s)
+  authentication (401)
+    ✓ no JWT → 401, Stripe never called (45 ms)
+    ✓ JWT signed with another secret → 401 (77 ms)
+    ✓ expired JWT → 401 (7 ms)
+    ✓ JWT for a deleted user → 401 (3 ms)
+    ✓ the session id in a cookie or query string is not a credential (3 ms)
+  the owner gets the contract response
+    ✓ token session, paid, key present → unconfirmed (never delivered); no-store; only contract keys (4 ms)
+    ✓ no EmailConfirmedGuard: an unconfirmed-email buyer can verify their own session (3 ms)
+  uniform 404 — identical bodies, no oracle
+    ✓ unknown, another account's, anonymous gift and malformed ids all return the same 404 body (14 ms)
+    ✓ malformed id → 404 without a Stripe request (4 ms)
+  failures (503) leak nothing
+    ✓ Stripe outage → 503 with the fixed body only (2 ms)
+  route table and guards
+    ✓ exactly one checkout-session route, GET, behind JwtAuthGuard only (no EmailConfirmedGuard) (1 ms)
+    ✓ no gift-status or anonymous checkout-session route exists anywhere in the API (source audit) (2 ms)
+  rate limit (30 requests/minute/IP)
+    ✓ requests 1–30 are served, the 31st → 429 (stricter than the global 120); unauthenticated calls count too (74 ms)
+
+PASS tests/unit/subscriptions/checkout-status.service.spec.ts
+  session id validation and Stripe errors
+    ✓ malformed id "" → 404, no Stripe call (5 ms)
+    ✓ malformed id "abc" → 404, no Stripe call (4 ms)
+    ✓ malformed id "cs_test_short" → 404, no Stripe call (11 ms)
+    ✓ malformed id "pi_test_a1B2c3D4e5F6g7H8" → 404, no Stripe call (2 ms)
+    ✓ malformed id "cs_prod_a1B2c3D4e5F6g7H8i9" → 404, no Stripe call (1 ms)
+    ✓ malformed id "cs_test_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" → 404, no Stripe call (1 ms)
+    ✓ malformed id "cs_test_a1B2c3D4e5/../x" → 404, no Stripe call (6 ms)
+    ✓ malformed id "cs_test_a1B2c3D4e5F6 OR 1=1" → 404, no Stripe call (2 ms)
+    ✓ accepts live and test ids (2 ms)
+    ✓ unknown session (Stripe resource_missing) → the uniform 404 (2 ms)
+    ✓ Stripe outage → 503 with a fixed body and no Stripe message; the log has a truncated id only (4 ms)
+    ✓ payments not configured (no Stripe key) → 503 (1 ms)
+    ✓ a retrieved object whose id differs from the requested one → 404 (2 ms)
+    ✓ database failure → 503 without detail (2 ms)
+    ✓ an unmappable Checkout status → 503 (no claim), never a guessed state (5 ms)
+    ✓ truncateSessionId keeps only the prefix and the last 6 characters (1 ms)
+  ownership, kind and G-b (uniform 404)
+    ✓ token session of another user → 404 with the same body as an unknown id (2 ms)
+    ✓ book session of another user → 404 with the same body as an unknown id (2 ms)
+    ✓ subscription session of another user (metadata) → 404 with the same body as an unknown id (6 ms)
+    ✓ token session: metadata user matches but Stripe customer differs → 404 with the same body as an unknown id (4 ms)
+    ✓ subscription without metadata, customer differs → 404 with the same body as an unknown id (5 ms)
+    ✓ subscription without metadata, caller has no Stripe customer → 404 with the same body as an unknown id (5 ms)
+    ✓ subscription metadata names another user even though the customer matches → 404 with the same body as an unknown id (4 ms)
+    ✓ anonymous gift (empty buyerUserId) → 404 with the same body as an unknown id (3 ms)
+    ✓ gift with buyerUserId = caller → 404 with the same body as an unknown id (3 ms)
+    ✓ non-Noetia payment session (no metadata) → 404 with the same body as an unknown id (2 ms)
+    ✓ payment session with userId but no package/book → 404 with the same body as an unknown id (5 ms)
+    ✓ wrong mode (setup) → 404 with the same body as an unknown id (6 ms)
+    ✓ metadata missing entirely → 404 with the same body as an unknown id (4 ms)
+    ✓ a gift session is rejected even when it also carries token metadata (11 ms)
+    ✓ owner with no Stripe customer on record and metadata match → answered (customer check applies only when both are set) (6 ms)
+    ✓ expanded customer object is compared by id (3 ms)
+    ✓ legacy subscription session without metadata, matching customer → answered (6 ms)
+    ✓ kind comes from Stripe metadata: token package wins over book (webhook precedence) (5 ms)
+  token packages — R1-B (never delivered)
+    ✓ open (15 ms)
+    ✓ expired (3 ms)
+    ✓ complete + unpaid WITH a key (simulated anomaly, T-R5a) (2 ms)
+    ✓ complete + no_payment_required (T-R5b) (3 ms)
+    ✓ complete + unknown payment status (4 ms)
+    ✓ paid, no key (T-R5c) (4 ms)
+    ✓ paid, key present (T-R1B-1) (2 ms)
+    ✓ T-R1B-1 negative control: key present, zero tokens issued (package inactive at fulfillment) → unconfirmed, not delivered (2 ms)
+    ✓ T-R1B-1: no token response is ever `delivered`, across every Stripe state × key combination and odd inputs (10 ms)
+    ✓ T-R1B-2: the token path reads only the fulfillment key — no user_books, subscription or token data (2 ms)
+    ✓ T-R1B-2 / T-R1B-3: the service has no token_ledger dependency and no timestamp or reason comparison (source audit) (7 ms)
+    ✓ T-R1B-3: earlier tokens / a same-instant unrelated grant cannot change the answer — balances are never consulted (2 ms)
+    ✓ no WARN log for the normal token `unconfirmed` outcome (R3.4) (1 ms)
+    ✓ T-R1B-8: the response carries only the contract keys — no amount, currency, e-mail, ids or counts (2 ms)
+  individual books
+    ✓ paid, no key → pending (4 ms)
+    ✓ paid, no key, row already owned → still pending (conservative) (2 ms)
+    ✓ paid, key + ownership row → delivered (2 ms)
+    ✓ paid, key, no ownership row → unconfirmed (3 ms)
+    ✓ ownership is checked for the session metadata book and the CALLER only (5 ms)
+    ✓ book unconfirmed → exactly one WARN, truncated id, no metadata (T-R1f) (2 ms)
+    ✓ open → delivery null even with key and ownership row (4 ms)
+    ✓ expired → delivery null even with key and ownership row (4 ms)
+    ✓ complete + unpaid with key + row → delivery null even with key and ownership row (8 ms)
+  subscriptions — entitlement for THIS session only
+    ✓ row tracks this subscription, status trialing → active (2 ms)
+    ✓ row tracks this subscription, status active → active (3 ms)
+    ✓ row tracks this subscription, status canceling → active (2 ms)
+    ✓ row tracks this subscription, status past_due → payment_problem (5 ms)
+    ✓ row tracks this subscription, status canceled → ended (2 ms)
+    ✓ row tracks this subscription, status none → not_recorded (2 ms)
+    ✓ an UNRELATED active subscription never confirms this Checkout → superseded, not active (2 ms)
+    ✓ row still tracks an ENDED older subscription (new one not recorded yet) → not_recorded (non-terminal) (5 ms)
+    ✓ no row / no tracked id → not_recorded (5 ms)
+    ✓ no row / no tracked id → not_recorded (6 ms)
+    ✓ complete session without a subscription id → not_recorded, no row read (5 ms)
+    ✓ expanded subscription object is compared by id (12 ms)
+    ✓ checkout open → entitlement null, no row read (2 ms)
+    ✓ checkout expired → entitlement null, no row read (1 ms)
+    ✓ reads only the CALLER's row (2 ms)
+    ✓ T-R3b: no `payment` field; active before any token allocation still makes no token claim (no token evidence read) (4 ms)
+    ✓ out-of-order webhook observations: a later event moved the row to a newer live subscription → superseded; ended → ended (1 ms)
+  duplicate / repeated observations
+    ✓ repeated calls are idempotent reads and never grant value (4 ms)
+
+-------------------------------|---------|----------|---------|---------|-------------------
+File                           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------------------|---------|----------|---------|---------|-------------------
+All files                      |   99.16 |    95.06 |     100 |     100 |                   
+ checkout-status.controller.ts |     100 |       50 |     100 |     100 | 21                
+ checkout-status.service.ts    |   99.08 |     96.2 |     100 |     100 | 83,112-113        
+-------------------------------|---------|----------|---------|---------|-------------------
+Test Suites: 2 passed, 2 total
+Tests:       88 passed, 88 total
+Snapshots:   0 total
+Time:        6.37 s
+Ran all test suites matching /tests\/unit\/subscriptions\/checkout-status/i.

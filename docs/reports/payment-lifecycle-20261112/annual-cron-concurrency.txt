@@ -1,0 +1,67 @@
+# PR #60 round 3 — annual scheduler with two concurrent API instances (REAL SubscriptionsService.issueMonthlyTokensForAnnualPlans at b320561)
+# Disposable postgres:16-alpine, 68 migrations; two separate DataSources (pools) emulate two API instances whose daily cron fire together.
+# Run 2026-11-13T18:19:16Z. Throwaway harness — source appended; not part of the test suite.
+
+two concurrent scheduler instances, 20 rounds, one due monthly cycle per round (expected 1 grant each):
+  rounds with a DOUBLE grant: 20/20; total grants 40 (expected 20)
+two concurrent scheduler instances, 20 rounds, one due monthly cycle per round (expected 1 grant each):
+  rounds with a DOUBLE grant: 20/20; total grants 40 (expected 20)
+
+----- harness source -----
+// THROWAWAY (not committed): two "API instances" (separate DataSources/pools) run the REAL
+// SubscriptionsService.issueMonthlyTokensForAnnualPlans at the same moment against one disposable PostgreSQL.
+import 'reflect-metadata';
+import { randomUUID } from 'crypto';
+import * as path from 'path';
+import { DataSource } from 'typeorm';
+
+const SRC = path.join(__dirname, '..', 'src');
+const load = (p: string) => require(path.join(SRC, p));
+const { SubscriptionsService } = load('subscriptions/subscriptions.service');
+const { PlansService } = load('subscriptions/plans.service');
+const E = {
+  Subscription: load('subscriptions/subscription.entity').Subscription,
+  User: load('users/user.entity').User,
+  Plan: load('subscriptions/plan.entity').Plan,
+  TokenPackage: load('subscriptions/token-package.entity').TokenPackage,
+  TokenLedger: load('subscriptions/token-ledger.entity').TokenLedger,
+  Book: load('books/book.entity').Book,
+  UserBook: load('library/user-book.entity').UserBook,
+  SubscriptionInvite: load('subscriptions/subscription-invite.entity').SubscriptionInvite,
+};
+
+const mk = () => new DataSource({
+  type: 'postgres', host: '127.0.0.1', port: 55432, username: 'noetia', password: 'harness', database: 'noetia',
+  entities: [path.join(SRC, '**/*.entity.{ts,js}')], synchronize: false, extra: { max: 5 },
+});
+function service(ds: DataSource) {
+  const config = { get: (_k: string, d?: string) => d ?? '' };
+  const s = new SubscriptionsService(config, {}, new PlansService(ds.getRepository(E.Plan), ds.getRepository(E.TokenPackage)), {}, {},
+    ds.getRepository(E.Subscription), ds.getRepository(E.User), ds.getRepository(E.Book), ds.getRepository(E.UserBook),
+    ds.getRepository(E.TokenLedger), ds.getRepository(E.SubscriptionInvite));
+  (s as any).logger = { log() {}, warn() {}, error() {} };
+  return s;
+}
+
+async function main() {
+  const a = mk(); const b = mk();
+  await a.initialize(); await b.initialize();
+  const planId = (await a.query(`SELECT id FROM plans WHERE name = 'Individual Annual'`))[0].id;
+  const rounds = 20;
+  let doubled = 0; let total = 0;
+  for (let i = 0; i < rounds; i++) {
+    const uid = randomUUID();
+    await a.query(`INSERT INTO users (id, email, name, "stripeCustomerId") VALUES ($1, $2, 'Synthetic', $3)`, [uid, `cron-${uid.slice(0, 8)}@harness.invalid`, `cus_c_${uid.slice(0, 8)}`]);
+    await a.query(`INSERT INTO subscriptions ("userId", "stripeCustomerId", "stripeSubscriptionId", status, "planId", "currentPeriodEnd", "nextTokenIssuanceAt")
+                   VALUES ($1, $2, $3, 'active', $4, now() + interval '300 days', now() - interval '1 hour')`, [uid, `cus_c_${uid.slice(0, 8)}`, `sub_c_${uid.slice(0, 8)}`, planId]);
+    // Both instances' daily cron fire at the same time.
+    await Promise.all([service(a).issueMonthlyTokensForAnnualPlans(), service(b).issueMonthlyTokensForAnnualPlans()]);
+    const n = Number((await a.query(`SELECT count(*) n FROM token_ledger WHERE "userId" = $1`, [uid]))[0].n);
+    total += n; if (n > 1) doubled++;
+    await a.query(`UPDATE subscriptions SET status = 'canceled' WHERE "userId" = $1`, [uid]); // keep later rounds isolated
+  }
+  console.log(`two concurrent scheduler instances, ${rounds} rounds, one due monthly cycle per round (expected 1 grant each):`);
+  console.log(`  rounds with a DOUBLE grant: ${doubled}/${rounds}; total grants ${total} (expected ${rounds})`);
+  await a.destroy(); await b.destroy();
+}
+main().catch((e) => { console.error(e); process.exit(1); });

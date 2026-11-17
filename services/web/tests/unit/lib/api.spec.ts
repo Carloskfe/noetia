@@ -227,3 +227,31 @@ describe('apiFetch', () => {
     });
   });
 });
+
+describe('apiFetch — 429 Retry-After (G-1 polling; additive, backward compatible)', () => {
+  const { apiFetch } = jest.requireActual('../../../lib/api');
+  const reply = (status: number, headers: Record<string, string> = {}) => Promise.resolve({
+    ok: status >= 200 && status < 300, status, json: async () => ({ message: 'm' }),
+    headers: { get: (k: string) => headers[k.toLowerCase()] ?? null },
+  });
+  afterEach(() => { delete (global as any).fetch; });
+
+  it.each([
+    [{ 'retry-after': '7' }, 7],
+    [{ 'retry-after-global': '12' }, 12],
+    [{}, undefined],
+    [{ 'retry-after': 'soon' }, undefined],
+  ])('429 with %j → retryAfter %p', async (headers, expected) => {
+    (global as any).fetch = jest.fn(() => reply(429, headers));
+    const err = await apiFetch('/x').catch((e: any) => e);
+    expect(err.status).toBe(429);
+    expect(err.retryAfter).toBe(expected);
+  });
+
+  it('other errors are unchanged (no retryAfter), including when headers are absent', async () => {
+    (global as any).fetch = jest.fn(() => Promise.resolve({ ok: false, status: 503, json: async () => ({}) }));
+    const err = await apiFetch('/x').catch((e: any) => e);
+    expect(err).toMatchObject({ status: 503 });
+    expect('retryAfter' in err).toBe(false);
+  });
+});

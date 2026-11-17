@@ -5,13 +5,21 @@
 #
 # Requires:
 #   - Docker network "proxy" created by Traefik (infra/server/traefik/)
-#   - .env.production file in the same directory
+#   - Docker network "noetia_api_edge" (G1-I1) created with the exact IPAM in
+#     infra/server/noetia-api-edge-network.sh AND Traefik attached to it BEFORE this file is deployed.
+#     Compose fails on the missing external network before replacing the running API.
+#   - .env.production file in the same directory (incl. TRUSTED_PROXY_CIDRS=10.211.75.8/29 — see .env.example)
 
 networks:
   noetia_net:
     driver: bridge
   proxy:
     external: true  # Created by infra/server/traefik/docker-compose.yml
+  # G1-I1: dedicated internal Traefik ↔ API network. Members: traefik + api ONLY (verified at deploy).
+  # The API trusts X-Forwarded-For only from this network's allocation range (TRUSTED_PROXY_CIDRS).
+  noetia_api_edge:
+    external: true
+    name: noetia_api_edge
 
 volumes:
   postgres_data:
@@ -39,8 +47,8 @@ services:
       cache:
         condition: service_healthy
     networks:
-      - noetia_net
-      - proxy
+      - noetia_net          # internal callers: web SSR, Prometheus, worker (unchanged)
+      - noetia_api_edge     # G1-I1: Traefik only — replaces the shared `proxy` network for the API
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health"]
@@ -60,7 +68,9 @@ services:
           memory: 256M
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=proxy"
+      # G1-I1: Traefik must reach the API over the dedicated edge network (the API is no longer on `proxy`).
+      # Changes together with the `networks:` list above — never one without the other.
+      - "traefik.docker.network=noetia_api_edge"
       # Block /api/metrics from public internet — Prometheus scrapes internally
       - "traefik.http.middlewares.noetia-block-metrics.ipallowlist.sourcerange=127.0.0.1/32,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
       - "traefik.http.routers.noetia-api-metrics.rule=Host(`noetia.app`) && Path(`/api/metrics`)"

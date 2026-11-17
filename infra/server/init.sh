@@ -52,6 +52,17 @@ echo "Directories created: /opt/traefik  /opt/noetia  /opt/autoguildx"
 docker network create proxy 2>/dev/null && echo "Docker network 'proxy' created." \
   || echo "Docker network 'proxy' already exists — skipping."
 
+# ── G1-I1: dedicated internal Traefik ↔ Noetia API network ───────────────────
+# Created with an exact IPAM; an existing network with the right name but wrong subnet/gateway/range/internal
+# flag is REJECTED (the helper stops), never silently accepted. Traefik must also list it in
+# /opt/traefik/docker-compose.yml (see infra/server/traefik/docker-compose.yml).
+EDGE_HELPER="$(dirname "$0")/noetia-api-edge-network.sh"
+if [ -f "$EDGE_HELPER" ]; then
+  bash "$EDGE_HELPER" ensure
+else
+  echo "WARNING: $EDGE_HELPER not found — create 'noetia_api_edge' with it before deploying Noetia."
+fi
+
 echo ""
 echo "=== Init complete. Next steps (run manually): ==="
 echo ""

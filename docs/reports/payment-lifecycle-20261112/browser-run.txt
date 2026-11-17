@@ -1,0 +1,67 @@
+success-confirmed es desktop: reached=true overflow=false
+success-confirmed es mobile: reached=true overflow=false
+### success-confirmed
+ reached=true url=/billing/success?session_id=cs_test overflow=false
+   200 POST /subscriptions/sync auth=Bearer
+success-confirmed en mobile: reached=true overflow=false
+success-pending es desktop: reached=true overflow=false
+success-pending es mobile: reached=true overflow=false
+### success-pending
+ reached=true url=/billing/success?session_id=cs_test overflow=false
+   200 POST /subscriptions/sync auth=Bearer
+   200 GET /subscriptions/me auth=Bearer
+   200 GET /subscriptions/me auth=Bearer
+   200 GET /subscriptions/me auth=Bearer
+   200 GET /subscriptions/me auth=Bearer
+   200 GET /subscriptions/me auth=Bearer
+success-pending en mobile: reached=true overflow=false
+success-error es desktop: reached=true overflow=false
+success-error es mobile: reached=true overflow=false
+### success-error
+ reached=true url=/billing/success?session_id=cs_test overflow=false
+   500 POST /subscriptions/sync auth=Bearer
+success-error en mobile: reached=true overflow=false
+success-auth es desktop: reached=true overflow=false
+success-auth es mobile: reached=true overflow=false
+### success-auth
+ reached=true url=/billing/success?session_id=cs_test overflow=false
+   401 POST /subscriptions/sync auth=none
+   401 POST /auth/refresh auth=none
+success-auth en mobile: reached=true overflow=false
+success-purchase-tokens es desktop: reached=true overflow=false
+success-purchase-tokens es mobile: reached=true overflow=false
+### success-purchase-tokens
+ reached=true url=/billing/success?purchase=tokens&session_id=cs_test overflow=false
+   
+success-purchase-tokens en mobile: reached=true overflow=false
+account-billing es desktop: reached=true overflow=false
+account-billing es mobile: reached=true overflow=false
+### account-billing
+ reached=true url=/account/billing overflow=false
+   200 GET /subscriptions/me auth=Bearer
+   200 GET /subscriptions/linked-users auth=Bearer
+account-billing en mobile: reached=true overflow=false
+account-billing-load-error es desktop: reached=true overflow=false
+account-billing-load-error es mobile: reached=true overflow=false
+### account-billing-load-error
+ reached=true url=/account/billing overflow=false
+   500 GET /subscriptions/me auth=Bearer
+account-billing-load-error en mobile: reached=true overflow=false
+account-billing-portal-error es desktop: reached=true overflow=false
+account-billing-portal-error es mobile: reached=true overflow=false
+### account-billing-portal-error
+ reached=true url=/account/billing overflow=false
+   200 GET /subscriptions/me auth=Bearer
+   200 GET /subscriptions/linked-users auth=Bearer
+   404 POST /subscriptions/portal auth=Bearer
+account-billing-portal-error en mobile: reached=true overflow=false
+pricing-subscription-exists es desktop: reached=true overflow=false
+pricing-subscription-exists es mobile: reached=true overflow=false
+### pricing-subscription-exists
+ reached=true url=/pricing overflow=false
+   200 GET /subscriptions/plans auth=none
+   200 GET /subscriptions/token-packages auth=none
+   200 GET /subscriptions/me auth=Bearer
+   200 GET /causes/preferences auth=Bearer
+   409 POST /subscriptions/checkout auth=Bearer
+pricing-subscription-exists en mobile: reached=true overflow=false

@@ -1,0 +1,592 @@
+PASS tests/unit/subscriptions/subscriptions-auth.contract.spec.ts
+  API auth contract used by /pricing
+    ✓ public /subscriptions/plans needs no authentication (43 ms)
+    ✓ public /subscriptions/token-packages needs no authentication (4 ms)
+    ✓ GET /subscriptions/me rejects a request with no Authorization header (refresh cookie alone is not a JWT) (4 ms)
+    ✓ GET /causes/preferences rejects a request with no Authorization header (refresh cookie alone is not a JWT) (3 ms)
+    ✓ POST /causes/preferences rejects a request with no Authorization header (refresh cookie alone is not a JWT) (14 ms)
+    ✓ POST /subscriptions/checkout rejects a request with no Authorization header (refresh cookie alone is not a JWT) (3 ms)
+    ✓ POST /subscriptions/tokens/purchase rejects a request with no Authorization header (refresh cookie alone is not a JWT) (2 ms)
+    ✓ GET /subscriptions/me accepts a valid Bearer token (6 ms)
+    ✓ GET /causes/preferences accepts a valid Bearer token (4 ms)
+    ✓ POST /causes/preferences accepts a valid Bearer token (6 ms)
+    ✓ POST /subscriptions/checkout accepts a valid Bearer token (4 ms)
+    ✓ POST /subscriptions/tokens/purchase accepts a valid Bearer token (6 ms)
+    ✓ GET /subscriptions/me rejects an expired Bearer token (3 ms)
+    ✓ GET /causes/preferences rejects an expired Bearer token (3 ms)
+    ✓ POST /causes/preferences rejects an expired Bearer token (4 ms)
+    ✓ POST /subscriptions/checkout rejects an expired Bearer token (3 ms)
+    ✓ POST /subscriptions/tokens/purchase rejects an expired Bearer token (3 ms)
+    ✓ rejects a token signed with another secret (3 ms)
+    ✓ GET /causes/preferences returns the saved record for a user with a preference (4 ms)
+    ✓ GET /causes/preferences answers "no preference" as 200 with an EMPTY body (the web client relies on this) (2 ms)
+    ✓ POST /subscriptions/checkout passes the authenticated user and the unchanged planId to the service (4 ms)
+    ✓ POST /subscriptions/tokens/purchase passes the authenticated user and packageId to the service (3 ms)
+    ✓ checkout with a valid token but an unconfirmed email is 403 (not 401) and never reaches the service (3 ms)
+    ✓ a token for a user that no longer exists is rejected (3 ms)
+    ✓ POST /causes/preferences with a second cause is rejected (PO-053) even when authenticated (3 ms)
+
+PASS tests/unit/common/trusted-proxy.integration.spec.ts
+  trusted peer (Traefik) → per-client attribution
+    ✓ T-I1-01: two external clients behind the trusted peer get independent 30/min buckets (249 ms)
+    ✓ T-I1-02: per-client exhaustion — 1–30 pass, the 31st is 429; headers track the client's own bucket (55 ms)
+    ✓ req.ip is the forwarded client; with several entries only the RIGHTMOST (the one Traefik appends) is used (9 ms)
+    ✓ no X-Forwarded-For from the trusted peer → attributed to the peer itself (5 ms)
+    ✓ the 120/min routes are per client too (and a separate bucket from the 30/min route) (103 ms)
+  T-I1-04: direct internal access (the Checkpoint I E5 regression)
+    ✓ an untrusted peer's X-Forwarded-For is ignored: req.ip = its TCP address (10 ms)
+    ✓ rotating forged headers cannot evade the limit: the 31st is 429 (47 ms)
+    ✓ an internal peer cannot consume an external client's allowance by forging that client's address (84 ms)
+  T-I1-08: stale or invalid configuration fails safe (immediate-peer tracking)
+    ✓ a valid range that excludes the actual proxy peer → forwarded headers ignored → shared bucket (48 ms)
+    ✓ TRUSTED_PROXY_CIDRS=undefined → the app boots and trusts nobody (7 ms)
+    ✓ TRUSTED_PROXY_CIDRS="" → the app boots and trusts nobody (7 ms)
+    ✓ TRUSTED_PROXY_CIDRS="true" → the app boots and trusts nobody (6 ms)
+    ✓ TRUSTED_PROXY_CIDRS="loopback" → the app boots and trusts nobody (5 ms)
+    ✓ TRUSTED_PROXY_CIDRS="uniquelocal" → the app boots and trusts nobody (5 ms)
+    ✓ TRUSTED_PROXY_CIDRS="1" → the app boots and trusts nobody (5 ms)
+    ✓ TRUSTED_PROXY_CIDRS="10.0.0.0/8" → the app boots and trusts nobody (4 ms)
+    ✓ TRUSTED_PROXY_CIDRS="127.0.0.0/8" → the app boots and trusts nobody (4 ms)
+    ✓ TRUSTED_PROXY_CIDRS="nonsense" → the app boots and trusts nobody (10 ms)
+  T-I1-09: IPv4 / IPv6 peers on the dual-stack listener
+    ✓ an IPv4-mapped peer (::ffff:127.0.0.2) matches the IPv4 CIDR 127.0.0.2/32 (5 ms)
+    ✓ an IPv6 peer (::1) does not match an IPv4 range: its forwarded header is ignored (7 ms)
+    ✓ an IPv6 client address forwarded by the trusted peer becomes the tracker (documented: per-/128) (4 ms)
+  T-I1-10: authentication is independent of forwarded-header trust
+    ✓ trusted peer, forged client → still 401 without a JWT (4 ms)
+    ✓ trusted peer, claims to be the proxy itself → still 401 without a JWT (3 ms)
+    ✓ untrusted peer, forged client → still 401 without a JWT (5 ms)
+    ✓ untrusted peer, claims loopback → still 401 without a JWT (4 ms)
+    ✓ a valid JWT is required and sufficient exactly as before (malformed id → uniform 404, no Stripe call) (7 ms)
+
+PASS tests/unit/subscriptions/checkout-status.service.spec.ts
+  session id validation and Stripe errors
+    ✓ malformed id "" → 404, no Stripe call (10 ms)
+    ✓ malformed id "abc" → 404, no Stripe call (2 ms)
+    ✓ malformed id "cs_test_short" → 404, no Stripe call (3 ms)
+    ✓ malformed id "pi_test_a1B2c3D4e5F6g7H8" → 404, no Stripe call (7 ms)
+    ✓ malformed id "cs_prod_a1B2c3D4e5F6g7H8i9" → 404, no Stripe call (2 ms)
+    ✓ malformed id "cs_test_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" → 404, no Stripe call (3 ms)
+    ✓ malformed id "cs_test_a1B2c3D4e5/../x" → 404, no Stripe call (2 ms)
+    ✓ malformed id "cs_test_a1B2c3D4e5F6 OR 1=1" → 404, no Stripe call (4 ms)
+    ✓ accepts live and test ids (2 ms)
+    ✓ unknown session (Stripe resource_missing) → the uniform 404 (3 ms)
+    ✓ Stripe outage → 503 with a fixed body and no Stripe message; the log has a truncated id only (2 ms)
+    ✓ payments not configured (no Stripe key) → 503 (5 ms)
+    ✓ a retrieved object whose id differs from the requested one → 404 (2 ms)
+    ✓ database failure → 503 without detail (2 ms)
+    ✓ an unmappable Checkout status → 503 (no claim), never a guessed state (1 ms)
+    ✓ truncateSessionId keeps only the prefix and the last 6 characters (4 ms)
+  ownership, kind and G-b (uniform 404)
+    ✓ token session of another user → 404 with the same body as an unknown id (1 ms)
+    ✓ book session of another user → 404 with the same body as an unknown id (2 ms)
+    ✓ subscription session of another user (metadata) → 404 with the same body as an unknown id (2 ms)
+    ✓ token session: metadata user matches but Stripe customer differs → 404 with the same body as an unknown id (4 ms)
+    ✓ subscription without metadata, customer differs → 404 with the same body as an unknown id (3 ms)
+    ✓ subscription without metadata, caller has no Stripe customer → 404 with the same body as an unknown id (2 ms)
+    ✓ subscription metadata names another user even though the customer matches → 404 with the same body as an unknown id (2 ms)
+    ✓ anonymous gift (empty buyerUserId) → 404 with the same body as an unknown id (5 ms)
+    ✓ gift with buyerUserId = caller → 404 with the same body as an unknown id (2 ms)
+    ✓ non-Noetia payment session (no metadata) → 404 with the same body as an unknown id (2 ms)
+    ✓ payment session with userId but no package/book → 404 with the same body as an unknown id (2 ms)
+    ✓ wrong mode (setup) → 404 with the same body as an unknown id (4 ms)
+    ✓ metadata missing entirely → 404 with the same body as an unknown id (2 ms)
+    ✓ a gift session is rejected even when it also carries token metadata (2 ms)
+    ✓ owner with no Stripe customer on record and metadata match → answered (customer check applies only when both are set) (2 ms)
+    ✓ expanded customer object is compared by id (5 ms)
+    ✓ legacy subscription session without metadata, matching customer → answered (2 ms)
+    ✓ kind comes from Stripe metadata: token package wins over book (webhook precedence) (3 ms)
+  token packages — R1-B (never delivered)
+    ✓ open (2 ms)
+    ✓ expired (6 ms)
+    ✓ complete + unpaid WITH a key (simulated anomaly, T-R5a) (2 ms)
+    ✓ complete + no_payment_required (T-R5b) (2 ms)
+    ✓ complete + unknown payment status (2 ms)
+    ✓ paid, no key (T-R5c) (4 ms)
+    ✓ paid, key present (T-R1B-1) (2 ms)
+    ✓ T-R1B-1 negative control: key present, zero tokens issued (package inactive at fulfillment) → unconfirmed, not delivered (2 ms)
+    ✓ T-R1B-1: no token response is ever `delivered`, across every Stripe state × key combination and odd inputs (9 ms)
+    ✓ T-R1B-2: the token path reads only the fulfillment key — no user_books, subscription or token data (3 ms)
+    ✓ T-R1B-2 / T-R1B-3: the service has no token_ledger dependency and no timestamp or reason comparison (source audit) (2 ms)
+    ✓ T-R1B-3: earlier tokens / a same-instant unrelated grant cannot change the answer — balances are never consulted (4 ms)
+    ✓ no WARN log for the normal token `unconfirmed` outcome (R3.4) (2 ms)
+    ✓ T-R1B-8: the response carries only the contract keys — no amount, currency, e-mail, ids or counts (3 ms)
+  individual books
+    ✓ paid, no key → pending (2 ms)
+    ✓ paid, no key, row already owned → still pending (conservative) (3 ms)
+    ✓ paid, key + ownership row → delivered (2 ms)
+    ✓ paid, key, no ownership row → unconfirmed (2 ms)
+    ✓ ownership is checked for the session metadata book and the CALLER only (2 ms)
+    ✓ book unconfirmed → exactly one WARN, truncated id, no metadata (T-R1f) (4 ms)
+    ✓ open → delivery null even with key and ownership row (2 ms)
+    ✓ expired → delivery null even with key and ownership row (2 ms)
+    ✓ complete + unpaid with key + row → delivery null even with key and ownership row (2 ms)
+  subscriptions — entitlement for THIS session only
+    ✓ row tracks this subscription, status trialing → active (4 ms)
+    ✓ row tracks this subscription, status active → active (2 ms)
+    ✓ row tracks this subscription, status canceling → active (2 ms)
+    ✓ row tracks this subscription, status past_due → payment_problem (2 ms)
+    ✓ row tracks this subscription, status canceled → ended (2 ms)
+    ✓ row tracks this subscription, status none → not_recorded (4 ms)
+    ✓ an UNRELATED active subscription never confirms this Checkout → superseded, not active (2 ms)
+    ✓ row still tracks an ENDED older subscription (new one not recorded yet) → not_recorded (non-terminal) (2 ms)
+    ✓ no row / no tracked id → not_recorded (3 ms)
+    ✓ no row / no tracked id → not_recorded (5 ms)
+    ✓ complete session without a subscription id → not_recorded, no row read (2 ms)
+    ✓ expanded subscription object is compared by id (1 ms)
+    ✓ checkout open → entitlement null, no row read (2 ms)
+    ✓ checkout expired → entitlement null, no row read (3 ms)
+    ✓ reads only the CALLER's row (2 ms)
+    ✓ T-R3b: no `payment` field; active before any token allocation still makes no token claim (no token evidence read) (2 ms)
+    ✓ out-of-order webhook observations: a later event moved the row to a newer live subscription → superseded; ended → ended (2 ms)
+  duplicate / repeated observations
+    ✓ repeated calls are idempotent reads and never grant value (5 ms)
+
+[31m[Nest] 772628  - [39m11/14/2026, 10:42:42 AM [31m  ERROR[39m [38;5;3m[SubscriptionsService] [39m[31m[checkout-guard] could not verify Stripe subscription state for user u1: stripe timeout[39m
+[31m[Nest] 772628  - [39m11/14/2026, 10:42:42 AM [31m  ERROR[39m [38;5;3m[SubscriptionsService] [39m[31m[checkout-guard] could not verify Stripe subscription state for user u1: stripe 500[39m
+[31m[Nest] 772628  - [39m11/14/2026, 10:42:42 AM [31m  ERROR[39m [38;5;3m[SubscriptionsService] [39m[31m[checkout-guard] could not verify Stripe subscription state for user u1: subscription history truncated[39m
+[31m[Nest] 772628  - [39m11/14/2026, 10:42:42 AM [31m  ERROR[39m [38;5;3m[SubscriptionsService] [39m[31m[checkout-guard] could not verify Stripe subscription state for user u1: checkout session list truncated[39m
+[31m[Nest] 772628  - [39m11/14/2026, 10:42:42 AM [31m  ERROR[39m [38;5;3m[SubscriptionsService] [39m[31m[checkout-guard] could not verify Stripe subscription state for user u1: subscription history truncated[39m
+[31m[Nest] 772628  - [39m11/14/2026, 10:42:42 AM [31m  ERROR[39m [38;5;3m[SubscriptionsService] [39m[31m[checkout-guard] could not verify Stripe subscription state for user u1: customer list truncated[39m
+[31m[Nest] 772628  - [39m11/14/2026, 10:42:42 AM [31m  ERROR[39m [38;5;3m[SubscriptionsService] [39m[31m[checkout-guard] could not verify Stripe subscription state for user u1: stripe down[39m
+[31m[Nest] 772628  - [39m11/14/2026, 10:42:42 AM [31m  ERROR[39m [38;5;3m[SubscriptionsService] [39m[31m[checkout-guard] could not verify Stripe subscription state for user u1: subscription history truncated[39m
+[31m[Nest] 772628  - [39m11/14/2026, 10:42:42 AM [31m  ERROR[39m [38;5;3m[SubscriptionsService] [39m[31m[checkout-guard] could not verify Stripe subscription state for user u1: customer list truncated[39m
+[31m[Nest] 772628  - [39m11/14/2026, 10:42:42 AM [31m  ERROR[39m [38;5;3m[SubscriptionsService] [39m[31m[checkout-guard] could not verify Stripe subscription state for user u1: down[39m
+PASS tests/unit/subscriptions/payment-lifecycle.spec.ts
+  Event-order matrix (one subscription)
+    ✓ in-order trial signup: created → completed → $0 invoice → updated(active) → first paid invoice (T-1) (7 ms)
+    ✓ $0 trial invoice first (before created/completed) → row from Stripe truth, initial cycle once (4 ms)
+    ✓ late checkout.session.completed after the subscription became active cannot regress status, period or plan (2 ms)
+    ✓ a late, stale updated (payload trialing) after trial end writes Stripe current state (active) (2 ms)
+    ✓ duplicated delivery of invoice.paid does not duplicate token grants (3 ms)
+    ✓ Stripe unavailable during a webhook → error (Stripe retries), nothing recorded; retry succeeds (40 ms)
+    ✓ invoice.payment_failed → past_due from Stripe (entitlement rule unchanged) (3 ms)
+  Subscription identity (two Stripe subscriptions, one Noetia user)
+    ✓ a second LIVE subscription never replaces the first; it gets no tokens; an error is logged (2 ms)
+    ✓ re-subscription after the old one ended replaces the row; late events of the old one are ignored (3 ms)
+  Checkout guard across the lifecycle
+    ✓ new eligible user → checkout; paid but webhook delayed → second checkout refused; after webhooks → refused (4 ms)
+    ✓ checkout cancelled (customer left Stripe) → the next attempt reuses the still-open session; no subscription exists (2 ms)
+    ✓ after the subscription ends, the user can subscribe again — WITHOUT a new trial (D1) (2 ms)
+  T-1 — initial cycle of tokens when the 14-day trial begins (PO decision 2026-11-13)
+    ✓ any delivery order (created → completed → updated → trialInvoice) grants the initial cycle exactly once (3 ms)
+    ✓ any delivery order (created → completed → trialInvoice → updated) grants the initial cycle exactly once (2 ms)
+    ✓ any delivery order (created → updated → completed → trialInvoice) grants the initial cycle exactly once (1 ms)
+    ✓ any delivery order (created → updated → trialInvoice → completed) grants the initial cycle exactly once (1 ms)
+    ✓ any delivery order (created → trialInvoice → completed → updated) grants the initial cycle exactly once (2 ms)
+    ✓ any delivery order (created → trialInvoice → updated → completed) grants the initial cycle exactly once (2 ms)
+    ✓ any delivery order (completed → created → updated → trialInvoice) grants the initial cycle exactly once (7 ms)
+    ✓ any delivery order (completed → created → trialInvoice → updated) grants the initial cycle exactly once (2 ms)
+    ✓ any delivery order (completed → updated → created → trialInvoice) grants the initial cycle exactly once (2 ms)
+    ✓ any delivery order (completed → updated → trialInvoice → created) grants the initial cycle exactly once (2 ms)
+    ✓ any delivery order (completed → trialInvoice → created → updated) grants the initial cycle exactly once (2 ms)
+    ✓ any delivery order (completed → trialInvoice → updated → created) grants the initial cycle exactly once (2 ms)
+    ✓ any delivery order (updated → created → completed → trialInvoice) grants the initial cycle exactly once (2 ms)
+    ✓ any delivery order (updated → created → trialInvoice → completed) grants the initial cycle exactly once (1 ms)
+    ✓ any delivery order (updated → completed → created → trialInvoice) grants the initial cycle exactly once (1 ms)
+    ✓ any delivery order (updated → completed → trialInvoice → created) grants the initial cycle exactly once (1 ms)
+    ✓ any delivery order (updated → trialInvoice → created → completed) grants the initial cycle exactly once (2 ms)
+    ✓ any delivery order (updated → trialInvoice → completed → created) grants the initial cycle exactly once (1 ms)
+    ✓ any delivery order (trialInvoice → created → completed → updated) grants the initial cycle exactly once (2 ms)
+    ✓ any delivery order (trialInvoice → created → updated → completed) grants the initial cycle exactly once (1 ms)
+    ✓ any delivery order (trialInvoice → completed → created → updated) grants the initial cycle exactly once (2 ms)
+    ✓ any delivery order (trialInvoice → completed → updated → created) grants the initial cycle exactly once (1 ms)
+    ✓ any delivery order (trialInvoice → updated → created → completed) grants the initial cycle exactly once (2 ms)
+    ✓ any delivery order (trialInvoice → updated → completed → created) grants the initial cycle exactly once (8 ms)
+    ✓ the trial grant expires in 90 days (paid-token expiry unchanged) (3 ms)
+    ✓ redelivery of every signup event (same ids) and new ids for the same trial grant nothing more (2 ms)
+    ✓ crash after the trial grant, before COMMIT → rolled back; the retry grants once (3 ms)
+    ✓ trial cancelled before paying → the initial tokens stay (no claw-back), no paid cycle, nothing more from late events (2 ms)
+    ✓ first paid invoice (and its redelivery / a second event id) grants exactly one renewal cycle; the next month one more (2 ms)
+    ✓ D4: proration / upgrade invoices (paid or $0) grant nothing; D5: a valid $0 renewal grants the normal cycle (2 ms)
+    ✓ D5: a voided-and-reissued invoice for the same billing period grants once (2 ms)
+    ✓ a subscription that is not trialing (no trial) gets no trial grant — its first paid invoice grants as before (2 ms)
+    ✓ a second (duplicate) trial subscription for a user with a live one gets no trial grant (2 ms)
+    ✓ an unknown price → no plan → no trial grant (key stays unclaimed) (1 ms)
+    ✓ D1: after a cancelled trial the customer re-subscribes WITHOUT a trial — no second T-1 grant; the first paid invoice grants once (2 ms)
+    ✓ D1: a first-time customer gets the trial from checkout (1 ms)
+  D2/D3 — annual plans: exactly 12 paid allocations per annual period (+ T-1)
+    ✓ full year: T-1 on day 0, paid cycle 0 on day 14, 11 calendar-month cycles, nothing extra before the renewal — 12 paid (6 ms)
+    ✓ renewal: the next period starts with its own paid invoice, never early; year 2 also gets exactly 12 (9 ms)
+    ✓ D3: cancel at period end on day 60 → allocations continue to day 379, none after; no renewal (11 ms)
+    ✓ immediate termination on day 100 stops allocations (paid so far kept) (4 ms)
+    ✓ failed renewal payment (past_due) grants nothing in the unpaid period (7 ms)
+    ✓ cancellation during the unpaid annual trial: T-1 kept, scheduler never issues (2 ms)
+    ✓ January 31 anchor: Feb 28, Mar 31, Apr 30 … — still 12 paid in the period (4 ms)
+  Exactly-once fulfillment (P0 idempotency correction)
+    ✓ crash after granting tokens but before the event is recorded → everything rolls back; the retry grants once (3 ms)
+    ✓ two DIFFERENT event ids for the same invoice → tokens granted once (1 ms)
+    ✓ distinct invoices of the same subscription still each grant (renewals unchanged) (1 ms)
+    ✓ a paid invoice whose row has no plan (unknown price) grants nothing and does not consume its fulfillment key (1 ms)
+    ✓ token package: duplicate delivery AND a different event id for the same Checkout session → tokens once (1 ms)
+    ✓ two different token-package sessions each grant (no over-blocking) (2 ms)
+    ✓ a failed token-package fulfillment rolls back and the legitimate retry grants once (2 ms)
+    ✓ book purchase: different event ids for one session → one ownership insert (1 ms)
+    ✓ gift: different event ids for one session → fulfilled once; the e-mail step runs once, after commit (2 ms)
+    ✓ gift: a failure while recording sends no e-mail and the retry fulfills once (2 ms)
+    ✓ a failing post-commit e-mail does not fail the webhook or undo the fulfillment (2 ms)
+    ✓ subscription webhook writes take the per-user identity lock inside the event transaction (1 ms)
+  F-02 — billing-period identity when the invoice payload does not carry the subscription line
+    ✓ two different paid renewal invoices for the SAME billing period, both with truncated payloads → allocated once (1 ms)
+    ✓ a valid $0 renewal with a truncated payload still allocates once (D5), period from Stripe line items (6 ms)
+    ✓ proration / upgrade and the trial creation invoice never read Stripe line items and never allocate (D4, T-1 separate) (2 ms)
+    ✓ a paid creation without a trial (truncated payload) allocates its first cycle once (3 ms)
+    ✓ fails CLOSED when the period cannot be determined: the event rolls back (nothing recorded), and the retry allocates once (3 ms)
+    ✓ out of order: the later period arrives first, then the earlier one — one allocation per period (1 ms)
+
+[31m[Nest] 772628  - [39m11/14/2026, 10:42:42 AM [31m  ERROR[39m [38;5;3m[SubscriptionsService] [39m[31mAnnual-plan monthly token issuance failed[39m
+Error: boom
+    at Object.<anonymous> (<repo>/services/api/tests/unit/subscriptions/subscriptions.service.spec.ts:1354:81)
+    at Promise.then.completed (<repo>/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (<repo>/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (<repo>/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:316:40)
+    at _runTest (<repo>/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (<repo>/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (<repo>/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at _runTestsForDescribeBlock (<repo>/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at run (<repo>/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (<repo>/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (<repo>/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (<repo>/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (<repo>/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:444:34)
+    at Object.worker (<repo>/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/testWorker.js:106:12)
+PASS tests/unit/subscriptions/subscriptions.service.spec.ts
+  SubscriptionsService
+    getOrCreateStripeCustomer
+      ✓ returns existing stripeCustomerId without creating new customer (4 ms)
+      ✓ creates Stripe customer and saves id when user has none (3 ms)
+      ✓ throws NotFoundException when user does not exist (49 ms)
+    createCheckoutSession — duplicate-subscription protection
+      ✓ genuinely unsubscribed user → one session with unchanged price, trial and URLs, tagged with plan metadata (2 ms)
+      ✓ throws BadRequestException for invalid planId (no lock, no Stripe call) (2 ms)
+      ✓ local active subscription → 409 subscription_exists, nothing created (2 ms)
+      ✓ local trialing subscription → 409 subscription_exists, nothing created (1 ms)
+      ✓ local canceling subscription → 409 subscription_exists, nothing created (9 ms)
+      ✓ local past_due subscription → 409 subscription_exists, nothing created (2 ms)
+      ✓ missing planId on a live local record does not bypass protection (2 ms)
+      ✓ no local record but Stripe has a active subscription (cancel_at_period_end=false) → 409 (delayed webhook) (1 ms)
+      ✓ no local record but Stripe has a trialing subscription (cancel_at_period_end=false) → 409 (delayed webhook) (2 ms)
+      ✓ no local record but Stripe has a active subscription (cancel_at_period_end=true) → 409 (delayed webhook) (2 ms)
+      ✓ no local record but Stripe has a past_due subscription (cancel_at_period_end=false) → 409 (delayed webhook) (1 ms)
+      ✓ no local record but Stripe has a unpaid subscription (cancel_at_period_end=false) → 409 (delayed webhook) (2 ms)
+      ✓ no local record but Stripe has a incomplete subscription (cancel_at_period_end=false) → 409 (delayed webhook) (1 ms)
+      ✓ no local record but Stripe has a paused subscription (cancel_at_period_end=false) → 409 (delayed webhook) (2 ms)
+      ✓ stale local record (canceled) but Stripe still has a live subscription → 409 (1 ms)
+      ✓ checks every known Stripe customer (local record under an older customer id) (1 ms)
+      ✓ canceled / incomplete_expired Stripe subscriptions do not block a new one (2 ms)
+      ✓ Stripe subscription lookup failure is NOT treated as "no subscription" → 503, nothing created (3 ms)
+      ✓ open-session lookup failure → 503, nothing created (1 ms)
+      ✓ a truncated subscription list cannot prove "none" → 503 (2 ms)
+      ✓ repeated click: an open session for the same plan is reused, not duplicated (2 ms)
+      ✓ an open session for another plan (or untagged) is expired before the new one is created (2 ms)
+      ✓ an open session that can no longer be expired (completing) → 409 checkout_pending, nothing created (2 ms)
+      ✓ open sessions are listed BEFORE subscriptions (a session completing mid-request is never missed) (2 ms)
+      ✓ concurrent requests for one user are serialized: exactly one session is created, the other reuses it (8 ms)
+      ✓ concurrent requests for different plans never leave two open subscription sessions (18 ms)
+      ✓ a request that sees the first checkout completed (delayed webhook) is refused, not duplicated (1 ms)
+      ✓ never cancels or modifies an existing Stripe subscription (1 ms)
+    createCheckoutSession — listing truncation and ambiguous create (timeout) recovery
+      ✓ a first page of 100 open sessions with more pages is not an inventory → 503, nothing created (2 ms)
+      ✓ timeout after Stripe created the session → the created session is found and returned; no second create (2 ms)
+      ✓ timeout and no session visible → 409 checkout_pending (no blind re-create); the retry reuses it once visible (1 ms)
+      ✓ timeout and the re-list also fails → 409 checkout_pending (1 ms)
+      ✓ a session for ANOTHER plan found after a timeout is not returned for this plan (1 ms)
+      ✓ a definitive Stripe rejection (nothing created) is re-thrown unchanged (2 ms)
+    createCheckoutSession — D1 one trial per eligible customer
+      ✓ first-time customer (no Noetia or Stripe subscription history) → 14-day trial, tagged noetiaTrial=yes (2 ms)
+      ✓ returning subscriber (ended Noetia subscription row) → may subscribe again, WITHOUT a trial (2 ms)
+      ✓ cancelled during a previous trial (Stripe: canceled with trial_start) → no new trial (1 ms)
+      ✓ a subscription that never started (only incomplete_expired) does not consume eligibility (1 ms)
+      ✓ gift and token-package purchases alone do not consume eligibility (they are not subscriptions) (2 ms)
+      ✓ linked Duo/Family member who never held an own subscription stays eligible (1 ms)
+      ✓ deleted-and-recreated account: another Stripe customer with the same e-mail has history → no trial, and its live subscription is NOT a duplicate block (2 ms)
+      ✓ history cannot be verified (a truncated subscription history) → 503, no session, never a surprise charge (1 ms)
+      ✓ history cannot be verified (a truncated customer list) → 503, no session, never a surprise charge (2 ms)
+      ✓ history cannot be verified (a Stripe error on the customer lookup) → 503, no session, never a surprise charge (1 ms)
+      ✓ an open session carrying a trial is NOT reused for a now-ineligible customer: it is expired and a no-trial session is created (2 ms)
+      ✓ a matching open session (same plan, same trial offer) is reused (1 ms)
+    getTrialEligibility / GET /subscriptions/me?trialEligibility=1 (D1, D6)
+      ✓ first-time customer → true (2 ms)
+      ✓ own Noetia subscription history → false without calling Stripe (1 ms)
+      ✓ Stripe history only → false (1 ms)
+      ✓ unverifiable (Stripe error) → null, so no trial is advertised (2 ms)
+      ✓ a user without a Stripe customer is checked by e-mail only (1 ms)
+      ✓ getSubscriptionStatus adds trialEligible ONLY when asked (other callers make no Stripe call) (1 ms)
+    issueDueAnnualCycles — one annual period, Stripe-anchored (D2, D3)
+      ✓ grants every cycle due so far (catch-up), each claimed once; sets the hint to the next anniversary (8 ms)
+      ✓ D3: cancel at period end (Stripe active + cancel_at_period_end, local canceling) keeps the allocations (2 ms)
+      ✓ never after the paid period expired, never the next period early (1 ms)
+      ✓ Stripe status past_due → nothing (1 ms)
+      ✓ Stripe status unpaid → nothing (1 ms)
+      ✓ Stripe status canceled → nothing (2 ms)
+      ✓ Stripe status trialing → nothing (1 ms)
+      ✓ reads the period from the subscription item in the newer Stripe API shape (2 ms)
+      ✓ local row no longer live, or not an annual plan → nothing (1 ms)
+      ✓ a crash after the grant but before COMMIT leaves the cycle unclaimed for the retry (the claim is in the same transaction) (2 ms)
+    issueTokensForNewSubscription — once per billing period (D5)
+      ✓ a reissued invoice (new id) for the same period grants nothing (1 ms)
+      ✓ the next period grants again (1 ms)
+      ✓ F-02: payload without the subscription line → period read from Stripe line items; a different invoice for the same period grants nothing (1 ms)
+      ✓ F-02: the subscription line on a later page of Stripe line items is found (pagination) (2 ms)
+      ✓ F-02: period still unknown → fails CLOSED: throws before any claim or allocation (the transaction rolls back; Stripe retries) (1 ms)
+      ✓ F-02: a Stripe error while reading line items propagates (no claim, no allocation) (2 ms)
+      ✓ F-02: no invoice id and no period → fails closed (1 ms)
+      ✓ F-02: a period already in the payload is used as-is (no Stripe call) (1 ms)
+    F-01 — trial-eligibility behaviour matrix (CURRENT behaviour pinned; one case awaits a PO decision)
+      ✓ first-time customer, no history → trial offered: () => undefined (2 ms)
+      ✓ previously received a trial (canceled, trial_start set) → trial offered: () => history([{ id: 's', status: 'canceled', trial_start: 1 }]) (4 ms)
+      ✓ PENDING-PO: previously subscribed and paid WITHOUT a trial (canceled, no trial_start) → trial offered: () => history([{ id: 's', status: 'canceled', trial_start: null }]) (2 ms)
+      ✓ previous subscription never activated (incomplete_expired) → trial offered: () => history([{ id: 's', status: 'incomplete_expired', trial_start: null }]) (1 ms)
+      ✓ PENDING-PO: never activated but canceled before expiry (canceled, no trial_start, never paid — not distinguishable from a paid one) → trial offered: () => history([{ id: 's', status: 'canceled', trial_start: null }]) (2 ms)
+      ✓ returning customer with a canceled Noetia subscription row → trial offered: () => mockSubRepo.findOneBy.mockResolvedValue({ userId: 'u1', status: 'canceled', stripeSubscriptionId: 'sub_old', stripeCustomerId: 'cus_1' }) (1 ms)
+      ✓ Duo/Family member subscribing independently (no own row, no own Stripe subscriptions) → trial offered: () => undefined (1 ms)
+      ✓ history history truncated → checkout 503 (no session) and eligibility null (no trial advertised) (3 ms)
+      ✓ history customer list truncated → checkout 503 (no session) and eligibility null (no trial advertised) (2 ms)
+      ✓ history Stripe unavailable → checkout 503 (no session) and eligibility null (no trial advertised) (2 ms)
+    cancelSubscription
+      ✓ sets cancel_at_period_end and updates status to canceling (6 ms)
+      ✓ throws NotFoundException when user has no subscription (2 ms)
+    resumeSubscription
+      ✓ sets cancel_at_period_end to false and reverts status to active (1 ms)
+      ✓ throws NotFoundException when user has no subscription (1 ms)
+    createPortalSession
+      ✓ returns portal url for user with stripeCustomerId (1 ms)
+      ✓ throws NotFoundException when user has no stripeCustomerId (2 ms)
+    getSubscriptionStatus
+      ✓ returns none when no subscription record (1 ms)
+      ✓ returns subscription data when record exists (1 ms)
+    upsertFromWebhook — identity guard
+      ✓ skips a duplicate event (same stripeEventId on the row) (1 ms)
+      ✓ skips when no user is found for the customer (1 ms)
+      ✓ creates the row for a first subscription (planId only when passed) (1 ms)
+      ✓ does not write planId when the caller does not pass it (1 ms)
+      ✓ updates the same Stripe subscription (1 ms)
+      ✓ never replaces a LIVE subscription with a different live one (duplicate) — logged as an error (4 ms)
+      ✓ a late event from an OLD subscription cannot overwrite the current one (2 ms)
+      ✓ a non-live event for another subscription cannot replace an ended one either (2 ms)
+      ✓ a legitimate re-subscription (old one ended, new one live) replaces the row (2 ms)
+    upsertFromWebhook — atomic identity (per-user lock)
+      ✓ takes the per-user lock BEFORE reading the row, inside a transaction (2 ms)
+      ✓ uses the caller transaction when given (no nested transaction) (2 ms)
+      ✓ two CONCURRENT webhooks for different live subscriptions: exactly one is applied, the other is rejected (20 ms)
+    applyStripeSubscription (order-independent: re-reads Stripe)
+      ✓ writes the CURRENT Stripe status/period/trial (trialing stays trialing) and the plan from the price (T-1: every event) (1 ms)
+      ✓ an unknown price records no plan (null), as customer.subscription.updated always did (2 ms)
+      ✓ maps cancel_at_period_end, the item-level period end and the plan (1 ms)
+      ✓ propagates a Stripe failure (so the webhook is retried) (1 ms)
+      ✓ ignores a subscription without a customer (1 ms)
+      T-1 trial-start grant
+        ✓ a trialing subscription applied in the webhook transaction grants tokensPerCycle once (2 ms)
+        ✓ not trialing (active) → no trial grant (1 ms)
+        ✓ an identity-rejected (duplicate) subscription gets no trial grant (1 ms)
+        ✓ outside a webhook transaction (no em) never grants (1 ms)
+        ✓ issueTrialStartTokens: no plan on the row → nothing issued and the key stays unclaimed (6 ms)
+        ✓ issueTrialStartTokens does not touch nextTokenIssuanceAt (annual schedule starts at the first paid invoice) (2 ms)
+    cancelFromWebhook
+      ✓ cancels the row of THAT Stripe subscription under the per-user identity lock (own transaction) (2 ms)
+      ✓ uses the caller transaction when given and does nothing for an unknown subscription (1 ms)
+    createPurchaseSession
+      ✓ returns checkout url for a book with a price (2 ms)
+      ✓ throws NotFoundException for unknown or unpublished book (2 ms)
+      ✓ throws BadRequestException when book has no price (1 ms)
+    redeemToken — atomic (one token, one book; payment-safety correction)
+      ✓ consumes the oldest active token with a row lock and creates ownership in the SAME transaction (3 ms)
+      ✓ throws NotFoundException for an unknown book (no transaction) (2 ms)
+      ✓ already owned (fast path) → BadRequest already_owned, no token consumed (1 ms)
+      ✓ ownership insert conflicts (a concurrent redemption of the same book won) → throws, so the token consumption rolls back (1 ms)
+      ✓ no tokens anywhere → ForbiddenException no_tokens_remaining (1 ms)
+      ✓ linked Duo/Family member without own tokens draws from the plan owner pool (unchanged order) (1 ms)
+    createTokenPackageSession
+      ✓ returns checkout url for valid token package (1 ms)
+      ✓ throws BadRequestException for unknown package id (1 ms)
+      ✓ throws BadRequestException when price ID is still a placeholder (1 ms)
+    issueTokensForPurchasedPackage
+      ✓ issues the correct number of tokens for the package (1 ms)
+      ✓ does nothing when package not found (1 ms)
+    addPurchasedBook
+      ✓ inserts user_book with purchaseType purchase, ON CONFLICT DO NOTHING (never aborts the webhook transaction) (2 ms)
+      ✓ uses the caller transaction repository when given (2 ms)
+      ✓ rethrows unexpected errors (1 ms)
+    issueTokensForNewSubscription
+      ✓ issues tokens equal to plan tokensPerCycle on renewal (1 ms)
+      ✓ does nothing when no subscription found (1 ms)
+      ✓ annual plans: the paid invoice is cycle 0 and resets the scheduler hint so the new period is read from Stripe (1 ms)
+      ✓ in the webhook transaction, claims the invoice once: a second call for the same invoice issues nothing (1 ms)
+      ✓ does not claim the invoice when no tokens are issued (no plan yet — trial-token gate unchanged) (1 ms)
+    issueMonthlyTokensForAnnualPlans — candidate selection (D2/D3)
+      ✓ checks active AND canceling annual rows with Stripe; skips monthly plans, rows without a Stripe id and rows whose hint is in the future (2 ms)
+      ✓ a failure for one subscription is logged and does not stop the others (1 ms)
+      ✓ does nothing when there are no candidates (2 ms)
+    issueAnnualPlanTokensCron
+      ✓ runs the drip (1 ms)
+      ✓ swallows errors so the scheduler never crashes (5 ms)
+    findPlanByStripePriceId
+      ✓ returns plan id when price matches (1 ms)
+      ✓ returns null when price does not match any plan (1 ms)
+    syncSubscription
+      ✓ returns none status when no subscription record exists (1 ms)
+      ✓ updates local record from Stripe and returns updated status (1 ms)
+      ✓ maps trialing status correctly (1 ms)
+      ✓ maps past_due status correctly (1 ms)
+      ✓ maps canceled status correctly (1 ms)
+      ✓ maps unknown status to none (2 ms)
+      ✓ maps canceling when cancel_at_period_end is true (1 ms)
+    issueTokens
+      ✓ creates paid tokens with 90-day expiry (1 ms)
+      ✓ creates promotional tokens with 30-day expiry (1 ms)
+      ✓ creates courtesy tokens with 30-day expiry and activatedAt set immediately (1 ms)
+    inviteUser
+      ✓ creates invite and sends email for Duo plan with room (2 ms)
+      ✓ throws BadRequestException when plan does not support sharing (Individual) (2 ms)
+      ✓ throws BadRequestException when plan is full (1 ms)
+      ✓ throws ForbiddenException when user has no active subscription (2 ms)
+    acceptInvite
+      ✓ adds userId to linkedUserIds and marks invite accepted (1 ms)
+      ✓ throws BadRequestException for expired or invalid token (1 ms)
+      ✓ throws BadRequestException when owner tries to accept their own invite (1 ms)
+    removeLinkedUser
+      ✓ removes the target user from linkedUserIds (1 ms)
+      ✓ throws BadRequestException when target is not linked (1 ms)
+      ✓ throws NotFoundException when owner has no subscription (1 ms)
+
+PASS tests/unit/subscriptions/checkout-status.contract.spec.ts
+  authentication (401)
+    ✓ no JWT → 401, Stripe never called (3 ms)
+    ✓ JWT signed with another secret → 401 (2 ms)
+    ✓ expired JWT → 401 (3 ms)
+    ✓ JWT for a deleted user → 401 (2 ms)
+    ✓ the session id in a cookie or query string is not a credential (2 ms)
+  the owner gets the contract response
+    ✓ token session, paid, key present → unconfirmed (never delivered); no-store; only contract keys (3 ms)
+    ✓ no EmailConfirmedGuard: an unconfirmed-email buyer can verify their own session (3 ms)
+  uniform 404 — identical bodies, no oracle
+    ✓ unknown, another account's, anonymous gift and malformed ids all return the same 404 body (9 ms)
+    ✓ malformed id → 404 without a Stripe request (3 ms)
+  failures (503) leak nothing
+    ✓ Stripe outage → 503 with the fixed body only (2 ms)
+  route table and guards
+    ✓ exactly one checkout-session route, GET, behind JwtAuthGuard only (no EmailConfirmedGuard) (1 ms)
+    ✓ no gift-status or anonymous checkout-session route exists anywhere in the API (source audit) (2 ms)
+  rate limit (30 requests/minute/IP)
+    ✓ requests 1–30 are served, the 31st → 429 (stricter than the global 120); unauthenticated calls count too (52 ms)
+
+PASS tests/unit/subscriptions/webhooks.service.spec.ts
+  WebhooksService
+    handleEvent
+      ✓ checkout.session.completed (subscription, string id) → re-reads that subscription, no plan (4 ms)
+      ✓ checkout.session.completed (subscription, object id) → re-reads that subscription (2 ms)
+      ✓ skips checkout.session.completed when subscription or customer missing (1 ms)
+      ✓ handles checkout.session.completed (payment mode) — adds purchased book (2 ms)
+      ✓ handles checkout.session.completed (payment mode) — issues tokens for token package (1 ms)
+      ✓ silently skips payment checkout without userId (1 ms)
+      ✓ renewal invoice.paid → re-reads the subscription, then issues the cycle (once per period and invoice) (1 ms)
+      ✓ T-1: a $0 invoice (the trial invoice) re-reads the subscription but grants NO renewal cycle (1 ms)
+      ✓ D4/D5: a paid upgrade / proration (subscription_update) grants no cycle (2 ms)
+      ✓ D4/D5: a manual invoice grants no cycle (1 ms)
+      ✓ D4/D5: a usage-threshold invoice grants no cycle (1 ms)
+      ✓ D4/D5: an invoice without billing_reason grants no cycle
+      ✓ D5: a valid $0 renewal (subscription_cycle at $0) grants the normal cycle (1 ms)
+      ✓ a subscription created WITHOUT a trial (paid subscription_create) grants its first cycle (1 ms)
+      ✓ a $0 proration invoice grants no cycle either (1 ms)
+      ✓ the first PAID invoice after the trial grants the renewal cycle (once per invoice id) (1 ms)
+      ✓ invoice.paid reads the subscription id from the newer invoice shape (parent.subscription_details) (1 ms)
+      ✓ skips invoice.paid without a subscription (one-off invoice) (1 ms)
+      ✓ invoice.payment_failed → re-reads the subscription (Stripe decides past_due), no tokens (1 ms)
+      ✓ skips invoice.payment_failed when the subscription id is missing (2 ms)
+      ✓ customer.subscription.created → re-reads the subscription WITHOUT writing planId (trial-token gate)
+      ✓ customer.subscription.updated → re-reads the subscription and writes planId (unchanged)
+      ✓ handles customer.subscription.deleted and cancels
+      ✓ a Stripe re-read failure propagates (non-2xx) and the event is not recorded, so Stripe retries (10 ms)
+      ✓ handles unknown event type without error (5 ms)
+      ✓ is idempotent — duplicate event id is not re-processed (2 ms)
+    idempotency (P2)
+      ✓ processes a first delivery exactly once and records it (1 ms)
+      ✓ duplicate invoice.paid does not issue duplicate subscription tokens (1 ms)
+      ✓ duplicate token-package checkout does not issue duplicate purchased tokens (1 ms)
+      ✓ a processing FAILURE does not permanently suppress a legitimate Stripe retry (1 ms)
+      ✓ distinct legitimate events continue to process independently (1 ms)
+    exactly-once fulfillment (P0 correction)
+      ✓ claims the event id inside the same transaction as the side effects (1 ms)
+      ✓ a different event id for an already-fulfilled Checkout session grants nothing (1 ms)
+      ✓ a book purchase is claimed per session too (1 ms)
+      ✓ gift: records in the transaction and e-mails only after commit, once (1 ms)
+      ✓ gift with nothing to send (null) is fine (1 ms)
+      ✓ a post-commit notification failure is logged, not thrown (the event stays recorded) (1 ms)
+      ✓ a failure after the session claim rolls back BOTH claims so the retry fulfills (2 ms)
+      ✓ a payment session without an id cannot be claimed and grants nothing (1 ms)
+
+PASS tests/unit/subscriptions/stripe-fulfillment-ledger.spec.ts
+  stripe-fulfillment-ledger
+    ✓ claimStripeKey inserts with ON CONFLICT DO NOTHING RETURNING and reports ownership (1 ms)
+    ✓ claimStripeKey returns false when the key was already claimed (no row returned)
+    ✓ claimStripeKey treats an unexpected driver result as not claimed (fail safe: no fulfillment) (1 ms)
+    ✓ claimStripeKey propagates database errors (the transaction rolls back, Stripe retries) (7 ms)
+    ✓ fulfillmentKey formats are stable (rows already written in the ledger depend on them)
+    ✓ regression: fulfillment keys never collide with Stripe event ids or with each other (1 ms)
+    ✓ regression: the type column of a fulfillment row names its kind
+    ✓ lockSubscriptionIdentity takes a transaction-scoped advisory lock keyed by user
+
+PASS tests/unit/common/trusted-proxy.spec.ts
+  parseTrustedProxyCidrs — accepted values
+    ✓ "10.211.75.8/29" → enabled (1 ms)
+    ✓ "  10.211.75.8/29  " → enabled
+    ✓ "10.211.75.8/29,10.211.76.0/24" → enabled
+    ✓ "127.0.0.2/32" → enabled (1 ms)
+    ✓ "fd00:abcd::/112" → enabled (3 ms)
+    ✓ "fd00:abcd::1/128" → enabled (1 ms)
+    ✓ accepts exactly 4 entries
+  parseTrustedProxyCidrs — T-I1-08 fail-safe rejections (trust stays disabled)
+    ✓ unset/empty undefined → disabled ("not set")
+    ✓ unset/empty null → disabled ("not set")
+    ✓ unset/empty "" → disabled ("not set")
+    ✓ unset/empty "   " → disabled ("not set") (1 ms)
+    ✓ keyword true ("true") → disabled
+    ✓ keyword false ("false") → disabled
+    ✓ keyword loopback ("loopback") → disabled
+    ✓ keyword uniquelocal ("uniquelocal") → disabled
+    ✓ keyword linklocal ("linklocal") → disabled
+    ✓ hop count ("1") → disabled
+    ✓ hop count 2 ("2") → disabled
+    ✓ bare IPv4 address ("10.211.75.9") → disabled
+    ✓ bare IPv6 address ("::1") → disabled
+    ✓ netmask notation ("10.211.75.0/255.255.255.0") → disabled (1 ms)
+    ✓ hostname ("traefik") → disabled
+    ✓ hostname with prefix ("traefik/32") → disabled
+    ✓ invalid IPv4 ("10.211.75.300/29") → disabled
+    ✓ invalid IPv6 ("fd00::zz/120") → disabled
+    ✓ prefix > 32 ("10.211.75.8/33") → disabled
+    ✓ prefix > 128 ("fd00::/129") → disabled
+    ✓ negative prefix ("10.211.75.8/-1") → disabled (1 ms)
+    ✓ trailing comma ("10.211.75.8/29,") → disabled
+    ✓ empty middle entry ("10.211.75.8/29,,10.0.0.0/24") → disabled
+    ✓ mixed valid + keyword ("10.211.75.8/29,loopback") → disabled
+    ✓ mixed valid + invalid ("10.211.75.8/29,nope") → disabled
+    ✓ IPv4-in-IPv6 notation ("::ffff:10.211.75.8/120") → disabled
+    ✓ over-broad all IPv4 ("0.0.0.0/0") → disabled
+    ✓ over-broad RFC1918 10/8 ("10.0.0.0/8") → disabled
+    ✓ over-broad RFC1918 172.16/12 ("172.16.0.0/12") → disabled (1 ms)
+    ✓ over-broad RFC1918 192.168/16 ("192.168.0.0/16") → disabled
+    ✓ over-broad Docker default bridge /16 ("172.17.0.0/16") → disabled
+    ✓ over-broad /23 ("10.211.74.0/23") → disabled
+    ✓ over-broad all IPv6 ("::/0") → disabled
+    ✓ over-broad IPv6 ULA /7 ("fc00::/7") → disabled
+    ✓ over-broad IPv6 /64 ("fd00:abcd::/64") → disabled
+    ✓ over-broad IPv6 /111 ("fd00:abcd::/111") → disabled
+    ✓ more than 4 entries → disabled
+  applyTrustedProxy — applies only validated values; never throws; logs
+    ✓ valid → Express `trust proxy` compiled from exactly those CIDRs; one log line (2 ms)
+    ✓ unset → trust left at Express default (none), informational log, no warning
+    ✓ invalid "true" → not applied (no trust), one WARN (1 ms)
+    ✓ invalid "loopback" → not applied (no trust), one WARN (1 ms)
+    ✓ invalid "1" → not applied (no trust), one WARN
+    ✓ invalid "10.0.0.0/8" → not applied (no trust), one WARN (6 ms)
+    ✓ invalid "garbage" → not applied (no trust), one WARN
+    ✓ if Express rejects the value, it does not throw and reports disabled with a WARN (1 ms)
+    ✓ logs never contain anything but the configured ranges
+
+Test Suites: 9 passed, 9 total
+Tests:       477 passed, 477 total
+Snapshots:   0 total
+Time:        6.287 s
+Ran all test suites matching /tests\/unit\/common|tests\/unit\/subscriptions\/checkout-status|tests\/unit\/subscriptions\/subscriptions-auth.contract.spec.ts|tests\/unit\/subscriptions\/webhooks.service.spec.ts|tests\/unit\/subscriptions\/subscriptions.service.spec.ts|tests\/unit\/subscriptions\/payment-lifecycle.spec.ts|tests\/unit\/subscriptions\/stripe-fulfillment-ledger.spec.ts/i.

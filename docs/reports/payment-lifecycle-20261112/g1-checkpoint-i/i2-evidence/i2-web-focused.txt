@@ -1,0 +1,282 @@
+PASS tests/unit/app/billing/pricing.spec.tsx
+  /pricing — guest (public page, optional authentication)
+    ✓ renders plans without redirecting and makes no preference lookup (37 ms)
+    ✓ prices are shown in explicitly marked US dollars (USD — PO decision 2026-11-13), never a bare "$" (9 ms)
+    ✓ choosing a plan sends the guest to /login?next=/pricing (no selector, no checkout) (13 ms)
+    ✓ buying a token package as a guest goes to /login?next=/pricing (23 ms)
+  /pricing — signed-in
+    ✓ sends Authorization: Bearer on the subscription status and preference lookups (18 ms)
+    ✓ marks the current plan from /subscriptions/me (9 ms)
+    ✓ saved preference → checkout directly with Bearer and the unchanged body; no selector (10 ms)
+    ✓ no saved preference (empty 200 body) → shows the selector, not a saved state (17 ms)
+    ✓ select one cause → save succeeds → checkout continues (25 ms)
+    ✓ save fails → no checkout; retry succeeds → checkout continues (14 ms)
+    ✓ continue without choosing → checkout, with no preference write (9 ms)
+    ✓ preference lookup error → explicit notice (no selector, no equal-split claim); continue keeps the preference (10 ms)
+    ✓ preference lookup error → retry finds a saved preference → checkout directly (9 ms)
+    ✓ preference lookup error → retry finds no preference → selector (12 ms)
+    ✓ preference lookup error → retry fails again → notice stays; cancel closes it without checkout (10 ms)
+    ✓ token-package purchase sends Bearer and the unchanged body (9 ms)
+    ✓ checkout 401 that cannot be refreshed → /login?next=/pricing (6 ms)
+    ✓ checkout non-auth failure (e.g. 403 email not confirmed) → existing payment error, no redirect (6 ms)
+  /pricing — refresh session
+    ✓ expired access token + valid refresh session → refreshes once and continues to checkout with the new token (4 ms)
+    ✓ no access token at all + valid refresh session → treated as signed in (no login redirect) (11 ms)
+  /pricing — subscription status unknown (server or network failure)
+    ✓ status 500 → plans and token packages stay browsable; a banner offers a retry; no redirect (7 ms)
+    ✓ a successful Causas lookup does not count as status verification: saved cause + status 500 → no checkout (7 ms)
+    ✓ status unknown + no saved cause → no selector and no preference write before the status is known (6 ms)
+    ✓ a network failure (fetch rejects) is treated as unknown status, not as a guest (6 ms)
+    ✓ retry succeeds (no subscription) → continues to checkout with the saved cause, unchanged body (11 ms)
+    ✓ retry succeeds with no saved cause → normal selector flow (18 ms)
+    ✓ retry reveals the chosen plan is already active → no second checkout; plan marked current (7 ms)
+    ✓ retry fails again → notice stays; cancel closes it without checkout (8 ms)
+    ✓ retry finds the session expired (401, refresh fails) → /login?next=/pricing (7 ms)
+    ✓ banner retry recovers the status without choosing a plan (current plan then marked) (6 ms)
+    ✓ token-package purchase is not blocked by an unknown subscription status (5 ms)
+  /pricing — which statuses count as a current plan
+    ✓ status active → plan marked current and not purchasable again (4 ms)
+    ✓ status trialing → plan marked current and not purchasable again (3 ms)
+    ✓ status canceling → plan marked current and not purchasable again (2 ms)
+    ✓ status past_due → plan marked current and not purchasable again (2 ms)
+    ✓ status canceled → the former plan can be purchased again (7 ms)
+  /pricing — server-side duplicate-subscription guard responses
+    ✓ 409 subscription_exists → explains and links to billing; no redirect, no generic payment error (5 ms)
+    ✓ 409 checkout_pending → asks to wait and retry (6 ms)
+    ✓ 503 subscription_status_unavailable → says the status could not be confirmed (4 ms)
+  /pricing — trial offer (D1/D6: once per customer, never advertised to a returning customer)
+    ✓ asks the API for eligibility with the status call (3 ms)
+    ✓ guest: the trial is described as for NEW subscribers; CTA "Get started" (4 ms)
+    ✓ eligible first-time customer: trial copy, included tokens per plan, ownership, CTA "Start free trial" (4 ms)
+    ✓ returning subscriber: no trial advertised anywhere; CTA "Subscribe"; renewal/cancellation explained (5 ms)
+    ✓ eligibility cannot be verified (null): no trial mentioned; CTA "Subscribe" (9 ms)
+    ✓ subscription status unknown (server failure): no trial mentioned (3 ms)
+    ✓ Spanish: returning customer copy and CTA; eligible copy with included tokens (8 ms)
+
+PASS tests/unit/app/billing/success-page.spec.tsx
+  /billing/success — account-status flow without a session id (unchanged by G-1)
+    ✓ shows a neutral "confirming" state first — never "activated" while the request is in flight (12 ms)
+    ✓ sync reports active → confirmed (Bearer sent, no polling) (2 ms)
+    ✓ sync reports trialing → confirmed (Bearer sent, no polling) (2 ms)
+    ✓ sync reports canceling → confirmed (Bearer sent, no polling) (2 ms)
+    ✓ webhook not processed yet (sync → none) → polls /subscriptions/me and confirms once the webhook lands (11 ms)
+    ✓ polling is bounded: after 5 attempts → "pending" (never "activated"); Check again restarts verification (21 ms)
+    ✓ past_due → payment problem with a link to billing (2 ms)
+    ✓ sync 500 → verification error with retry (no "activated"); retry succeeds (5 ms)
+    ✓ network failure → verification error (not "pending", not "activated") (2 ms)
+    ✓ a failure while polling → verification error (7 ms)
+    ✓ no session (401, refresh fails) → sign-in prompt that returns here; no automatic redirect (2 ms)
+    ✓ expired access token + valid refresh session → refreshes once and confirms with the new token (2 ms)
+    ✓ only reads state: the page never calls checkout or any other write endpoint (16 ms)
+    ✓ Spanish copy (11 ms)
+  /billing/success — one-time purchases (?purchase=…)
+    ✓ purchase=tokens (no verifiable session, or G-b gift) → neutral "confirming your purchase", no API calls (2 ms)
+    ✓ purchase=book (no verifiable session, or G-b gift) → neutral "confirming your purchase", no API calls (2 ms)
+    ✓ purchase=gift (no verifiable session, or G-b gift) → neutral "confirming your purchase", no API calls (2 ms)
+    ✓ purchase=gift&session_id=cs_test_synthetic1234 (no verifiable session, or G-b gift) → neutral "confirming your purchase", no API calls (1 ms)
+    ✓ an unauthenticated gift buyer sees only generic copy — no account or transaction details, no API calls (2 ms)
+    ✓ an unknown purchase value falls back to subscription verification (2 ms)
+  /billing/success — copy never claims an unverified payment (PR #60 P1)
+    ✓ en: no billing.success string says the payment was received (1 ms)
+    ✓ es: no billing.success string says the payment was received
+
+PASS tests/unit/lib/i18n.spec.ts
+  i18n en/es parity
+    ✓ has an identical key structure in both languages (10 ms)
+    ✓ has no key present in en but missing from es (2 ms)
+    ✓ has no key present in es but missing from en (2 ms)
+  reader.audio namespace
+    ✓ exposes the Active Listening panel strings in both languages (1 ms)
+    ✓ interpolates the phrase index in continueFromPhrase
+    ✓ interpolates both phrase indices in moveNarrationSub
+    ✓ interpolates the phrase index in quoteMarked
+  reader.chapters namespace
+    ✓ exposes the chapter drawer strings in both languages (1 ms)
+  fragments.sheet namespace
+    ✓ exposes the fragment drawer strings in both languages
+    ✓ interpolates the selected count in combine (1 ms)
+  shareCard namespace
+    ✓ exposes the share-modal strings in both languages (1 ms)
+    ✓ interpolates the platform name in publishedOn
+    ✓ interpolates book/collection into the citation placeholders
+    ✓ numbers the preset alt text
+
+PASS tests/unit/lib/checkout-status.spec.ts
+  deriveFromResponse — verified state → copy key (§R4.4) and terminality (§R3.5)
+    ✓ {"kind":"subscription","checkout":"open","entitlement":null} → checkoutOpen (terminal false) (1 ms)
+    ✓ {"kind":"tokens","checkout":"open","payment":"unpaid","delivery":null} → checkoutOpen (terminal false)
+    ✓ {"kind":"book","checkout":"open","payment":"unpaid","delivery":null} → checkoutOpen (terminal false)
+    ✓ {"kind":"subscription","checkout":"expired","entitlement":null} → checkoutExpired (terminal true)
+    ✓ {"kind":"tokens","checkout":"expired","payment":"unpaid","delivery":null} → checkoutExpired (terminal true)
+    ✓ {"kind":"book","checkout":"expired","payment":"unpaid","delivery":null} → checkoutExpired (terminal true)
+    ✓ {"kind":"tokens","checkout":"complete","payment":"unpaid","delivery":null} → paymentNotConfirmed (terminal false)
+    ✓ {"kind":"tokens","checkout":"complete","payment":"no_payment_required","delivery":null} → paymentNotConfirmed (terminal false)
+    ✓ {"kind":"tokens","checkout":"complete","payment":"paid","delivery":"pending"} → paidProcessingTokens (terminal false) (1 ms)
+    ✓ {"kind":"tokens","checkout":"complete","payment":"paid","delivery":"unconfirmed"} → tokenPaymentConfirmed (terminal true)
+    ✓ {"kind":"book","checkout":"complete","payment":"unpaid","delivery":"delivered"} → paymentNotConfirmed (terminal false)
+    ✓ {"kind":"book","checkout":"complete","payment":"paid","delivery":"pending"} → paidPendingBook (terminal false)
+    ✓ {"kind":"book","checkout":"complete","payment":"paid","delivery":"delivered"} → deliveredBook (terminal true) (1 ms)
+    ✓ {"kind":"book","checkout":"complete","payment":"paid","delivery":"unconfirmed"} → unconfirmedBook (terminal true)
+    ✓ {"kind":"subscription","checkout":"complete","entitlement":"active"} → subscriptionActive (terminal true)
+    ✓ {"kind":"subscription","checkout":"complete","entitlement":"payment_problem"} → subscriptionProblem (terminal true)
+    ✓ {"kind":"subscription","checkout":"complete","entitlement":"ended"} → subscriptionEnded (terminal true)
+    ✓ {"kind":"subscription","checkout":"complete","entitlement":"superseded"} → subscriptionOther (terminal true) (1 ms)
+    ✓ {"kind":"subscription","checkout":"complete","entitlement":"not_recorded"} → subscriptionPending (terminal false)
+    ✓ {"kind":"subscription","checkout":"complete","entitlement":null} → subscriptionPending (terminal false)
+    ✓ token `delivered` (contract violation, R1-B) → unavailable, non-terminal (no claim)
+    ✓ token paid with null delivery → unavailable, non-terminal (no claim)
+    ✓ book paid with null delivery → unavailable, non-terminal (no claim)
+    ✓ book unknown delivery → unavailable, non-terminal (no claim) (1 ms)
+    ✓ unknown entitlement → unavailable, non-terminal (no claim)
+    ✓ unknown kind (gift) → unavailable, non-terminal (no claim)
+    ✓ unknown checkout → unavailable, non-terminal (no claim)
+    ✓ missing payment → unavailable, non-terminal (no claim)
+    ✓ unknown payment → unavailable, non-terminal (no claim)
+    ✓ null → unavailable, non-terminal (no claim)
+    ✓ string → unavailable, non-terminal (no claim)
+    ✓ empty object → unavailable, non-terminal (no claim) (1 ms)
+    ✓ a token response never maps to any delivery copy, whatever it contains (2 ms)
+  deriveFromError
+    ✓ {"status":401} → auth (1 ms)
+    ✓ {"status":404} → notFound
+    ✓ {"status":429} → unavailable
+    ✓ {"status":503} → unavailable (5 ms)
+    ✓ {"status":500} → unavailable
+    ✓ {} → unavailable
+    ✓ null → unavailable
+  polling budget and Retry-After
+    ✓ at most 11 requests: first immediately, then 2 s × 5 and 4 s × 5 (~30 s)
+    ✓ nextDelay follows the schedule; a 429 Retry-After extends it, capped (1 ms)
+  paths
+    ✓ statusPath encodes the id
+    ✓ successReturnPath keeps session_id and a permitted purchase value only
+  §R4.3 — all 13 approved message groups, verbatim, EN and ES
+    ✓ the design table holds exactly 13 groups
+    ✓ A1 matches exactly (EN and ES)
+    ✓ A2 matches exactly (EN and ES) (1 ms)
+    ✓ A3 matches exactly (EN and ES)
+    ✓ A4 matches exactly (EN and ES)
+    ✓ B1 matches exactly (EN and ES)
+    ✓ B2 matches exactly (EN and ES)
+    ✓ B3 matches exactly (EN and ES)
+    ✓ C1 matches exactly (EN and ES)
+    ✓ C2 matches exactly (EN and ES)
+    ✓ C3 matches exactly (EN and ES)
+    ✓ D1 matches exactly (EN and ES)
+    ✓ D2 matches exactly (EN and ES)
+    ✓ T1 matches exactly (EN and ES) (1 ms)
+    ✓ T1 is the PO-2 token message (independent literal check)
+    ✓ the subscription-active title is the existing one (kept by C1)
+  §R4.5 claim restrictions on the dictionaries
+    ✓ en: "payment confirmed" appears only in the token-confirmed and paid-book messages (1 ms)
+    ✓ en: subscription messages claim no tokens, payment or full access (T-R3a)
+    ✓ en: open/expired make no charge or failure claim (T-R2b)
+    ✓ en: no token message claims delivery
+    ✓ en: errors guarantee no payment outcome (1 ms)
+    ✓ es: "payment confirmed" appears only in the token-confirmed and paid-book messages
+    ✓ es: subscription messages claim no tokens, payment or full access (T-R3a)
+    ✓ es: open/expired make no charge or failure claim (T-R2b)
+    ✓ es: no token message claims delivery (1 ms)
+    ✓ es: errors guarantee no payment outcome
+  existing billing.success copy outside G-1 is unchanged
+    ✓ en: every pre-G-1 key keeps its value; only `status` was added
+    ✓ es: every pre-G-1 key keeps its value; only `status` was added
+  §R4.11 — G1-I2 follow-up sign-in sentence matches the design document
+    ✓ EN and ES equal the §R4.11 table row exactly (1 ms)
+    ✓ the status namespace holds the 13 PO-2 groups plus only this sentence (6 ms)
+
+PASS tests/unit/app/billing/success.spec.ts
+  syncSubscription
+    ✓ calls POST /api/subscriptions/sync on mount (1 ms)
+    ✓ resolves even when the response is not ok
+  createPortalSession
+    ✓ returns the portal URL on success
+    ✓ throws when the response is not ok (4 ms)
+    ✓ calls POST /api/subscriptions/portal
+  createCheckoutSession
+    ✓ returns the checkout URL on success (1 ms)
+    ✓ calls POST /api/subscriptions/checkout with planId
+    ✓ throws when the response is not ok (1 ms)
+
+PASS tests/unit/app/billing/success-session.spec.tsx
+  request shape and read-only behaviour
+    ✓ GET /subscriptions/checkout-sessions/:id/status with the Bearer token; never sync, /me or any write (24 ms)
+    ✓ while verifying, a neutral status (the existing "confirming your purchase") — no claim (12 ms)
+  §R4.4 state → approved copy (EN and ES); terminal states make one request
+    ✓ en: tokens paid + key → tokenPaymentConfirmed (5 ms)
+    ✓ en: book delivered (5 ms)
+    ✓ en: book unconfirmed (7 ms)
+    ✓ en: expired (5 ms)
+    ✓ en: subscription active (31 ms)
+    ✓ en: subscription ended (4 ms)
+    ✓ en: subscription superseded (9 ms)
+    ✓ en: subscription payment problem (existing copy) (5 ms)
+    ✓ en: 404 → notFound (5 ms)
+    ✓ en: open (62 ms)
+    ✓ en: complete, unpaid (57 ms)
+    ✓ en: tokens paid, no key (25 ms)
+    ✓ en: book paid, no key (29 ms)
+    ✓ en: subscription not recorded (existing pending copy) (34 ms)
+    ✓ en: 503 → unavailable (28 ms)
+    ✓ es: tokens paid + key → tokenPaymentConfirmed (2 ms)
+    ✓ es: book delivered (2 ms)
+    ✓ es: book unconfirmed (2 ms)
+    ✓ es: expired (2 ms)
+    ✓ es: subscription active (3 ms)
+    ✓ es: subscription ended (2 ms)
+    ✓ es: subscription superseded (2 ms)
+    ✓ es: subscription payment problem (existing copy) (2 ms)
+    ✓ es: 404 → notFound (2 ms)
+    ✓ es: open (29 ms)
+    ✓ es: complete, unpaid (41 ms)
+    ✓ es: tokens paid, no key (65 ms)
+    ✓ es: book paid, no key (30 ms)
+    ✓ es: subscription not recorded (existing pending copy) (25 ms)
+    ✓ es: 503 → unavailable (29 ms)
+    ✓ 401 (refresh fails) → the G1-I2 neutral sign-in sentence; the link keeps session_id and the permitted purchase; no redirect (4 ms)
+    ✓ notFound offers sign-in with the session preserved (another account may own it) (2 ms)
+  financial-claim restrictions on screen
+    ✓ open → neither approved payment-confirmed message, no token-delivery claim (21 ms)
+    ✓ expired → neither approved payment-confirmed message, no token-delivery claim (3 ms)
+    ✓ unpaid with key-like delivery → neither approved payment-confirmed message, no token-delivery claim (32 ms)
+    ✓ no_payment_required → neither approved payment-confirmed message, no token-delivery claim (26 ms)
+    ✓ tokens pending → neither approved payment-confirmed message, no token-delivery claim (31 ms)
+    ✓ token `delivered` (contract violation) → neither approved payment-confirmed message, no token-delivery claim (27 ms)
+    ✓ subscription active → neither approved payment-confirmed message, no token-delivery claim (5 ms)
+    ✓ 503 → neither approved payment-confirmed message, no token-delivery claim (34 ms)
+    ✓ 429 → neither approved payment-confirmed message, no token-delivery claim (48 ms)
+    ✓ 404 → neither approved payment-confirmed message, no token-delivery claim (11 ms)
+    ✓ network → neither approved payment-confirmed message, no token-delivery claim (25 ms)
+    ✓ the Spanish token message never appears outside its state either (23 ms)
+    ✓ book delivery copy only with `delivered` (durable ownership evidence) (57 ms)
+    ✓ ?purchase= cannot override the verified kind (2 ms)
+    ✓ a token response under ?purchase=book renders token copy (2 ms)
+    ✓ subscription active uses the existing title + approved body; never the retired "full access" body or tokens (2 ms)
+    ✓ no new headings: G-1 messages render without an <h1>, and the "confirming" title never heads a result (8 ms)
+  G-b gifts
+    ✓ ?purchase=gift with a session id → no request at all, existing generic copy, nothing personal (6 ms)
+  polling: budget, transitions, retry, cancellation
+    ✓ open forever → exactly 11 requests over ~30 s, then checkoutOpen + Check again; nothing more after (26 ms)
+    ✓ schedule: 1 immediately, +5 over the next 10 s (2 s apart), +5 over the following 20 s (4 s apart) (26 ms)
+    ✓ open is not terminal: open → complete during polling reaches the right state and stops (12 ms)
+    ✓ 503 backs off inside the budget, then a success is shown (8 ms)
+    ✓ 429 honours Retry-After (Retry-After-global from the API throttler) (6 ms)
+    ✓ 429 throughout never exceeds 11 requests and ends on "unavailable" (23 ms)
+    ✓ network failures → unavailable after the budget; Check again starts a new budget of at most 11 (29 ms)
+    ✓ unmount during polling → in-flight request aborted, no further requests, no state update after unmount (7 ms)
+    ✓ Check again aborts nothing stale: a superseded run never overwrites the newer result (28 ms)
+  G1-I2 — session-flow sign-in state
+    ✓ the dictionaries hold exactly the PO-agreed sentences (1 ms)
+    ✓ token Checkout → the same neutral sentence, EN and ES, no heading, sign-in keeps the session (4 ms)
+    ✓ book Checkout → the same neutral sentence, EN and ES, no heading, sign-in keeps the session (3 ms)
+    ✓ subscription Checkout (no purchase parameter) → the same neutral sentence, EN and ES, no heading, sign-in keeps the session (5 ms)
+    ✓ neither language claims a payment, fulfillment or entitlement outcome (1 ms)
+    ✓ untrusted extra query parameters are discarded from the return URL; an unknown purchase value is dropped (2 ms)
+    ✓ a session id with URL-significant characters is encoded, never injected into the return path (3 ms)
+    ✓ ?purchase=gift while signed out → still no request and the generic gift copy (G-b unchanged) (5 ms)
+
+Test Suites: 6 passed, 6 total
+Tests:       233 passed, 233 total
+Snapshots:   0 total
+Time:        3.804 s, estimated 4 s
+Ran all test suites matching /tests\/unit\/app\/billing|tests\/unit\/lib\/checkout-status.spec.ts|tests\/unit\/lib\/i18n.spec.ts/i.

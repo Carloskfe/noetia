@@ -62,8 +62,19 @@ export async function apiFetch(path: string, init: RequestInit = {}, opts: ApiFe
   }
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(data.message ?? 'Request failed'), { status: res.status, data });
+  if (!res.ok) {
+    // Additive: a 429 carries the server's wait in seconds (`Retry-After`, or `Retry-After-global` from the API's
+    // named throttler) so callers that poll can honour it. Absent or unparsable → the field is omitted.
+    const retryAfter = res.status === 429 ? parseRetryAfter(res) : undefined;
+    throw Object.assign(new Error(data.message ?? 'Request failed'), { status: res.status, data, ...(retryAfter ? { retryAfter } : {}) });
+  }
   return data;
+}
+
+function parseRetryAfter(res: Response): number | undefined {
+  const raw = res.headers?.get?.('Retry-After') ?? res.headers?.get?.('Retry-After-global') ?? null;
+  const seconds = raw === null ? NaN : Number(raw);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : undefined;
 }
 
 export function saveToken(token: string) {

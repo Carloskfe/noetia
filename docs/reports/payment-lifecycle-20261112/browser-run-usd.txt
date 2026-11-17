@@ -1,0 +1,9 @@
+# PR #60 USD display — browser run 2026-11-13T17:59:58Z — next dev (worktree), Playwright chromium-headless-shell 1228, guest view, plans/packages stubbed with migration-067 display amounts
+pricing es desktop: US$ amounts=7 [US$8.99, US$13.99, US$18.99, US$9.99, US$24.99, US$8.33] bare-$ amounts=0 overflow=false
+pricing es mobile: US$ amounts=7 [US$8.99, US$13.99, US$18.99, US$9.99, US$24.99, US$8.33] bare-$ amounts=0 overflow=false
+pricing en desktop: US$ amounts=7 [US$8.99, US$13.99, US$18.99, US$9.99, US$24.99, US$8.33] bare-$ amounts=0 overflow=false
+pricing en mobile: US$ amounts=7 [US$8.99, US$13.99, US$18.99, US$9.99, US$24.99, US$8.33] bare-$ amounts=0 overflow=false
+gift es desktop: US$ amounts=4 [US$9.99, US$8.33, US$24.99] bare-$ amounts=0 overflow=false
+gift es mobile: US$ amounts=4 [US$9.99, US$8.33, US$24.99] bare-$ amounts=0 overflow=false
+gift en desktop: US$ amounts=4 [US$9.99, US$8.33, US$24.99] bare-$ amounts=0 overflow=false
+gift en mobile: US$ amounts=4 [US$9.99, US$8.33, US$24.99] bare-$ amounts=0 overflow=false

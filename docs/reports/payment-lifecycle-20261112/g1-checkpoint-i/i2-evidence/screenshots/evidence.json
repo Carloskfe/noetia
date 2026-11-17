@@ -1,0 +1,172 @@
+[
+  {
+    "file": "01-session-401-tokens.en.png",
+    "lang": "en",
+    "query": "?purchase=tokens&session_id=cs_test_DemoSession0000000000",
+    "view": "session",
+    "copy": "auth",
+    "headings": [],
+    "signInHref": "/login?next=%2Fbilling%2Fsuccess%3Fsession_id%3Dcs_test_DemoSession0000000000%26purchase%3Dtokens",
+    "apiCalls": [
+      "GET /subscriptions/checkout-sessions/cs_test_DemoSession0000000000/status",
+      "POST /auth/refresh"
+    ],
+    "text": "Please sign in to verify your purchase. Sign in"
+  },
+  {
+    "file": "02-session-401-book.en.png",
+    "lang": "en",
+    "query": "?purchase=book&session_id=cs_test_DemoSession0000000000",
+    "view": "session",
+    "copy": "auth",
+    "headings": [],
+    "signInHref": "/login?next=%2Fbilling%2Fsuccess%3Fsession_id%3Dcs_test_DemoSession0000000000%26purchase%3Dbook",
+    "apiCalls": [
+      "GET /subscriptions/checkout-sessions/cs_test_DemoSession0000000000/status",
+      "POST /auth/refresh"
+    ],
+    "text": "Please sign in to verify your purchase. Sign in"
+  },
+  {
+    "file": "03-session-401-subscription.en.png",
+    "lang": "en",
+    "query": "?session_id=cs_test_DemoSession0000000000",
+    "view": "session",
+    "copy": "auth",
+    "headings": [],
+    "signInHref": "/login?next=%2Fbilling%2Fsuccess%3Fsession_id%3Dcs_test_DemoSession0000000000",
+    "apiCalls": [
+      "GET /subscriptions/checkout-sessions/cs_test_DemoSession0000000000/status",
+      "POST /auth/refresh"
+    ],
+    "text": "Please sign in to verify your purchase. Sign in"
+  },
+  {
+    "file": "04-session-401-extra-params-discarded.en.png",
+    "lang": "en",
+    "query": "?session_id=cs_test_DemoSession0000000000&purchase=evil&next=//attacker.example",
+    "view": "session",
+    "copy": "auth",
+    "headings": [],
+    "signInHref": "/login?next=%2Fbilling%2Fsuccess%3Fsession_id%3Dcs_test_DemoSession0000000000",
+    "apiCalls": [
+      "GET /subscriptions/checkout-sessions/cs_test_DemoSession0000000000/status",
+      "POST /auth/refresh"
+    ],
+    "text": "Please sign in to verify your purchase. Sign in"
+  },
+  {
+    "file": "05-no-session-401-unchanged.en.png",
+    "lang": "en",
+    "query": "",
+    "view": "auth",
+    "copy": null,
+    "headings": [
+      "Sign in to confirm your subscription"
+    ],
+    "signInHref": "/login?next=%2Fbilling%2Fsuccess",
+    "apiCalls": [
+      "POST /subscriptions/sync",
+      "POST /auth/refresh"
+    ],
+    "text": "Sign in to confirm your subscription Your payment isn't affected. Sign in to see your subscription status. Sign in"
+  },
+  {
+    "file": "06-gift-signed-out-no-request.en.png",
+    "lang": "en",
+    "query": "?purchase=gift&session_id=cs_test_DemoSession0000000000",
+    "view": "purchase",
+    "copy": null,
+    "headings": [
+      "We're confirming your purchase"
+    ],
+    "signInHref": null,
+    "apiCalls": [],
+    "text": "We're confirming your purchase Once your payment is confirmed, we email the gift to its recipient and send you a confirmation. Continue"
+  },
+  {
+    "file": "01-session-401-tokens.es.png",
+    "lang": "es",
+    "query": "?purchase=tokens&session_id=cs_test_DemoSession0000000000",
+    "view": "session",
+    "copy": "auth",
+    "headings": [],
+    "signInHref": "/login?next=%2Fbilling%2Fsuccess%3Fsession_id%3Dcs_test_DemoSession0000000000%26purchase%3Dtokens",
+    "apiCalls": [
+      "GET /subscriptions/checkout-sessions/cs_test_DemoSession0000000000/status",
+      "POST /auth/refresh"
+    ],
+    "text": "Inicia sesión para verificar tu compra. Iniciar sesión"
+  },
+  {
+    "file": "02-session-401-book.es.png",
+    "lang": "es",
+    "query": "?purchase=book&session_id=cs_test_DemoSession0000000000",
+    "view": "session",
+    "copy": "auth",
+    "headings": [],
+    "signInHref": "/login?next=%2Fbilling%2Fsuccess%3Fsession_id%3Dcs_test_DemoSession0000000000%26purchase%3Dbook",
+    "apiCalls": [
+      "GET /subscriptions/checkout-sessions/cs_test_DemoSession0000000000/status",
+      "POST /auth/refresh"
+    ],
+    "text": "Inicia sesión para verificar tu compra. Iniciar sesión"
+  },
+  {
+    "file": "03-session-401-subscription.es.png",
+    "lang": "es",
+    "query": "?session_id=cs_test_DemoSession0000000000",
+    "view": "session",
+    "copy": "auth",
+    "headings": [],
+    "signInHref": "/login?next=%2Fbilling%2Fsuccess%3Fsession_id%3Dcs_test_DemoSession0000000000",
+    "apiCalls": [
+      "GET /subscriptions/checkout-sessions/cs_test_DemoSession0000000000/status",
+      "POST /auth/refresh"
+    ],
+    "text": "Inicia sesión para verificar tu compra. Iniciar sesión"
+  },
+  {
+    "file": "04-session-401-extra-params-discarded.es.png",
+    "lang": "es",
+    "query": "?session_id=cs_test_DemoSession0000000000&purchase=evil&next=//attacker.example",
+    "view": "session",
+    "copy": "auth",
+    "headings": [],
+    "signInHref": "/login?next=%2Fbilling%2Fsuccess%3Fsession_id%3Dcs_test_DemoSession0000000000",
+    "apiCalls": [
+      "GET /subscriptions/checkout-sessions/cs_test_DemoSession0000000000/status",
+      "POST /auth/refresh"
+    ],
+    "text": "Inicia sesión para verificar tu compra. Iniciar sesión"
+  },
+  {
+    "file": "05-no-session-401-unchanged.es.png",
+    "lang": "es",
+    "query": "",
+    "view": "auth",
+    "copy": null,
+    "headings": [
+      "Inicia sesión para confirmar tu suscripción"
+    ],
+    "signInHref": "/login?next=%2Fbilling%2Fsuccess",
+    "apiCalls": [
+      "POST /subscriptions/sync",
+      "POST /auth/refresh"
+    ],
+    "text": "Inicia sesión para confirmar tu suscripción Tu pago no se ve afectado. Inicia sesión para ver el estado de tu suscripción. Iniciar sesión"
+  },
+  {
+    "file": "06-gift-signed-out-no-request.es.png",
+    "lang": "es",
+    "query": "?purchase=gift&session_id=cs_test_DemoSession0000000000",
+    "view": "purchase",
+    "copy": null,
+    "headings": [
+      "Estamos confirmando tu compra"
+    ],
+    "signInHref": null,
+    "apiCalls": [],
+    "text": "Estamos confirmando tu compra Cuando se confirme tu pago, enviaremos el regalo por email a su destinatario y te mandaremos una confirmación. Continuar"
+  }
+]

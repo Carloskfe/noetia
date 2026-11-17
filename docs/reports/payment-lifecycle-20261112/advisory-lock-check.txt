@@ -1,0 +1,3 @@
+same user: A acquired after 3ms | A commit | B acquired after 307ms | B commit
+different users: C acquired after 2ms | A acquired after 1ms | C commit | A commit
+after rollback: acquired in 1ms

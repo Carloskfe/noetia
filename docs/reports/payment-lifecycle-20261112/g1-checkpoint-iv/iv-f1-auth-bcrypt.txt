@@ -1,0 +1,71 @@
+# IV-F1 — bounded environment-only repair of the bcrypt native binding (local dev VM)
+# Date 2026-11-15. Worktree HEAD 1fe93c413cb16f01c6f0c2603961b5cd7585e753. Node v20.20.2, pnpm 10.33.2.
+
+## Root cause
+Repository install procedure = pnpm workspace + committed pnpm-lock.yaml (CI: pnpm install --frozen-lockfile).
+pnpm 10 blocks dependency build scripts unless allow-listed; node_modules/.modules.yaml lists bcrypt@5.1.1 under
+"ignoredBuilds", so bcrypt's own install script (node-pre-gyp install --fallback-to-build) never ran and
+lib/binding/napi-v3/bcrypt_lib.node was never placed. Environment state only; no code or dependency defect.
+
+## Integrity baseline (tracked dependency manifests, before)
+  f49f2cbca5bf9698d2efa03a00366bf407fe275ec1905f3b6ffe0e6222539e62  pnpm-lock.yaml
+  9c7aae8ebe868ade1d71055592a170bb593afbf9307e1701a4657774a3364618  services/api/package-lock.json
+  d2ac1aabff22b9e08fd2188ad0c682a0d063517a8f75d6adb8a778a90ba8d993  services/api/package.json
+  ef3e57e87a6b091b4f4ffa945fb57200b88159d94f8b559975e610877c065e8c  pnpm-workspace.yaml
+  573e4498f5182c4e7fa7e639c9e6cee5c4428f3c9ff3100a9fac432930eca6ae  package.json
+  4b84eb91234d80d48c16b50746106405c4cd6d97581f7464001a7dc84dd9d185  .npmrc
+
+## Attempt 1: pnpm rebuild bcrypt
+  exit 0, no output, no binding produced (pnpm 10 allow-list suppresses the build silently).
+
+## Attempt 2: run bcrypt@5.1.1's declared install script in place (locked @mapbox/node-pre-gyp 1.0.11)
+  cwd <repo>/node_modules/.pnpm/bcrypt@5.1.1/node_modules/bcrypt ; npm run install
+  node-pre-gyp info it worked if it ends with ok
+  node-pre-gyp info using node-pre-gyp@1.0.11
+  node-pre-gyp info using node@20.20.2 | linux | x64
+  node-pre-gyp info check checked for "<repo>/node_modules/.pnpm/bcrypt@5.1.1/node_modules/bcrypt/lib/binding/napi-v3/bcrypt_lib.node" (not found)
+  node-pre-gyp http GET https://github.com/kelektiv/node.bcrypt.js/releases/download/v5.1.1/bcrypt_lib-v5.1.1-napi-v3-linux-x64-glibc.tar.gz
+  node-pre-gyp info install unpacking napi-v3/bcrypt_lib.node
+  node-pre-gyp info extracted file count: 1 
+  [bcrypt] Success: "<repo>/node_modules/.pnpm/bcrypt@5.1.1/node_modules/bcrypt/lib/binding/napi-v3/bcrypt_lib.node" is installed via remote
+  node-pre-gyp info ok 
+  exit 0
+
+## Verification
+  binding sha256:
+    69b09b032c70f614e76d2569b9a30d5f907589afb607a27ea651066a08b85149  <repo>/node_modules/.pnpm/bcrypt@5.1.1/node_modules/bcrypt/lib/binding/napi-v3/bcrypt_lib.node
+    69b09b032c70f614e76d2569b9a30d5f907589afb607a27ea651066a08b85149  <main-checkout>/services/api/node_modules/bcrypt/lib/binding/napi-v3/bcrypt_lib.node
+    (byte-identical to the binding the main checkout's npm install placed for the same bcrypt 5.1.1)
+  smoke: require('./bcrypt'); hashSync('x',4); compareSync → ok true
+  manifests after (sha256sum -c):
+    pnpm-lock.yaml: OK
+    services/api/package-lock.json: OK
+    services/api/package.json: OK
+    pnpm-workspace.yaml: OK
+    package.json: OK
+    .npmrc: OK
+  git status (worktree): no tracked file modified (git diff empty); the only untracked files are these evidence files.
+  Not changed: application code, package.json, package-lock.json, pnpm-lock.yaml, pnpm-workspace.yaml, .npmrc,
+  dependency versions, the pnpm build allow-list. Only an untracked, git-ignored file under node_modules/ was added.
+
+## auth.controller.spec.ts (verbose)
+      ✓ mobile (X-Client-Type header) gets the refresh token in the body, no cookie (3 ms)
+      ✓ web (no header) gets an httpOnly cookie, no refresh token in the body (1 ms)
+      ✓ mobile body token: rotates and returns the new refresh token in the body (no cookie) (1 ms)
+      ✓ web cookie token: rotates and sets a new cookie, no body refresh token
+      ✓ throws Unauthorized when no token is present (1 ms)
+      ✓ invalid body token: throws, does NOT clear a cookie
+      ✓ invalid cookie token: throws and clears the cookie (1 ms)
+      ✓ deletes the refresh token from the body (mobile) and clears the cookie (1 ms)
+  Tests:       8 passed, 8 total
+
+## tests/unit/auth* (npx jest tests/unit/auth --maxWorkers=2)
+  PASS tests/unit/auth/token.service.spec.ts (10.668 s)
+  PASS tests/unit/auth/auth.service.spec.ts (12.023 s)
+  PASS tests/unit/authors/authors.service.spec.ts
+  PASS tests/unit/authors/authors.controller.spec.ts
+  PASS tests/unit/auth/email.service.spec.ts
+  PASS tests/unit/auth/email-confirmed.guard.spec.ts
+  PASS tests/unit/auth/auth.controller.spec.ts
+  Test Suites: 7 passed, 7 total
+  Tests:       73 passed, 73 total

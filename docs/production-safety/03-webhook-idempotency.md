@@ -2,6 +2,8 @@
 
 **Status: CONFIRMED partial gap.** Subscription *state* is idempotent; *token issuance* and *token-package purchase* are **not** — a redelivered Stripe event double-issues tokens.
 
+> **Update, 2026-11-13 (PR #60, Draft; not merged or deployed):** this gap is corrected on the PR #60 branch. Each webhook runs in one database transaction. The transaction claims the event id first (`INSERT … ON CONFLICT DO NOTHING` on `stripe_processed_events`), then performs every side effect, plus per-invoice, per-Checkout-session and per-trial fulfillment keys on the same primary key. The per-user identity lock makes subscription switching atomic. Real-PostgreSQL evidence (concurrency, SIGKILL crash/retry) is in `docs/reports/payment-lifecycle-20261112/README.md` §10 and §11. The analysis below describes `main` as it was when this document was written, and still describes `main` until PR #60 is merged.
+
 ## Background — CONFIRMED
 Stripe guarantees **at-least-once** delivery and will **redeliver the same event** (same `event.id`) on retries (e.g. when the endpoint is slow, returns non-2xx, or on Stripe's own retry schedule). Handlers must therefore be idempotent per `event.id`.
 

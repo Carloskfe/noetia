@@ -1,0 +1,13 @@
+# G-1 real-PostgreSQL probe — 2026-11-14T05:40:59Z
+# disposable postgres:16-alpine (container g1-impl-pg, 127.0.0.1:55433), 68 migrations applied; Stripe = in-memory fake (no network)
+PASS  tokens, no key → pending  {"kind":"tokens","checkout":"complete","payment":"paid","delivery":"pending"}
+PASS  tokens, key committed, zero token rows → unconfirmed (never delivered)  {"kind":"tokens","checkout":"complete","payment":"paid","delivery":"unconfirmed"}
+PASS  book, key without user_books row → unconfirmed  {"kind":"book","checkout":"complete","payment":"paid","delivery":"unconfirmed"}
+PASS  book, key + user_books row → delivered  {"kind":"book","checkout":"complete","payment":"paid","delivery":"delivered"}
+PASS  read during an uncommitted fulfillment → pending (key invisible until commit)  {"kind":"book","checkout":"complete","payment":"paid","delivery":"pending"}
+PASS  after commit → delivered (key and row become visible together)  {"kind":"book","checkout":"complete","payment":"paid","delivery":"delivered"}
+PASS  subscription, no row → not_recorded  null
+PASS  subscription, row tracks another live subscription → superseded  null
+PASS  subscription, row tracks this one, trialing → active  null
+PASS  read-only: key/token/book counts are exactly what the probe itself wrote (3 keys, 0 tokens, 1 book)  {"keys":3,"tokens":0,"books":1}
+10/10 PASS
