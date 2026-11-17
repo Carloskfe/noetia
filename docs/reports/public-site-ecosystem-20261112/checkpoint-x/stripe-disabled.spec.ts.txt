@@ -1,0 +1,103 @@
+// SCRATCH (Checkpoint X follow-up, never committed): executed evidence that an absent/empty STRIPE_SECRET_KEY
+// prevents every Stripe Checkout/portal/subscription call SERVER-SIDE on main's code (identical in main+#59).
+const stripeCtor = jest.fn();
+const sessionsCreate = jest.fn().mockResolvedValue({ url: 'https://checkout.stripe.test/x' });
+jest.mock('stripe', () => jest.fn().mockImplementation((...a: unknown[]) => {
+  stripeCtor(...a);
+  return {
+    customers: { create: jest.fn().mockResolvedValue({ id: 'cus_new' }) },
+    checkout: { sessions: { create: sessionsCreate } },
+    billingPortal: { sessions: { create: jest.fn().mockResolvedValue({ url: 'p' }) } },
+    subscriptions: { update: jest.fn().mockResolvedValue({ cancel_at: 1 }), retrieve: jest.fn() },
+    webhooks: { constructEvent: jest.fn() },
+  };
+}));
+import { BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Test } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Book } from '../../../src/books/book.entity';
+import { UserBook } from '../../../src/library/user-book.entity';
+import { User } from '../../../src/users/user.entity';
+import { EmailService } from '../../../src/email/email.service';
+import { UsersService } from '../../../src/users/users.service';
+import { PlansService } from '../../../src/subscriptions/plans.service';
+import { Subscription } from '../../../src/subscriptions/subscription.entity';
+import { SubscriptionInvite } from '../../../src/subscriptions/subscription-invite.entity';
+import { SubscriptionsService } from '../../../src/subscriptions/subscriptions.service';
+import { TokenLedger } from '../../../src/subscriptions/token-ledger.entity';
+import { PushService } from '../../../src/push/push.service';
+import { GiftCard } from '../../../src/gifts/gift-card.entity';
+import { GiftsService } from '../../../src/gifts/gifts.service';
+import { WebhooksController } from '../../../src/subscriptions/webhooks.controller';
+import { WebhooksService } from '../../../src/subscriptions/webhooks.service';
+
+const repo = (over: object = {}) => ({ findOneBy: jest.fn(), findOne: jest.fn(), update: jest.fn(), save: jest.fn(), create: jest.fn((x) => x), existsBy: jest.fn(), find: jest.fn(), ...over });
+async function build(key: string | undefined) {
+  const config = { get: (k: string) => (k === 'STRIPE_SECRET_KEY' ? key : k === 'STRIPE_WEBHOOK_SECRET' ? 'whsec_x' : k === 'WEB_URL' ? 'http://w' : undefined) };
+  const m = await Test.createTestingModule({
+    providers: [
+      SubscriptionsService, GiftsService, WebhooksController,
+      { provide: ConfigService, useValue: config },
+      { provide: WebhooksService, useValue: {} },
+      { provide: UsersService, useValue: { findById: jest.fn().mockResolvedValue({ id: 'u1', email: 'u@test.invalid', stripeCustomerId: null }) } },
+      { provide: PlansService, useValue: {
+        findById: jest.fn().mockResolvedValue({ id: 'p1', stripePriceId: 'price_live_like' }),
+        findTokenPackageById: jest.fn().mockResolvedValue({ id: 'k1', stripePriceId: 'price_real_pkg' }) } },
+      { provide: EmailService, useValue: {} }, { provide: PushService, useValue: {} },
+      { provide: getRepositoryToken(Subscription), useValue: repo({ findOneBy: jest.fn().mockResolvedValue({ id: 's1', stripeSubscriptionId: 'sub_1' }) }) },
+      { provide: getRepositoryToken(User), useValue: repo() },
+      { provide: getRepositoryToken(Book), useValue: repo({ findOneBy: jest.fn().mockResolvedValue({ id: 'b1', title: 'T', priceCents: 500 }) }) },
+      { provide: getRepositoryToken(UserBook), useValue: repo() },
+      { provide: getRepositoryToken(TokenLedger), useValue: repo() },
+      { provide: getRepositoryToken(SubscriptionInvite), useValue: repo() },
+      { provide: getRepositoryToken(GiftCard), useValue: repo() },
+    ],
+  }).compile();
+  return { subs: m.get(SubscriptionsService), gifts: m.get(GiftsService), hooks: m.get(WebhooksController) };
+}
+const notConfigured = (p: Promise<unknown>) => expect(p).rejects.toMatchObject({ response: { error: 'payments_not_configured' } });
+
+beforeEach(() => { stripeCtor.mockClear(); sessionsCreate.mockClear(); });
+
+describe.each([['absent', undefined], ['empty', '']])('STRIPE_SECRET_KEY %s', (_l, key) => {
+  it('constructs no Stripe client in any of the three Stripe-owning classes', async () => {
+    await build(key);
+    expect(stripeCtor).not.toHaveBeenCalled();
+  });
+  it('subscription checkout (#59 path) → 400 payments_not_configured, no session', async () => {
+    const { subs } = await build(key); await notConfigured(subs.createCheckoutSession('u1', 'p1'));
+    expect(sessionsCreate).not.toHaveBeenCalled();
+  });
+  it('token-package checkout (#59 path) → 400 payments_not_configured, no session', async () => {
+    const { subs } = await build(key); await notConfigured(subs.createTokenPackageSession('u1', 'k1'));
+    expect(sessionsCreate).not.toHaveBeenCalled();
+  });
+  it('book purchase → 400 payments_not_configured', async () => { const { subs } = await build(key); await notConfigured(subs.createPurchaseSession('u1', 'b1')); });
+  it('ANONYMOUS gift checkout (already reachable on main) → 400 payments_not_configured', async () => {
+    const { gifts } = await build(key); await notConfigured(gifts.createGiftSession(null, 'r@test.invalid', 1, null, null));
+    expect(sessionsCreate).not.toHaveBeenCalled();
+  });
+  it('portal / cancel / resume → 400 payments_not_configured', async () => {
+    const { subs, users } = await build(key) as any;
+    await expect(subs.cancelSubscription('u1')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(subs.resumeSubscription('u1')).rejects.toBeInstanceOf(BadRequestException);
+  });
+  it('webhook endpoint rejects every event (no fulfillment)', async () => {
+    const { hooks } = await build(key);
+    await expect(hooks.handleStripe({ rawBody: Buffer.from('{}') } as any, 'sig')).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe('positive control: a configured key DOES create sessions (so the guard above is what blocks them)', () => {
+  it('sk_test key → Stripe constructed; subscription checkout calls checkout.sessions.create', async () => {
+    const { subs } = await build('sk_test_control');
+    expect(stripeCtor).toHaveBeenCalled();
+    await expect(subs.createCheckoutSession('u1', 'p1')).resolves.toEqual({ url: 'https://checkout.stripe.test/x' });
+    expect(sessionsCreate).toHaveBeenCalledTimes(1);
+  });
+  it('any non-empty value (even a placeholder) enables the client — the condition is ABSENT or EMPTY, not "not live"', async () => {
+    await build('changeme');
+    expect(stripeCtor).toHaveBeenCalled();
+  });
+});
