@@ -247,3 +247,7 @@ The PO authorized this bounded change on Draft PR #59. Out of scope and unchange
 - The account billing page shows "no active plan" to every user, and its portal button navigates to `/undefined`.
 - API-side gaps: `planId` stays unset until the first `customer.subscription.updated`, and a second checkout orphans the first subscription.
 - Recommendations: R-1 (web only) and R-2 (API and Stripe handling; needs PO authorization).
+
+## 10. Causas and premium public-language alignment (PO decisions, 2026-11-18)
+
+All Causas copy now describes a **planned** program. Each surface states the 2.22% basis (eligible net receipts after payment-processing fees) and that partnerships are pending. The PO-053 rule is unchanged. Calculation, monthly settlement and refund detail moved to a clearly labelled **draft** at `/causas/terms` (`noindex`, not legally approved). Noetia+/NoetiaX copy is retained. No payment or financial code changed. Full report, exact EN/ES copy, policy record, draft terms and legal questions: [causas-alignment-20261118/](causas-alignment-20261118/README.md).
