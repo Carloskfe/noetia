@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'crypto';
 import Stripe from 'stripe';
+import { createStripeClient } from '../common/payments-activation';
 import { Repository } from 'typeorm';
 import { EmailService } from '../email/email.service';
 import { PushService } from '../push/push.service';
@@ -38,8 +39,9 @@ export class GiftsService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
   ) {
-    const key = this.config.get<string>('STRIPE_SECRET_KEY');
-    this.stripe = key ? new Stripe(key) : null;
+    // Fail closed: no client unless PAYMENTS_ENABLED=true AND a valid key (common/payments-activation.ts).
+    // The anonymous POST /gifts/checkout route depends on this guard alone.
+    this.stripe = createStripeClient(this.config);
     this.webUrl = this.config.get('WEB_URL', 'http://localhost:3000');
   }
 

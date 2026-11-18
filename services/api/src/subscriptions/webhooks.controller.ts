@@ -11,6 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { SkipThrottle } from '@nestjs/throttler';
 import { Request } from 'express';
 import Stripe from 'stripe';
+import { createStripeClient } from '../common/payments-activation';
 import { WebhooksService } from './webhooks.service';
 
 @SkipThrottle({ global: true })
@@ -24,8 +25,9 @@ export class WebhooksController {
     private readonly webhooksService: WebhooksService,
     private readonly config: ConfigService,
   ) {
-    const stripeKey = this.config.get<string>('STRIPE_SECRET_KEY');
-    this.stripe = stripeKey ? new Stripe(stripeKey) : null;
+    // Fail closed: no client (so every event is rejected below, nothing is fulfilled) unless
+    // PAYMENTS_ENABLED=true AND a valid key (common/payments-activation.ts).
+    this.stripe = createStripeClient(this.config);
     this.webhookSecret = this.config.get<string>('STRIPE_WEBHOOK_SECRET');
   }
 

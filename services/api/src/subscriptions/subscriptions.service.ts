@@ -10,6 +10,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'crypto';
 import Stripe from 'stripe';
+import { createStripeClient } from '../common/payments-activation';
 import { In, LessThan, MoreThan, Repository } from 'typeorm';
 import { EmailService } from '../email/email.service';
 import { PushService } from '../push/push.service';
@@ -53,8 +54,8 @@ export class SubscriptionsService {
     @InjectRepository(SubscriptionInvite)
     private readonly inviteRepo: Repository<SubscriptionInvite>,
   ) {
-    const stripeKey = this.config.get<string>('STRIPE_SECRET_KEY');
-    this.stripe = stripeKey ? new Stripe(stripeKey) : null;
+    // Fail closed: no client unless PAYMENTS_ENABLED=true AND a valid key (common/payments-activation.ts).
+    this.stripe = createStripeClient(this.config);
     this.webUrl = this.config.get('WEB_URL', 'http://localhost:3000');
   }
 
