@@ -1,0 +1,4 @@
+
+> @noetia/web@0.0.1 typecheck <worktree>/services/web
+> tsc --noEmit
+

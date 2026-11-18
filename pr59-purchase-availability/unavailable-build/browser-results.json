@@ -1,0 +1,200 @@
+[
+  {
+    "id": "X02-es-desktop",
+    "name": "landing es desktop",
+    "pass": true,
+    "detail": "tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=es"
+  },
+  {
+    "id": "X02-es-desktop/causas",
+    "name": "/causas es desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-es-desktop/about",
+    "name": "/about es desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-es-desktop/company",
+    "name": "/company es desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-es-desktop/milestones",
+    "name": "/milestones es desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-es-mobile",
+    "name": "landing es mobile",
+    "pass": true,
+    "detail": "tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=es"
+  },
+  {
+    "id": "X02-es-menu",
+    "name": "mobile menu opens/closes (es)",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "id": "X02-es-mobile/causas",
+    "name": "/causas es mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-es-mobile/about",
+    "name": "/about es mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-es-mobile/company",
+    "name": "/company es mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-es-mobile/milestones",
+    "name": "/milestones es mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-desktop",
+    "name": "landing en desktop",
+    "pass": true,
+    "detail": "tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=en"
+  },
+  {
+    "id": "X02-en-desktop/causas",
+    "name": "/causas en desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-desktop/about",
+    "name": "/about en desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-desktop/company",
+    "name": "/company en desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-desktop/milestones",
+    "name": "/milestones en desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-mobile",
+    "name": "landing en mobile",
+    "pass": true,
+    "detail": "tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=en"
+  },
+  {
+    "id": "X02-en-menu",
+    "name": "mobile menu opens/closes (en)",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "id": "X02-en-mobile/causas",
+    "name": "/causas en mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-mobile/about",
+    "name": "/about en mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-mobile/company",
+    "name": "/company en mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-mobile/milestones",
+    "name": "/milestones en mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X06-pricing-es",
+    "name": "/pricing es: no trial wording (unavailable)",
+    "pass": true,
+    "detail": "trialWords=false"
+  },
+  {
+    "id": "X06-home-es",
+    "name": "landing es: Noetia+ ≤3 / NoetiaX ≤10 books per session, both require an active subscription, no dates/prices",
+    "pass": true,
+    "detail": "plus=true x=true requirement×2 noDates=true"
+  },
+  {
+    "id": "X06-pricing-en",
+    "name": "/pricing en: no trial wording (unavailable)",
+    "pass": true,
+    "detail": "trialWords=false"
+  },
+  {
+    "id": "X06-home-en",
+    "name": "landing en: Noetia+ ≤3 / NoetiaX ≤10 books per session, both require an active subscription, no dates/prices",
+    "pass": true,
+    "detail": "plus=true x=true requirement×2 noDates=true"
+  },
+  {
+    "id": "X07-pricing-es-guest",
+    "name": "/pricing es guest: notice shown; 3 purchase controls disabled (\"Aún no disponible\"); gift entry is text; pressing them starts nothing",
+    "pass": true,
+    "detail": "notice=true controls=3 disabled=true giftLinks=0 stayed=true effects={\"checkout\":0,\"tokens\":0,\"prefWrites\":0,\"gift\":0,\"stripe\":0}"
+  },
+  {
+    "id": "X07-pricing-es-signed-in",
+    "name": "/pricing es signed-in: notice shown; 3 purchase controls disabled (\"Aún no disponible\"); gift entry is text; pressing them starts nothing",
+    "pass": true,
+    "detail": "notice=true controls=3 disabled=true giftLinks=0 stayed=true effects={\"checkout\":0,\"tokens\":0,\"prefWrites\":0,\"gift\":0,\"stripe\":0}"
+  },
+  {
+    "id": "X07-gift-es",
+    "name": "/gift es: unavailable notice; form read-only; submit \"Aún no disponible\" disabled; forced submit starts nothing",
+    "pass": true,
+    "detail": "label=\"Aún no disponible\" disabled=true emailDisabled=true effects={\"checkout\":0,\"tokens\":0,\"prefWrites\":0,\"gift\":0,\"stripe\":0}"
+  },
+  {
+    "id": "X07-pricing-en-guest",
+    "name": "/pricing en guest: notice shown; 3 purchase controls disabled (\"Not available yet\"); gift entry is text; pressing them starts nothing",
+    "pass": true,
+    "detail": "notice=true controls=3 disabled=true giftLinks=0 stayed=true effects={\"checkout\":0,\"tokens\":0,\"prefWrites\":0,\"gift\":0,\"stripe\":0}"
+  },
+  {
+    "id": "X07-pricing-en-signed-in",
+    "name": "/pricing en signed-in: notice shown; 3 purchase controls disabled (\"Not available yet\"); gift entry is text; pressing them starts nothing",
+    "pass": true,
+    "detail": "notice=true controls=3 disabled=true giftLinks=0 stayed=true effects={\"checkout\":0,\"tokens\":0,\"prefWrites\":0,\"gift\":0,\"stripe\":0}"
+  },
+  {
+    "id": "X07-gift-en",
+    "name": "/gift en: unavailable notice; form read-only; submit \"Not available yet\" disabled; forced submit starts nothing",
+    "pass": true,
+    "detail": "label=\"Not available yet\" disabled=true emailDisabled=true effects={\"checkout\":0,\"tokens\":0,\"prefWrites\":0,\"gift\":0,\"stripe\":0}"
+  },
+  {
+    "id": "X07-routes",
+    "name": "login form renders; /login, /library, /discover respond 200",
+    "pass": true,
+    "detail": "{\"/login\":200,\"/library\":200,\"/discover\":200} loginForm=true"
+  }
+]

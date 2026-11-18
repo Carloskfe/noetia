@@ -1,0 +1,34 @@
+PASS  X02-es-desktop  landing es desktop  — tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=es
+PASS  X02-es-desktop/causas  /causas es desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-es-desktop/about  /about es desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-es-desktop/company  /company es desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-es-desktop/milestones  /milestones es desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-es-mobile  landing es mobile  — tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=es
+PASS  X02-es-menu  mobile menu opens/closes (es)
+PASS  X02-es-mobile/causas  /causas es mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-es-mobile/about  /about es mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-es-mobile/company  /company es mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-es-mobile/milestones  /milestones es mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-desktop  landing en desktop  — tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=en
+PASS  X02-en-desktop/causas  /causas en desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-desktop/about  /about en desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-desktop/company  /company en desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-desktop/milestones  /milestones en desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-mobile  landing en mobile  — tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=en
+PASS  X02-en-menu  mobile menu opens/closes (en)
+PASS  X02-en-mobile/causas  /causas en mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-mobile/about  /about en mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-mobile/company  /company en mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-mobile/milestones  /milestones en mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X06-pricing-es  /pricing es: no trial wording (unavailable)  — trialWords=false
+PASS  X06-home-es  landing es: Noetia+ ≤3 / NoetiaX ≤10 books per session, both require an active subscription, no dates/prices  — plus=true x=true requirement×2 noDates=true
+PASS  X06-pricing-en  /pricing en: no trial wording (unavailable)  — trialWords=false
+PASS  X06-home-en  landing en: Noetia+ ≤3 / NoetiaX ≤10 books per session, both require an active subscription, no dates/prices  — plus=true x=true requirement×2 noDates=true
+PASS  X07-pricing-es-guest  /pricing es guest: notice shown; 3 purchase controls disabled ("Aún no disponible"); gift entry is text; pressing them starts nothing  — notice=true controls=3 disabled=true giftLinks=0 stayed=true effects={"checkout":0,"tokens":0,"prefWrites":0,"gift":0,"stripe":0}
+PASS  X07-pricing-es-signed-in  /pricing es signed-in: notice shown; 3 purchase controls disabled ("Aún no disponible"); gift entry is text; pressing them starts nothing  — notice=true controls=3 disabled=true giftLinks=0 stayed=true effects={"checkout":0,"tokens":0,"prefWrites":0,"gift":0,"stripe":0}
+PASS  X07-gift-es  /gift es: unavailable notice; form read-only; submit "Aún no disponible" disabled; forced submit starts nothing  — label="Aún no disponible" disabled=true emailDisabled=true effects={"checkout":0,"tokens":0,"prefWrites":0,"gift":0,"stripe":0}
+PASS  X07-pricing-en-guest  /pricing en guest: notice shown; 3 purchase controls disabled ("Not available yet"); gift entry is text; pressing them starts nothing  — notice=true controls=3 disabled=true giftLinks=0 stayed=true effects={"checkout":0,"tokens":0,"prefWrites":0,"gift":0,"stripe":0}
+PASS  X07-pricing-en-signed-in  /pricing en signed-in: notice shown; 3 purchase controls disabled ("Not available yet"); gift entry is text; pressing them starts nothing  — notice=true controls=3 disabled=true giftLinks=0 stayed=true effects={"checkout":0,"tokens":0,"prefWrites":0,"gift":0,"stripe":0}
+PASS  X07-gift-en  /gift en: unavailable notice; form read-only; submit "Not available yet" disabled; forced submit starts nothing  — label="Not available yet" disabled=true emailDisabled=true effects={"checkout":0,"tokens":0,"prefWrites":0,"gift":0,"stripe":0}
+PASS  X07-routes  login form renders; /login, /library, /discover respond 200  — {"/login":200,"/library":200,"/discover":200} loginForm=true
+──────── 33 passed, 0 failed

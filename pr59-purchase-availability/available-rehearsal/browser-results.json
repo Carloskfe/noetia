@@ -1,0 +1,248 @@
+[
+  {
+    "id": "X02-es-desktop",
+    "name": "landing es desktop",
+    "pass": true,
+    "detail": "tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=es"
+  },
+  {
+    "id": "X02-es-desktop/causas",
+    "name": "/causas es desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-es-desktop/about",
+    "name": "/about es desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-es-desktop/company",
+    "name": "/company es desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-es-desktop/milestones",
+    "name": "/milestones es desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-es-mobile",
+    "name": "landing es mobile",
+    "pass": true,
+    "detail": "tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=es"
+  },
+  {
+    "id": "X02-es-menu",
+    "name": "mobile menu opens/closes (es)",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "id": "X02-es-mobile/causas",
+    "name": "/causas es mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-es-mobile/about",
+    "name": "/about es mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-es-mobile/company",
+    "name": "/company es mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-es-mobile/milestones",
+    "name": "/milestones es mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-desktop",
+    "name": "landing en desktop",
+    "pass": true,
+    "detail": "tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=en"
+  },
+  {
+    "id": "X02-en-desktop/causas",
+    "name": "/causas en desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-desktop/about",
+    "name": "/about en desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-desktop/company",
+    "name": "/company en desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-desktop/milestones",
+    "name": "/milestones en desktop",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-mobile",
+    "name": "landing en mobile",
+    "pass": true,
+    "detail": "tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=en"
+  },
+  {
+    "id": "X02-en-menu",
+    "name": "mobile menu opens/closes (en)",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "id": "X02-en-mobile/causas",
+    "name": "/causas en mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-mobile/about",
+    "name": "/about en mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-mobile/company",
+    "name": "/company en mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X02-en-mobile/milestones",
+    "name": "/milestones en mobile",
+    "pass": true,
+    "detail": "hOverflow=0px footers=1 twoCause/random wording=false"
+  },
+  {
+    "id": "X04-1",
+    "name": "guest visits /pricing: no redirect, plans shown, no preference lookup",
+    "pass": true,
+    "detail": "url=/pricing prefLookups=0"
+  },
+  {
+    "id": "X04-2a",
+    "name": "guest selects a plan → /login?next=/pricing, no checkout call",
+    "pass": true,
+    "detail": "/login?next=/pricing"
+  },
+  {
+    "id": "X04-2b",
+    "name": "guest buys a token package → /login?next=/pricing; any attempted purchase call carries NO credentials (rejected 401)",
+    "pass": true,
+    "detail": "/login?next=/pricing unauthenticatedAttempts=1"
+  },
+  {
+    "id": "X04-3/9",
+    "name": "saved cause → checkout directly; Bearer token; body {planId} unchanged; no preference write",
+    "pass": true,
+    "detail": "checkout=[{\"auth\":\"Bearer tok-valid\",\"body\":\"{\\\"planId\\\":\\\"plan-ind\\\"}\"}]"
+  },
+  {
+    "id": "X04-4",
+    "name": "no saved cause → single-choice selector (3 radios, one checked) → save one → checkout",
+    "pass": true,
+    "detail": "radios=3 checked=1 body={\"cause1Id\":\"c-env\",\"cause2Id\":null,\"randomDistribution\":false}"
+  },
+  {
+    "id": "X04-11a",
+    "name": "skip → checkout, no preference write (existing preference untouched)",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "id": "X03/X04-11b",
+    "name": "save fails → error shown, selection kept, NO checkout; retry succeeds → checkout",
+    "pass": true,
+    "detail": "checkoutBeforeRetry=no"
+  },
+  {
+    "id": "X04-8",
+    "name": "preference lookup error → explicit notice (no selector, no equal-split claim); cancel = no checkout; continue = checkout, no preference write",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "id": "X04-5",
+    "name": "expired access token + valid refresh → refresh once, continue to checkout with the new token",
+    "pass": true,
+    "detail": "refreshCalls=1"
+  },
+  {
+    "id": "X04-6",
+    "name": "no access token + valid refresh cookie → signed in (no login redirect), checkout with refreshed token",
+    "pass": true,
+    "detail": "url=https://checkout.stripe.test/c/pay/cs_te refreshCalls=1"
+  },
+  {
+    "id": "X04-7",
+    "name": "checkout 401 + refresh fails → /login?next=/pricing",
+    "pass": true,
+    "detail": "/login?next=/pricing"
+  },
+  {
+    "id": "X04-10",
+    "name": "token purchase → Bearer token, body {packageId} unchanged",
+    "pass": true,
+    "detail": "[{\"auth\":\"Bearer tok-valid\",\"body\":\"{\\\"packageId\\\":\\\"pkg-1\\\"}\"}]"
+  },
+  {
+    "id": "X05-contain",
+    "name": "payments disabled (API 400 payments_not_configured) → stays on /pricing with the payment error; no redirect",
+    "pass": true,
+    "detail": "error=\"Could not start payment.\""
+  },
+  {
+    "id": "X04-status",
+    "name": "subscription status unknown → banner; checkout blocked",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "id": "X04-active",
+    "name": "active subscriber → current plan button disabled",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "id": "X06-pricing-es",
+    "name": "/pricing es: no trial wording (available)",
+    "pass": true,
+    "detail": "trialWords=false"
+  },
+  {
+    "id": "X06-home-es",
+    "name": "landing es: Noetia+ ≤3 / NoetiaX ≤10 books per session, both require an active subscription, no dates/prices",
+    "pass": true,
+    "detail": "plus=true x=true requirement×2 noDates=true"
+  },
+  {
+    "id": "X06-pricing-en",
+    "name": "/pricing en: no trial wording (available)",
+    "pass": true,
+    "detail": "trialWords=false"
+  },
+  {
+    "id": "X06-home-en",
+    "name": "landing en: Noetia+ ≤3 / NoetiaX ≤10 books per session, both require an active subscription, no dates/prices",
+    "pass": true,
+    "detail": "plus=true x=true requirement×2 noDates=true"
+  }
+]
