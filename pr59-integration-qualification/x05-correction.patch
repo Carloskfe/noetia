@@ -1,0 +1,11 @@
+Rehearsal-only correction to the X05 assertion of the Checkpoint X browser script. NOT applied to PR #59
+(docs/reports/public-site-ecosystem-20261112/checkpoint-x/pr59-browser.mjs.txt at 3b99ed3 is unchanged).
+Line 257: the original regex accepted any sentence containing "payment"/"pago"; the corrected one requires the
+exact t.pricing.paymentError copy (en.ts:348 "Could not start payment. Please try again." /
+es.ts:350 "No pudimos iniciar el pago. Intenta de nuevo.").
+
+--- a/pr59-browser.mjs
++++ b/pr59-browser.mjs
+@@ -257 +257 @@
+-    const errText = (await page.textContent('body')).match(/(payment|pago)[^.]*\./i)?.[0] ?? '';
++    const errText = (await page.textContent('body')).match(/(Could not start payment|No pudimos iniciar el pago)[^.]*\./)?.[0] ?? '';
