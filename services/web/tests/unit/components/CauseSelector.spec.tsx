@@ -172,12 +172,23 @@ describe('CauseSelector (PO-053)', () => {
   });
 });
 
-describe('causeSelector copy (PO-053 wording)', () => {
-  it('ES/EN match the approved policy sentences', () => {
-    expect(es.causeSelector.body).toContain('Destinamos el 2,22% de cada pago a Causas Noetia.');
-    expect(es.causeSelector.defaultNote).toBe('Si no eliges ninguna, se distribuye por igual entre las tres.');
-    expect(en.causeSelector.body).toContain('We commit 2.22% of every payment to Causas Noetia.');
-    expect(en.causeSelector.defaultNote).toBe("If you don't choose one, it is distributed equally among all three.");
+describe('causeSelector copy (PO-053 rule + PO 2026-11-18 planned-program language)', () => {
+  it('ES/EN disclose a planned program on eligible net receipts after processing fees, with partnerships pending', () => {
+    expect(es.causeSelector.body).toContain('Causas Noetia es un programa en preparación');
+    expect(es.causeSelector.body).toContain('alianzas con organizaciones benéficas aún están pendientes');
+    expect(es.causeSelector.body).toContain('2,22% de los ingresos netos elegibles, después de las comisiones de procesamiento de pago');
+    expect(es.causeSelector.defaultNote).toBe('Si no eliges ninguna, se repartirá por igual entre las tres.');
+    expect(en.causeSelector.body).toContain('Causas Noetia is a planned program');
+    expect(en.causeSelector.body).toContain('charitable partnerships are pending');
+    expect(en.causeSelector.body).toContain('2.22% of eligible net receipts, after payment-processing fees');
+    expect(en.causeSelector.defaultNote).toBe("If you don't choose one, it will be split equally among all three.");
+  });
+
+  it('makes no every-payment, executed-contribution or partnership claim', () => {
+    for (const t of [es, en]) {
+      const c = t.causeSelector;
+      expect([c.title, c.body, c.defaultNote].join(' ')).not.toMatch(/cada pago|every payment|Destinamos|We commit|donad|donated|aliad[oa]s? de|partnered with/i);
+    }
   });
 
   it('has the same cause keys in ES and EN', () => {

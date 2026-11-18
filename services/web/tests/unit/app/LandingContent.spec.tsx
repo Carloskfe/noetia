@@ -79,6 +79,19 @@ describe('LandingContent — ecosystem tiers', () => {
     expect(tier('plus').textContent).toMatch(/up to three eligible books you select per session/);
     expect(tier('x').textContent).toMatch(/up to ten eligible books you select per session/);
     expect(tier('plus').textContent).toContain(en.landing.eco.plus.requirement);
+    expect(tier('x').textContent).toContain(en.landing.eco.x.requirement);
+    expect(en.landing.eco.x.requirement).toBe('Will require an active Noetia subscription.');
+  });
+
+  it('keeps the approved limits, prerequisite and may-change disclaimer in Spanish too', () => {
+    render('es');
+    expect(tier('plus').textContent).toMatch(/hasta tres libros elegibles que seleccionas por sesión/);
+    expect(tier('x').textContent).toMatch(/hasta diez libros elegibles que seleccionas por sesión/);
+    expect(es.landing.eco.plus.requirement).toBe('Requerirá una suscripción Noetia activa.');
+    expect(es.landing.eco.x.requirement).toBe('Requerirá una suscripción Noetia activa.');
+    expect(container.textContent).toContain(es.landing.eco.note);
+    expect(es.landing.eco.note).toMatch(/pueden cambiar/);
+    expect(en.landing.eco.note).toMatch(/may change/);
   });
 
   it('never links anywhere to checkout, billing or premium activation', () => {
@@ -95,17 +108,27 @@ describe('LandingContent — ecosystem tiers', () => {
 });
 
 describe('LandingContent — Causas Noetia', () => {
-  it.each([['es', es], ['en', en]] as const)('keeps the 2.22%% commitment and the approved one-cause / equal-default wording (%s)', (lang, t) => {
+  it.each([['es', es], ['en', en]] as const)('shows the planned-program status, the 2.22%% basis and the one-cause / equal-default rule (%s)', (lang, t) => {
     render(lang);
     const text = container.textContent ?? '';
     expect(text).toContain(t.landing.causas.body);
-    expect(text).toMatch(lang === 'es' ? /2,22%/ : /2\.22%/);
+    expect(container.querySelector('[data-testid="causas-status"]')?.textContent).toBe(lang === 'es' ? 'Programa en preparación' : 'Planned program');
+    expect(text).toMatch(lang === 'es' ? /2,22% de los ingresos netos elegibles, después de las comisiones de procesamiento de pago/ : /2\.22% of eligible net receipts, after payment-processing fees/);
+    expect(text).toMatch(lang === 'es' ? /alianzas con organizaciones benéficas aún están pendientes/ : /Charitable partnerships are pending/);
+    expect(text).toMatch(lang === 'es' ? /si no eliges ninguna, se repartirá por igual entre las tres/ : /if you don't, it will be split equally among all three/);
     for (const c of t.landing.causas.causes) expect(text).toContain(c.title);
   });
 
-  it('uses commitment wording, not executed-contribution claims', () => {
+  it('uses future-oriented wording: no executed contribution, current partnership or every-payment claim', () => {
     for (const t of [es, en]) {
-      expect(t.landing.causas.body).not.toMatch(/donad|donated|aleator|random|dos causas|two causes/i);
+      expect(t.landing.causas.body).not.toMatch(/donad|donated|aleator|random|dos causas|two causes|cada pago|every payment|Destinamos|We commit|aliad[oa]s? de|partnered with/i);
+    }
+  });
+
+  it('keeps calculation, settlement and refund detail off the homepage', () => {
+    for (const lang of ['es', 'en'] as const) {
+      render(lang);
+      expect(container.textContent ?? '').not.toMatch(/mensual|monthly|liquidaci|settle|reembols|refund/i);
     }
   });
 });

@@ -300,7 +300,7 @@ export const en = {
     resumeSubscription: 'Resume subscription',
     refreshStatus: 'Refresh status',
     refreshing: 'Refreshing…',
-    causas: '🌿 See Noetia Causes — 2.22% of your payment supports social causes',
+    causas: '🌿 Causas Noetia — a planned program; charitable partnerships pending',
     cancel: {
       title: 'No charge was made',
       body: 'You left before completing checkout. Your account has not been charged.',
@@ -338,8 +338,8 @@ export const en = {
       button: 'Not available yet',
       gift: '🎁 Token gifts are not available yet.',
     },
-    causasLink: 'Noetia Causes',
-    causasText: '2.22% of every payment supports',
+    causasLink: 'Causas Noetia',
+    causasText: 'Planned, with charitable partnerships pending: 2.22% of eligible net receipts, after payment-processing fees, for',
     monthly: 'Monthly',
     annual: 'Annual',
     twoMonthsFree: '2 months free',
@@ -697,7 +697,7 @@ export const en = {
       platform: [
         { href: '/library',      label: 'Library' },
         { href: '/clubs',        label: 'Reading clubs' },
-        { href: '/causas',       label: 'Noetia Causes' },
+        { href: '/causas',       label: 'Causas Noetia' },
         { href: '/pricing',      label: 'Plans' },
         { href: '/upload-guide', label: 'For authors' },
       ],
@@ -936,8 +936,9 @@ export const en = {
     },
     causas: {
       eyebrow: 'Causas Noetia',
+      status: 'Planned program',
       title: 'Sharing is also helping.',
-      body: 'We commit 2.22% of every payment to Causas Noetia. You choose one cause to receive that contribution. If you don\'t choose one, it is distributed equally among all three.',
+      body: "Causas Noetia is a planned program. We plan to allocate 2.22% of eligible net receipts, after payment-processing fees, to independent charitable organizations. You'll choose one cause; if you don't, it will be split equally among all three. Charitable partnerships are pending.",
       cta: 'Learn about Causas Noetia',
       causes: [
         { title: 'Animal welfare', desc: 'Rescue, care and protection of animals.' },
@@ -958,9 +959,9 @@ export const en = {
   },
   causeSelector: {
     eyebrow: 'Causas Noetia',
-    title: 'Choose where your 2.22% goes',
-    body: 'We commit 2.22% of every payment to Causas Noetia. Choose one cause to receive that contribution.',
-    defaultNote: "If you don't choose one, it is distributed equally among all three.",
+    title: 'Choose where your 2.22% will go',
+    body: 'Causas Noetia is a planned program, and charitable partnerships are pending. We plan to allocate 2.22% of eligible net receipts, after payment-processing fees. Choose one cause to receive that allocation.',
+    defaultNote: "If you don't choose one, it will be split equally among all three.",
     groupLabel: 'Causas Noetia causes',
     loading: 'Loading causes…',
     loadError: "We couldn't load the causes.",

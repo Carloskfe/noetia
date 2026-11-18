@@ -17,7 +17,7 @@ const OPERATIONS = [
   { es: 'Comunidades de lectura (Clubes, Escucha Juntos)', en: 'Reading communities (Clubs, Escucha Juntos)' },
   { es: 'Compartir contenido — fragmentos visuales para redes', en: 'Content sharing — visual fragments for social networks' },
   { es: 'Infraestructura editorial (revisión, analíticas, derechos)', en: 'Editorial infrastructure (review, analytics, rights)' },
-  { es: 'Impacto social — Causas Noetia (2,22% de cada pago)', en: 'Social impact — Causas Noetia (2.22% of every payment)' },
+  { es: 'Impacto social — Causas Noetia (programa en preparación; alianzas pendientes)', en: 'Social impact — Causas Noetia (planned program; partnerships pending)' },
 ];
 
 const FUTURE = [
@@ -29,8 +29,8 @@ const FUTURE = [
 ];
 
 const REVENUE = {
-  es: [['45%', 'Noetia'], ['36%', 'Autor'], ['9%', 'Narrador'], ['2,22%', 'Causas Noetia'], ['7,78%', 'Marketing']],
-  en: [['45%', 'Noetia'], ['36%', 'Author'], ['9%', 'Narrator'], ['2.22%', 'Causas Noetia'], ['7.78%', 'Marketing']],
+  es: [['45%', 'Noetia'], ['36%', 'Autor'], ['9%', 'Narrador'], ['2,22%', 'Causas Noetia*'], ['7,78%', 'Marketing']],
+  en: [['45%', 'Noetia'], ['36%', 'Author'], ['9%', 'Narrator'], ['2.22%', 'Causas Noetia*'], ['7.78%', 'Marketing']],
 };
 
 export default function CompanyContent() {
@@ -171,6 +171,7 @@ export default function CompanyContent() {
                 <ul className="list-none space-y-1 text-sm">
                   {REVENUE.es.map(([pct, who]) => <li key={who}>{pct} → {who}</li>)}
                 </ul>
+                <p className="text-xs text-gray-500">* Programa en preparación. El 2,22% se calcula sobre los ingresos netos elegibles, después de las comisiones de procesamiento de pago, y se destinará a organizaciones benéficas independientes. Las alianzas aún están pendientes.</p>
               </>
             }
             en={
@@ -187,6 +188,7 @@ export default function CompanyContent() {
                 <ul className="list-none space-y-1 text-sm">
                   {REVENUE.en.map(([pct, who]) => <li key={who}>{pct} → {who}</li>)}
                 </ul>
+                <p className="text-xs text-gray-500">* Planned program. The 2.22% is calculated on eligible net receipts, after payment-processing fees, and will go to independent charitable organizations. Partnerships are pending.</p>
               </>
             }
           />

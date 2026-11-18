@@ -302,7 +302,7 @@ export const es: Translations = {
     resumeSubscription: 'Reanudar suscripción',
     refreshStatus: 'Actualizar estado',
     refreshing: 'Actualizando…',
-    causas: '🌿 Ver Causas Noetia — el 2,22% de tu pago apoya causas sociales',
+    causas: '🌿 Causas Noetia — programa en preparación; alianzas con organizaciones benéficas pendientes',
     cancel: {
       title: 'No se realizó ningún cargo',
       body: 'Saliste antes de completar el pago. Tu cuenta no ha sido cobrada.',
@@ -341,7 +341,7 @@ export const es: Translations = {
       gift: '🎁 Los regalos de tokens aún no están disponibles.',
     },
     causasLink: 'Causas Noetia',
-    causasText: 'El 2,22% de cada pago apoya',
+    causasText: 'En preparación, con alianzas benéficas pendientes: el 2,22% de los ingresos netos elegibles, después de las comisiones de procesamiento de pago, para',
     monthly: 'Mensual',
     annual: 'Anual',
     twoMonthsFree: '2 meses gratis',
@@ -933,8 +933,9 @@ export const es: Translations = {
     },
     causas: {
       eyebrow: 'Causas Noetia',
+      status: 'Programa en preparación',
       title: 'Compartir también es ayudar.',
-      body: 'Destinamos el 2,22% de cada pago a Causas Noetia. Tú eliges una causa para recibir ese aporte. Si no eliges ninguna, se distribuye por igual entre las tres.',
+      body: 'Causas Noetia es un programa en preparación. Planeamos destinar el 2,22% de los ingresos netos elegibles, después de las comisiones de procesamiento de pago, a organizaciones benéficas independientes. Podrás elegir una causa; si no eliges ninguna, se repartirá por igual entre las tres. Las alianzas con organizaciones benéficas aún están pendientes.',
       cta: 'Conoce Causas Noetia',
       causes: [
         { title: 'Bienestar animal', desc: 'Rescate, cuidado y protección de animales.' },
@@ -955,9 +956,9 @@ export const es: Translations = {
   },
   causeSelector: {
     eyebrow: 'Causas Noetia',
-    title: 'Elige a dónde va tu 2,22%',
-    body: 'Destinamos el 2,22% de cada pago a Causas Noetia. Elige una causa para recibir ese aporte.',
-    defaultNote: 'Si no eliges ninguna, se distribuye por igual entre las tres.',
+    title: 'Elige a dónde irá tu 2,22%',
+    body: 'Causas Noetia es un programa en preparación y las alianzas con organizaciones benéficas aún están pendientes. Planeamos destinar el 2,22% de los ingresos netos elegibles, después de las comisiones de procesamiento de pago. Elige una causa para recibir esa asignación.',
+    defaultNote: 'Si no eliges ninguna, se repartirá por igual entre las tres.',
     groupLabel: 'Causas de Causas Noetia',
     loading: 'Cargando causas…',
     loadError: 'No pudimos cargar las causas.',

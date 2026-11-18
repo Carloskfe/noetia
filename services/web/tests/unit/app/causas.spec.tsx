@@ -1,5 +1,7 @@
-// /causas public copy must match the PO-053 policy (one cause; equal default) and the homepage wording,
-// and must not claim executed contributions, published reports, two causes or random distribution.
+// /causas public copy: PO-053 rule (one cause; equal default) in the planned-program language of the PO decisions of
+// 2026-11-18 (eligible net receipts after processing fees; independent charities; partnerships pending; draft terms
+// linked). It must not claim executed contributions, signed partnerships, published reports, two causes or random
+// distribution, nor keep the superseded "total payment" basis.
 jest.mock('next/link', () => ({
   __esModule: true,
   default: ({ children, href, ...props }: any) => {
@@ -31,12 +33,37 @@ beforeEach(() => { container = document.createElement('div'); document.body.appe
 afterEach(() => { act(() => root.unmount()); container.remove(); });
 
 describe('/causas copy (PO-053)', () => {
-  it.each([['es', es], ['en', en]] as const)('states the approved distribution rule, matching the homepage (%s)', async (lang, t) => {
+  it.each(['es', 'en'] as const)('discloses a planned program on eligible net receipts after processing fees (%s)', async (lang) => {
     const text = await render(lang);
-    // The homepage sentence after the commitment clause must appear verbatim on /causas.
-    const rule = t.landing.causas.body.split(lang === 'es' ? 'Causas Noetia. ' : 'Causas Noetia. ')[1];
-    expect(text).toContain(norm(rule));
-    expect(text).toMatch(lang === 'es' ? /2,22%/ : /2\.22%/);
+    expect(container.querySelector('[data-testid="causas-status"]')?.textContent?.trim()).toBe(lang === 'es' ? 'Programa en preparación' : 'Planned program');
+    expect(text).toContain(lang === 'es'
+      ? 'Causas Noetia es un programa en preparación: planeamos destinar el 2,22% de los ingresos netos elegibles, después de las comisiones de procesamiento de pago, a organizaciones benéficas independientes'
+      : 'Causas Noetia is a planned program: we plan to allocate 2.22% of eligible net receipts, after payment-processing fees, to independent charitable organizations');
+  });
+
+  it.each(['es', 'en'] as const)('discloses that partnerships are pending and nothing has been contributed (%s)', async (lang) => {
+    await render(lang);
+    const note = norm(container.querySelector('[data-testid="causas-disclosure"]')?.textContent ?? '');
+    expect(note).toContain(lang === 'es' ? 'Las alianzas con organizaciones benéficas están pendientes' : 'Charitable partnerships are pending');
+    expect(note).toContain(lang === 'es' ? 'no se ha realizado ninguna contribución' : 'no contribution has been made');
+  });
+
+  it.each(['es', 'en'] as const)('states the PO-053 one-cause / equal-default rule in future tense (%s)', async (lang) => {
+    const text = await render(lang);
+    expect(text).toContain(lang === 'es'
+      ? 'Podrás elegir una causa para recibir esa asignación. Si no eliges ninguna, se repartirá por igual entre las tres.'
+      : "You'll be able to choose one cause to receive that allocation. If you don't choose one, it will be split equally among all three.");
+  });
+
+  it.each(['es', 'en'] as const)('links the clearly labeled draft program terms (%s)', async (lang) => {
+    await render(lang);
+    const link = container.querySelector('a[href="/causas/terms"]');
+    expect(link?.textContent).toMatch(lang === 'es' ? /borrador, pendiente de revisión legal/ : /draft, pending legal review/);
+  });
+
+  it.each(['es', 'en'] as const)('drops the superseded every-payment / total-payment basis (%s)', async (lang) => {
+    const text = await render(lang);
+    expect(text).not.toMatch(/cada pago|every payment|total del pago|total payment|Destinamos el|We commit/i);
   });
 
   it.each(['es', 'en'] as const)('keeps the three approved causes (%s)', async (lang) => {

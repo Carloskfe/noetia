@@ -33,9 +33,9 @@ async function render(C: React.ComponentType, lang: 'es' | 'en') {
 beforeEach(() => { container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container); });
 afterEach(() => { act(() => root.unmount()); container.remove(); });
 
-const FORBIDDEN = /donad|donated|automáticamente|automatically|primer día|day one|apoya causas|supports social causes|cada compra|every purchase/i;
+const FORBIDDEN = /donad|donated|automáticamente|automatically|primer día|day one|apoya causas|supports social causes|cada compra|every purchase|cada pago|every payment/i;
 
-describe('Corporate Causas copy (PO-053 commitment tense)', () => {
+describe('Corporate Causas copy (planned program, PO 2026-11-18)', () => {
   it.each([
     ['about', AboutContent],
     ['milestones', MilestonesContent],
@@ -47,13 +47,28 @@ describe('Corporate Causas copy (PO-053 commitment tense)', () => {
     }
   });
 
-  it('about states the commitment and the three causes', async () => {
-    expect(await render(AboutContent, 'es')).toContain('Destinamos el 2,22% de cada pago a Causas Noetia: bienestar animal, niñez y juventud, y medio ambiente.');
-    expect(await render(AboutContent, 'en')).toContain('We commit 2.22% of every payment to Causas Noetia: animal welfare, children and youth, and the environment.');
+  it('about describes the planned program, its basis, independent charities and pending partnerships', async () => {
+    const es = await render(AboutContent, 'es');
+    expect(es).toContain('Con Causas Noetia, un programa en preparación, planeamos destinar el 2,22% de los ingresos netos elegibles, después de las comisiones de procesamiento de pago, a organizaciones benéficas independientes en bienestar animal, niñez y juventud, y medio ambiente.');
+    expect(es).toContain('Las alianzas aún están pendientes.');
+    const en = await render(AboutContent, 'en');
+    expect(en).toContain('Through Causas Noetia, a planned program, we plan to allocate 2.22% of eligible net receipts, after payment-processing fees, to independent charitable organizations in animal welfare, children and youth, and the environment.');
+    expect(en).toContain('Partnerships are pending.');
   });
 
-  it('milestones records a commitment, not a donation', async () => {
-    expect(await render(MilestonesContent, 'es')).toContain('Compromiso del 2,22% de cada pago con Causas Noetia');
-    expect(await render(MilestonesContent, 'en')).toContain('A 2.22% commitment of every payment to Causas Noetia');
+  it('milestones records a planned program, not a donation', async () => {
+    expect(await render(MilestonesContent, 'es')).toContain('Programa en preparación: el 2,22% de los ingresos netos elegibles');
+    expect(await render(MilestonesContent, 'en')).toContain('A planned program: 2.22% of eligible net receipts, after payment-processing fees');
+  });
+
+  it('company footnotes the Causas basis without changing the published revenue split', async () => {
+    const es = await render(CompanyContent, 'es');
+    expect(es).toContain('2,22% → Causas Noetia*');
+    expect(es).toContain('* Programa en preparación. El 2,22% se calcula sobre los ingresos netos elegibles, después de las comisiones de procesamiento de pago');
+    for (const row of ['45% → Noetia', '36% → Autor', '9% → Narrador', '7,78% → Marketing']) expect(es).toContain(row);
+    const en = await render(CompanyContent, 'en');
+    expect(en).toContain('2.22% → Causas Noetia*');
+    expect(en).toContain('* Planned program. The 2.22% is calculated on eligible net receipts, after payment-processing fees');
+    for (const row of ['45% → Noetia', '36% → Author', '9% → Narrator', '7.78% → Marketing']) expect(en).toContain(row);
   });
 });

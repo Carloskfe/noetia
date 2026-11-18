@@ -266,11 +266,13 @@ export default function LandingContent() {
         </div>
       </section>
 
-      {/* Causas Noetia — PO-approved commitment wording; no allocation logic on this page. */}
+      {/* Causas Noetia — planned-program wording (PO 2026-11-18). Calculation, settlement and refund detail live in the
+          draft program terms linked from /causas, never on the homepage. No allocation logic on this page. */}
       <section className="border-t border-white/10 py-20" aria-labelledby="causas-title">
         <div className="mx-auto grid max-w-6xl gap-10 px-5 sm:px-8 lg:grid-cols-12">
           <div className="lg:col-span-5">
             <p className={`${eyebrow} text-emerald-400`}>{l.causas.eyebrow}</p>
+            <span data-testid="causas-status" className="mt-3 inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-slate-200">{l.causas.status}</span>
             <h2 id="causas-title" className={`mt-3 ${sectionTitle}`}>{l.causas.title}</h2>
             <p className="mt-4 text-lg text-slate-300">{l.causas.body}</p>
             <Link href="/causas" className={`${textLink} mt-6`}>{l.causas.cta} <Icon name="arrow" className="h-4 w-4" /></Link>
