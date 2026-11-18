@@ -90,6 +90,7 @@ const mockConfig = {
   }),
   get: jest.fn((key: string, fallback?: string) => {
     if (key === 'STRIPE_SECRET_KEY') return 'sk_test_mock';
+    if (key === 'PAYMENTS_ENABLED') return 'true'; // these suites exercise the ENABLED behaviour (payments-activation gate)
     return fallback ?? '';
   }),
 };

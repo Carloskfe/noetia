@@ -5,7 +5,9 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import cookieParser from 'cookie-parser';
+import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import { describePaymentsActivation } from './common/payments-activation';
 import { applyTrustedProxy } from './common/trusted-proxy';
 
 async function bootstrap() {
@@ -14,6 +16,10 @@ async function bootstrap() {
   // G1-I1: honour X-Forwarded-For only from the validated TRUSTED_PROXY_CIDRS (the dedicated Traefik↔API edge
   // network's allocation range). Unset/invalid → no trust (client address = TCP peer). Never `trust proxy: true`.
   applyTrustedProxy(app, process.env.TRUSTED_PROXY_CIDRS, new Logger('TrustedProxy'));
+
+  // Payment activation gate: one boot line stating whether Stripe operations are possible. The decision itself is
+  // made where the Stripe clients are built (common/payments-activation.ts); this only reports it. Never logs keys.
+  new Logger('Payments').log(describePaymentsActivation(app.get(ConfigService)));
 
   // Quote-card backgrounds — gallery presets AND user uploads — are sent as
   // base64 data URIs inside the /fragments/:id/share JSON body. A ~1200px JPEG

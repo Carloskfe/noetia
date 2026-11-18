@@ -4,6 +4,47 @@ This document describes how to create products in Stripe, register the webhook e
 
 ---
 
+## 0. Payment activation gate (`PAYMENTS_ENABLED`) — read first
+
+Configuring a Stripe key **does not** activate payments. The API builds a Stripe client only when **both**:
+
+1. `PAYMENTS_ENABLED` is exactly `true` (whitespace ignored, case-sensitive — `TRUE`, `1`, `yes` are **off**), and
+2. `STRIPE_SECRET_KEY` is a Stripe secret or restricted key (`sk_test_…`, `sk_live_…`, `rk_test_…`, `rk_live_…`).
+
+Otherwise every Stripe path fails closed with its existing error — checkout for subscriptions, token packages,
+books and **anonymous gifts**, the billing portal, cancel/resume/sync (`400 {"error":"payments_not_configured"}`),
+and `POST /api/webhooks/stripe` (`400 Stripe is not configured`, nothing fulfilled). The API logs one line at boot:
+`[payments] disabled (...)` or `[payments] ENABLED (Stripe test|live mode)` — never the key.
+Implementation: `services/api/src/common/payments-activation.ts`.
+
+**Production state until the financial release:** `PAYMENTS_ENABLED` unset or `false`.
+
+### Financial-release activation procedure (requires its own Product Owner authorization)
+
+Setting `PAYMENTS_ENABLED=true` in production **is** the financial release. It is never part of an infrastructure,
+public-site or other deploy. Prerequisites (all recorded and accepted first):
+
+1. The payment-lifecycle corrections (PR #60 scope) are merged and deployed, and every financial gate is closed or
+   explicitly accepted by the PO: G-1, G-4, G-5, W-1, W-2/SG-PM, USD-1, D4 portal configuration, gift-email recovery,
+   Terms / legal disclosures.
+2. Stripe live products/prices verified (§3), the live webhook registered (§4) and `STRIPE_WEBHOOK_SECRET` set.
+3. An explicit PO instruction naming the activation, an operator present, a backup confirmed, no CD running.
+
+Steps (single-line edits on the server — never paste multi-line content):
+
+1. `nano /opt/noetia/.env.production` → set `STRIPE_SECRET_KEY=sk_live_…` and `PAYMENTS_ENABLED=true`.
+2. Recreate the API through the normal deploy path (the env file is read only at container creation).
+3. `docker logs noetia-api-1 2>&1 | grep '\[payments\]'` → `[payments] ENABLED (Stripe live mode)`.
+4. Acceptance per the financial-release plan (Stripe test-mode rehearsal first; one controlled live transaction only
+   if the PO authorizes it).
+
+**Rollback (kill switch):** set `PAYMENTS_ENABLED=false` (or remove it) and recreate the API. All new checkouts and
+billing calls stop immediately with `payments_not_configured`. Note: while disabled, Stripe webhook deliveries are
+rejected and Stripe retries them for up to 3 days; re-enable within that window or replay events from the Stripe
+Dashboard so already-paid sessions are fulfilled.
+
+---
+
 ## 1. Prerequisites
 
 - A Stripe account (test mode for development, live mode for production)
