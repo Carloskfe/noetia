@@ -188,11 +188,6 @@ export default function CausasPage() {
               </div>
             ))}
           </div>
-          <p className="mt-8 text-center text-sm">
-            <Link href="/causas/terms" className="text-emerald-400 underline underline-offset-2 hover:text-emerald-300">
-              {l === 'es' ? 'Términos del programa (borrador, pendiente de revisión legal)' : 'Program terms (draft, pending legal review)'}
-            </Link>
-          </p>
         </div>
       </section>
 

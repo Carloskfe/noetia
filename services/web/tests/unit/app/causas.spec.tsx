@@ -1,6 +1,6 @@
 // /causas public copy: PO-053 rule (one cause; equal default) in the planned-program language of the PO decisions of
-// 2026-11-18 (eligible net receipts after processing fees; independent charities; partnerships pending; draft terms
-// linked). It must not claim executed contributions, signed partnerships, published reports, two causes or random
+// 2026-11-18 (eligible net receipts after processing fees; independent charities; partnerships pending). The
+// unfinished program terms are NOT published by the app (PO publication-boundary decision, 2026-11-18). It must not claim executed contributions, signed partnerships, published reports, two causes or random
 // distribution, nor keep the superseded "total payment" basis.
 jest.mock('next/link', () => ({
   __esModule: true,
@@ -55,10 +55,11 @@ describe('/causas copy (PO-053)', () => {
       : "You'll be able to choose one cause to receive that allocation. If you don't choose one, it will be split equally among all three.");
   });
 
-  it.each(['es', 'en'] as const)('links the clearly labeled draft program terms (%s)', async (lang) => {
-    await render(lang);
-    const link = container.querySelector('a[href="/causas/terms"]');
-    expect(link?.textContent).toMatch(lang === 'es' ? /borrador, pendiente de revisión legal/ : /draft, pending legal review/);
+  it.each(['es', 'en'] as const)('does not link to unfinished program terms (%s)', async (lang) => {
+    const text = await render(lang);
+    const hrefs = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href') ?? '');
+    expect(hrefs.some((h) => h.includes('/causas/terms'))).toBe(false);
+    expect(text).not.toMatch(/Términos del programa|Program terms|borrador|draft/i);
   });
 
   it.each(['es', 'en'] as const)('drops the superseded every-payment / total-payment basis (%s)', async (lang) => {

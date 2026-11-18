@@ -61,14 +61,22 @@ describe('Corporate Causas copy (planned program, PO 2026-11-18)', () => {
     expect(await render(MilestonesContent, 'en')).toContain('A planned program: 2.22% of eligible net receipts, after payment-processing fees');
   });
 
-  it('company footnotes the Causas basis without changing the published revenue split', async () => {
+  it('company shows no revenue-allocation percentages (mixed bases under the new Causas policy; PO 2026-11-18)', async () => {
+    for (const lang of ['es', 'en'] as const) {
+      const text = await render(CompanyContent, lang);
+      expect(text).not.toMatch(/45 ?%|36 ?%|\b9 ?%|2[.,]22 ?%|7[.,]78 ?%/);
+      expect(text).not.toMatch(/Distribución de ingresos|Revenue distribution|→ (Noetia|Autor|Author|Narrador|Narrator|Marketing|Causas Noetia)/);
+    }
+  });
+
+  it('company keeps the qualitative business, author and Causas social-impact descriptions', async () => {
     const es = await render(CompanyContent, 'es');
-    expect(es).toContain('2,22% → Causas Noetia*');
-    expect(es).toContain('* Programa en preparación. El 2,22% se calcula sobre los ingresos netos elegibles, después de las comisiones de procesamiento de pago');
-    for (const row of ['45% → Noetia', '36% → Autor', '9% → Narrador', '7,78% → Marketing']) expect(es).toContain(row);
+    expect(es).toContain('Noetia opera como un canal de distribución digital para autores y editoriales');
+    expect(es).toContain('Lo que ofrecemos a autores:');
+    expect(es).toContain('Impacto social — Causas Noetia (programa en preparación; alianzas pendientes)');
     const en = await render(CompanyContent, 'en');
-    expect(en).toContain('2.22% → Causas Noetia*');
-    expect(en).toContain('* Planned program. The 2.22% is calculated on eligible net receipts, after payment-processing fees');
-    for (const row of ['45% → Noetia', '36% → Author', '9% → Narrator', '7.78% → Marketing']) expect(en).toContain(row);
+    expect(en).toContain('Noetia operates as a digital distribution channel for authors and publishers');
+    expect(en).toContain('What we offer authors:');
+    expect(en).toContain('Social impact — Causas Noetia (planned program; partnerships pending)');
   });
 });
