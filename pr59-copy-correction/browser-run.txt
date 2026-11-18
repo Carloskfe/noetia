@@ -1,0 +1,42 @@
+PASS  X02-es-desktop  landing es desktop  — tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=es
+PASS  X02-es-desktop/causas  /causas es desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-es-desktop/about  /about es desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-es-desktop/company  /company es desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-es-desktop/milestones  /milestones es desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-es-mobile  landing es mobile  — tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=es
+PASS  X02-es-menu  mobile menu opens/closes (es)
+PASS  X02-es-mobile/causas  /causas es mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-es-mobile/about  /about es mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-es-mobile/company  /company es mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-es-mobile/milestones  /milestones es mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-desktop  landing en desktop  — tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=en
+PASS  X02-en-desktop/causas  /causas en desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-desktop/about  /about en desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-desktop/company  /company en desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-desktop/milestones  /milestones en desktop  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-mobile  landing en mobile  — tiers=3 comingSoon=2 premiumTierLinks=0 hOverflow=0px footers=1 checkoutLinks=0 html.lang=en
+PASS  X02-en-menu  mobile menu opens/closes (en)
+PASS  X02-en-mobile/causas  /causas en mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-mobile/about  /about en mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-mobile/company  /company en mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X02-en-mobile/milestones  /milestones en mobile  — hOverflow=0px footers=1 twoCause/random wording=false
+PASS  X04-1  guest visits /pricing: no redirect, plans shown, no preference lookup  — url=/pricing prefLookups=0
+PASS  X04-2a  guest selects a plan → /login?next=/pricing, no checkout call  — /login?next=/pricing
+PASS  X04-2b  guest buys a token package → /login?next=/pricing; any attempted purchase call carries NO credentials (rejected 401)  — /login?next=/pricing unauthenticatedAttempts=1
+PASS  X04-3/9  saved cause → checkout directly; Bearer token; body {planId} unchanged; no preference write  — checkout=[{"auth":"Bearer tok-valid","body":"{\"planId\":\"plan-ind\"}"}]
+PASS  X04-4  no saved cause → single-choice selector (3 radios, one checked) → save one → checkout  — radios=3 checked=1 body={"cause1Id":"c-env","cause2Id":null,"randomDistribution":false}
+PASS  X04-11a  skip → checkout, no preference write (existing preference untouched)
+PASS  X03/X04-11b  save fails → error shown, selection kept, NO checkout; retry succeeds → checkout  — checkoutBeforeRetry=no
+PASS  X04-8  preference lookup error → explicit notice (no selector, no equal-split claim); cancel = no checkout; continue = checkout, no preference write
+PASS  X04-5  expired access token + valid refresh → refresh once, continue to checkout with the new token  — refreshCalls=1
+PASS  X04-6  no access token + valid refresh cookie → signed in (no login redirect), checkout with refreshed token  — url=https://checkout.stripe.test/c/pay/cs_te refreshCalls=1
+PASS  X04-7  checkout 401 + refresh fails → /login?next=/pricing  — /login?next=/pricing
+PASS  X04-10  token purchase → Bearer token, body {packageId} unchanged  — [{"auth":"Bearer tok-valid","body":"{\"packageId\":\"pkg-1\"}"}]
+PASS  X05-contain  payments disabled (API 400 payments_not_configured) → stays on /pricing with the payment error; no redirect  — error="Could not start payment."
+PASS  X04-status  subscription status unknown → banner; checkout blocked
+PASS  X04-active  active subscriber → current plan button disabled
+PASS  X06-pricing-es  /pricing es: neutral subtitle, plan button "Elegir plan", no trial wording  — neutral=true trialWords=false
+PASS  X06-home-es  landing es: Noetia+ ≤3 / NoetiaX ≤10 books per session, both require an active subscription, no dates/prices  — plus=true x=true requirement×2 noDates=true
+PASS  X06-pricing-en  /pricing en: neutral subtitle, plan button "Choose plan", no trial wording  — neutral=true trialWords=false
+PASS  X06-home-en  landing en: Noetia+ ≤3 / NoetiaX ≤10 books per session, both require an active subscription, no dates/prices  — plus=true x=true requirement×2 noDates=true
+──────── 41 passed, 0 failed

@@ -1,0 +1,72 @@
+jest-haste-map: Haste module naming collision: @noetia/web
+  The following files share their name; please adjust your hasteImpl:
+    * <rootDir>/package.json
+    * <rootDir>/.next/standalone/services/web/package.json
+
+PASS tests/unit/app/billing/pricing.spec.tsx (16.381 s)
+PASS tests/unit/app/LandingContent.spec.tsx (17.526 s)
+PASS tests/unit/app/corporate-causas-copy.spec.tsx
+PASS tests/unit/components/StatsTab.spec.tsx
+PASS tests/unit/app/causas.spec.tsx
+PASS tests/unit/components/ShareModal.spec.ts
+PASS tests/unit/components/CauseSelector.spec.tsx
+PASS tests/unit/components/ReaderTopBar.spec.tsx
+PASS tests/unit/reader/reader-utils.spec.ts
+PASS tests/unit/lib/api.spec.ts
+  ● Console
+
+    console.error
+      Error: Not implemented: navigation (except hash changes)
+          at module.exports (<worktree>/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+          at navigateFetch (<worktree>/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:77:3)
+          at exports.navigate (<worktree>/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:55:3)
+          at LocationImpl._locationObjectNavigate (<worktree>/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:31:5)
+          at LocationImpl._locationObjectSetterNavigate (<worktree>/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:25:17)
+          at LocationImpl.set href [as href] (<worktree>/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:47:10)
+          at Location.set href [as href] (<worktree>/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/generated/Location.js:125:37)
+          at apiFetch (<worktree>/services/web/lib/api.ts:59:102)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at Object.<anonymous> (<worktree>/services/web/tests/unit/lib/api.spec.ts:141:5) {
+        type: 'not implemented'
+      }
+
+      57 |       res = await fetchWithToken(path, init);
+      58 |     } else {
+    > 59 |       if (opts.redirectOnAuthFailure !== false && typeof window !== 'undefined') window.location.href = '/login';
+         |                                                                                                      ^
+      60 |       throw Object.assign(new Error('Session expired'), { status: 401 });
+      61 |     }
+      62 |   }
+
+      at VirtualConsole.<anonymous> (../../node_modules/.pnpm/jest-environment-jsdom@29.7.0/node_modules/jest-environment-jsdom/build/index.js:63:23)
+      at module.exports (../../node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:12:26)
+      at navigateFetch (../../node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:77:3)
+      at exports.navigate (../../node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:55:3)
+      at LocationImpl._locationObjectNavigate (../../node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:31:5)
+      at LocationImpl._locationObjectSetterNavigate (../../node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:25:17)
+      at LocationImpl.set href [as href] (../../node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:47:10)
+      at Location.set href [as href] (../../node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/generated/Location.js:125:37)
+      at apiFetch (lib/api.ts:59:102)
+      at Object.<anonymous> (tests/unit/lib/api.spec.ts:141:5)
+
+PASS tests/unit/lib/tutorial-flags.spec.ts
+PASS tests/unit/lib/onboarding.spec.ts
+PASS tests/unit/components/onboarding/OnboardingTour.spec.tsx
+PASS tests/unit/lib/reader-preferences.spec.ts
+PASS tests/unit/components/Footer.spec.tsx
+PASS tests/unit/lib/consent-utils.spec.ts
+PASS tests/unit/components/PlanCard.spec.ts
+PASS tests/unit/lib/fragment-selection.spec.ts
+PASS tests/unit/components/SharePicker.spec.ts
+PASS tests/unit/app/billing/success.spec.ts
+PASS tests/unit/lib/reader-tutorial.spec.ts
+PASS tests/unit/lib/share-utils.spec.ts
+PASS tests/unit/lib/reader-utils.spec.ts
+PASS tests/unit/lib/onboarding-stepper.spec.ts
+PASS tests/unit/lib/i18n.spec.ts
+
+Test Suites: 25 passed, 25 total
+Tests:       385 passed, 385 total
+Snapshots:   0 total
+Time:        23.383 s
+Ran all test suites.
