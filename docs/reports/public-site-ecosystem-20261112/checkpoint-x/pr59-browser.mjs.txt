@@ -2,11 +2,15 @@
 // Network policy: only http://127.0.0.1:<PORT> is allowed; every API call (relative /api/* and the baked-in
 // http://localhost:4000/*) is answered by mocks below; the "Stripe" redirect target is a local stub host.
 // Nothing leaves the machine. No real account, payment, or Stripe call exists.
+// MODE (2026-11-18, purchase availability): default `unavailable` = the committed fail-closed build
+// (lib/purchase-availability.ts PURCHASES_AVAILABLE=false) → X07 checks. `PURCHASES=available` = a local, NEVER-committed
+// build with the constant set to true, to regression-test the preserved purchase path (X04/X05).
 import { chromium } from '@playwright/test';
 import fs from 'fs';
 
 const BASE = process.env.BASE;
 const OUT = process.env.OUT;
+const MODE = process.env.PURCHASES === 'available' ? 'available' : 'unavailable';
 const STRIPE_STUB = 'https://checkout.stripe.test/c/pay/cs_test_stub';
 const PLANS = [
   { id: 'plan-ind', name: 'Individual', amountCents: 899, interval: 'month', tokensPerCycle: 1, maxProfiles: 1 },
@@ -100,6 +104,7 @@ try {
     }
   }
 
+  if (MODE === 'available') {
   // ── X-04 pricing matrix ───────────────────────────────────────────────────────
   // 1–2 guest
   {
@@ -283,15 +288,14 @@ try {
     record('X04-active', 'active subscriber → current plan button disabled', (await current.count()) === 1 && (await current.isDisabled()));
     await ctx.close();
   }
+  }
   // ── X-06 approved public copy (PO 2026-11-18): no trial promise on /pricing; premium limits per session ──
   for (const lang of ['es', 'en']) {
     const { ctx, page } = await newPage(browser, { lang });
     await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
     const body = await page.textContent('body');
-    const neutral = lang === 'es' ? 'Las suscripciones aún no están abiertas.' : 'Subscriptions are not open yet.';
     const trialWords = /free trial|14[- ]day|prueba gratuita|14 días|trial|prueba/i.test(body);
-    record(`X06-pricing-${lang}`, `/pricing ${lang}: neutral subtitle, plan button "${lang === 'es' ? 'Elegir plan' : 'Choose plan'}", no trial wording`,
-      body.includes(neutral) && (await startTrial(page, lang).isVisible()) && !trialWords, `neutral=${body.includes(neutral)} trialWords=${trialWords}`);
+    record(`X06-pricing-${lang}`, `/pricing ${lang}: no trial wording (${MODE})`, !trialWords, `trialWords=${trialWords}`);
     await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
     const home = await page.textContent('body');
     const plus = lang === 'es' ? 'hasta tres libros elegibles que seleccionas por sesión' : 'up to three eligible books you select per session';
@@ -302,6 +306,74 @@ try {
     record(`X06-home-${lang}`, `landing ${lang}: Noetia+ ≤3 / NoetiaX ≤10 books per session, both require an active subscription, no dates/prices`,
       home.includes(plus) && home.includes(x) && reqCount === 2 && noDates, `plus=${home.includes(plus)} x=${home.includes(x)} requirement×${reqCount} noDates=${noDates}`);
     await ctx.close();
+  }
+  // ── X-07 purchases unavailable (fail-closed default build) ─────────────────────
+  if (MODE === 'unavailable') {
+    const NOTICE = { es: 'Las suscripciones y las compras de tokens aún no están disponibles.', en: 'Subscriptions and token purchases are not available yet.' };
+    const BTN = { es: 'Aún no disponible', en: 'Not available yet' };
+    const GIFT_TXT = { es: 'Los regalos de tokens aún no están disponibles', en: 'Token gifts are not available yet' };
+    const effects = (log) => ({
+      checkout: calls(log, '/subscriptions/checkout').length, tokens: calls(log, '/subscriptions/tokens/purchase').length,
+      prefWrites: calls(log, '/causes/preferences', 'POST').length, gift: calls(log, '/gifts/checkout').length, stripe: calls(log, 'STRIPE_STUB').length,
+    });
+    for (const lang of ['es', 'en']) {
+      for (const who of ['guest', 'signed-in']) {
+        const { ctx, page, log } = await newPage(browser, { lang, token: who === 'guest' ? null : 'tok-valid' });
+        await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+        const body = await page.textContent('body');
+        const btns = page.getByRole('button', { name: BTN[lang], exact: true });
+        const n = await btns.count();
+        let allDisabled = n > 0;
+        for (let k = 0; k < n; k++) allDisabled = allDisabled && (await btns.nth(k).isDisabled());
+        const giftLinks = await page.locator('a[href="/gift"]').count();
+        if (who === 'guest') await page.screenshot({ path: `${OUT}/pricing-unavailable-${lang}.png`, fullPage: true });
+        // Adversarial: force-click and dispatch clicks on every disabled control.
+        for (let k = 0; k < n; k++) {
+          await btns.nth(k).click({ force: true, timeout: 2000 }).catch(() => {});
+          await btns.nth(k).dispatchEvent('click');
+        }
+        await page.waitForTimeout(800);
+        const e = effects(log);
+        const stayed = new URL(page.url()).pathname === '/pricing';
+        record(`X07-pricing-${lang}-${who}`, `/pricing ${lang} ${who}: notice shown; ${n} purchase controls disabled ("${BTN[lang]}"); gift entry is text; pressing them starts nothing`,
+          body.includes(NOTICE[lang]) && n === 3 && allDisabled && giftLinks === 0 && body.includes(GIFT_TXT[lang]) && stayed &&
+            e.checkout === 0 && e.tokens === 0 && e.prefWrites === 0 && e.gift === 0 && e.stripe === 0,
+          `notice=${body.includes(NOTICE[lang])} controls=${n} disabled=${allDisabled} giftLinks=${giftLinks} stayed=${stayed} effects=${JSON.stringify(e)}`);
+        await ctx.close();
+      }
+      // /gift (direct visit)
+      {
+        const { ctx, page, log } = await newPage(browser, { lang });
+        await page.goto(`${BASE}/gift`, { waitUntil: 'networkidle' });
+        const body = await page.textContent('body');
+        const submit = page.locator('button[type="submit"]');
+        const label = (await submit.textContent())?.trim();
+        const disabled = await submit.isDisabled();
+        const emailDisabled = await page.locator('input[type="email"]').isDisabled();
+        await page.screenshot({ path: `${OUT}/gift-unavailable-${lang}.png`, fullPage: true });
+        await submit.click({ force: true, timeout: 2000 }).catch(() => {});
+        await page.locator('form').evaluate((f) => f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+        await page.waitForTimeout(800);
+        const e = effects(log);
+        record(`X07-gift-${lang}`, `/gift ${lang}: unavailable notice; form read-only; submit "${BTN[lang]}" disabled; forced submit starts nothing`,
+          body.includes(GIFT_TXT[lang]) && label === BTN[lang] && disabled && emailDisabled && new URL(page.url()).pathname === '/gift' && e.gift === 0 && e.stripe === 0,
+          `label="${label}" disabled=${disabled} emailDisabled=${emailDisabled} effects=${JSON.stringify(e)}`);
+        await ctx.close();
+      }
+    }
+    // Existing routes unaffected (smoke): login form renders; library and discover load.
+    {
+      const { ctx, page } = await newPage(browser, { lang: 'en' });
+      const statuses = {};
+      for (const route of ['/login', '/library', '/discover']) {
+        const r = await page.goto(`${BASE}${route}`, { waitUntil: 'domcontentloaded' });
+        statuses[route] = r?.status();
+      }
+      await page.goto(`${BASE}/login`, { waitUntil: 'networkidle' });
+      const loginForm = (await page.locator('input[type="email"]').count()) > 0 && (await page.locator('input[type="password"]').count()) > 0;
+      record('X07-routes', 'login form renders; /login, /library, /discover respond 200', loginForm && Object.values(statuses).every((s) => s === 200), JSON.stringify(statuses) + ` loginForm=${loginForm}`);
+      await ctx.close();
+    }
   }
 } finally {
   await browser.close();

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import CauseSelector from '@/components/CauseSelector';
+import { purchasesAvailable } from '@/lib/purchase-availability';
 import { apiFetch } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
 
@@ -77,6 +78,9 @@ function formatPrice(cents: number): string {
 
 export default function PricingPage() {
   const { t } = useTranslation();
+  // Fail closed (lib/purchase-availability.ts): while false, every purchase control is disabled and no checkout,
+  // token-purchase, preference-write or login redirect can start from this page. The API gate (PR #63) still decides payments.
+  const available = purchasesAvailable();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [packages, setPackages] = useState<TokenPackage[]>([]);
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
@@ -132,6 +136,7 @@ export default function PricingPage() {
   }
 
   async function checkout(planId: string) {
+    if (!purchasesAvailable()) return;
     setError(null);
     if (statusRef.current !== 'known') return setStatusFailedPlanId(planId); // never checkout on an unknown status
     try {
@@ -149,6 +154,7 @@ export default function PricingPage() {
   }
 
   async function buyTokenPackage(packageId: string) {
+    if (!purchasesAvailable()) return;
     setError(null);
     setBuyingPackageId(packageId);
     try {
@@ -175,6 +181,7 @@ export default function PricingPage() {
   }
 
   function handleSelect(planId: string) {
+    if (!purchasesAvailable()) return;
     if (!signedIn) return goToLogin();
     if (status !== 'known') return setStatusFailedPlanId(planId);
     routeByPreference(planId, preference);
@@ -216,7 +223,11 @@ export default function PricingPage() {
       {/* Header */}
       <div className="text-center mb-10">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">{t.pricing.title}</h1>
-        <p className="text-gray-500 text-sm mb-1">{t.pricing.trial}</p>
+        {!available && (
+          <p role="status" data-testid="purchases-unavailable" className="text-gray-700 text-sm font-medium mb-1">
+            {t.pricing.unavailable.notice}
+          </p>
+        )}
         <p className="text-xs text-slate-400">
           {t.pricing.causasText}{' '}
           <Link href="/causas" className="underline hover:text-slate-600">{t.pricing.causasLink}</Link>.
@@ -243,7 +254,7 @@ export default function PricingPage() {
 
       {error && <p className="text-center text-red-600 mb-6 text-sm">{error}</p>}
 
-      {!loading && signedIn && status === 'unknown' && (
+      {available && !loading && signedIn && status === 'unknown' && (
         <div
           data-testid="status-unknown-banner"
           role="status"
@@ -302,17 +313,19 @@ export default function PricingPage() {
                   ))}
                 </ul>
                 <button
-                  onClick={() => handleSelect(plan.id)}
-                  disabled={isCurrent}
+                  type="button"
+                  onClick={available ? () => handleSelect(plan.id) : undefined}
+                  disabled={isCurrent || !available}
+                  aria-disabled={isCurrent || !available}
                   className={`w-full py-3 rounded-xl font-semibold text-sm transition ${
-                    isCurrent
-                      ? 'bg-gray-100 text-gray-400 cursor-default'
+                    isCurrent || !available
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       : isPopular
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
                       : 'bg-gray-900 text-white hover:bg-gray-800'
                   }`}
                 >
-                  {isCurrent ? t.pricing.currentPlan : t.pricing.startTrial}
+                  {isCurrent ? t.pricing.currentPlan : available ? t.pricing.startTrial : t.pricing.unavailable.button}
                 </button>
               </div>
             );
@@ -325,7 +338,7 @@ export default function PricingPage() {
         <div className="border-t border-gray-100 pt-12">
           <div className="text-center mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-1">{t.pricing.tokens.title}</h2>
-            <p className="text-sm text-gray-500">{t.pricing.tokens.subtitle}</p>
+            <p className="text-sm text-gray-500">{available ? t.pricing.tokens.subtitle : t.pricing.tokens.subtitleUnavailable}</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {packages.map((pkg) => (
@@ -334,21 +347,39 @@ export default function PricingPage() {
                 <p className="text-xs text-gray-400 mb-3">{pkg.tokenCount === 1 ? t.pricing.tokens.token : t.pricing.tokens.tokens}</p>
                 <p className="text-base font-bold text-gray-800 mb-1">{formatPrice(pkg.amountCents)}</p>
                 <p className="text-xs text-gray-400 mb-4">{formatPrice(Math.round(pkg.amountCents / pkg.tokenCount))} {t.pricing.tokens.each}</p>
-                <button
-                  onClick={() => buyTokenPackage(pkg.id)}
-                  disabled={buyingPackageId === pkg.id}
-                  className="w-full py-2 bg-gray-900 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50"
-                >
-                  {buyingPackageId === pkg.id ? t.pricing.tokens.redirecting : t.pricing.tokens.buy}
-                </button>
+                {available ? (
+                  <button
+                    type="button"
+                    onClick={() => buyTokenPackage(pkg.id)}
+                    disabled={buyingPackageId === pkg.id}
+                    className="w-full py-2 bg-gray-900 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50"
+                  >
+                    {buyingPackageId === pkg.id ? t.pricing.tokens.redirecting : t.pricing.tokens.buy}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    aria-disabled
+                    className="w-full py-2 bg-gray-100 text-gray-400 text-sm font-medium rounded-lg cursor-not-allowed"
+                  >
+                    {t.pricing.unavailable.button}
+                  </button>
+                )}
               </div>
             ))}
           </div>
           <p className="text-xs text-center text-gray-400 mt-4">{t.pricing.tokens.expiry}</p>
           <div className="mt-6 text-center">
-            <Link href="/gift" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-full px-4 py-2 hover:border-gray-400 transition">
-              {t.pricing.tokens.gift}
-            </Link>
+            {available ? (
+              <Link href="/gift" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-full px-4 py-2 hover:border-gray-400 transition">
+                {t.pricing.tokens.gift}
+              </Link>
+            ) : (
+              <p data-testid="gift-unavailable" className="inline-flex items-center gap-1.5 text-sm text-gray-500 border border-gray-200 rounded-full px-4 py-2">
+                {t.pricing.unavailable.gift}
+              </p>
+            )}
           </div>
         </div>
       )}

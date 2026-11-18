@@ -332,8 +332,12 @@ export const en = {
   },
   pricing: {
     title: 'Noetia Plans',
-    // Neutral until the D1 trial policy is qualified and payments are enabled: no trial promise, no implication that payment is open.
-    trial: 'Subscriptions are not open yet.',
+    // Shown while web purchases are unavailable (lib/purchase-availability.ts). No trial promise; no retry invitation.
+    unavailable: {
+      notice: 'Subscriptions and token purchases are not available yet.',
+      button: 'Not available yet',
+      gift: '🎁 Token gifts are not available yet.',
+    },
     causasLink: 'Noetia Causes',
     causasText: '2.22% of every payment supports',
     monthly: 'Monthly',
@@ -378,6 +382,7 @@ export const en = {
     tokens: {
       title: 'Additional tokens',
       subtitle: 'Want to read more this month? Buy extra tokens without changing your plan.',
+      subtitleUnavailable: 'Additional tokens let you read more without changing your plan.',
       token: 'token',
       tokens: 'tokens',
       each: 'ea.',
@@ -796,6 +801,8 @@ export const en = {
     send: {
       title: 'Gift Noetia',
       subtitle: 'Send tokens to someone special. They will use them to unlock books of their choice.',
+      unavailable: 'Token gifts are not available yet. No gift can be purchased right now.',
+      unavailableButton: 'Not available yet',
       howMany: 'How many tokens?',
       recipientEmail: 'Recipient email',
       recipientPlaceholder: 'friend@example.com',

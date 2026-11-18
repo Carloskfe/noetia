@@ -334,8 +334,12 @@ export const es: Translations = {
   },
   pricing: {
     title: 'Planes Noetia',
-    // Neutral hasta que la política de prueba D1 esté cualificada y los pagos activos: sin promesa de prueba ni de pago disponible.
-    trial: 'Las suscripciones aún no están abiertas.',
+    // Se muestra mientras las compras web no están disponibles (lib/purchase-availability.ts). Sin promesa de prueba ni invitación a reintentar.
+    unavailable: {
+      notice: 'Las suscripciones y las compras de tokens aún no están disponibles.',
+      button: 'Aún no disponible',
+      gift: '🎁 Los regalos de tokens aún no están disponibles.',
+    },
     causasLink: 'Causas Noetia',
     causasText: 'El 2,22% de cada pago apoya',
     monthly: 'Mensual',
@@ -380,6 +384,7 @@ export const es: Translations = {
     tokens: {
       title: 'Tokens adicionales',
       subtitle: '¿Quieres leer más este mes? Compra tokens extra sin cambiar de plan.',
+      subtitleUnavailable: 'Los tokens adicionales te permiten leer más sin cambiar de plan.',
       token: 'token',
       tokens: 'tokens',
       each: 'c/u',
@@ -793,6 +798,8 @@ export const es: Translations = {
     send: {
       title: 'Regala Noetia',
       subtitle: 'Envía tokens a alguien especial. Los usarán para desbloquear libros de su elección.',
+      unavailable: 'Los regalos de tokens aún no están disponibles. Ahora mismo no se puede comprar ningún regalo.',
+      unavailableButton: 'Aún no disponible',
       howMany: '¿Cuántos tokens?',
       recipientEmail: 'Email del destinatario',
       recipientPlaceholder: 'amigo@ejemplo.com',

@@ -1,4 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { PURCHASES_AVAILABLE } from '../../lib/purchase-availability';
+
+// Checkout flows need web purchases enabled (lib/purchase-availability.ts, fail-closed false until the financial
+// release); they are skipped against the default build. The unavailable state is covered by the unit suites.
+const needsPurchases = () => test.skip(!PURCHASES_AVAILABLE, 'web purchases unavailable (fail-closed default)');
 
 const MOCK_PLANS = [
   { id: 'individual-monthly', name: 'Individual', amountCents: 899, interval: 'month', tokensPerCycle: 1, maxProfiles: 1 },
@@ -11,6 +16,7 @@ const MOCK_PLANS = [
 
 test.describe('Flow: subscribe → unlock', () => {
   test('pricing page shows plans and initiates checkout on plan selection', async ({ page }) => {
+    needsPurchases();
     await page.route('**/subscriptions/plans', (route) =>
       route.fulfill({
         status: 200,
@@ -109,6 +115,7 @@ test.describe('Flow: subscribe → unlock', () => {
   });
 
   test('shows error when checkout fails', async ({ page }) => {
+    needsPurchases();
     await page.route('**/subscriptions/plans', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_PLANS) }),
     );

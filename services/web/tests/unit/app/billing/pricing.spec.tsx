@@ -13,6 +13,10 @@ jest.mock('@/lib/i18n', () => {
   const { en } = require('../../../../lib/i18n/en');
   return { useTranslation: () => ({ t: en, language: 'en', setLanguage: jest.fn() }) };
 });
+// The suites below exercise the preserved purchase path (future financial release): availability forced ON.
+// The fail-closed default (OFF) is covered by the "purchases unavailable" suite at the end of this file.
+let mockPurchasesAvailable = true;
+jest.mock('@/lib/purchase-availability', () => ({ purchasesAvailable: () => mockPurchasesAvailable }));
 
 import React, { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
@@ -120,6 +124,7 @@ async function render() {
 }
 
 beforeEach(() => {
+  mockPurchasesAvailable = true;
   server = { validTokens: new Set(['valid']), refreshIssues: null, savedCause: null, prefLookup: [], saveResults: [], checkoutStatus: 200, planId: null, subStatus: 'active', meResults: [] };
   calls = [];
   localStorage.clear();
@@ -458,22 +463,84 @@ describe('/pricing — which statuses count as a current plan', () => {
   });
 });
 
-describe('/pricing — public copy makes no trial promise (D1 not yet qualified; payments disabled)', () => {
+describe('/pricing — purchases unavailable (fail-closed default, payments disabled)', () => {
   const TRIAL_PROMISE = /free trial|14[- ]day|trial|prueba gratuita|14 días|prueba/i;
+  const unavailableButtons = () => buttons().filter((b) => b.textContent === en.pricing.unavailable.button);
+  const purchaseSideEffects = () => ({
+    checkout: req('POST', '/subscriptions/checkout').length,
+    tokens: req('POST', '/subscriptions/tokens/purchase').length,
+    prefWrites: req('POST', '/causes/preferences').length,
+  });
+  const pressEverything = async () => {
+    const controls = unavailableButtons();
+    expect(controls).toHaveLength(2); // never vacuous: 1 plan + 1 token package must be present and pressed
+    for (const b of controls) {
+      await click(b);
+      act(() => { b.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+      await flush();
+    }
+  };
+  beforeEach(() => { mockPurchasesAvailable = false; });
 
-  it('rendered page (en) shows the neutral subtitle and "Choose plan", with no trial wording', async () => {
+  it('guest: accurate notice; plan and token controls disabled; gift entry is text, not a link; no trial or retry wording', async () => {
     await render();
-    expect(container.textContent).toContain('Subscriptions are not open yet.');
-    expect(byText('Choose plan')).toBeDefined();
+    expect(container.querySelector('[data-testid="purchases-unavailable"]')?.textContent).toBe('Subscriptions and token purchases are not available yet.');
+    expect(unavailableButtons()).toHaveLength(2); // 1 monthly plan + 1 token package
+    expect(unavailableButtons().every((b) => b.disabled && b.getAttribute('aria-disabled') === 'true')).toBe(true);
+    expect(byText(en.pricing.startTrial)).toBeUndefined();
+    expect(byText(en.pricing.tokens.buy)).toBeUndefined();
+    expect(container.querySelector('a[href="/gift"]')).toBeNull();
+    expect(container.querySelector('[data-testid="gift-unavailable"]')?.textContent).toBe(en.pricing.unavailable.gift);
+    expect(container.textContent).toContain(en.pricing.tokens.subtitleUnavailable);
+    expect(container.textContent).not.toContain(en.pricing.tokens.subtitle);
     expect(container.textContent).not.toMatch(TRIAL_PROMISE);
+    expect(container.textContent).not.toContain('try again');
   });
 
-  it('displayed pricing strings carry no trial promise in en or es (paywall.* is shared with mobile and not rendered on web)', () => {
+  it('guest: pressing every unavailable control starts nothing (no checkout, token purchase, preference write or login redirect)', async () => {
+    await render();
+    await pressEverything();
+    expect(purchaseSideEffects()).toEqual({ checkout: 0, tokens: 0, prefWrites: 0 });
+    expect(href()).toBe('http://localhost/pricing');
+    expect(selectorOpen()).toBe(false);
+  });
+
+  it('signed-in without a saved cause: still nothing starts; no selector, no dialogs', async () => {
+    localStorage.setItem('access_token', 'valid');
+    await render();
+    await pressEverything();
+    expect(purchaseSideEffects()).toEqual({ checkout: 0, tokens: 0, prefWrites: 0 });
+    expect(href()).toBe('http://localhost/pricing');
+    expect(selectorOpen()).toBe(false);
+    expect(lookupDialogOpen()).toBe(false);
+    expect(statusDialog()).toBeNull();
+  });
+
+  it('existing subscriber still sees the current plan marked; other controls unavailable', async () => {
+    localStorage.setItem('access_token', 'valid');
+    server.planId = PLAN.id;
+    await render();
+    expect(byText(en.pricing.currentPlan)?.disabled).toBe(true);
+    expect(unavailableButtons()).toHaveLength(1); // the token package
+  });
+
+  it('a failed status lookup shows no "you can still buy tokens" banner while purchases are unavailable', async () => {
+    localStorage.setItem('access_token', 'valid');
+    server.meResults = ['fail'];
+    await render();
+    expect(statusBanner()).toBeNull();
+  });
+
+  it('en/es copy: the approved notice, no trial promise, no retry invitation', () => {
     const { es } = require('../../../../lib/i18n/es');
+    expect(es.pricing.unavailable.notice).toBe('Las suscripciones y las compras de tokens aún no están disponibles.');
+    expect(en.pricing.unavailable.notice).toBe('Subscriptions and token purchases are not available yet.');
     for (const t of [en, es]) {
-      for (const s of [t.pricing.trial, t.pricing.startTrial]) expect(s).not.toMatch(TRIAL_PROMISE);
+      for (const s of [t.pricing.unavailable.notice, t.pricing.unavailable.button, t.pricing.unavailable.gift, t.pricing.tokens.subtitleUnavailable, t.giftCard.send.unavailable, t.giftCard.send.unavailableButton]) {
+        expect(s).not.toMatch(TRIAL_PROMISE);
+        expect(s).not.toMatch(/try again|inténtalo|intenta de nuevo/i);
+      }
+      expect(t.pricing).not.toHaveProperty('trial');
     }
-    expect(es.pricing.trial).toBe('Las suscripciones aún no están abiertas.');
-    expect(es.pricing.startTrial).toBe('Elegir plan');
   });
 });
