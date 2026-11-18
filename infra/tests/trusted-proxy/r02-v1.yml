@@ -1,0 +1,5 @@
+# G1-I1 Checkpoint IV R-02 fixture (disposable project `g1q4r02`): the running "before" service.
+services:
+  api:
+    image: node:20-alpine
+    command: ["sleep", "3600"]

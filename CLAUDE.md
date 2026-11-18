@@ -260,7 +260,7 @@ Key variables:
 | `JWT_EXPIRES_IN` | `15m` | Access token lifetime |
 | `WEB_URL` | `http://localhost:3000` | Used in email confirmation + reset links |
 | `API_URL` | `http://localhost:4000` | Used as OAuth callback base URL |
-| `TRUSTED_PROXY_CIDRS` | _(empty)_ | G1-I1. Peers whose `X-Forwarded-For` is trusted (rate-limit client IP). Empty = no trust (client = TCP peer). **Must stay empty in every environment** until the separately authorized G1-I1 Stage B-2 network change is in place. Never `true`, keywords, hop counts or broad/private ranges — invalid values are ignored with a WARN. See [Trusted proxy (G1-I1)](#trusted-proxy-g1-i1). |
+| `TRUSTED_PROXY_CIDRS` | _(empty)_ | G1-I1. Peers whose `X-Forwarded-For` is trusted (rate-limit client IP). Empty = no trust (client = TCP peer). Production value `10.211.75.8/29` (the `noetia_api_edge` allocation range) **only** as part of the separately authorized Stage B-2 rollout, after the network exists with Traefik attached. Never `true`, keywords, hop counts or broad/private ranges — invalid values are ignored with a WARN. See [Trusted proxy (G1-I1)](#trusted-proxy-g1-i1). |
 
 ### Email (SMTP)
 | Variable | Default | Notes |
@@ -411,9 +411,12 @@ Full diagnosis + fix commands — Traefik 502/404, config corruption (nano/base6
 
 ### Trusted proxy (G1-I1)
 
-**Stage B-1 (inactive code).** `services/api/src/common/trusted-proxy.ts` is called once from `main.ts`. With `TRUSTED_PROXY_CIDRS` unset/empty (the required state everywhere today) the API trusts **no** forwarded header: the client address is the TCP peer, exactly as before, and boot logs one informational line. Invalid values (keywords, `true`, hop counts, IPv4 < /24, IPv6 < /112, > 4 entries) are rejected with a WARN and trust stays off. Never `trust proxy: true`.
-- **Do not set the variable** until Stage B-2 (dedicated `noetia_api_edge` Traefik↔API network, exactly two members) is separately authorized and deployed. Trusting a range that other containers can join would let them forge client IPs and evade rate limits.
-- Design, live verification and qualification: `docs/reports/payment-lifecycle-20261112/g1-*` on Draft PR #60 and the Stage B-1 report in this change.
+**Stage B-1 (deployed, inactive):** `services/api/src/common/trusted-proxy.ts` is called once from `main.ts`. With `TRUSTED_PROXY_CIDRS` unset/empty the API trusts **no** forwarded header (client = TCP peer). Invalid values are rejected with a WARN and trust stays off. Never `trust proxy: true`.
+
+**Stage B-2 (prepared, NOT deployed — needs separate production authorization):** the API leaves the shared `proxy` network for the internal `noetia_api_edge` (`10.211.75.0/28`, gateway `.1`, allocation range `10.211.75.8/29`) and keeps `noetia_net` for internal callers. **Members: `traefik` and the API only** — any other member would be trusted.
+- **Order (merge = production deploy):** `noetia-api-edge-network.sh ensure` → `docker network connect noetia_api_edge traefik` (live, no restart) → `… members traefik` + `… traefik` → add `noetia_api_edge` to the persisted `/opt/traefik/docker-compose.yml` by hand (nano; it already lists `proxy` + `proxy_staging`; never copy the repo file over it, never `compose up` in `/opt/traefik`) → set `TRUSTED_PROXY_CIDRS=10.211.75.8/29` (nano) → merge.
+- **After every deploy and every Traefik/API recreation:** `noetia-api-edge-network.sh members traefik noetia-api-1`, `… traefik`, `… api` must all print `OK` (the `api` label check closes the Traefik Docker-provider fallback path, R-05, which is not verified live).
+- Traefik keeps its forwarded-header defaults (no `forwardedHeaders.insecure`/`trustedIPs`). Failures and rollback: [`docs/incident-response.md` §1a](docs/incident-response.md). Runbook: `docs/reports/g1-i1-stage-b2/README.md`.
 
 ---
 

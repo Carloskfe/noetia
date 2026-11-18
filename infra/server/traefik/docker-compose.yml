@@ -13,9 +13,26 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik.yml:/traefik.yml:ro
       - ./acme.json:/acme.json
+    # Every network Traefik must stay on. A recreation from this file detaches Traefik from anything NOT listed,
+    # so the list must match the live attachments (and the persisted /opt/traefik/docker-compose.yml).
+    # NEVER `docker compose up` in /opt/traefik to apply a change (it recreates Traefik and interrupts every site
+    # on the host); attach live with `docker network connect <net> traefik`, then add the one entry to the
+    # persisted file by hand (nano). NEVER copy this repository file over the server file.
     networks:
       - proxy
+      # Staging's dedicated Traefik network (NEM-017 / S19). Attached LIVE and persisted on the server
+      # (verified 2026-11-15). Draft PR #26 adds the same entry with different comment text: integrating both
+      # gives a TEXTUAL CONFLICT in this list and in `networks:` below. Resolve by keeping ALL THREE entries —
+      # taking PR #26's side alone would silently drop noetia_api_edge.
+      - proxy_staging
+      # G1-I1 Stage B-2: dedicated internal Traefik ↔ Noetia API network. Create and attach live BEFORE merging
+      # the docker-compose.server.yml change that moves the API onto it (merge = production deploy).
+      - noetia_api_edge
 
 networks:
   proxy:
+    external: true
+  proxy_staging:
+    external: true
+  noetia_api_edge:
     external: true
