@@ -1,0 +1,35 @@
+PASS tests/unit/common/trusted-proxy.integration.spec.ts
+PASS tests/unit/common/payments-activation.gate.spec.ts
+PASS tests/unit/subscriptions/subscriptions-auth.contract.spec.ts
+[31m[Nest] 62664  - [39m11/18/2026, 7:10:44 AM [31m  ERROR[39m [38;5;3m[SubscriptionsService] [39m[31mAnnual-plan monthly token issuance failed[39m
+Error: boom
+    at Object.<anonymous> (/home/carloskfe/Noetia-rehearsal/services/api/tests/unit/subscriptions/subscriptions.service.spec.ts:499:81)
+    at Promise.then.completed (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:316:40)
+    at _runTest (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at _runTestsForDescribeBlock (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at run (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:444:34)
+PASS tests/unit/subscriptions/subscriptions.service.spec.ts
+PASS tests/unit/subscriptions/webhooks.service.spec.ts
+PASS tests/unit/subscriptions/plans.service.spec.ts
+PASS tests/unit/subscriptions/admin-tokens.controller.spec.ts
+PASS tests/unit/gifts/gifts.service.spec.ts
+PASS tests/unit/causes/causes.service.spec.ts
+PASS tests/unit/subscriptions/subscription.guard.spec.ts
+PASS tests/unit/causes/dto/save-preferences.dto.spec.ts
+PASS tests/unit/common/trusted-proxy.spec.ts
+PASS tests/unit/common/payments-activation.spec.ts
+
+Test Suites: 13 passed, 13 total
+Tests:       480 passed, 480 total
+Snapshots:   0 total
+Time:        7.891 s
+Ran all test suites matching /tests\/unit\/common|tests\/unit\/causes|tests\/unit\/subscriptions|tests\/unit\/gifts/i.

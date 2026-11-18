@@ -1,0 +1,28 @@
+Scope: 3 of 5 workspace projects
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+.                                        |    +1223 ++++++++++++++++++++++++++++
+Progress: resolved 1223, reused 0, downloaded 0, added 0
+Progress: resolved 1223, reused 8, downloaded 0, added 0
+Progress: resolved 1223, reused 52, downloaded 0, added 0
+Progress: resolved 1223, reused 98, downloaded 0, added 0
+Progress: resolved 1223, reused 154, downloaded 0, added 0
+Progress: resolved 1223, reused 217, downloaded 0, added 0
+Progress: resolved 1223, reused 310, downloaded 0, added 0
+Progress: resolved 1223, reused 360, downloaded 0, added 0
+Progress: resolved 1223, reused 557, downloaded 0, added 0
+Progress: resolved 1223, reused 660, downloaded 0, added 0
+Progress: resolved 1223, reused 1039, downloaded 0, added 0
+Progress: resolved 1223, reused 1221, downloaded 0, added 812
+Progress: resolved 1223, reused 1221, downloaded 0, added 934
+Progress: resolved 1223, reused 1221, downloaded 0, added 1223, done
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: @nestjs/core@10.4.22,                               │
+│   @sentry-internal/node-cpu-profiler@2.3.0, @sentry/cli@2.58.5,              │
+│   bcrypt@5.1.1, sharp@0.33.5, unrs-resolver@1.11.1.                          │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Done in 17.2s using pnpm v10.33.2

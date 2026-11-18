@@ -1,0 +1,24 @@
+{
+  "home-es": [],
+  "causas-es": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "nodes": 1,
+      "sample": [
+        ".bg-emerald-500"
+      ]
+    }
+  ],
+  "home-en": [],
+  "causas-en": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "nodes": 1,
+      "sample": [
+        ".bg-emerald-500"
+      ]
+    }
+  ]
+}

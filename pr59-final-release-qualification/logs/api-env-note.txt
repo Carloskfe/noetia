@@ -1,0 +1,1 @@
+env fix: copied bcrypt@5.1.1 napi-v3 binding from local Noetia-pay install (pnpm 10 skipped native build)

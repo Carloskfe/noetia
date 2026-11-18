@@ -1,0 +1,241 @@
+{
+  "base": "http://127.0.0.1:3459",
+  "total": 39,
+  "failed": 0,
+  "results": [
+    {
+      "id": "X08-home-causas-es-desktop",
+      "name": "homepage es desktop: Causas section present, visible, Programa en preparación badge, net-receipts basis, partnerships pending, PO-053 rule, 3 causes; no settlement/refund detail",
+      "pass": true,
+      "detail": "visible=true h2#=4/6 badge=\"Programa en preparación\""
+    },
+    {
+      "id": "X08-home-premium-es-desktop",
+      "name": "homepage es desktop: Noetia+/NoetiaX Próximamente, 3/10 books per session, active-subscription prerequisite, may-change note, no controls",
+      "pass": true,
+      "detail": "tiers=3 premiumControls=0"
+    },
+    {
+      "id": "X08-causas-es-desktop",
+      "name": "/causas es desktop: 3 causes, Programa en preparación badge, net-receipts basis, independent charities, disclosure, no terms link, no overflow",
+      "pass": true,
+      "detail": "badge=\"Programa en preparación\" termsLinks=0 hOverflow=0px"
+    },
+    {
+      "id": "X08-company-es-desktop",
+      "name": "/company es desktop: no five-percentage breakdown; qualitative business, author and Causas text kept",
+      "pass": true,
+      "detail": "percentMatch= hOverflow=0px"
+    },
+    {
+      "id": "X08-purchase-unavailable-es-desktop",
+      "name": "/pricing + /gift es desktop: unavailable notice; 2 purchase controls + gift submit disabled; Causas line uses planned/net wording",
+      "pass": true,
+      "detail": "pricingControls=2 allDisabled=true giftDisabled=true hOverflow=0/0px"
+    },
+    {
+      "id": "X08-overflow-home-es-desktop",
+      "name": "homepage es desktop: no horizontal overflow",
+      "pass": true,
+      "detail": "hOverflow=0px"
+    },
+    {
+      "id": "X08-console-es-desktop",
+      "name": "public pages es desktop: no uncaught page errors",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "X08-home-causas-es-mobile",
+      "name": "homepage es mobile: Causas section present, visible, Programa en preparación badge, net-receipts basis, partnerships pending, PO-053 rule, 3 causes; no settlement/refund detail",
+      "pass": true,
+      "detail": "visible=true h2#=4/6 badge=\"Programa en preparación\""
+    },
+    {
+      "id": "X08-home-premium-es-mobile",
+      "name": "homepage es mobile: Noetia+/NoetiaX Próximamente, 3/10 books per session, active-subscription prerequisite, may-change note, no controls",
+      "pass": true,
+      "detail": "tiers=3 premiumControls=0"
+    },
+    {
+      "id": "X08-causas-es-mobile",
+      "name": "/causas es mobile: 3 causes, Programa en preparación badge, net-receipts basis, independent charities, disclosure, no terms link, no overflow",
+      "pass": true,
+      "detail": "badge=\"Programa en preparación\" termsLinks=0 hOverflow=0px"
+    },
+    {
+      "id": "X08-company-es-mobile",
+      "name": "/company es mobile: no five-percentage breakdown; qualitative business, author and Causas text kept",
+      "pass": true,
+      "detail": "percentMatch= hOverflow=0px"
+    },
+    {
+      "id": "X08-purchase-unavailable-es-mobile",
+      "name": "/pricing + /gift es mobile: unavailable notice; 2 purchase controls + gift submit disabled; Causas line uses planned/net wording",
+      "pass": true,
+      "detail": "pricingControls=2 allDisabled=true giftDisabled=true hOverflow=0/0px"
+    },
+    {
+      "id": "X08-overflow-home-es-mobile",
+      "name": "homepage es mobile: no horizontal overflow",
+      "pass": true,
+      "detail": "hOverflow=0px"
+    },
+    {
+      "id": "X08-console-es-mobile",
+      "name": "public pages es mobile: no uncaught page errors",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "X08-home-causas-en-desktop",
+      "name": "homepage en desktop: Causas section present, visible, Planned program badge, net-receipts basis, partnerships pending, PO-053 rule, 3 causes; no settlement/refund detail",
+      "pass": true,
+      "detail": "visible=true h2#=4/6 badge=\"Planned program\""
+    },
+    {
+      "id": "X08-home-premium-en-desktop",
+      "name": "homepage en desktop: Noetia+/NoetiaX Coming Soon, 3/10 books per session, active-subscription prerequisite, may-change note, no controls",
+      "pass": true,
+      "detail": "tiers=3 premiumControls=0"
+    },
+    {
+      "id": "X08-causas-en-desktop",
+      "name": "/causas en desktop: 3 causes, Planned program badge, net-receipts basis, independent charities, disclosure, no terms link, no overflow",
+      "pass": true,
+      "detail": "badge=\"Planned program\" termsLinks=0 hOverflow=0px"
+    },
+    {
+      "id": "X08-company-en-desktop",
+      "name": "/company en desktop: no five-percentage breakdown; qualitative business, author and Causas text kept",
+      "pass": true,
+      "detail": "percentMatch= hOverflow=0px"
+    },
+    {
+      "id": "X08-purchase-unavailable-en-desktop",
+      "name": "/pricing + /gift en desktop: unavailable notice; 2 purchase controls + gift submit disabled; Causas line uses planned/net wording",
+      "pass": true,
+      "detail": "pricingControls=2 allDisabled=true giftDisabled=true hOverflow=0/0px"
+    },
+    {
+      "id": "X08-overflow-home-en-desktop",
+      "name": "homepage en desktop: no horizontal overflow",
+      "pass": true,
+      "detail": "hOverflow=0px"
+    },
+    {
+      "id": "X08-console-en-desktop",
+      "name": "public pages en desktop: no uncaught page errors",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "X08-home-causas-en-mobile",
+      "name": "homepage en mobile: Causas section present, visible, Planned program badge, net-receipts basis, partnerships pending, PO-053 rule, 3 causes; no settlement/refund detail",
+      "pass": true,
+      "detail": "visible=true h2#=4/6 badge=\"Planned program\""
+    },
+    {
+      "id": "X08-home-premium-en-mobile",
+      "name": "homepage en mobile: Noetia+/NoetiaX Coming Soon, 3/10 books per session, active-subscription prerequisite, may-change note, no controls",
+      "pass": true,
+      "detail": "tiers=3 premiumControls=0"
+    },
+    {
+      "id": "X08-causas-en-mobile",
+      "name": "/causas en mobile: 3 causes, Planned program badge, net-receipts basis, independent charities, disclosure, no terms link, no overflow",
+      "pass": true,
+      "detail": "badge=\"Planned program\" termsLinks=0 hOverflow=0px"
+    },
+    {
+      "id": "X08-company-en-mobile",
+      "name": "/company en mobile: no five-percentage breakdown; qualitative business, author and Causas text kept",
+      "pass": true,
+      "detail": "percentMatch= hOverflow=0px"
+    },
+    {
+      "id": "X08-purchase-unavailable-en-mobile",
+      "name": "/pricing + /gift en mobile: unavailable notice; 2 purchase controls + gift submit disabled; Causas line uses planned/net wording",
+      "pass": true,
+      "detail": "pricingControls=2 allDisabled=true giftDisabled=true hOverflow=0/0px"
+    },
+    {
+      "id": "X08-overflow-home-en-mobile",
+      "name": "homepage en mobile: no horizontal overflow",
+      "pass": true,
+      "detail": "hOverflow=0px"
+    },
+    {
+      "id": "X08-console-en-mobile",
+      "name": "public pages en mobile: no uncaught page errors",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "X08-terms-404",
+      "name": "/causas/terms returns HTTP 404 and shows no draft text",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "X08-terms-nolinks",
+      "name": "no public page links to /causas/terms (/, /causas, /company, /about, /milestones, /pricing, /gift, /login incl. footer)",
+      "pass": true,
+      "detail": "links=0"
+    },
+    {
+      "id": "X08-login-library-es-desktop",
+      "name": "login es desktop: bad password → error, stays on /login; good password → /library with token; library lists the book",
+      "pass": true,
+      "detail": "errShown=true onLibrary=true bookShown=true hOverflow=0px"
+    },
+    {
+      "id": "X08-reader-es-desktop",
+      "name": "reader es desktop: authenticated book load renders title + phrases; no uncaught errors; no overflow",
+      "pass": true,
+      "detail": "phraseShown=true titleShown=true authBookCalls=1 pageErrors=0 hOverflow=0px"
+    },
+    {
+      "id": "X08-login-library-es-mobile",
+      "name": "login es mobile: bad password → error, stays on /login; good password → /library with token; library lists the book",
+      "pass": true,
+      "detail": "errShown=true onLibrary=true bookShown=true hOverflow=0px"
+    },
+    {
+      "id": "X08-reader-es-mobile",
+      "name": "reader es mobile: authenticated book load renders title + phrases; no uncaught errors; no overflow",
+      "pass": true,
+      "detail": "phraseShown=true titleShown=true authBookCalls=1 pageErrors=0 hOverflow=0px"
+    },
+    {
+      "id": "X08-login-library-en-desktop",
+      "name": "login en desktop: bad password → error, stays on /login; good password → /library with token; library lists the book",
+      "pass": true,
+      "detail": "errShown=true onLibrary=true bookShown=true hOverflow=0px"
+    },
+    {
+      "id": "X08-reader-en-desktop",
+      "name": "reader en desktop: authenticated book load renders title + phrases; no uncaught errors; no overflow",
+      "pass": true,
+      "detail": "phraseShown=true titleShown=true authBookCalls=1 pageErrors=0 hOverflow=0px"
+    },
+    {
+      "id": "X08-login-library-en-mobile",
+      "name": "login en mobile: bad password → error, stays on /login; good password → /library with token; library lists the book",
+      "pass": true,
+      "detail": "errShown=true onLibrary=true bookShown=true hOverflow=0px"
+    },
+    {
+      "id": "X08-reader-en-mobile",
+      "name": "reader en mobile: authenticated book load renders title + phrases; no uncaught errors; no overflow",
+      "pass": true,
+      "detail": "phraseShown=true titleShown=true authBookCalls=1 pageErrors=0 hOverflow=0px"
+    },
+    {
+      "id": "X08-reader-guest",
+      "name": "guest opening the reader → /login?next=/reader/<id>",
+      "pass": true,
+      "detail": "/login?next=%2Freader%2Fbook-1"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+PASS  X08-home-causas-es-desktop  homepage es desktop: Causas section present, visible, Programa en preparación badge, net-receipts basis, partnerships pending, PO-053 rule, 3 causes; no settlement/refund detail  — visible=true h2#=4/6 badge="Programa en preparación"
+PASS  X08-home-premium-es-desktop  homepage es desktop: Noetia+/NoetiaX Próximamente, 3/10 books per session, active-subscription prerequisite, may-change note, no controls  — tiers=3 premiumControls=0
+PASS  X08-causas-es-desktop  /causas es desktop: 3 causes, Programa en preparación badge, net-receipts basis, independent charities, disclosure, no terms link, no overflow  — badge="Programa en preparación" termsLinks=0 hOverflow=0px
+PASS  X08-company-es-desktop  /company es desktop: no five-percentage breakdown; qualitative business, author and Causas text kept  — percentMatch= hOverflow=0px
+PASS  X08-purchase-unavailable-es-desktop  /pricing + /gift es desktop: unavailable notice; 2 purchase controls + gift submit disabled; Causas line uses planned/net wording  — pricingControls=2 allDisabled=true giftDisabled=true hOverflow=0/0px
+PASS  X08-overflow-home-es-desktop  homepage es desktop: no horizontal overflow  — hOverflow=0px
+PASS  X08-console-es-desktop  public pages es desktop: no uncaught page errors
+PASS  X08-home-causas-es-mobile  homepage es mobile: Causas section present, visible, Programa en preparación badge, net-receipts basis, partnerships pending, PO-053 rule, 3 causes; no settlement/refund detail  — visible=true h2#=4/6 badge="Programa en preparación"
+PASS  X08-home-premium-es-mobile  homepage es mobile: Noetia+/NoetiaX Próximamente, 3/10 books per session, active-subscription prerequisite, may-change note, no controls  — tiers=3 premiumControls=0
+PASS  X08-causas-es-mobile  /causas es mobile: 3 causes, Programa en preparación badge, net-receipts basis, independent charities, disclosure, no terms link, no overflow  — badge="Programa en preparación" termsLinks=0 hOverflow=0px
+PASS  X08-company-es-mobile  /company es mobile: no five-percentage breakdown; qualitative business, author and Causas text kept  — percentMatch= hOverflow=0px
+PASS  X08-purchase-unavailable-es-mobile  /pricing + /gift es mobile: unavailable notice; 2 purchase controls + gift submit disabled; Causas line uses planned/net wording  — pricingControls=2 allDisabled=true giftDisabled=true hOverflow=0/0px
+PASS  X08-overflow-home-es-mobile  homepage es mobile: no horizontal overflow  — hOverflow=0px
+PASS  X08-console-es-mobile  public pages es mobile: no uncaught page errors
+PASS  X08-home-causas-en-desktop  homepage en desktop: Causas section present, visible, Planned program badge, net-receipts basis, partnerships pending, PO-053 rule, 3 causes; no settlement/refund detail  — visible=true h2#=4/6 badge="Planned program"
+PASS  X08-home-premium-en-desktop  homepage en desktop: Noetia+/NoetiaX Coming Soon, 3/10 books per session, active-subscription prerequisite, may-change note, no controls  — tiers=3 premiumControls=0
+PASS  X08-causas-en-desktop  /causas en desktop: 3 causes, Planned program badge, net-receipts basis, independent charities, disclosure, no terms link, no overflow  — badge="Planned program" termsLinks=0 hOverflow=0px
+PASS  X08-company-en-desktop  /company en desktop: no five-percentage breakdown; qualitative business, author and Causas text kept  — percentMatch= hOverflow=0px
+PASS  X08-purchase-unavailable-en-desktop  /pricing + /gift en desktop: unavailable notice; 2 purchase controls + gift submit disabled; Causas line uses planned/net wording  — pricingControls=2 allDisabled=true giftDisabled=true hOverflow=0/0px
+PASS  X08-overflow-home-en-desktop  homepage en desktop: no horizontal overflow  — hOverflow=0px
+PASS  X08-console-en-desktop  public pages en desktop: no uncaught page errors
+PASS  X08-home-causas-en-mobile  homepage en mobile: Causas section present, visible, Planned program badge, net-receipts basis, partnerships pending, PO-053 rule, 3 causes; no settlement/refund detail  — visible=true h2#=4/6 badge="Planned program"
+PASS  X08-home-premium-en-mobile  homepage en mobile: Noetia+/NoetiaX Coming Soon, 3/10 books per session, active-subscription prerequisite, may-change note, no controls  — tiers=3 premiumControls=0
+PASS  X08-causas-en-mobile  /causas en mobile: 3 causes, Planned program badge, net-receipts basis, independent charities, disclosure, no terms link, no overflow  — badge="Planned program" termsLinks=0 hOverflow=0px
+PASS  X08-company-en-mobile  /company en mobile: no five-percentage breakdown; qualitative business, author and Causas text kept  — percentMatch= hOverflow=0px
+PASS  X08-purchase-unavailable-en-mobile  /pricing + /gift en mobile: unavailable notice; 2 purchase controls + gift submit disabled; Causas line uses planned/net wording  — pricingControls=2 allDisabled=true giftDisabled=true hOverflow=0/0px
+PASS  X08-overflow-home-en-mobile  homepage en mobile: no horizontal overflow  — hOverflow=0px
+PASS  X08-console-en-mobile  public pages en mobile: no uncaught page errors
+PASS  X08-terms-404  /causas/terms returns HTTP 404 and shows no draft text  — status=404
+PASS  X08-terms-nolinks  no public page links to /causas/terms (/, /causas, /company, /about, /milestones, /pricing, /gift, /login incl. footer)  — links=0
+PASS  X08-login-library-es-desktop  login es desktop: bad password → error, stays on /login; good password → /library with token; library lists the book  — errShown=true onLibrary=true bookShown=true hOverflow=0px
+PASS  X08-reader-es-desktop  reader es desktop: authenticated book load renders title + phrases; no uncaught errors; no overflow  — phraseShown=true titleShown=true authBookCalls=1 pageErrors=0 hOverflow=0px
+PASS  X08-login-library-es-mobile  login es mobile: bad password → error, stays on /login; good password → /library with token; library lists the book  — errShown=true onLibrary=true bookShown=true hOverflow=0px
+PASS  X08-reader-es-mobile  reader es mobile: authenticated book load renders title + phrases; no uncaught errors; no overflow  — phraseShown=true titleShown=true authBookCalls=1 pageErrors=0 hOverflow=0px
+PASS  X08-login-library-en-desktop  login en desktop: bad password → error, stays on /login; good password → /library with token; library lists the book  — errShown=true onLibrary=true bookShown=true hOverflow=0px
+PASS  X08-reader-en-desktop  reader en desktop: authenticated book load renders title + phrases; no uncaught errors; no overflow  — phraseShown=true titleShown=true authBookCalls=1 pageErrors=0 hOverflow=0px
+PASS  X08-login-library-en-mobile  login en mobile: bad password → error, stays on /login; good password → /library with token; library lists the book  — errShown=true onLibrary=true bookShown=true hOverflow=0px
+PASS  X08-reader-en-mobile  reader en mobile: authenticated book load renders title + phrases; no uncaught errors; no overflow  — phraseShown=true titleShown=true authBookCalls=1 pageErrors=0 hOverflow=0px
+PASS  X08-reader-guest  guest opening the reader → /login?next=/reader/<id>  — /login?next=%2Freader%2Fbook-1
+
+39/39 passed
+axe home-es: no violations
+axe causas-es: color-contrast(serious,1)
+axe home-en: no violations
+axe causas-en: color-contrast(serious,1)

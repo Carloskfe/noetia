@@ -1,0 +1,271 @@
+PASS tests/unit/common/payments-activation.spec.ts
+  parsePaymentsEnabled
+    ✓ accepts exactly "true" (trimmed): "true" (4 ms)
+    ✓ accepts exactly "true" (trimmed): " true "
+    ✓ accepts exactly "true" (trimmed): "true
+"
+    ✓ accepts exactly "true" (trimmed): "	true"
+    ✓ rejects missing
+    ✓ rejects null (1 ms)
+    ✓ rejects empty
+    ✓ rejects whitespace
+    ✓ rejects false (1 ms)
+    ✓ rejects uppercase
+    ✓ rejects capitalised
+    ✓ rejects one
+    ✓ rejects yes
+    ✓ rejects on
+    ✓ rejects enabled
+    ✓ rejects y
+    ✓ rejects quoted
+    ✓ rejects typo
+    ✓ rejects trailing text
+    ✓ rejects two values
+    ✓ rejects boolean true (not a string) (1 ms)
+    ✓ rejects number 1
+    ✓ rejects object
+  resolvePaymentsActivation — activation-state matrix
+    ✓ distinguishes "not set" from "not exactly true" in the reason (1 ms)
+    PAYMENTS_ENABLED missing
+      ✓ missing key → disabled, no Stripe client (1 ms)
+      ✓ empty key → disabled, no Stripe client (1 ms)
+      ✓ placeholder key → disabled, no Stripe client
+      ✓ test key → disabled, no Stripe client
+      ✓ live key → disabled, no Stripe client (1 ms)
+      ✓ restricted live key → disabled, no Stripe client
+    PAYMENTS_ENABLED empty
+      ✓ missing key → disabled, no Stripe client (1 ms)
+      ✓ empty key → disabled, no Stripe client
+      ✓ placeholder key → disabled, no Stripe client
+      ✓ test key → disabled, no Stripe client (1 ms)
+      ✓ live key → disabled, no Stripe client
+      ✓ restricted live key → disabled, no Stripe client
+    PAYMENTS_ENABLED false
+      ✓ missing key → disabled, no Stripe client (1 ms)
+      ✓ empty key → disabled, no Stripe client
+      ✓ placeholder key → disabled, no Stripe client
+      ✓ test key → disabled, no Stripe client (1 ms)
+      ✓ live key → disabled, no Stripe client
+      ✓ restricted live key → disabled, no Stripe client
+    PAYMENTS_ENABLED TRUE
+      ✓ missing key → disabled, no Stripe client
+      ✓ empty key → disabled, no Stripe client
+      ✓ placeholder key → disabled, no Stripe client
+      ✓ test key → disabled, no Stripe client
+      ✓ live key → disabled, no Stripe client (1 ms)
+      ✓ restricted live key → disabled, no Stripe client
+    PAYMENTS_ENABLED 1
+      ✓ missing key → disabled, no Stripe client
+      ✓ empty key → disabled, no Stripe client
+      ✓ placeholder key → disabled, no Stripe client
+      ✓ test key → disabled, no Stripe client
+      ✓ live key → disabled, no Stripe client (1 ms)
+      ✓ restricted live key → disabled, no Stripe client
+    PAYMENTS_ENABLED yes
+      ✓ missing key → disabled, no Stripe client
+      ✓ empty key → disabled, no Stripe client (1 ms)
+      ✓ placeholder key → disabled, no Stripe client
+      ✓ test key → disabled, no Stripe client
+      ✓ live key → disabled, no Stripe client
+      ✓ restricted live key → disabled, no Stripe client (4 ms)
+    PAYMENTS_ENABLED malformed
+      ✓ missing key → disabled, no Stripe client
+      ✓ empty key → disabled, no Stripe client
+      ✓ placeholder key → disabled, no Stripe client
+      ✓ test key → disabled, no Stripe client (1 ms)
+      ✓ live key → disabled, no Stripe client
+      ✓ restricted live key → disabled, no Stripe client
+    PAYMENTS_ENABLED true
+      ✓ missing key → disabled (flag alone never activates) (1 ms)
+      ✓ empty key → disabled (flag alone never activates)
+      ✓ whitespace key → disabled (flag alone never activates) (1 ms)
+      ✓ placeholder key → disabled (flag alone never activates)
+      ✓ publishable key → disabled (flag alone never activates) (1 ms)
+      ✓ webhook secret by mistake → disabled (flag alone never activates)
+      ✓ prefix only → disabled (flag alone never activates)
+      ✓ non-string key → disabled (flag alone never activates) (1 ms)
+      ✓ test key → enabled; client built with the trimmed key
+      ✓ live key → enabled; client built with the trimmed key
+      ✓ restricted live key → enabled; client built with the trimmed key
+      ✓ key with surrounding whitespace → enabled; client built with the trimmed key (1 ms)
+  describePaymentsActivation (boot log line)
+    ✓ never contains the key (flag undefined)
+    ✓ never contains the key (flag "false") (1 ms)
+    ✓ never contains the key (flag "TRUE")
+    ✓ never contains the key (flag "true")
+    ✓ never contains the key (flag "true")
+    ✓ never contains the key (flag "true")
+    ✓ never contains the key (flag "true")
+    ✓ never contains the key (flag "true")
+    ✓ states the mode when enabled and fail-closed when disabled (1 ms)
+
+PASS tests/unit/common/payments-activation.gate.spec.ts
+  fails closed: flag missing + live key
+    ✓ builds no Stripe client in any Stripe-owning class (13 ms)
+    ✓ subscription checkout → 400 payments_not_configured (5 ms)
+    ✓ token-package purchase → 400 payments_not_configured (3 ms)
+    ✓ book purchase → 400 payments_not_configured (4 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (4 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (4 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (4 ms)
+  fails closed: flag missing + test key
+    ✓ builds no Stripe client in any Stripe-owning class (8 ms)
+    ✓ subscription checkout → 400 payments_not_configured (2 ms)
+    ✓ token-package purchase → 400 payments_not_configured (2 ms)
+    ✓ book purchase → 400 payments_not_configured (3 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (2 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (3 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (3 ms)
+  fails closed: flag missing + restricted live key
+    ✓ builds no Stripe client in any Stripe-owning class (2 ms)
+    ✓ subscription checkout → 400 payments_not_configured (2 ms)
+    ✓ token-package purchase → 400 payments_not_configured (2 ms)
+    ✓ book purchase → 400 payments_not_configured (3 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (6 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (2 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (3 ms)
+  fails closed: flag missing + no key
+    ✓ builds no Stripe client in any Stripe-owning class (2 ms)
+    ✓ subscription checkout → 400 payments_not_configured (2 ms)
+    ✓ token-package purchase → 400 payments_not_configured (3 ms)
+    ✓ book purchase → 400 payments_not_configured (2 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (3 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (2 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (2 ms)
+  fails closed: flag empty + live key
+    ✓ builds no Stripe client in any Stripe-owning class (2 ms)
+    ✓ subscription checkout → 400 payments_not_configured (7 ms)
+    ✓ token-package purchase → 400 payments_not_configured (2 ms)
+    ✓ book purchase → 400 payments_not_configured (2 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (2 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (3 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (2 ms)
+  fails closed: flag empty + no key
+    ✓ builds no Stripe client in any Stripe-owning class (2 ms)
+    ✓ subscription checkout → 400 payments_not_configured (3 ms)
+    ✓ token-package purchase → 400 payments_not_configured (2 ms)
+    ✓ book purchase → 400 payments_not_configured (2 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (6 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (2 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (2 ms)
+  fails closed: flag false + live key
+    ✓ builds no Stripe client in any Stripe-owning class (1 ms)
+    ✓ subscription checkout → 400 payments_not_configured (2 ms)
+    ✓ token-package purchase → 400 payments_not_configured (3 ms)
+    ✓ book purchase → 400 payments_not_configured (1 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (3 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (2 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (2 ms)
+  fails closed: flag false + test key
+    ✓ builds no Stripe client in any Stripe-owning class (6 ms)
+    ✓ subscription checkout → 400 payments_not_configured (2 ms)
+    ✓ token-package purchase → 400 payments_not_configured (2 ms)
+    ✓ book purchase → 400 payments_not_configured (2 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (2 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (3 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (2 ms)
+  fails closed: flag false + no key
+    ✓ builds no Stripe client in any Stripe-owning class (1 ms)
+    ✓ subscription checkout → 400 payments_not_configured (2 ms)
+    ✓ token-package purchase → 400 payments_not_configured (2 ms)
+    ✓ book purchase → 400 payments_not_configured (2 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (7 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (3 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (2 ms)
+  fails closed: flag TRUE (malformed) + live key
+    ✓ builds no Stripe client in any Stripe-owning class (2 ms)
+    ✓ subscription checkout → 400 payments_not_configured (2 ms)
+    ✓ token-package purchase → 400 payments_not_configured (3 ms)
+    ✓ book purchase → 400 payments_not_configured (2 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (2 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (2 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (2 ms)
+  fails closed: flag 1 (malformed) + live key
+    ✓ builds no Stripe client in any Stripe-owning class (5 ms)
+    ✓ subscription checkout → 400 payments_not_configured (3 ms)
+    ✓ token-package purchase → 400 payments_not_configured (2 ms)
+    ✓ book purchase → 400 payments_not_configured (2 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (2 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (2 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (2 ms)
+  fails closed: flag yes (malformed) + test key
+    ✓ builds no Stripe client in any Stripe-owning class (2 ms)
+    ✓ subscription checkout → 400 payments_not_configured (1 ms)
+    ✓ token-package purchase → 400 payments_not_configured (2 ms)
+    ✓ book purchase → 400 payments_not_configured (5 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (2 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (2 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (2 ms)
+  fails closed: flag typo + live key
+    ✓ builds no Stripe client in any Stripe-owning class (1 ms)
+    ✓ subscription checkout → 400 payments_not_configured (1 ms)
+    ✓ token-package purchase → 400 payments_not_configured (2 ms)
+    ✓ book purchase → 400 payments_not_configured (2 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (2 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (3 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (6 ms)
+  fails closed: flag true + no key
+    ✓ builds no Stripe client in any Stripe-owning class (1 ms)
+    ✓ subscription checkout → 400 payments_not_configured (2 ms)
+    ✓ token-package purchase → 400 payments_not_configured (2 ms)
+    ✓ book purchase → 400 payments_not_configured (2 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (1 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (1 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (2 ms)
+  fails closed: flag true + empty key
+    ✓ builds no Stripe client in any Stripe-owning class (1 ms)
+    ✓ subscription checkout → 400 payments_not_configured (2 ms)
+    ✓ token-package purchase → 400 payments_not_configured (2 ms)
+    ✓ book purchase → 400 payments_not_configured (5 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (2 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (3 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (2 ms)
+  fails closed: flag true + placeholder key
+    ✓ builds no Stripe client in any Stripe-owning class (2 ms)
+    ✓ subscription checkout → 400 payments_not_configured (2 ms)
+    ✓ token-package purchase → 400 payments_not_configured (1 ms)
+    ✓ book purchase → 400 payments_not_configured (1 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (2 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (2 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (7 ms)
+  fails closed: flag true + publishable key
+    ✓ builds no Stripe client in any Stripe-owning class (1 ms)
+    ✓ subscription checkout → 400 payments_not_configured (2 ms)
+    ✓ token-package purchase → 400 payments_not_configured (2 ms)
+    ✓ book purchase → 400 payments_not_configured (2 ms)
+    ✓ gift purchase (anonymous buyer) → 400 payments_not_configured (2 ms)
+    ✓ billing operations (portal, cancel, resume, sync) → 400 payments_not_configured (2 ms)
+    ✓ webhook → rejected before signature verification; nothing is fulfilled (2 ms)
+  cannot be bypassed over HTTP on the unauthenticated routes
+    ✓ flag missing + live key: anonymous POST /gifts/checkout → 400 payments_not_configured, no session (137 ms)
+    ✓ flag false + live key: anonymous POST /gifts/checkout → 400 payments_not_configured, no session (10 ms)
+    ✓ flag TRUE + test key: anonymous POST /gifts/checkout → 400 payments_not_configured, no session (9 ms)
+    ✓ flag true + no key: anonymous POST /gifts/checkout → 400 payments_not_configured, no session (7 ms)
+    ✓ flag missing + live key: POST /webhooks/stripe with any signature → 400, handler never runs (13 ms)
+    ✓ flag false + live key: POST /webhooks/stripe with any signature → 400, handler never runs (7 ms)
+    ✓ flag 1 + live key: POST /webhooks/stripe with any signature → 400, handler never runs (8 ms)
+    ✓ positive control: flag true + valid key → the same anonymous gift request DOES create a session (8 ms)
+  positive control — PAYMENTS_ENABLED=true + test key: existing behaviour is unchanged
+    ✓ builds one client per Stripe-owning class, with that key (2 ms)
+    ✓ subscription checkout creates a session with the unchanged parameters (14-day trial untouched) (3 ms)
+    ✓ token package, book and gift checkouts create sessions (2 ms)
+    ✓ portal, cancel and sync reach Stripe (2 ms)
+    ✓ webhook verifies the signature and dispatches the event (2 ms)
+  positive control — PAYMENTS_ENABLED=true + live key: existing behaviour is unchanged
+    ✓ builds one client per Stripe-owning class, with that key (2 ms)
+    ✓ subscription checkout creates a session with the unchanged parameters (14-day trial untouched) (2 ms)
+    ✓ token package, book and gift checkouts create sessions (1 ms)
+    ✓ portal, cancel and sync reach Stripe (7 ms)
+    ✓ webhook verifies the signature and dispatches the event (1 ms)
+  positive control — PAYMENTS_ENABLED=true + restricted live key: existing behaviour is unchanged
+    ✓ builds one client per Stripe-owning class, with that key (1 ms)
+    ✓ subscription checkout creates a session with the unchanged parameters (14-day trial untouched) (2 ms)
+    ✓ token package, book and gift checkouts create sessions (1 ms)
+    ✓ portal, cancel and sync reach Stripe (2 ms)
+    ✓ webhook verifies the signature and dispatches the event (1 ms)
+
+Test Suites: 2 passed, 2 total
+Tests:       229 passed, 229 total
+Snapshots:   0 total
+Time:        5.389 s
+Ran all test suites matching /tests\/unit\/common\/payments-activation/i.

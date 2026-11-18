@@ -1,0 +1,386 @@
+[31m[Nest] 62261  - [39m11/18/2026, 7:10:07 AM [31m  ERROR[39m [38;5;3m[IngestionService] [39m[31mFailed: Lazarillo de Tormes[39m
+Error: fetch error
+    at Object.<anonymous> (/home/carloskfe/Noetia-rehearsal/services/api/tests/unit/ingestion/ingestion.service.spec.ts:210:32)
+    at Promise.then.completed (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:316:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at _runTestsForDescribeBlock (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at run (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:444:34)
+    at Object.worker (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/testWorker.js:106:12)
+[31m[Nest] 62261  - [39m11/18/2026, 7:10:07 AM [31m  ERROR[39m [38;5;3m[IngestionService] [39m[31mStream URL failed: Lazarillo de Tormes[39m
+Error: scrape error
+    at Object.<anonymous> (/home/carloskfe/Noetia-rehearsal/services/api/tests/unit/ingestion/ingestion.service.spec.ts:361:32)
+    at Promise.then.completed (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:316:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at _runTestsForDescribeBlock (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at run (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:444:34)
+    at Object.worker (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/testWorker.js:106:12)
+[31m[Nest] 62261  - [39m11/18/2026, 7:10:07 AM [31m  ERROR[39m [38;5;3m[IngestionService] [39m[31mResync failed: Lazarillo de Tormes[39m
+network error
+[31m[Nest] 62261  - [39m11/18/2026, 7:10:07 AM [31m  ERROR[39m [38;5;3m[IngestionService] [39m[31mCover fetch failed: Book One[39m
+network error
+[31m[Nest] 62261  - [39m11/18/2026, 7:10:07 AM [31m  ERROR[39m [38;5;3m[IngestionService] [39m[31mAudio failed: Lazarillo de Tormes[39m
+Error: network error
+    at Object.<anonymous> (/home/carloskfe/Noetia-rehearsal/services/api/tests/unit/ingestion/ingestion.service.spec.ts:769:32)
+    at Promise.then.completed (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:316:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at _runTestsForDescribeBlock (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at run (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:444:34)
+    at Object.worker (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/testWorker.js:106:12)
+PASS tests/unit/ingestion/ingestion.service.spec.ts (5.856 s)
+[31m[Nest] 62261  - [39m11/18/2026, 7:10:08 AM [31m  ERROR[39m [38;5;3m[SubscriptionsService] [39m[31mAnnual-plan monthly token issuance failed[39m
+Error: boom
+    at Object.<anonymous> (/home/carloskfe/Noetia-rehearsal/services/api/tests/unit/subscriptions/subscriptions.service.spec.ts:499:81)
+    at Promise.then.completed (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:316:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at _runTestsForDescribeBlock (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at run (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:444:34)
+    at Object.worker (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/testWorker.js:106:12)
+PASS tests/unit/subscriptions/subscriptions.service.spec.ts
+PASS tests/unit/common/payments-activation.gate.spec.ts
+PASS tests/unit/social/social-token.service.spec.ts
+PASS tests/unit/books/books.service.spec.ts
+PASS tests/unit/common/trusted-proxy.integration.spec.ts
+PASS tests/unit/subscriptions/subscriptions-auth.contract.spec.ts
+PASS tests/unit/subscriptions/webhooks.service.spec.ts
+PASS tests/unit/books/books.controller.spec.ts
+PASS tests/unit/auth/auth.service.spec.ts
+PASS tests/unit/fragments/fragments.service.spec.ts
+PASS tests/unit/clubs/club-session-gateway.spec.ts
+PASS tests/unit/stats/stats.service.spec.ts
+PASS tests/unit/push/push.service.spec.ts
+PASS tests/unit/sharing/sharing.service.spec.ts
+PASS tests/unit/clubs/club-members.service.spec.ts
+PASS tests/unit/library/collections.service.spec.ts
+PASS tests/unit/ingestion/merge-transcriptions.spec.ts
+  ● Console
+
+    console.log
+      Found 2 files (sorted by sequence number):
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:345:11)
+
+    console.log
+        01_part.vtt → 1 cues, offset 00:00:00.000, ends 00:00:05.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+    console.log
+        02_part.vtt → 1 cues, offset 00:00:07.000, ends 00:00:03.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+    console.log
+      Found 2 files (sorted by sequence number):
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:345:11)
+
+    console.log
+        01.vtt → 1 cues, offset 00:00:00.000, ends 00:00:10.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+    console.log
+        02.vtt → 1 cues, offset 00:00:15.000, ends 00:00:05.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+    console.log
+      Found 2 files (sorted by sequence number):
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:345:11)
+
+    console.log
+        part09.vtt → 1 cues, offset 00:00:00.000, ends 00:00:01.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+    console.log
+        part10.vtt → 1 cues, offset 00:00:01.000, ends 00:00:01.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+    console.log
+      Found 2 files (sorted by sequence number):
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:345:11)
+
+    console.log
+        01.vtt → 1 cues, offset 00:00:00.000, ends 00:00:10.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+    console.log
+        02.vtt → 1 cues, offset 00:00:12.000, ends 00:00:02.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+    console.log
+      Found 2 files (sorted by sequence number):
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:345:11)
+
+    console.log
+        01.vtt → 1 cues (1 announcement stripped), offset 00:00:00.000, ends 00:00:07.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+    console.log
+        02.vtt → 1 cues (1 announcement stripped), offset 00:00:09.000, ends 00:00:06.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+    console.log
+      Found 2 files (sorted by sequence number) — offsetting by real audio durations:
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:345:11)
+
+    console.log
+        01.vtt → 1 cues, offset 00:00:00.000, audio 00:00:10.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+    console.log
+        02.vtt → 1 cues, offset 00:00:10.000, audio 00:00:03.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+    console.warn
+        ⚠ 1 audio chapter(s) vs 2 VTT file(s) — cannot pair 1:1; falling back to gap-based offsets (timeline may drift).
+
+      316 |   let useAudio = chapterDurations != null && chapterDurations.length === files.length;
+      317 |   if (chapterDurations != null && !useAudio) {
+    > 318 |     console.warn(
+          |             ^
+      319 |       `  ⚠ ${chapterDurations.length} audio chapter(s) vs ${files.length} VTT file(s) — ` +
+      320 |       `cannot pair 1:1; falling back to gap-based offsets (timeline may drift).`,
+      321 |     );
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:318:13)
+      at Object.<anonymous> (tests/unit/ingestion/merge-transcriptions.spec.ts:356:37)
+
+    console.log
+      Found 2 files (sorted by sequence number):
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:345:11)
+
+    console.log
+        01.vtt → 1 cues, offset 00:00:00.000, ends 00:00:05.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+    console.log
+        02.vtt → 1 cues, offset 00:00:07.000, ends 00:00:03.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+    console.warn
+        ⚠ 01.vtt: audio duration 00:00:04.000 < last cue 00:00:30.000 — durations unreliable; falling back to gap-based offsets for the whole book.
+
+      332 |       const lastCue = lastEndTime(parseVttCues(readFileSync(files[i], 'utf-8')));
+      333 |       if (chapterDurations![i] + TOL < lastCue) {
+    > 334 |         console.warn(
+          |                 ^
+      335 |           `  ⚠ ${basename(files[i])}: audio duration ${formatTimestamp(chapterDurations![i])} ` +
+      336 |           `< last cue ${formatTimestamp(lastCue)} — durations unreliable; ` +
+      337 |           `falling back to gap-based offsets for the whole book.`,
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:334:17)
+      at Object.<anonymous> (tests/unit/ingestion/merge-transcriptions.spec.ts:369:37)
+
+    console.log
+      Found 2 files (sorted by sequence number):
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:345:11)
+
+    console.log
+        01.vtt → 1 cues, offset 00:00:00.000, ends 00:00:30.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+    console.log
+        02.vtt → 1 cues, offset 00:00:32.000, ends 00:00:03.000
+
+      at mergeVttDirectory (src/ingestion/merge-transcriptions.ts:365:13)
+
+PASS tests/unit/social/social.controller.spec.ts
+PASS tests/unit/personas/persona-computer.service.spec.ts
+PASS tests/unit/ingestion/whisper-sync.service.spec.ts
+PASS tests/unit/ingestion/alignment.service.spec.ts
+PASS tests/unit/clubs/club-polls.service.spec.ts
+PASS tests/unit/gifts/gifts.service.spec.ts
+PASS tests/unit/users/users.controller.spec.ts
+PASS tests/unit/users/users.service.spec.ts
+PASS tests/unit/subscriptions/plans.service.spec.ts
+PASS tests/unit/clubs/club-sessions.service.spec.ts
+PASS tests/unit/subscriptions/admin-tokens.controller.spec.ts
+PASS tests/unit/clubs/club-discussions.service.spec.ts
+PASS tests/unit/waitlist/waitlist.service.spec.ts
+PASS tests/unit/library/library.service.spec.ts
+PASS tests/unit/stats/stats.controller.spec.ts
+PASS tests/unit/ingestion/phrase-splitter.service.spec.ts
+PASS tests/unit/causes/causes.service.spec.ts
+PASS tests/unit/authors/authors.service.spec.ts
+PASS tests/unit/sharing/sharing.controller.spec.ts
+PASS tests/unit/books/reading-progress.service.spec.ts
+PASS tests/unit/subscriptions/subscription.guard.spec.ts
+PASS tests/unit/ingestion/phrase-aligner.spec.ts
+PASS tests/unit/search/search.service.spec.ts
+PASS tests/unit/authors/authors.controller.spec.ts
+PASS tests/unit/clubs/club-messages.service.spec.ts
+PASS tests/unit/auth/token.service.spec.ts
+PASS tests/unit/clubs/clubs.service.spec.ts
+PASS tests/unit/codes/upload-codes.service.spec.ts
+PASS tests/unit/ingestion/minio-uploader.service.spec.ts
+PASS tests/unit/clubs/club-books.service.spec.ts
+PASS tests/unit/metrics/metrics.middleware.spec.ts
+PASS tests/unit/search/search.controller.spec.ts
+PASS tests/unit/books/sync-map.service.spec.ts
+[31m[Nest] 62261  - [39m11/18/2026, 7:10:19 AM [31m  ERROR[39m [38;5;3m[EventsService] [39m[31mFailed to emit event "fragment_created"[39m
+DB connection lost
+[31m[Nest] 62261  - [39m11/18/2026, 7:10:19 AM [31m  ERROR[39m [38;5;3m[EventsService] [39m[31mFailed to emit event "fragment_created"[39m
+repo broken
+PASS tests/unit/events/events.service.spec.ts
+PASS tests/unit/social/publishers/instagram.publisher.spec.ts
+PASS tests/unit/ingestion/gutenberg-fetcher.service.spec.ts
+PASS tests/unit/books/srt-parser.service.spec.ts
+PASS tests/unit/ingestion/librivox-api.service.spec.ts
+PASS tests/unit/storage/storage.service.spec.ts
+PASS tests/unit/ingestion/audio-downloader.service.spec.ts
+[31m[Nest] 62261  - [39m11/18/2026, 7:10:20 AM [31m  ERROR[39m [38;5;3m[EmailService] [39m[31mFailed to send email to user@example.com: SMTP down[39m
+[31m[Nest] 62261  - [39m11/18/2026, 7:10:20 AM [31m  ERROR[39m [38;5;3m[EmailService] [39m[31mFailed to send email to user@example.com: Connection refused[39m
+PASS tests/unit/auth/email.service.spec.ts
+PASS tests/unit/fragments/fragment-tagger.service.spec.ts
+PASS tests/unit/migrations/1748300000067-ReconcilePlanDisplayPrices.spec.ts
+PASS tests/unit/metrics/metrics.controller.spec.ts
+PASS tests/unit/ingestion/sync-diagnostics.spec.ts
+PASS tests/unit/common/payments-activation.spec.ts
+PASS tests/unit/social/publishers/pinterest.publisher.spec.ts
+PASS tests/unit/common/trusted-proxy.spec.ts
+PASS tests/unit/social/publishers/facebook.publisher.spec.ts
+PASS tests/unit/causes/dto/save-preferences.dto.spec.ts
+PASS tests/unit/social/publishers/linkedin.publisher.spec.ts
+PASS tests/unit/auth/email-confirmed.guard.spec.ts
+PASS tests/unit/ingestion/catalogue.spec.ts
+PASS tests/unit/ingestion/whisper-parser.spec.ts
+PASS tests/unit/ingestion/audio-source-resolver.spec.ts
+PASS tests/unit/auth/auth.controller.spec.ts
+PASS tests/unit/ingestion/wikisource-fetcher.service.spec.ts (34.591 s)
+--------------------------------|---------|----------|---------|---------|-----------------------------------------
+File                            | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                       
+--------------------------------|---------|----------|---------|---------|-----------------------------------------
+All files                       |   90.58 |    69.14 |   87.56 |   91.83 |                                         
+ auth                           |   94.61 |       70 |   95.65 |   96.36 |                                         
+  auth.service.ts               |    93.1 |    71.42 |     100 |   95.89 | 101,149,153                             
+  redis.provider.ts             |    87.5 |        0 |      50 |   83.33 | 10                                      
+  token.service.ts              |     100 |      100 |     100 |     100 |                                         
+ authors                        |     100 |      100 |     100 |     100 |                                         
+  authors.service.ts            |     100 |      100 |     100 |     100 |                                         
+ books                          |   99.18 |       88 |     100 |     100 |                                         
+  books.service.ts              |     100 |      100 |     100 |     100 |                                         
+  reading-progress.service.ts   |     100 |      100 |     100 |     100 |                                         
+  srt-parser.service.ts         |   97.77 |    72.72 |     100 |     100 | 20,50-56                                
+  sync-map.service.ts           |     100 |      100 |     100 |     100 |                                         
+ causes                         |     100 |      100 |     100 |     100 |                                         
+  causes.service.ts             |     100 |      100 |     100 |     100 |                                         
+ clubs                          |    82.1 |    66.66 |   71.69 |   84.48 |                                         
+  club-books.service.ts         |   95.23 |      100 |   66.66 |   97.22 | 21                                      
+  club-discussions.service.ts   |   93.18 |      100 |    62.5 |   91.89 | 56,67-68                                
+  club-members.service.ts       |   65.95 |    52.38 |   69.23 |   70.66 | 44-68,101-108                           
+  club-messages.service.ts      |   92.85 |    85.71 |      80 |   95.65 | 46                                      
+  club-polls.service.ts         |    87.5 |       50 |   83.33 |   94.59 | 20-21                                   
+  club-sessions.service.ts      |     100 |      100 |     100 |     100 |                                         
+  clubs.service.ts              |   70.49 |       55 |   55.55 |   69.81 | 53-66,76-79,89,98-100                   
+ codes                          |     100 |      100 |     100 |     100 |                                         
+  upload-codes.service.ts       |     100 |      100 |     100 |     100 |                                         
+ email                          |   44.68 |    17.08 |   36.84 |   42.22 |                                         
+  email.service.ts              |   44.68 |    17.08 |   36.84 |   42.22 | 47-96,202-401                           
+ events                         |     100 |    66.66 |     100 |     100 |                                         
+  events.service.ts             |     100 |    66.66 |     100 |     100 | 30                                      
+ fragments                      |   98.41 |      100 |   93.33 |   98.03 |                                         
+  fragment-tagger.service.ts    |     100 |      100 |     100 |     100 |                                         
+  fragments.service.ts          |   97.77 |      100 |    90.9 |   97.36 | 48                                      
+ gifts                          |   98.55 |    68.88 |    87.5 |   98.38 |                                         
+  gifts.service.ts              |   98.55 |    68.88 |    87.5 |   98.38 | 160                                     
+ ingestion                      |    89.9 |    76.08 |   89.74 |   92.88 |                                         
+  alignment.service.ts          |      60 |    40.74 |   68.75 |   57.89 | 34-88,132,143                           
+  audio-downloader.service.ts   |     100 |     90.9 |     100 |     100 | 15                                      
+  gutenberg-fetcher.service.ts  |   97.95 |    85.71 |    87.5 |     100 | 36-42                                   
+  ingestion.service.ts          |   98.18 |       85 |   90.47 |   98.66 | 112,289                                 
+  librivox-api.service.ts       |     100 |      100 |     100 |     100 |                                         
+  minio-uploader.service.ts     |     100 |       90 |     100 |     100 | 15                                      
+  phrase-splitter.service.ts    |   83.33 |    66.66 |     100 |     100 | 27,63-64,82,91,99-113,130,141           
+  whisper-sync.service.ts       |   89.28 |       70 |     100 |   88.46 | 62,67-72                                
+  wikisource-fetcher.service.ts |   96.62 |     85.5 |     100 |   98.66 | 76,201                                  
+ library                        |     100 |      100 |     100 |     100 |                                         
+  collections.service.ts        |     100 |      100 |     100 |     100 |                                         
+  library.service.ts            |     100 |      100 |     100 |     100 |                                         
+ personas                       |   88.15 |    73.17 |   94.44 |   85.48 |                                         
+  persona-computer.service.ts   |   88.15 |    73.17 |   94.44 |   85.48 | 38-66                                   
+ push                           |   96.42 |    57.14 |     100 |      96 |                                         
+  push.service.ts               |   96.42 |    57.14 |     100 |      96 | 35                                      
+ search                         |     100 |    85.71 |     100 |     100 |                                         
+  search.service.ts             |     100 |    85.71 |     100 |     100 | 74-75                                   
+ sharing                        |     100 |       88 |      80 |     100 |                                         
+  sharing.service.ts            |     100 |       88 |      80 |     100 | 74-77,98,104                            
+ social                         |   91.42 |    78.94 |     100 |   95.16 |                                         
+  social-token.service.ts       |   91.42 |    78.94 |     100 |   95.16 | 88,132-133                              
+ stats                          |     100 |      100 |     100 |     100 |                                         
+  stats.service.ts              |     100 |      100 |     100 |     100 |                                         
+ storage                        |   66.66 |     64.7 |      60 |   66.66 |                                         
+  storage.service.ts            |   66.66 |     64.7 |      60 |   66.66 | 56-66                                   
+ subscriptions                  |   91.56 |    81.41 |      90 |   91.61 |                                         
+  plans.service.ts              |     100 |      100 |     100 |     100 |                                         
+  subscriptions.service.ts      |   89.34 |    73.78 |   85.71 |   89.44 | 327-328,374,401,406,412,426-458,476-480 
+  webhooks.service.ts           |   97.26 |    96.22 |     100 |   97.01 | 85-86                                   
+ users                          |     100 |       80 |     100 |     100 |                                         
+  users.service.ts              |     100 |       80 |     100 |     100 | 74                                      
+ waitlist                       |   96.15 |     90.9 |      80 |   95.45 |                                         
+  waitlist.service.ts           |   96.15 |     90.9 |      80 |   95.45 | 33                                      
+--------------------------------|---------|----------|---------|---------|-----------------------------------------
+Jest: "global" coverage threshold for branches (80%) not met: 69.14%
+
+Test Suites: 75 passed, 75 total
+Tests:       1293 passed, 1293 total
+Snapshots:   0 total
+Time:        35.549 s, estimated 38 s
+Ran all test suites.

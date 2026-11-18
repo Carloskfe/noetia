@@ -1,0 +1,102 @@
+PASS tests/unit/components/ShareModal.spec.ts
+PASS tests/unit/reader/reader-utils.spec.ts
+PASS tests/unit/lib/api.spec.ts
+  ● Console
+
+    console.error
+      Error: Not implemented: navigation (except hash changes)
+          at module.exports (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+          at navigateFetch (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:77:3)
+          at exports.navigate (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:55:3)
+          at LocationImpl._locationObjectNavigate (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:31:5)
+          at LocationImpl._locationObjectSetterNavigate (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:25:17)
+          at LocationImpl.set href [as href] (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:47:10)
+          at Location.set href [as href] (/home/carloskfe/Noetia-rehearsal/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/generated/Location.js:125:37)
+          at apiFetch (/home/carloskfe/Noetia-rehearsal/services/web/lib/api.ts:59:102)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at Object.<anonymous> (/home/carloskfe/Noetia-rehearsal/services/web/tests/unit/lib/api.spec.ts:141:5) {
+        type: 'not implemented'
+      }
+
+      57 |       res = await fetchWithToken(path, init);
+      58 |     } else {
+    > 59 |       if (opts.redirectOnAuthFailure !== false && typeof window !== 'undefined') window.location.href = '/login';
+         |                                                                                                      ^
+      60 |       throw Object.assign(new Error('Session expired'), { status: 401 });
+      61 |     }
+      62 |   }
+
+      at VirtualConsole.<anonymous> (../../node_modules/.pnpm/jest-environment-jsdom@29.7.0/node_modules/jest-environment-jsdom/build/index.js:63:23)
+      at module.exports (../../node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:12:26)
+      at navigateFetch (../../node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:77:3)
+      at exports.navigate (../../node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:55:3)
+      at LocationImpl._locationObjectNavigate (../../node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:31:5)
+      at LocationImpl._locationObjectSetterNavigate (../../node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:25:17)
+      at LocationImpl.set href [as href] (../../node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:47:10)
+      at Location.set href [as href] (../../node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/generated/Location.js:125:37)
+      at apiFetch (lib/api.ts:59:102)
+      at Object.<anonymous> (tests/unit/lib/api.spec.ts:141:5)
+
+PASS tests/unit/components/CauseSelector.spec.tsx
+PASS tests/unit/app/billing/pricing.spec.tsx (5.355 s)
+PASS tests/unit/components/SharePicker.spec.ts
+PASS tests/unit/lib/i18n.spec.ts
+PASS tests/unit/lib/reader-preferences.spec.ts
+PASS tests/unit/components/onboarding/OnboardingTour.spec.tsx
+PASS tests/unit/app/causas.spec.tsx
+PASS tests/unit/app/LandingContent.spec.tsx
+PASS tests/unit/lib/onboarding.spec.ts
+PASS tests/unit/components/StatsTab.spec.tsx
+PASS tests/unit/lib/fragment-selection.spec.ts
+PASS tests/unit/app/billing/gift.spec.tsx
+PASS tests/unit/lib/consent-utils.spec.ts
+PASS tests/unit/app/corporate-causas-copy.spec.tsx
+PASS tests/unit/components/PlanCard.spec.ts
+PASS tests/unit/lib/tutorial-flags.spec.ts
+PASS tests/unit/components/ReaderTopBar.spec.tsx
+PASS tests/unit/app/billing/success.spec.ts
+PASS tests/unit/lib/share-utils.spec.ts
+PASS tests/unit/app/causas-terms-absent.spec.ts
+PASS tests/unit/lib/reader-utils.spec.ts
+PASS tests/unit/lib/reader-tutorial.spec.ts
+PASS tests/unit/lib/onboarding-stepper.spec.ts
+PASS tests/unit/lib/purchase-availability.spec.ts
+PASS tests/unit/components/Footer.spec.tsx
+---------------------------|---------|----------|---------|---------|-----------------------------
+File                       | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s           
+---------------------------|---------|----------|---------|---------|-----------------------------
+All files                  |   73.43 |    72.76 |   53.17 |   72.09 |                             
+ lib                       |   81.46 |    84.61 |    64.7 |   81.36 |                             
+  api.ts                   |   93.87 |    84.78 |   86.66 |   97.56 | 35                          
+  billing-utils.ts         |     100 |      100 |     100 |     100 |                             
+  clubs.ts                 |       0 |        0 |       0 |       0 | 1-173                       
+  consent-utils.ts         |   91.66 |    83.33 |     100 |     100 | 12-17                       
+  fragment-selection.ts    |     100 |      100 |     100 |     100 |                             
+  onboarding-stepper.ts    |     100 |      100 |     100 |     100 |                             
+  onboarding.ts            |   97.36 |    93.61 |      75 |     100 | 48,99-100                   
+  plan-utils.ts            |     100 |    91.66 |     100 |     100 | 33                          
+  purchase-availability.ts |     100 |      100 |     100 |     100 |                             
+  reader-preferences.ts    |      96 |      100 |     100 |   95.65 | 35                          
+  reader-tutorial.ts       |     100 |      100 |     100 |     100 |                             
+  reader-utils.ts          |     100 |      100 |     100 |     100 |                             
+  share-utils.ts           |   96.15 |    85.29 |   83.33 |   96.15 | 136                         
+  tutorial-flags.ts        |     100 |      100 |     100 |     100 |                             
+  use-reading-heartbeat.ts |       0 |        0 |       0 |       0 | 3-40                        
+ lib/i18n                  |   30.35 |        0 |   27.77 |   30.35 |                             
+  en.ts                    |   32.14 |        0 |   29.62 |   32.14 | 140-160,247-764,830-836     
+  es.ts                    |   28.57 |        0 |   25.92 |   28.57 | 142-162,249-760,762,809-833 
+ lib/legal                 |       0 |      100 |     100 |       0 |                             
+  cookie-policy.ts         |       0 |      100 |     100 |       0 | 1-45                        
+  privacy-policy.ts        |       0 |      100 |     100 |       0 | 1-102                       
+  terms-of-service.ts      |       0 |      100 |     100 |       0 | 1-100                       
+---------------------------|---------|----------|---------|---------|-----------------------------
+Jest: "global" coverage threshold for statements (80%) not met: 73.43%
+Jest: "global" coverage threshold for branches (80%) not met: 72.76%
+Jest: "global" coverage threshold for lines (80%) not met: 72.09%
+Jest: "global" coverage threshold for functions (80%) not met: 53.17%
+
+Test Suites: 28 passed, 28 total
+Tests:       411 passed, 411 total
+Snapshots:   0 total
+Time:        12.423 s
+Ran all test suites.

@@ -1,0 +1,86 @@
+# PR #59 final integrated release qualification — merge rehearsal record (2026-11-18T12:17Z)
+$ git rev-parse origin/main origin/feat/public-ecosystem-site-20261112
+a67afbd0d63c65af115137bba79bb8884df2c96e
+eefe0fb85fd1253f8937ee2bb72401b977fdadda
+
+$ git merge-tree --write-tree a67afbd eefe0fb  (exit 0 = no conflicts)
+6c6d8fea077f032ba93567d2ac6f94798411a6a7
+exit=0
+
+Cross-check: temporary worktree at a67afbd + 'git merge --no-commit --no-ff eefe0fb' → 'git write-tree'
+6c6d8fea077f032ba93567d2ac6f94798411a6a7
+HEAD (unchanged, no commit): a67afbd0d63c65af115137bba79bb8884df2c96e
+
+$ git diff --stat a67afbd 6c6d8fea077f032ba93567d2ac6f94798411a6a7 | tail -1
+ 89 files changed, 5092 insertions(+), 579 deletions(-)
+
+## Non-report files changed vs main (all PR #59 scope)
+M	services/api/src/causes/causes.service.ts
+M	services/api/src/causes/dto/save-preferences.dto.ts
+M	services/api/tests/unit/causes/causes.service.spec.ts
+A	services/api/tests/unit/causes/dto/save-preferences.dto.spec.ts
+A	services/api/tests/unit/subscriptions/subscriptions-auth.contract.spec.ts
+M	services/web/app/(account)/account/billing/page.tsx
+M	services/web/app/(billing)/gift/page.tsx
+M	services/web/app/(billing)/pricing/page.tsx
+M	services/web/app/(corporate)/about/content.tsx
+M	services/web/app/(corporate)/company/content.tsx
+M	services/web/app/(corporate)/milestones/content.tsx
+M	services/web/app/LandingContent.tsx
+M	services/web/app/causas/page.tsx
+A	services/web/app/fonts.ts
+A	services/web/app/fonts/playfair-display.ttf
+M	services/web/app/page.tsx
+M	services/web/components/CauseSelector.tsx
+M	services/web/components/Footer.tsx
+M	services/web/lib/api.ts
+M	services/web/lib/i18n/en.ts
+M	services/web/lib/i18n/es.ts
+A	services/web/lib/purchase-availability.ts
+M	services/web/tailwind.config.ts
+M	services/web/tests/e2e/subscribe-to-unlock.spec.ts
+A	services/web/tests/unit/app/LandingContent.spec.tsx
+A	services/web/tests/unit/app/billing/gift.spec.tsx
+A	services/web/tests/unit/app/billing/pricing.spec.tsx
+A	services/web/tests/unit/app/causas-terms-absent.spec.ts
+A	services/web/tests/unit/app/causas.spec.tsx
+A	services/web/tests/unit/app/corporate-causas-copy.spec.tsx
+A	services/web/tests/unit/components/CauseSelector.spec.tsx
+A	services/web/tests/unit/components/Footer.spec.tsx
+M	services/web/tests/unit/lib/api.spec.ts
+A	services/web/tests/unit/lib/purchase-availability.spec.ts
+
+## docs/reports files changed: 55
+
+## Isolation greps (migrations|stripe|payments-activation|webhooks|entitlement|docker-compose|infra|.github|nginx|traefik|terms-of-service|.env|api main.ts|gifts|trusted-proxy|mobile|worker), excluding docs/reports:
+  (none)
+
+## PR #63 (a67afbd) files — identical to main in merge tree?
+  yes, all 13 files identical
+    .env.example
+    CLAUDE.md
+    docs/reports/payments-activation-gate/final-qualification.md
+    docs/stripe-setup.md
+    services/api/src/common/payments-activation.ts
+    services/api/src/gifts/gifts.service.ts
+    services/api/src/main.ts
+    services/api/src/subscriptions/subscriptions.service.ts
+    services/api/src/subscriptions/webhooks.controller.ts
+    services/api/tests/unit/common/payments-activation.gate.spec.ts
+    services/api/tests/unit/common/payments-activation.spec.ts
+    services/api/tests/unit/gifts/gifts.service.spec.ts
+    services/api/tests/unit/subscriptions/subscriptions.service.spec.ts
+
+## Legal texts (services/web/lib/legal) identical to main?
+  yes
+
+## Stripe constructors in merge tree
+6c6d8fea077f032ba93567d2ac6f94798411a6a7:services/api/src/common/payments-activation.ts:51:  return activation.enabled ? new Stripe(activation.stripeKey) : null;
+
+## Frontend constant
+24:export const PURCHASES_AVAILABLE: boolean = false;
+
+## Other PRs not included (head is not an ancestor of eefe0fb)
+  PR #60 d8e61e24e0b8c35c08c9d0f722f6ff6876d71689 (fix/payment-lifecycle-stabilization-20261112): not included
+  PR #62 ecddd529b5b5f46ed1f9ce0afb2fbf1bfdbe7265 (release/g1-i1-b2-api-edge-network): not included
+  PR #22 d254eeab2a178c813c5a19598ab5b953bd1f6726 (fix/nof-004-terms-annual-prices): not included
