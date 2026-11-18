@@ -25,8 +25,8 @@
 | L-2 | Disclose that the program is **planned**. | Status badge on `/` and `/causas`; text on every surface |
 | L-3 | Disclose that the **2.22% is calculated on eligible net receipts after payment-processing fees**. | `/`, `/causas`, `/pricing`, CauseSelector, About, Milestones, Company footnote |
 | L-4 | Disclose that **charitable partnerships are pending**. | `/`, `/causas` (disclosure box), `/pricing`, CauseSelector, About, Milestones, Company, account billing |
-| L-5 | Keep calculation detail, monthly settlement and refund rules **off the homepage**. Put them in a **linked, clearly labelled draft** of program terms. | `/causas/terms` (draft banner, `noindex`), linked from `/causas`; homepage test forbids settlement/refund wording |
-| L-6 | Never present the draft program terms as legally approved. | Banner "Draft for legal review — not in effect" in both languages; bracketed open points; report and mirror headers |
+| L-5 | Keep calculation detail, monthly settlement and refund rules **off the homepage**. ~~Put them in a linked, clearly labelled draft of program terms.~~ **Amended by the PO publication-boundary decision (2026-11-18):** the draft is **not published by the app** while unapproved. It lives only in repository documentation. | Homepage test forbids settlement/refund wording. The `/causas/terms` route and link were removed; a regression test (`tests/unit/app/causas-terms-absent.spec.ts`) keeps them out |
+| L-6 | Never present the draft program terms as legally approved. | [`causas-program-terms-draft.md`](causas-program-terms-draft.md) is headed NOT APPROVED / NOT IN EFFECT (EN and ES), with bracketed open points |
 
 ## 3. Noetia+ / NoetiaX (retained, unchanged)
 
@@ -50,9 +50,13 @@ They appear as bracketed items in the draft terms. Engineering must not implemen
 | OP-F | **Beneficiary withdrawal:** reallocation if an organization stops participating or loses charitable status | Affects C-7 |
 | OP-G | **Reporting:** whether and how often program reports are published | Public copy makes no reporting promise |
 | OP-H | **Changes and termination:** notice period and process | Counsel to draft |
-| OP-I | **Revenue split on the Company page:** the published split (45 / 36 / 9 / 2.22 / 7.78) adds to 100%. Causas now uses a net-of-fees base; the other shares' base is not stated | Numbers unchanged; Causas is footnoted only. PO/PA to confirm whether the split is presented consistently |
+| OP-I | **Revenue split (45 / 36 / 9 / 2.22 / 7.78):** the five figures no longer share a basis | **Resolved for the public site (PO 2026-11-18):** the breakdown was removed from the Company page (ES and EN). Public figures for the other shares need a separate PO decision on their basis; the internal business plans still carry the old split |
 | OP-J | **Legacy preference records** (PO-053 OP-2) | Unchanged; handled in PR #59 §8 |
 | OP-K | **App-store commissions** (Apple/Google, 15–30%) on mobile purchases: are they "payment-processing fees" for C-1? | Large effect on the base; the draft terms say only "payment-processing fees" |
+
+## 4a. Payment-activation prerequisite (PO 2026-11-18)
+
+Reconciling the Terms of Service §3 with C-1…C-7 is a **hard prerequisite before payments can be activated**. That covers `PAYMENTS_ENABLED=true` on the API and `PURCHASES_AVAILABLE = true` on the web. It is **not** a prerequisite for the information-only PR #59 release. The specification is in [`terms-of-service-legal-gate-spec.md`](terms-of-service-legal-gate-spec.md).
 
 ## 5. Not authorized by this record
 

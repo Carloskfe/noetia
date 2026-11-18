@@ -4,7 +4,10 @@
 **Branch:** `feat/public-ecosystem-site-20261112` (Draft PR #59), from `fb970b5`. **Status:** Draft; **not merged, not deployed.** STOP for independent PA review.
 **Companion documents:**
 - [`causas-program-policy.md`](causas-program-policy.md): the decided rules, public-language rules and open points;
-- [`causas-program-terms-draft.md`](causas-program-terms-draft.md): mirror of the draft terms published at `/causas/terms`.
+- [`causas-program-terms-draft.md`](causas-program-terms-draft.md): the draft program terms, **NOT APPROVED / NOT IN EFFECT**. This is now the only copy; it is no longer published by the app (§8);
+- [`terms-of-service-legal-gate-spec.md`](terms-of-service-legal-gate-spec.md): the separate legal-gated Terms §3 specification (§8).
+
+> **Superseded in part by §8 (publication-boundary correction, 2026-11-18).** The `/causas/terms` route and its link, described in §2.2, §2.6, §3 and §4, were removed. The Company revenue breakdown in §2.5 was removed.
 
 ## 1. Summary
 
@@ -161,6 +164,16 @@ The following is kept verbatim in both languages: 3 / 10 eligible books selected
 2. The account billing page is Spanish-only (hard-coded). I aligned only its Causas sentence. Wiring it to `t.billing.causas` would be a separate i18n fix.
 3. Business plans `docs/business/{en,es}/01-*.md` and the technical baseline still describe "2.22% of each payment". They are outside PR #59's public copy and were left for a follow-up.
 
-## 7. STOP
+## 8. Publication-boundary correction (PO 2026-11-18, all five decisions approved)
+
+| Decision | Done |
+|---|---|
+| 1. Preserve Causas | No change to the homepage Causas section, `/causas` copy, the three causes, the 2.22% eligible-net-receipts model, the independent-charity / agreements-pending disclosure, or PO-053 |
+| 2. Remove draft terms from the app | Deleted `app/causas/terms/page.tsx`, `lib/legal/causas-program-terms-draft.ts` and their two specs. Removed the `/causas` link. New regression test `tests/unit/app/causas-terms-absent.spec.ts` checks: no route directory; no draft module; no `causas/terms` / draft reference in `app`, `components` or `lib`; and the docs copy exists with the NOT APPROVED / NOT IN EFFECT label. `causas.spec.tsx` now asserts that `/causas` has no terms link |
+| 3. Company page | Removed the five-row 45/36/9/2.22/7.78 list, its heading ("Distribución de ingresos" / "Revenue distribution") and its footnote, in ES and EN. Kept the qualitative paragraph, "What we offer authors" and the Causas social-impact line. No replacement figures. The section title "Publishing ecosystem and revenue model" is unchanged, to avoid redesign |
+| 4. Terms legal gate | [`terms-of-service-legal-gate-spec.md`](terms-of-service-legal-gate-spec.md): source, conflicts, requirements T-1…T-9, and coordination with #22 (one `TERMS_LAST_UPDATED`). Recorded as a **hard prerequisite before payment activation** (policy §4a). Terms not edited |
+| 5. Legal draft handling | The draft stays in this public repository, headed NOT APPROVED / NOT IN EFFECT (EN and ES). No history rewrite or force-push. Future confidential legal material goes through a private channel |
+
+## 9. STOP
 
 Draft PR only. **No merge, no deployment, no production change.** PR #60 and PR #62 untouched. Awaiting independent Product Architecture review.

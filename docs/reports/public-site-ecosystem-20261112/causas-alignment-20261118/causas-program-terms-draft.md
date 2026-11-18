@@ -1,13 +1,14 @@
-# Causas Noetia — Draft Program Terms (review mirror)
+# ⚠️ NOT APPROVED · NOT IN EFFECT — Causas Noetia Draft Program Terms (preliminary)
 
-> **DRAFT FOR LEGAL REVIEW — NOT IN EFFECT. NOT LEGALLY APPROVED.**
-> Borrador para revisión legal — no vigente. No aprobado legalmente.
+> **NOT APPROVED. NOT IN EFFECT. PRELIMINARY DRAFT FOR LEGAL REVIEW.**
+> **NO APROBADO. NO VIGENTE. BORRADOR PRELIMINAR PARA REVISIÓN LEGAL.**
 >
-> This file mirrors, verbatim, the draft rendered at `/causas/terms` from
-> `services/web/lib/legal/causas-program-terms-draft.ts` (the source of truth; the unit test
-> `tests/unit/lib/legal/causas-program-terms-draft.spec.ts` checks the rules it must contain). Bracketed items are open
-> points left deliberately unresolved — see [`causas-program-policy.md` §4](causas-program-policy.md#4-open-points-not-decided).
-> No beneficiary, agreement or contribution is named or implied.
+> - **Not legal terms of Noetia.** Counsel has not reviewed or approved them. They create no rights or obligations and may change entirely.
+> - **The program has not started.** No beneficiary agreement has been signed and no contribution has been made.
+> - **Not published by the Noetia app.** Under the PO publication-boundary decision of 2026-11-18, the former `/causas/terms` route and its link were removed. This document is the only copy and is kept for review.
+> - **Bracketed items are open points** left deliberately unresolved; see [`causas-program-policy.md` §4](causas-program-policy.md#4-open-points-not-decided).
+> - **No beneficiary, agreement or contribution** is named or implied.
+> - **This repository is public.** Future confidential legal-review material must use a private channel, not this repository.
 
 ---
 
