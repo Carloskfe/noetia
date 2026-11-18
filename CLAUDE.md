@@ -305,6 +305,10 @@ Leave all Sentry vars empty in development — the SDK skips initialization when
 ### Stripe
 See [`docs/stripe-setup.md`](docs/stripe-setup.md) for full setup instructions.
 
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `PAYMENTS_ENABLED` | _(unset = off)_ | **Payment activation gate, fail closed.** Stripe checkout, billing and webhook processing run only when exactly `true` **and** `STRIPE_SECRET_KEY` is a real `sk_`/`rk_` key; a key alone never activates payments. Setting it `true` in production is the financial release and needs its own PO authorization — see [`docs/stripe-setup.md` §0](docs/stripe-setup.md). |
+
 > **Production MinIO:** `MINIO_ENDPOINT=storage` (same Docker name) · `MINIO_PUBLIC_URL=https://storage.noetia.app`
 
 ---
