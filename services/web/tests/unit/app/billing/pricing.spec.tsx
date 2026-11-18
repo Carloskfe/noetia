@@ -457,3 +457,23 @@ describe('/pricing — which statuses count as a current plan', () => {
     expect(href()).toBe('https://checkout.test/sub');
   });
 });
+
+describe('/pricing — public copy makes no trial promise (D1 not yet qualified; payments disabled)', () => {
+  const TRIAL_PROMISE = /free trial|14[- ]day|trial|prueba gratuita|14 días|prueba/i;
+
+  it('rendered page (en) shows the neutral subtitle and "Choose plan", with no trial wording', async () => {
+    await render();
+    expect(container.textContent).toContain('Subscriptions are not open yet.');
+    expect(byText('Choose plan')).toBeDefined();
+    expect(container.textContent).not.toMatch(TRIAL_PROMISE);
+  });
+
+  it('displayed pricing strings carry no trial promise in en or es (paywall.* is shared with mobile and not rendered on web)', () => {
+    const { es } = require('../../../../lib/i18n/es');
+    for (const t of [en, es]) {
+      for (const s of [t.pricing.trial, t.pricing.startTrial]) expect(s).not.toMatch(TRIAL_PROMISE);
+    }
+    expect(es.pricing.trial).toBe('Las suscripciones aún no están abiertas.');
+    expect(es.pricing.startTrial).toBe('Elegir plan');
+  });
+});

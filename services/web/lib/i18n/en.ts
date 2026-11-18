@@ -332,7 +332,8 @@ export const en = {
   },
   pricing: {
     title: 'Noetia Plans',
-    trial: '14-day free trial. Cancel anytime.',
+    // Neutral until the D1 trial policy is qualified and payments are enabled: no trial promise, no implication that payment is open.
+    trial: 'Subscriptions are not open yet.',
     causasLink: 'Noetia Causes',
     causasText: '2.22% of every payment supports',
     monthly: 'Monthly',
@@ -344,7 +345,7 @@ export const en = {
     perYear: '/yr',
     equivalent: 'equivalent to',
     currentPlan: 'Your current plan',
-    startTrial: 'Start free trial',
+    startTrial: 'Choose plan',
     paymentError: 'Could not start payment. Please try again.',
     prefLookup: {
       title: "We couldn't check your Causas Noetia choice",
@@ -909,7 +910,7 @@ export const en = {
       x: {
         verb: 'Investigate in depth and compare ideas.',
         bullets: [
-          'Advanced source-aware investigation across up to ten eligible books you select',
+          'Advanced source-aware investigation across up to ten eligible books you select per session',
           'Deeper exploration and comparison of ideas and evidence across books',
         ],
         requirement: 'Will require an active Noetia subscription.',

@@ -334,7 +334,8 @@ export const es: Translations = {
   },
   pricing: {
     title: 'Planes Noetia',
-    trial: '14 días de prueba gratuita. Cancela cuando quieras.',
+    // Neutral hasta que la política de prueba D1 esté cualificada y los pagos activos: sin promesa de prueba ni de pago disponible.
+    trial: 'Las suscripciones aún no están abiertas.',
     causasLink: 'Causas Noetia',
     causasText: 'El 2,22% de cada pago apoya',
     monthly: 'Mensual',
@@ -346,7 +347,7 @@ export const es: Translations = {
     perYear: '/año',
     equivalent: 'equivale a',
     currentPlan: 'Tu plan actual',
-    startTrial: 'Comenzar prueba gratuita',
+    startTrial: 'Elegir plan',
     paymentError: 'No pudimos iniciar el pago. Intenta de nuevo.',
     prefLookup: {
       title: 'No pudimos consultar tu elección de Causas Noetia',
@@ -906,7 +907,7 @@ export const es: Translations = {
       x: {
         verb: 'Investiga en profundidad y compara ideas.',
         bullets: [
-          'Investigación avanzada basada en fuentes, sobre hasta diez libros elegibles que seleccionas',
+          'Investigación avanzada basada en fuentes, sobre hasta diez libros elegibles que seleccionas por sesión',
           'Exploración más profunda y comparación de ideas y evidencias entre libros',
         ],
         requirement: 'Requerirá una suscripción Noetia activa.',

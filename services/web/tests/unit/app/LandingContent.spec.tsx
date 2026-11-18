@@ -76,8 +76,8 @@ describe('LandingContent — ecosystem tiers', () => {
 
   it('describes the approved research limits and subscription prerequisite', () => {
     render('en');
-    expect(tier('plus').textContent).toMatch(/up to three eligible books/);
-    expect(tier('x').textContent).toMatch(/up to ten eligible books/);
+    expect(tier('plus').textContent).toMatch(/up to three eligible books you select per session/);
+    expect(tier('x').textContent).toMatch(/up to ten eligible books you select per session/);
     expect(tier('plus').textContent).toContain(en.landing.eco.plus.requirement);
   });
 

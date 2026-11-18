@@ -53,11 +53,11 @@ test.describe('Flow: subscribe → unlock', () => {
     await expect(page.getByText('Duo').first()).toBeVisible();
     await expect(page.getByText('Family').first()).toBeVisible();
 
-    // Click "Comenzar prueba gratuita" on the first plan
+    // Click "Elegir plan" on the first plan
     const checkoutRequest = page.waitForRequest(
       (req) => req.url().includes('/subscriptions/checkout') && req.method() === 'POST',
     );
-    await page.getByRole('button', { name: 'Comenzar prueba gratuita' }).first().click();
+    await page.getByRole('button', { name: 'Elegir plan' }).first().click();
     await checkoutRequest;
 
     expect(checkoutBody.planId).toBeTruthy();
@@ -126,7 +126,7 @@ test.describe('Flow: subscribe → unlock', () => {
     );
 
     await page.goto('/pricing');
-    await page.getByRole('button', { name: 'Comenzar prueba gratuita' }).first().click();
+    await page.getByRole('button', { name: 'Elegir plan' }).first().click();
 
     await expect(page.getByText(/No pudimos iniciar el pago/i)).toBeVisible();
   });

@@ -59,7 +59,8 @@ async function newPage(browser, { lang = 'es', token = null, viewport = { width:
   return { ctx, page, log, state };
 }
 const calls = (log, p, m) => log.filter((c) => c.p === p && (!m || c.m === m));
-const startTrial = (page, lang) => page.getByRole('button', { name: lang === 'es' ? /prueba gratuita/i : /free trial/i }).first();
+// Plan button (copy corrected 2026-11-18: no trial promise until D1 is qualified and payments are enabled).
+const startTrial = (page, lang) => page.getByRole('button', { name: lang === 'es' ? /^Elegir plan$/ : /^Choose plan$/ }).first();
 
 const browser = await chromium.launch(process.env.PW_EXEC ? { executablePath: process.env.PW_EXEC } : {});
 try {
@@ -254,7 +255,8 @@ try {
     await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
     await startTrial(page, 'en').click(); await page.waitForTimeout(1500);
     const stayed = new URL(page.url()).pathname === '/pricing';
-    const errText = (await page.textContent('body')).match(/(payment|pago)[^.]*\./i)?.[0] ?? '';
+    // Strict (2026-11-18): the old /(payment|pago)[^.]*\./i also matched "…payment supports Noetia Causes." (false positive).
+    const errText = (await page.textContent('body')).match(/(Could not start payment|No pudimos iniciar el pago)[^.]*\./)?.[0] ?? '';
     await page.screenshot({ path: `${OUT}/pricing-payments-not-configured-en.png` });
     record('X05-contain', 'payments disabled (API 400 payments_not_configured) → stays on /pricing with the payment error; no redirect', stayed && errText.length > 0, `error="${errText.slice(0, 80)}"`);
     await ctx.close();
@@ -279,6 +281,26 @@ try {
     await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
     const current = page.getByRole('button', { name: /Your current plan/ });
     record('X04-active', 'active subscriber → current plan button disabled', (await current.count()) === 1 && (await current.isDisabled()));
+    await ctx.close();
+  }
+  // ── X-06 approved public copy (PO 2026-11-18): no trial promise on /pricing; premium limits per session ──
+  for (const lang of ['es', 'en']) {
+    const { ctx, page } = await newPage(browser, { lang });
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    const body = await page.textContent('body');
+    const neutral = lang === 'es' ? 'Las suscripciones aún no están abiertas.' : 'Subscriptions are not open yet.';
+    const trialWords = /free trial|14[- ]day|prueba gratuita|14 días|trial|prueba/i.test(body);
+    record(`X06-pricing-${lang}`, `/pricing ${lang}: neutral subtitle, plan button "${lang === 'es' ? 'Elegir plan' : 'Choose plan'}", no trial wording`,
+      body.includes(neutral) && (await startTrial(page, lang).isVisible()) && !trialWords, `neutral=${body.includes(neutral)} trialWords=${trialWords}`);
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+    const home = await page.textContent('body');
+    const plus = lang === 'es' ? 'hasta tres libros elegibles que seleccionas por sesión' : 'up to three eligible books you select per session';
+    const x = lang === 'es' ? 'hasta diez libros elegibles que seleccionas por sesión' : 'up to ten eligible books you select per session';
+    const req = lang === 'es' ? 'Requerirá una suscripción Noetia activa.' : 'Will require an active Noetia subscription.';
+    const reqCount = home.split(req).length - 1;
+    const noDates = !/\b20(2[6-9]|3\d)\b.*(Noetia\+|NoetiaX)|(Noetia\+|NoetiaX)[^.]*\$\d/.test(home);
+    record(`X06-home-${lang}`, `landing ${lang}: Noetia+ ≤3 / NoetiaX ≤10 books per session, both require an active subscription, no dates/prices`,
+      home.includes(plus) && home.includes(x) && reqCount === 2 && noDates, `plus=${home.includes(plus)} x=${home.includes(x)} requirement×${reqCount} noDates=${noDates}`);
     await ctx.close();
   }
 } finally {
