@@ -1,0 +1,72 @@
+# S-ALT harness: Noetia stand-in (LOCAL ONLY). Mirrors docker-compose.server.yml networks, aliases and Traefik
+# labels (hosts renamed *.test, plain HTTP). web = the REAL candidate image built by build.sh from
+# docker-compose.server.yml; api/storage = identity responders that log credentials.
+# Values come from run.sh, which reads them from the effective docker-compose.server.yml (contract.sh).
+name: saltnoe
+
+networks:
+  noetia_net: {}
+  proxy:
+    external: true
+    name: saltz_proxy
+
+x-upstream-dns: &upstream-dns   # Docker's embedded DNS forwards unknown names here (fakedns.py)
+  dns: ["10.251.79.53"]
+  dns_search: ["tail-test.ts.net"]
+  # NO dns_opt here on purpose: production sets no ndots. When ndots is set explicitly Docker's resolver
+  # stops forwarding single-label names upstream, which would hide the fall-through. NDOTS=<n> adds ndots.yml.
+
+services:
+  api:
+    image: python:3-alpine
+    command: ["python", "-u", "/r/responder.py"]
+    environment: { WHO: noetia-api, PORT: "4000" }
+    volumes: ["./responder.py:/r/responder.py:ro"]
+    <<: *upstream-dns
+    networks:
+      noetia_net:
+        aliases: ["${API_ALIAS:?}"]
+      proxy: {}
+    labels:
+      - "salt.test=1"
+      - "traefik.enable=true"
+      - "traefik.docker.network=saltz_proxy"
+      - "traefik.http.routers.noetia-api.rule=Host(`noetia.test`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.noetia-api.entrypoints=web"
+      - "traefik.http.services.noetia-api.loadbalancer.server.port=4000"
+      - "traefik.http.middlewares.noetia-strip-api.stripprefix.prefixes=/api"
+      - "traefik.http.routers.noetia-api.middlewares=noetia-strip-api"
+
+  storage:
+    image: python:3-alpine
+    command: ["python", "-u", "/r/responder.py"]
+    environment: { WHO: noetia-storage, PORT: "9000" }
+    volumes: ["./responder.py:/r/responder.py:ro"]
+    networks:
+      noetia_net:
+        aliases: ["${STO_ALIAS:?}"]
+      proxy: {}
+    labels:
+      - "salt.test=1"
+      - "traefik.enable=true"
+      - "traefik.docker.network=saltz_proxy"
+      - "traefik.http.routers.noetia-storage.rule=Host(`storage.noetia.test`)"
+      - "traefik.http.routers.noetia-storage.entrypoints=web"
+      - "traefik.http.services.noetia-storage.loadbalancer.server.port=9000"
+
+  web:
+    image: "${WEB_IMAGE:?}"
+    environment:
+      NODE_ENV: production
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+      INTERNAL_API_URL: "${WEB_RUNTIME_API:?}"
+    <<: *upstream-dns
+    networks: [noetia_net, proxy]
+    labels:
+      - "salt.test=1"
+      - "traefik.enable=true"
+      - "traefik.docker.network=saltz_proxy"
+      - "traefik.http.routers.noetia-web.rule=Host(`noetia.test`)"
+      - "traefik.http.routers.noetia-web.entrypoints=web"
+      - "traefik.http.services.noetia-web.loadbalancer.server.port=3000"
