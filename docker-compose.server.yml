@@ -6,6 +6,17 @@
 # Requires:
 #   - Docker network "proxy" created by Traefik (infra/server/traefik/)
 #   - .env.production file in the same directory
+#
+# S-ALT internal-name contract (see infra/tests/s-alt/README.md):
+#   Internal callers reach the api and MinIO ONLY via the project-unique aliases
+#   `noetia-api.internal` / `noetia-storage.internal`, declared on noetia_net only.
+#   The generic names `api` / `storage` also exist on the shared `proxy` network,
+#   where another project's containers answer them whenever ours is stopped or
+#   being recreated (S19). The `.internal` suffix is reserved (never delegated in
+#   public DNS), so a missing alias fails closed with ENOTFOUND instead of being
+#   answered by an upstream resolver (e.g. MagicDNS via the tailnet search domain).
+#   The values below are literals on purpose: `environment:` overrides
+#   .env.production and they are not interpolated from --env-file.
 
 networks:
   noetia_net:
@@ -33,14 +44,19 @@ services:
     env_file: .env.production
     environment:
       NODE_ENV: production
+      # S-ALT: the internal S3 client uses the unique alias. Presigned URLs are
+      # signed with MINIO_PUBLIC_URL (unchanged) — see storage.service.ts.
+      MINIO_ENDPOINT: noetia-storage.internal
     depends_on:
       db:
         condition: service_healthy
       cache:
         condition: service_healthy
     networks:
-      - noetia_net
-      - proxy
+      noetia_net:
+        aliases:
+          - noetia-api.internal   # S-ALT: only name internal callers use for the api
+      proxy: {}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health"]
@@ -90,10 +106,15 @@ services:
     build:
       context: ./services/web
       target: production
+      args:
+        # S-ALT: baked into the /api rewrite (.next/routes-manifest.json) at build time
+        INTERNAL_API_URL: http://noetia-api.internal:4000
     env_file: .env.production
     environment:
       NODE_ENV: production
       HOSTNAME: "0.0.0.0"
+      # S-ALT: runtime target for server-side fetches (share page /s/[id])
+      INTERNAL_API_URL: http://noetia-api.internal:4000
     depends_on:
       - api
     networks:
@@ -277,8 +298,10 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - noetia_net
-      - proxy
+      noetia_net:
+        aliases:
+          - noetia-storage.internal   # S-ALT: only name the api's S3 client uses
+      proxy: {}
     restart: unless-stopped
     deploy:
       resources:
