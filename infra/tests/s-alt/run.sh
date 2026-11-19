@@ -60,9 +60,9 @@ cleanup() {
   "${AGX[@]}" down -v --remove-orphans >/dev/null 2>&1
   docker rm -f salt-traefik salt-upstream-dns salt-tailnet-sink >/dev/null 2>&1
   docker network rm saltz_proxy saltz_edge >/dev/null 2>&1
-  [[ $EDGE == 1 ]] && case "$NOEFILE" in "${TMPDIR:-/tmp}"/s-alt-b2.??????) rm -f -- "$NOEFILE" ;; esac
 }
-trap cleanup EXIT
+on_exit() { cleanup; [[ $EDGE == 1 ]] && case "$NOEFILE" in "${TMPDIR:-/tmp}"/s-alt-b2.??????) rm -f -- "$NOEFILE" ;; esac; }
+trap on_exit EXIT
 cleanup
 
 check() { # id description actual expected-regex
@@ -109,7 +109,7 @@ docker run -d --name salt-upstream-dns --network saltz_proxy --ip 10.251.79.53 -
 docker run -d --name salt-tailnet-sink --network saltz_proxy --ip 10.251.79.80 -e WHO=tailnet-sink -e PORT=4000,9000 \
   -v "$H/responder.py:/r/responder.py:ro" python:3-alpine python -u /r/responder.py >/dev/null
 "${AGX[@]}" up -d --quiet-pull >/dev/null 2>&1 || { echo "agx up failed"; exit 3; }
-"${NOE[@]}" up -d --quiet-pull >/dev/null 2>&1 || { echo "noe up failed"; exit 3; }
+"${NOE[@]}" up -d --quiet-pull >"${TMPDIR:-/tmp}/s-alt-up.log" 2>&1 || { echo "noe up failed:"; tail -5 "${TMPDIR:-/tmp}/s-alt-up.log"; exit 3; }
 docker run -d --name salt-traefik --network saltz_proxy -p 127.0.0.1:$TP:80 \
   -v /var/run/docker.sock:/var/run/docker.sock:ro traefik:v2.11 \
   --providers.docker=true --providers.docker.exposedbydefault=false --providers.docker.network=saltz_proxy \
