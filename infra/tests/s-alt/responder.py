@@ -1,9 +1,10 @@
 """Identity responder (S-ALT harness, local only). Answers {"who", "path"} and records every
 request's Authorization / Cookie / body, readable at GET /__log (that request is not recorded).
-PORT may be a comma-separated list (one shared log)."""
+PORT may be a comma-separated list (one shared log). START_DELAY=<s> delays listening (models api boot time)."""
 import json
 import os
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 WHO = os.environ["WHO"]
@@ -40,6 +41,7 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+time.sleep(float(os.environ.get("START_DELAY", "0")))
 for p in PORTS[1:]:
     threading.Thread(target=ThreadingHTTPServer(("", p), Handler).serve_forever, daemon=True).start()
 ThreadingHTTPServer(("", PORTS[0]), Handler).serve_forever()

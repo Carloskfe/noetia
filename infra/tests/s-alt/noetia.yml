@@ -19,9 +19,17 @@ x-upstream-dns: &upstream-dns   # Docker's embedded DNS forwards unknown names h
 services:
   api:
     image: python:3-alpine
+    init: true                       # as production (tini forwards SIGTERM)
     command: ["python", "-u", "/r/responder.py"]
-    environment: { WHO: noetia-api, PORT: "4000" }
+    environment: { WHO: noetia-api, PORT: "4000", START_DELAY: "${API_START_DELAY:-0}" }
     volumes: ["./responder.py:/r/responder.py:ro"]
+    healthcheck:                     # as production: Traefik only routes healthy containers
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:4000/health',timeout=2)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+      start_interval: 1s
     <<: *upstream-dns
     networks:
       noetia_net:
@@ -39,6 +47,7 @@ services:
 
   storage:
     image: python:3-alpine
+    init: true
     command: ["python", "-u", "/r/responder.py"]
     environment: { WHO: noetia-storage, PORT: "9000" }
     volumes: ["./responder.py:/r/responder.py:ro"]
@@ -62,6 +71,7 @@ services:
       PORT: "3000"
       INTERNAL_API_URL: "${WEB_RUNTIME_API:?}"
     <<: *upstream-dns
+    depends_on: [api]                # as production
     networks: [noetia_net, proxy]
     labels:
       - "salt.test=1"

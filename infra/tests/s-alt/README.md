@@ -38,7 +38,9 @@ answers *every* name, including reserved TLDs (`UPSTREAM_MODE=all`), defeats any
 | `build.sh web\|api` | Builds `saltbuild-web` / `saltbuild-api` exactly as CD does (`docker compose --env-file … -f docker-compose.server.yml build`). |
 | `run.sh [candidate\|generic\|plain][-b2]` | Disposable failure-path harness: real web image, real Traefik v2.11, AutoGuildX-like neighbour, foreign `storage`, MagicDNS-like upstream (`fakedns.py`) and tailnet sink. |
 | `storage-client.sh` | The real `StorageService` from the api image against a real MinIO reachable only via the alias. Covers round trip, unchanged presigned/public URLs, and fail-closed behaviour when MinIO is down. |
-| `noetia.yml`, `agx.yml`, `ndots.yml`, `responder.py`, `fakedns.py`, `storage-client.js` | Harness parts. |
+| `transition.sh forward\|rollback compose-order\|web-first` | Deployment-transition test (PA F-1): switches old to new with real Compose recreation under continuous credentialed traffic, and reports foreign requests and outage windows. |
+| `ROLLOUT.md` | **Fail-closed rollout and rollback runbook (F-1), pre-deployment DNS gate (F-2), staging sync requirement (F-3).** |
+| `noetia.yml`, `agx.yml`, `ndots.yml`, `responder.py`, `fakedns.py`, `storage-client.js`, `traffic.py` | Harness parts. |
 
 ## Running
 
@@ -53,6 +55,9 @@ infra/tests/s-alt/run.sh plain                     # negative control (unsuffixe
 infra/tests/s-alt/run.sh candidate-b2              # with PR #62 Stage B-2 topology
 NDOTS=5 infra/tests/s-alt/run.sh candidate         # search-domain-first resolver
 infra/tests/s-alt/storage-client.sh
+infra/tests/s-alt/transition.sh forward compose-order   # control: CD as-is, expected FAIL (old web falls through)
+infra/tests/s-alt/transition.sh forward web-first       # proposed rollout: expected PASS
+infra/tests/s-alt/transition.sh rollback web-first
 ```
 
 ## What it does not cover (residual exposure)
