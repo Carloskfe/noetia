@@ -1,0 +1,20 @@
+  STRIPE_SECRET_KEY absent
+    ✓ constructs no Stripe client in any of the three Stripe-owning classes
+    ✓ subscription checkout (#59 path) → 400 payments_not_configured, no session
+    ✓ token-package checkout (#59 path) → 400 payments_not_configured, no session
+    ✓ book purchase → 400 payments_not_configured
+    ✓ ANONYMOUS gift checkout (already reachable on main) → 400 payments_not_configured
+    ✓ portal / cancel / resume → 400 payments_not_configured
+    ✓ webhook endpoint rejects every event (no fulfillment)
+  STRIPE_SECRET_KEY empty
+    ✓ constructs no Stripe client in any of the three Stripe-owning classes
+    ✓ subscription checkout (#59 path) → 400 payments_not_configured, no session
+    ✓ token-package checkout (#59 path) → 400 payments_not_configured, no session
+    ✓ book purchase → 400 payments_not_configured
+    ✓ ANONYMOUS gift checkout (already reachable on main) → 400 payments_not_configured
+    ✓ portal / cancel / resume → 400 payments_not_configured
+    ✓ webhook endpoint rejects every event (no fulfillment)
+  positive control: a configured key DOES create sessions (so the guard above is what blocks them)
+    ✓ sk_test key → Stripe constructed; subscription checkout calls checkout.sessions.create
+    ✓ any non-empty value (even a placeholder) enables the client — the condition is ABSENT or EMPTY, not "not live"
+Tests:       16 passed, 16 total

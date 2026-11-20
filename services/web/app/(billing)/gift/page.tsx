@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/i18n';
+import { purchasesAvailable } from '@/lib/purchase-availability';
 
 const PACKAGES = [
   { tokenCount: 1 as const, amountCents: 999 },
@@ -15,6 +16,8 @@ function formatPrice(cents: number) {
 
 export default function GiftPage() {
   const { t } = useTranslation();
+  // Fail closed (lib/purchase-availability.ts): while false the form is shown read-only and never calls /gifts/checkout.
+  const available = purchasesAvailable();
   const [tokenCount, setTokenCount] = useState<1 | 3>(1);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [occasion, setOccasion] = useState('');
@@ -37,6 +40,7 @@ export default function GiftPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!purchasesAvailable()) return;
     setError('');
     setLoading(true);
     try {
@@ -69,7 +73,14 @@ export default function GiftPage() {
         <p className="text-gray-500 text-sm">{t.giftCard.send.subtitle}</p>
       </div>
 
+      {!available && (
+        <p role="status" data-testid="gift-unavailable" className="mb-6 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-center text-sm font-medium text-gray-700">
+          {t.giftCard.send.unavailable}
+        </p>
+      )}
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+       <fieldset disabled={!available} className="contents">
         {/* Token amount */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-3">{t.giftCard.send.howMany}</label>
@@ -150,13 +161,17 @@ export default function GiftPage() {
 
         <button
           type="submit"
-          disabled={loading || !recipientEmail}
-          className="w-full py-3.5 bg-slate-900 text-white rounded-xl font-semibold text-base hover:bg-slate-800 disabled:opacity-50 transition"
+          disabled={!available || loading || !recipientEmail}
+          aria-disabled={!available || loading || !recipientEmail}
+          className="w-full py-3.5 bg-slate-900 text-white rounded-xl font-semibold text-base hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
         >
-          {loading ? t.giftCard.send.submitting : t.giftCard.send.submit(PKG_LABELS[tokenCount].label, formatPrice(selected.amountCents))}
+          {!available
+            ? t.giftCard.send.unavailableButton
+            : loading ? t.giftCard.send.submitting : t.giftCard.send.submit(PKG_LABELS[tokenCount].label, formatPrice(selected.amountCents))}
         </button>
 
-        <p className="text-xs text-center text-gray-400">{t.giftCard.send.footer}</p>
+        {available && <p className="text-xs text-center text-gray-400">{t.giftCard.send.footer}</p>}
+       </fieldset>
       </form>
 
       <div className="mt-8 text-center">

@@ -1,0 +1,384 @@
+// Checkpoint X — PR #59 browser verification against the real production build (next start), fully mocked.
+// Network policy: only http://127.0.0.1:<PORT> is allowed; every API call (relative /api/* and the baked-in
+// http://localhost:4000/*) is answered by mocks below; the "Stripe" redirect target is a local stub host.
+// Nothing leaves the machine. No real account, payment, or Stripe call exists.
+// MODE (2026-11-18, purchase availability): default `unavailable` = the committed fail-closed build
+// (lib/purchase-availability.ts PURCHASES_AVAILABLE=false) → X07 checks. `PURCHASES=available` = a local, NEVER-committed
+// build with the constant set to true, to regression-test the preserved purchase path (X04/X05).
+import { chromium } from '@playwright/test';
+import fs from 'fs';
+
+const BASE = process.env.BASE;
+const OUT = process.env.OUT;
+const MODE = process.env.PURCHASES === 'available' ? 'available' : 'unavailable';
+const STRIPE_STUB = 'https://checkout.stripe.test/c/pay/cs_test_stub';
+const PLANS = [
+  { id: 'plan-ind', name: 'Individual', amountCents: 899, interval: 'month', tokensPerCycle: 1, maxProfiles: 1 },
+  { id: 'plan-duo', name: 'Duo', amountCents: 1399, interval: 'month', tokensPerCycle: 2, maxProfiles: 2 },
+];
+const PKGS = [{ id: 'pkg-1', name: 'One', tokenCount: 1, amountCents: 499 }];
+const CAUSES = [
+  { id: 'c-animal', slug: 'bienestar-animal', name: 'Bienestar Animal', description: 'd1' },
+  { id: 'c-kids', slug: 'ninez-y-juventud', name: 'Niñez y Juventud', description: 'd2' },
+  { id: 'c-env', slug: 'medio-ambiente', name: 'Medio Ambiente', description: 'd3' },
+];
+
+const results = [];
+const record = (id, name, pass, detail = '') => { results.push({ id, name, pass, detail }); console.log(`${pass ? 'PASS' : 'FAIL'}  ${id}  ${name}${detail ? '  — ' + detail : ''}`); };
+
+async function newPage(browser, { lang = 'es', token = null, viewport = { width: 1280, height: 900 }, api = {} } = {}) {
+  const ctx = await browser.newContext({ viewport });
+  const log = [];
+  await ctx.addInitScript(([lang, token]) => {
+    try { localStorage.setItem('noetia_lang', lang); if (token) localStorage.setItem('access_token', token); } catch {}
+  }, [lang, token]);
+  const page = await ctx.newPage();
+  const state = { refreshCalls: 0, meCalls: 0, prefGetCalls: 0 };
+  await page.route('**/*', async (route) => {
+    const req = route.request();
+    const url = new URL(req.url());
+    const auth = req.headers()['authorization'] ?? null;
+    if (url.origin === BASE && !url.pathname.startsWith('/api/')) return route.continue();
+    if (url.host === 'checkout.stripe.test') { log.push({ m: req.method(), p: 'STRIPE_STUB' }); return route.fulfill({ status: 200, contentType: 'text/html', body: '<h1>stub</h1>' }); }
+    let path = null;
+    if (url.origin === BASE && url.pathname.startsWith('/api/')) path = url.pathname.slice(4);
+    else if (url.origin === 'http://localhost:4000') path = url.pathname;
+    if (path === null) return route.abort(); // block everything else (fonts are self-hosted)
+    const body = req.postData();
+    log.push({ m: req.method(), p: path, auth, body });
+    const json = (status, obj) => route.fulfill({ status, contentType: 'application/json', body: obj === undefined ? '' : JSON.stringify(obj) });
+    const h = api[`${req.method()} ${path}`];
+    if (h) return h({ json, auth, body, state, route });
+    if (path === '/subscriptions/plans') return json(200, PLANS);
+    if (path === '/subscriptions/token-packages') return json(200, PKGS);
+    if (path === '/causes' && req.method() === 'GET') return json(200, CAUSES);
+    if (path === '/auth/refresh') { state.refreshCalls++; return json(401, { message: 'no session' }); }
+    if (!auth) return json(401, { message: 'Unauthorized' });
+    if (path === '/subscriptions/me') { state.meCalls++; return json(200, { status: 'none' }); }
+    if (path === '/causes/preferences' && req.method() === 'GET') { state.prefGetCalls++; return json(200, undefined); }
+    if (path === '/causes/preferences' && req.method() === 'POST') return json(201, JSON.parse(body));
+    if (path === '/subscriptions/checkout' || path === '/subscriptions/tokens/purchase') return json(200, { url: STRIPE_STUB });
+    return json(404, { message: 'mock: not found' });
+  });
+  return { ctx, page, log, state };
+}
+const calls = (log, p, m) => log.filter((c) => c.p === p && (!m || c.m === m));
+// Plan button (copy corrected 2026-11-18: no trial promise until D1 is qualified and payments are enabled).
+const startTrial = (page, lang) => page.getByRole('button', { name: lang === 'es' ? /^Elegir plan$/ : /^Choose plan$/ }).first();
+
+const browser = await chromium.launch(process.env.PW_EXEC ? { executablePath: process.env.PW_EXEC } : {});
+try {
+  // ── X-02 public ecosystem: EN/ES × desktop/mobile ──────────────────────────────
+  for (const lang of ['es', 'en']) {
+    for (const [label, viewport] of [['desktop', { width: 1280, height: 900 }], ['mobile', { width: 375, height: 812 }]]) {
+      const { ctx, page } = await newPage(browser, { lang, viewport });
+      await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+      const html = await page.content();
+      const tiers = await page.locator('article[data-tier]').count();
+      const soon = await page.getByText(lang === 'es' ? /Próximamente/ : /Coming Soon/).count();
+      const tierLinks = await page.locator('article[data-tier="plus"] a, article[data-tier="plus"] button, article[data-tier="x"] a, article[data-tier="x"] button').count();
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      const footers = await page.locator('footer').count();
+      const badLinks = await page.locator('a[href*="checkout"], a[href*="billing"], a[href*="upgrade"]').count();
+      const htmlLang = await page.evaluate(() => document.documentElement.lang);
+      await page.screenshot({ path: `${OUT}/landing-${lang}-${label}.png`, fullPage: true });
+      record(`X02-${lang}-${label}`, `landing ${lang} ${label}`,
+        tiers === 3 && soon >= 2 && tierLinks === 0 && overflow <= 0 && footers === 1 && badLinks === 0,
+        `tiers=${tiers} comingSoon=${soon} premiumTierLinks=${tierLinks} hOverflow=${overflow}px footers=${footers} checkoutLinks=${badLinks} html.lang=${htmlLang}`);
+      if (label === 'mobile') {
+        const menuBtn = page.locator('button[aria-controls="landing-menu"], button[aria-expanded]').first();
+        let menuOk = false;
+        if (await menuBtn.count()) { await menuBtn.click(); menuOk = await page.locator('#landing-menu').isVisible(); await page.keyboard.press('Escape'); menuOk = menuOk && !(await page.locator('#landing-menu').isVisible()); }
+        record(`X02-${lang}-menu`, `mobile menu opens/closes (${lang})`, menuOk);
+      }
+      for (const route of ['/causas', '/about', '/company', '/milestones']) {
+        await page.goto(`${BASE}${route}`, { waitUntil: 'networkidle' });
+        const ov = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        const f = await page.locator('footer').count();
+        const t = await page.textContent('body');
+        const twoCause = /dos causas|two causes|aleatori|random/i.test(t);
+        if (label === 'mobile' && route === '/causas') await page.screenshot({ path: `${OUT}/causas-${lang}-mobile.png`, fullPage: true });
+        record(`X02-${lang}-${label}${route}`, `${route} ${lang} ${label}`, ov <= 0 && f === 1 && !twoCause, `hOverflow=${ov}px footers=${f} twoCause/random wording=${twoCause}`);
+      }
+      await ctx.close();
+    }
+  }
+
+  if (MODE === 'available') {
+  // ── X-04 pricing matrix ───────────────────────────────────────────────────────
+  // 1–2 guest
+  {
+    const { ctx, page, log } = await newPage(browser, { lang: 'es' });
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    const onPricing = new URL(page.url()).pathname === '/pricing';
+    const plansShown = await startTrial(page, 'es').isVisible();
+    const prefLookups = calls(log, '/causes/preferences').length;
+    record('X04-1', 'guest visits /pricing: no redirect, plans shown, no preference lookup', onPricing && plansShown && prefLookups === 0, `url=${new URL(page.url()).pathname} prefLookups=${prefLookups}`);
+    await page.screenshot({ path: `${OUT}/pricing-guest-es.png`, fullPage: true });
+    await startTrial(page, 'es').click(); await page.waitForURL(/\/login/);
+    const u = new URL(page.url());
+    record('X04-2a', 'guest selects a plan → /login?next=/pricing, no checkout call', u.pathname === '/login' && u.searchParams.get('next') === '/pricing' && calls(log, '/subscriptions/checkout').length === 0, u.pathname + u.search);
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: /^Comprar$|^Buy$/ }).first().click(); await page.waitForURL(/\/login/);
+    const u2 = new URL(page.url());
+    const gp = calls(log, '/subscriptions/tokens/purchase');
+    record('X04-2b', 'guest buys a token package → /login?next=/pricing; any attempted purchase call carries NO credentials (rejected 401)', u2.pathname === '/login' && u2.searchParams.get('next') === '/pricing' && gp.every((c) => !c.auth), `${u2.pathname + u2.search} unauthenticatedAttempts=${gp.length}`);
+    await ctx.close();
+  }
+  // 3 + 9 signed-in with saved cause → checkout directly with Bearer, body unchanged, no preference write
+  {
+    const { ctx, page, log } = await newPage(browser, { lang: 'en', token: 'tok-valid', api: {
+      'GET /causes/preferences': ({ json, auth }) => auth ? json(200, { cause1Id: 'c-kids', cause2Id: null, randomDistribution: false }) : json(401, {}),
+    } });
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    await startTrial(page, 'en').click(); await page.waitForURL(/checkout\.stripe\.test/);
+    const co = calls(log, '/subscriptions/checkout', 'POST');
+    const ok = co.length === 1 && co[0].auth === 'Bearer tok-valid' && co[0].body === JSON.stringify({ planId: 'plan-ind' });
+    record('X04-3/9', 'saved cause → checkout directly; Bearer token; body {planId} unchanged; no preference write',
+      ok && calls(log, '/causes/preferences', 'POST').length === 0, `checkout=${JSON.stringify(co.map((c) => ({ auth: c.auth, body: c.body })))}`);
+    await ctx.close();
+  }
+  // 4 + 12 signed-in without a saved cause → selector; one cause saved with Bearer, cause2Id null, random false
+  {
+    const { ctx, page, log } = await newPage(browser, { lang: 'en', token: 'tok-valid' });
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    await startTrial(page, 'en').click();
+    const dialog = page.getByRole('dialog');
+    await dialog.waitFor();
+    const radios = await dialog.getByRole('radio').count();
+    await page.screenshot({ path: `${OUT}/pricing-selector-en.png` });
+    await dialog.getByRole('radio').nth(1).check({ force: true }); await dialog.getByRole('radio').nth(2).check({ force: true });
+    const checked = await dialog.locator('input[type=radio]:checked').count();
+    await dialog.getByRole('button', { name: /Save and continue/ }).click(); await page.waitForURL(/checkout\.stripe\.test/);
+    const post = calls(log, '/causes/preferences', 'POST');
+    const b = post[0] ? JSON.parse(post[0].body) : {};
+    record('X04-4', 'no saved cause → single-choice selector (3 radios, one checked) → save one → checkout',
+      radios === 3 && checked === 1 && post.length === 1 && post[0].auth === 'Bearer tok-valid' && b.cause1Id === 'c-env' && b.cause2Id === null && b.randomDistribution === false && calls(log, '/subscriptions/checkout', 'POST').length === 1,
+      `radios=${radios} checked=${checked} body=${post[0]?.body}`);
+    await ctx.close();
+  }
+  // 11 + 12 skip ("continue without choosing") → checkout with no preference write
+  {
+    const { ctx, page, log } = await newPage(browser, { lang: 'en', token: 'tok-valid' });
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    await startTrial(page, 'en').click();
+    const dialog = page.getByRole('dialog'); await dialog.waitFor();
+    await dialog.getByRole('button', { name: /without choosing|Continue without/i }).click(); await page.waitForURL(/checkout\.stripe\.test/);
+    record('X04-11a', 'skip → checkout, no preference write (existing preference untouched)', calls(log, '/causes/preferences', 'POST').length === 0 && calls(log, '/subscriptions/checkout', 'POST').length === 1);
+    await ctx.close();
+  }
+  // Failed save → no checkout; retry → checkout
+  {
+    let fails = 1;
+    const { ctx, page, log } = await newPage(browser, { lang: 'en', token: 'tok-valid', api: {
+      'POST /causes/preferences': ({ json, body }) => (fails-- > 0 ? json(500, { message: 'boom' }) : json(201, JSON.parse(body))),
+    } });
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    await startTrial(page, 'en').click();
+    const dialog = page.getByRole('dialog'); await dialog.waitFor();
+    await dialog.getByRole('radio').first().check({ force: true });
+    await dialog.getByRole('button', { name: /Save and continue/ }).click();
+    await page.getByText(/couldn't save your cause/i).waitFor();
+    const noCheckoutYet = calls(log, '/subscriptions/checkout').length === 0 && new URL(page.url()).pathname === '/pricing';
+    const stillChecked = await dialog.locator('input[type=radio]:checked').count();
+    await dialog.getByRole('button', { name: /^Try again$/ }).click(); await page.waitForURL(/checkout\.stripe\.test/);
+    record('X03/X04-11b', 'save fails → error shown, selection kept, NO checkout; retry succeeds → checkout', noCheckoutYet && stillChecked === 1, `checkoutBeforeRetry=${!noCheckoutYet ? 'yes' : 'no'}`);
+    await ctx.close();
+  }
+  // 8 preference lookup failure → notice; cancel = no checkout; continue = checkout without preference write
+  {
+    const { ctx, page, log } = await newPage(browser, { lang: 'en', token: 'tok-valid', api: {
+      'GET /causes/preferences': ({ json }) => json(500, { message: 'db down' }),
+    } });
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    await startTrial(page, 'en').click();
+    const dlg = page.getByTestId('pref-lookup-dialog'); await dlg.waitFor();
+    const selectorShown = await page.getByRole('radio').count();
+    await dlg.getByRole('button').last().click(); // cancel
+    const cancelled = calls(log, '/subscriptions/checkout').length === 0 && !(await dlg.isVisible());
+    await startTrial(page, 'en').click(); await dlg.waitFor();
+    await dlg.getByRole('button').nth(1).click(); // continue without changing
+    await page.waitForURL(/checkout\.stripe\.test/);
+    record('X04-8', 'preference lookup error → explicit notice (no selector, no equal-split claim); cancel = no checkout; continue = checkout, no preference write',
+      selectorShown === 0 && cancelled && calls(log, '/causes/preferences', 'POST').length === 0 && calls(log, '/subscriptions/checkout', 'POST').length === 1);
+    await ctx.close();
+  }
+  // 5 expired access token + valid refresh session → one refresh, retried with the new token
+  {
+    const { ctx, page, log, state } = await newPage(browser, { lang: 'en', token: 'tok-expired', api: {
+      'POST /auth/refresh': ({ json, state }) => { state.refreshCalls++; return json(200, { accessToken: 'tok-new' }); },
+      'GET /subscriptions/me': ({ json, auth }) => (auth === 'Bearer tok-new' ? json(200, { status: 'none' }) : json(401, {})),
+      'GET /causes/preferences': ({ json, auth }) => (auth === 'Bearer tok-new' ? json(200, { cause1Id: 'c-animal' }) : json(401, {})),
+      'POST /subscriptions/checkout': ({ json, auth }) => (auth === 'Bearer tok-new' ? json(200, { url: STRIPE_STUB }) : json(401, {})),
+    } });
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    await startTrial(page, 'en').click(); await page.waitForURL(/checkout\.stripe\.test/);
+    const co = calls(log, '/subscriptions/checkout', 'POST').at(-1);
+    record('X04-5', 'expired access token + valid refresh → refresh once, continue to checkout with the new token', state.refreshCalls === 1 && co?.auth === 'Bearer tok-new', `refreshCalls=${state.refreshCalls}`);
+    await ctx.close();
+  }
+  // 6 no access token + valid refresh session → treated as signed in
+  {
+    const { ctx, page, log, state } = await newPage(browser, { lang: 'en', token: null, api: {
+      'POST /auth/refresh': ({ json, state }) => { state.refreshCalls++; return json(200, { accessToken: 'tok-fresh' }); },
+      'GET /subscriptions/me': ({ json, auth }) => (auth === 'Bearer tok-fresh' ? json(200, { status: 'none' }) : json(401, {})),
+      'GET /causes/preferences': ({ json, auth }) => (auth === 'Bearer tok-fresh' ? json(200, { cause1Id: 'c-animal' }) : json(401, {})),
+      'POST /subscriptions/checkout': ({ json, auth }) => (auth === 'Bearer tok-fresh' ? json(200, { url: STRIPE_STUB }) : json(401, {})),
+    } });
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    await startTrial(page, 'en').click(); await page.waitForURL(/checkout\.stripe\.test|\/login/);
+    record('X04-6', 'no access token + valid refresh cookie → signed in (no login redirect), checkout with refreshed token', /checkout\.stripe\.test/.test(page.url()) && state.refreshCalls >= 1, `url=${page.url().slice(0, 40)} refreshCalls=${state.refreshCalls}`);
+    await ctx.close();
+  }
+  // 7 auth failure: checkout 401 and refresh fails → /login?next=/pricing
+  {
+    const { ctx, page } = await newPage(browser, { lang: 'en', token: 'tok-valid', api: {
+      'GET /causes/preferences': ({ json }) => json(200, { cause1Id: 'c-animal' }),
+      'POST /subscriptions/checkout': ({ json }) => json(401, {}),
+    } });
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    await startTrial(page, 'en').click(); await page.waitForURL(/\/login/);
+    const u = new URL(page.url());
+    record('X04-7', 'checkout 401 + refresh fails → /login?next=/pricing', u.searchParams.get('next') === '/pricing', u.pathname + u.search);
+    await ctx.close();
+  }
+  // 10 token package purchase with Bearer, body unchanged
+  {
+    const { ctx, page, log } = await newPage(browser, { lang: 'en', token: 'tok-valid' });
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: /^Buy$/ }).first().click(); await page.waitForURL(/checkout\.stripe\.test/);
+    const tp = calls(log, '/subscriptions/tokens/purchase', 'POST');
+    record('X04-10', 'token purchase → Bearer token, body {packageId} unchanged', tp.length === 1 && tp[0].auth === 'Bearer tok-valid' && tp[0].body === JSON.stringify({ packageId: 'pkg-1' }), JSON.stringify(tp.map((c) => ({ auth: c.auth, body: c.body }))));
+    await ctx.close();
+  }
+  // Payment boundary: no live Stripe key on the server → API 400 payments_not_configured → payment error, no redirect
+  {
+    const { ctx, page } = await newPage(browser, { lang: 'en', token: 'tok-valid', api: {
+      'GET /causes/preferences': ({ json }) => json(200, { cause1Id: 'c-animal' }),
+      'POST /subscriptions/checkout': ({ json }) => json(400, { error: 'payments_not_configured' }),
+    } });
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    await startTrial(page, 'en').click(); await page.waitForTimeout(1500);
+    const stayed = new URL(page.url()).pathname === '/pricing';
+    // Strict (2026-11-18): the old /(payment|pago)[^.]*\./i also matched "…payment supports Noetia Causes." (false positive).
+    const errText = (await page.textContent('body')).match(/(Could not start payment|No pudimos iniciar el pago)[^.]*\./)?.[0] ?? '';
+    await page.screenshot({ path: `${OUT}/pricing-payments-not-configured-en.png` });
+    record('X05-contain', 'payments disabled (API 400 payments_not_configured) → stays on /pricing with the payment error; no redirect', stayed && errText.length > 0, `error="${errText.slice(0, 80)}"`);
+    await ctx.close();
+  }
+  // Status unknown → subscription checkout blocked (duplicate-subscription UI guard)
+  {
+    const { ctx, page, log } = await newPage(browser, { lang: 'en', token: 'tok-valid', api: {
+      'GET /subscriptions/me': ({ json }) => json(500, {}),
+      'GET /causes/preferences': ({ json }) => json(200, { cause1Id: 'c-animal' }),
+    } });
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    const banner = await page.getByTestId('status-unknown-banner').isVisible();
+    await startTrial(page, 'en').click(); await page.waitForTimeout(800);
+    record('X04-status', 'subscription status unknown → banner; checkout blocked', banner && calls(log, '/subscriptions/checkout').length === 0);
+    await ctx.close();
+  }
+  // Active subscriber → current plan not purchasable again
+  {
+    const { ctx, page, log } = await newPage(browser, { lang: 'en', token: 'tok-valid', api: {
+      'GET /subscriptions/me': ({ json }) => json(200, { status: 'active', planId: 'plan-ind' }),
+    } });
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    const current = page.getByRole('button', { name: /Your current plan/ });
+    record('X04-active', 'active subscriber → current plan button disabled', (await current.count()) === 1 && (await current.isDisabled()));
+    await ctx.close();
+  }
+  }
+  // ── X-06 approved public copy (PO 2026-11-18): no trial promise on /pricing; premium limits per session ──
+  for (const lang of ['es', 'en']) {
+    const { ctx, page } = await newPage(browser, { lang });
+    await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+    const body = await page.textContent('body');
+    const trialWords = /free trial|14[- ]day|prueba gratuita|14 días|trial|prueba/i.test(body);
+    record(`X06-pricing-${lang}`, `/pricing ${lang}: no trial wording (${MODE})`, !trialWords, `trialWords=${trialWords}`);
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+    const home = await page.textContent('body');
+    const plus = lang === 'es' ? 'hasta tres libros elegibles que seleccionas por sesión' : 'up to three eligible books you select per session';
+    const x = lang === 'es' ? 'hasta diez libros elegibles que seleccionas por sesión' : 'up to ten eligible books you select per session';
+    const req = lang === 'es' ? 'Requerirá una suscripción Noetia activa.' : 'Will require an active Noetia subscription.';
+    const reqCount = home.split(req).length - 1;
+    const noDates = !/\b20(2[6-9]|3\d)\b.*(Noetia\+|NoetiaX)|(Noetia\+|NoetiaX)[^.]*\$\d/.test(home);
+    record(`X06-home-${lang}`, `landing ${lang}: Noetia+ ≤3 / NoetiaX ≤10 books per session, both require an active subscription, no dates/prices`,
+      home.includes(plus) && home.includes(x) && reqCount === 2 && noDates, `plus=${home.includes(plus)} x=${home.includes(x)} requirement×${reqCount} noDates=${noDates}`);
+    await ctx.close();
+  }
+  // ── X-07 purchases unavailable (fail-closed default build) ─────────────────────
+  if (MODE === 'unavailable') {
+    const NOTICE = { es: 'Las suscripciones y las compras de tokens aún no están disponibles.', en: 'Subscriptions and token purchases are not available yet.' };
+    const BTN = { es: 'Aún no disponible', en: 'Not available yet' };
+    const GIFT_TXT = { es: 'Los regalos de tokens aún no están disponibles', en: 'Token gifts are not available yet' };
+    const effects = (log) => ({
+      checkout: calls(log, '/subscriptions/checkout').length, tokens: calls(log, '/subscriptions/tokens/purchase').length,
+      prefWrites: calls(log, '/causes/preferences', 'POST').length, gift: calls(log, '/gifts/checkout').length, stripe: calls(log, 'STRIPE_STUB').length,
+    });
+    for (const lang of ['es', 'en']) {
+      for (const who of ['guest', 'signed-in']) {
+        const { ctx, page, log } = await newPage(browser, { lang, token: who === 'guest' ? null : 'tok-valid' });
+        await page.goto(`${BASE}/pricing`, { waitUntil: 'networkidle' });
+        const body = await page.textContent('body');
+        const btns = page.getByRole('button', { name: BTN[lang], exact: true });
+        const n = await btns.count();
+        let allDisabled = n > 0;
+        for (let k = 0; k < n; k++) allDisabled = allDisabled && (await btns.nth(k).isDisabled());
+        const giftLinks = await page.locator('a[href="/gift"]').count();
+        if (who === 'guest') await page.screenshot({ path: `${OUT}/pricing-unavailable-${lang}.png`, fullPage: true });
+        // Adversarial: force-click and dispatch clicks on every disabled control.
+        for (let k = 0; k < n; k++) {
+          await btns.nth(k).click({ force: true, timeout: 2000 }).catch(() => {});
+          await btns.nth(k).dispatchEvent('click');
+        }
+        await page.waitForTimeout(800);
+        const e = effects(log);
+        const stayed = new URL(page.url()).pathname === '/pricing';
+        record(`X07-pricing-${lang}-${who}`, `/pricing ${lang} ${who}: notice shown; ${n} purchase controls disabled ("${BTN[lang]}"); gift entry is text; pressing them starts nothing`,
+          body.includes(NOTICE[lang]) && n === 3 && allDisabled && giftLinks === 0 && body.includes(GIFT_TXT[lang]) && stayed &&
+            e.checkout === 0 && e.tokens === 0 && e.prefWrites === 0 && e.gift === 0 && e.stripe === 0,
+          `notice=${body.includes(NOTICE[lang])} controls=${n} disabled=${allDisabled} giftLinks=${giftLinks} stayed=${stayed} effects=${JSON.stringify(e)}`);
+        await ctx.close();
+      }
+      // /gift (direct visit)
+      {
+        const { ctx, page, log } = await newPage(browser, { lang });
+        await page.goto(`${BASE}/gift`, { waitUntil: 'networkidle' });
+        const body = await page.textContent('body');
+        const submit = page.locator('button[type="submit"]');
+        const label = (await submit.textContent())?.trim();
+        const disabled = await submit.isDisabled();
+        const emailDisabled = await page.locator('input[type="email"]').isDisabled();
+        await page.screenshot({ path: `${OUT}/gift-unavailable-${lang}.png`, fullPage: true });
+        await submit.click({ force: true, timeout: 2000 }).catch(() => {});
+        await page.locator('form').evaluate((f) => f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+        await page.waitForTimeout(800);
+        const e = effects(log);
+        record(`X07-gift-${lang}`, `/gift ${lang}: unavailable notice; form read-only; submit "${BTN[lang]}" disabled; forced submit starts nothing`,
+          body.includes(GIFT_TXT[lang]) && label === BTN[lang] && disabled && emailDisabled && new URL(page.url()).pathname === '/gift' && e.gift === 0 && e.stripe === 0,
+          `label="${label}" disabled=${disabled} emailDisabled=${emailDisabled} effects=${JSON.stringify(e)}`);
+        await ctx.close();
+      }
+    }
+    // Existing routes unaffected (smoke): login form renders; library and discover load.
+    {
+      const { ctx, page } = await newPage(browser, { lang: 'en' });
+      const statuses = {};
+      for (const route of ['/login', '/library', '/discover']) {
+        const r = await page.goto(`${BASE}${route}`, { waitUntil: 'domcontentloaded' });
+        statuses[route] = r?.status();
+      }
+      await page.goto(`${BASE}/login`, { waitUntil: 'networkidle' });
+      const loginForm = (await page.locator('input[type="email"]').count()) > 0 && (await page.locator('input[type="password"]').count()) > 0;
+      record('X07-routes', 'login form renders; /login, /library, /discover respond 200', loginForm && Object.values(statuses).every((s) => s === 200), JSON.stringify(statuses) + ` loginForm=${loginForm}`);
+      await ctx.close();
+    }
+  }
+} finally {
+  await browser.close();
+}
+fs.writeFileSync(`${OUT}/browser-results.json`, JSON.stringify(results, null, 2));
+const failed = results.filter((r) => !r.pass).length;
+console.log(`──────── ${results.length - failed} passed, ${failed} failed`);
+process.exit(failed ? 1 : 0);
