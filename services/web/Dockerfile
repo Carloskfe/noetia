@@ -15,7 +15,11 @@ FROM base AS build
 RUN npm install
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV INTERNAL_API_URL=http://api:4000
+# S-ALT: the /api rewrite target is baked at build time. Default = the project-unique
+# alias declared in docker-compose.server.yml (never the generic `api`, which other
+# projects also answer on the shared proxy network). Override with --build-arg.
+ARG INTERNAL_API_URL=http://noetia-api.internal:4000
+ENV INTERNAL_API_URL=$INTERNAL_API_URL
 ENV NEXT_PUBLIC_API_URL=https://noetia.app/api
 ENV NEXT_PUBLIC_OAUTH_URL=https://noetia.app/api
 RUN npm run build

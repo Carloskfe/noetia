@@ -275,7 +275,7 @@ Key variables:
 ### MinIO / Storage
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `MINIO_ENDPOINT` | `storage` | Docker service name |
+| `MINIO_ENDPOINT` | `storage` | Docker service name (dev). Production: `noetia-storage.internal`, fixed in `docker-compose.server.yml` |
 | `MINIO_PORT` | `9000` | |
 | `MINIO_PUBLIC_URL` | `http://localhost:9000` | **Required** — rewrites internal Docker hostname in presigned URLs so browsers can download images. Set to CDN/public URL in production. |
 | `MINIO_ACCESS_KEY` | `minioadmin` | **Change in production** |
@@ -309,7 +309,17 @@ See [`docs/stripe-setup.md`](docs/stripe-setup.md) for full setup instructions.
 |----------|---------|-------|
 | `PAYMENTS_ENABLED` | _(unset = off)_ | **Payment activation gate, fail closed.** Stripe checkout, billing and webhook processing run only when exactly `true` **and** `STRIPE_SECRET_KEY` is a real `sk_`/`rk_` key; a key alone never activates payments. Setting it `true` in production is the financial release and needs its own PO authorization — see [`docs/stripe-setup.md` §0](docs/stripe-setup.md). |
 
-> **Production MinIO:** `MINIO_ENDPOINT=storage` (same Docker name) · `MINIO_PUBLIC_URL=https://storage.noetia.app`
+> **Production MinIO:** `MINIO_ENDPOINT=noetia-storage.internal` (set as a literal on `api` in `docker-compose.server.yml`; overrides `.env.production`) · `MINIO_PUBLIC_URL=https://storage.noetia.app`
+
+### Internal service names in production (S-ALT contract)
+`api`, `web` and `storage` are also on the shared `proxy` network, where other projects (AutoGuildX) advertise the
+same generic names (`api`, `storage`). Production internal calls therefore use **only** the project-unique aliases
+declared on `noetia_net`: `http://noetia-api.internal:4000` (web `/api` rewrite — Docker build arg — and share-page
+SSR — runtime env) and `noetia-storage.internal` (api S3 client). Never point production callers at the generic
+`api`/`storage` names, and keep the `.internal` suffix (a bare unique name can be answered by Tailscale MagicDNS
+when the alias is missing). Contract test: `infra/tests/s-alt/contract.sh`; disposable failure-path harness:
+`infra/tests/s-alt/run.sh`; outage playbook: [`docs/incident-response.md §10`](docs/incident-response.md). Local
+dev (`docker-compose.yml`) keeps `api`/`storage`.
 
 ---
 
@@ -521,6 +531,11 @@ docker compose -f docker-compose.server.yml exec -T db \
   -c "SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 3;"
 ```
 Spot-test one key endpoint (login, book list, or audio stream) before closing the deploy.
+Also confirm the S-ALT internal aliases resolve (a missing alias gives `/api` or share-page 500s while CD stays green):
+```bash
+docker exec noetia-web-1 node -e "require('dns').lookup('noetia-api.internal',(e,a)=>console.log(e?e.code:a))"
+docker exec noetia-api-1 node -e "require('dns').lookup('noetia-storage.internal',(e,a)=>console.log(e?e.code:a))"
+```
 
 ### Mobile OTA updates (EAS)
 OTA updates are safe for **JavaScript-only changes**. Any change to native code, new native package, or `app.config.ts` config requires a full `eas build` and store submission — an OTA cannot update native binaries.

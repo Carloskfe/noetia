@@ -135,9 +135,9 @@ docker compose --env-file .env.production -f docker-compose.server.yml restart d
 # Is MinIO up?
 docker ps | grep noetia-storage
 
-# Can the api reach it?
+# Can the api reach it? (through the S-ALT alias the api's S3 client actually uses — see §10)
 docker compose --env-file .env.production -f docker-compose.server.yml exec -T api \
-  wget -qO- http://storage:9000/minio/health/live
+  wget -qO- http://noetia-storage.internal:9000/minio/health/live
 
 # Check bucket policies (images must be public)
 # Access MinIO console via SSH tunnel on your local machine:
@@ -247,3 +247,56 @@ systemctl is-enabled ssh.service ssh.socket    # expect: enabled / masked
 journalctl -u ssh --no-pager | grep -iE 'stopp|start|deactiv' | tail -20   # when sshd went down
 zgrep -iE 'openssh' /var/log/apt/history.log* 2>/dev/null | grep -i upgrade  # was openssh upgraded then?
 ```
+
+---
+
+## 10. Internal alias (S-ALT) missing: `/api/*` or share pages 500, storage errors
+
+**Background.** `api`, `web` and `storage` sit on two networks: `noetia_noetia_net` (ours) and the shared
+`proxy` network, where AutoGuildX (and any future project) also advertises generic names such as `api`.
+Docker answers a name from whichever attached network has it, so while our api was stopped or being
+recreated, `http://api:4000` from `web` reached **AutoGuildX's api**, carrying the reader's token, cookies and
+request body (S19). Internal callers therefore use only project-unique aliases declared on `noetia_net`:
+
+| Caller | Setting (literal in `docker-compose.server.yml`) | Alias owner |
+|---|---|---|
+| web `/api/*` rewrite (baked at build) | `build.args.INTERNAL_API_URL=http://noetia-api.internal:4000` | `api` |
+| web share page SSR `/s/[id]` (runtime) | `environment.INTERNAL_API_URL=http://noetia-api.internal:4000` | `api` |
+| api S3 client (uploads, `getText`, ingestion) | `environment.MINIO_ENDPOINT=noetia-storage.internal` | `storage` |
+
+The `.internal` suffix is reserved and never resolves in public DNS, so a missing alias fails closed
+(`ENOTFOUND`), whereas a bare name like `noetia-api` would be forwarded to the host resolver and can be
+answered by Tailscale MagicDNS (search domain `tail52ba4d.ts.net`). Presigned and public storage URLs still
+use `MINIO_PUBLIC_URL` (`https://storage.noetia.app`) and are unaffected.
+
+**Symptom:** `/api/*` returns 500 from Next (not 502 from Traefik) while `noetia.app/api/health` via
+Traefik is fine; or `/s/<id>` share pages 500; or reader audio/text fails with S3 errors. **CD can be green
+while this happens** — `up --wait` only checks container healthchecks.
+
+**Diagnosis (read-only):**
+```bash
+# 1. Aliases present, on noetia_net only? Expect noetia-api.internal on api, noetia-storage.internal on storage.
+for c in noetia-api-1 noetia-storage-1 noetia-web-1; do docker inspect -f '{{.Name}}{{range $k,$v := .NetworkSettings.Networks}} | {{$k}}: {{join $v.DNSNames ","}}{{end}}' $c; done
+# 2. Resolution from the callers (expect an IP on noetia_noetia_net, never ENOTFOUND)
+docker exec noetia-web-1 node -e "require('dns').lookup('noetia-api.internal',(e,a)=>console.log(e?e.code:a))"
+docker exec noetia-api-1 node -e "require('dns').lookup('noetia-storage.internal',(e,a)=>console.log(e?e.code:a))"
+# 3. Values in effect (runtime env + the rewrite baked into the image)
+docker exec noetia-web-1 printenv INTERNAL_API_URL
+docker exec noetia-web-1 sh -c "grep -o '\"destination\":\"http[^\"]*\"' .next/routes-manifest.json"
+docker exec noetia-api-1 printenv MINIO_ENDPOINT
+```
+
+**Known root causes and fixes:**
+- **Container recreated outside compose** (`docker run`, Portainer, manual `docker network connect`) — aliases
+  only exist when compose creates the container. Recreate through compose:
+  `docker compose --env-file .env.production -f docker-compose.server.yml up -d --no-deps api storage web`
+- **Image built without the compose build arg** (e.g. `docker build` by hand) — the Dockerfile default is the
+  alias too, so this only happens with an explicit `--build-arg INTERNAL_API_URL=...`. Rebuild with compose.
+- **Never "fix" an outage by pointing `INTERNAL_API_URL`/`MINIO_ENDPOINT` back at `api`/`storage`** — that
+  re-opens S19 (credentials can reach another project's api). If the aliases cannot be restored, roll back
+  by reverting the S-ALT PR through the normal merge → CD path; that returns to the previous (exposed) state.
+
+**What S-ALT does not cover** (see `infra/tests/s-alt/README.md`): AutoGuildX → Noetia when *AutoGuildX's*
+api is down (their generic `api` lookup can still reach ours), and raw container-name / IP reachability on
+the shared `proxy` network. Those need network separation (PR #62 / NEM-018).
+

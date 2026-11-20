@@ -1,0 +1,48 @@
+# S-ALT harness: AutoGuildX-like neighbour on the shared proxy (LOCAL ONLY). Generic service names `api`/`web`,
+# unchanged, exactly the S19 condition. Plus `stg`: a foreign project exposing a generic `storage` on the proxy
+# (models pre-NEM-017 staging or any future neighbour).
+name: saltagx
+
+networks:
+  agx_net: {}
+  proxy:
+    external: true
+    name: saltz_proxy
+
+services:
+  api:
+    image: python:3-alpine
+    command: ["python", "-u", "/r/responder.py"]
+    environment: { WHO: agx-api, PORT: "4000" }
+    volumes: ["./responder.py:/r/responder.py:ro"]
+    networks: [agx_net, proxy]
+    labels:
+      - "salt.test=1"
+      - "traefik.enable=true"
+      - "traefik.docker.network=saltz_proxy"
+      - "traefik.http.routers.agx-api.rule=Host(`agx.test`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.agx-api.entrypoints=web"
+      - "traefik.http.services.agx-api.loadbalancer.server.port=4000"
+
+  web:
+    image: python:3-alpine
+    command: ["python", "-u", "/r/responder.py"]
+    environment: { WHO: agx-web, PORT: "3000" }
+    volumes: ["./responder.py:/r/responder.py:ro"]
+    networks: [agx_net, proxy]
+    labels:
+      - "salt.test=1"
+      - "traefik.enable=true"
+      - "traefik.docker.network=saltz_proxy"
+      - "traefik.http.routers.agx-web.rule=Host(`agx.test`)"
+      - "traefik.http.routers.agx-web.entrypoints=web"
+      - "traefik.http.services.agx-web.loadbalancer.server.port=3000"
+
+  stg-storage:
+    image: python:3-alpine
+    command: ["python", "-u", "/r/responder.py"]
+    environment: { WHO: foreign-storage, PORT: "9000" }
+    volumes: ["./responder.py:/r/responder.py:ro"]
+    networks:
+      proxy:
+        aliases: ["storage"]

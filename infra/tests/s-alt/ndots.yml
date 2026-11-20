@@ -1,0 +1,4 @@
+# Optional overlay (run.sh with NDOTS=<n>): explicit resolver ndots in web/api. Not production's configuration.
+services:
+  api: { dns_opt: ["ndots:${NDOTS:?}"] }
+  web: { dns_opt: ["ndots:${NDOTS:?}"] }
