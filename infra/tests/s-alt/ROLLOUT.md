@@ -65,7 +65,7 @@ Whatever order Compose then uses, no request can reach another project. Why this
 | D. Two-phase: (1) aliases + `MINIO_ENDPOINT` web-first, (2) web switch | Phase 1 yes. Phase 2 **only if the api is not recreated**, which can't be guaranteed in advance (build-cache loss changes the image ID), so it is guaranteed only if phase 2 is also web-first | (1) ~1–2 min (web image unchanged, cached). (2) 0 min or, if web-first, ~5–7 min | ~25 s in phase 1 | Two PRs, two merges, two acceptance rounds | Two rollback points, with a mixed state between phases | Scope change (split PR #65) |
 | E. Disconnect the old web from `proxy` instead of stopping it | Yes | the same as A (Traefik reaches web only via `proxy`) | ~25 s | Live `docker network disconnect` | Live network op; reconnecting is manual | **excluded**: live network modification |
 | F. CD as-is | **No** (leaked 2/2) | ~0 | ~25 s | none | — | **excluded**: accepts temporary credential exposure |
-| G. Stop AutoGuildX during the deploy | Yes for AGX, not for staging (staging's api also advertises `api` on `proxy`) | ~0 | ~25 s | Cross-project operation | — | **excluded by PA** |
+| G. Stop AutoGuildX during the deploy | Yes for AGX; does not cover any other current or future member of `proxy` (live evidence shows no staging members on `proxy`, see §F-3) | ~0 | ~25 s | Cross-project operation | — | **excluded by PA** |
 
 **Recommendation: A** now, with no repository or CD change beyond PR #65. **C** is the better long-term pattern if the PO wants shorter windows for future transitions, as a separate CI/CD mission.
 
@@ -147,13 +147,37 @@ Post-deploy, the existing acceptance checks A2/A6/A9 (PR #65 §9) still confirm 
 
 ## F-3: Staging compatibility requirement when staging later syncs with `main`
 
-**No staging change is authorized by this PR.** Facts:
-- Staging (`-p noetia_staging`, `docker-compose.staging.yml`, deployed `1295201`) builds its web from its own branch's Dockerfile, which still hard-codes `ENV INTERNAL_API_URL=http://api:4000`.
-- `.env.staging.example` sets `INTERNAL_API_URL=http://api:4000` and `MINIO_ENDPOINT=storage`.
-- Staging's api, web and storage are on `noetia_staging_net` + `proxy`: NEM-017 / PR #26 (`proxy_staging`) is not applied.
-- **PR #65 does not touch `docker-compose.staging.yml`.**
+**No staging change is authorized by this PR.** No new staging diagnostics were run for this section. It only distinguishes what is verified from what is not.
 
-**When staging syncs with a `main` that contains PR #65:**
+### F-3.1 Verified live topology (production host)
+- **PO-supplied live network evidence (S-ALT Gate 0, PA-reviewed):** the members of the production `proxy` network are Noetia's web, api and storage, plus AutoGuildX. **No staging container is a member of `proxy`.**
+- **Previous infrastructure verification reported staging separated onto `proxy_staging`** (NEM-017 design: a dedicated Traefik network for staging).
+- Consequence for this PR: today's staging is **not** a fall-through partner for production's generic `api`/`storage` on `proxy`, and production's `noetia-*.internal` aliases are invisible to staging either way.
+
+### F-3.2 Repository configuration: older and newer staging definitions differ
+
+| Ref | Staging network for Traefik | Status |
+|---|---|---|
+| `nem-006a-staging` branch (tip `15e5762`) | `proxy` (external, production's network) | older configuration |
+| commit `1295201` (earlier recorded staging baseline) | `proxy` | older configuration |
+| Draft **PR #26** (`02c98f7`, base `nem-006a-staging`) | `proxy_staging` (external, `name: proxy_staging`) | **proposal, Draft, not merged**, not assumed merged |
+| `deploy/nem-017-on-006c` branch (`9192c50`, "combine NEM-006C staging baseline 1295201 with NEM-017 network isolation") | `proxy_staging` | branch exists, not merged anywhere |
+
+Common to all four refs, and relevant to S-ALT:
+- the staging Dockerfile hard-codes `ENV INTERNAL_API_URL=http://api:4000`;
+- `.env.staging.example` sets `INTERNAL_API_URL=http://api:4000` and `MINIO_ENDPOINT=storage`;
+- no `*.internal` aliases.
+
+**PR #65 does not touch `docker-compose.staging.yml` or any staging ref.**
+
+### F-3.3 Unverified staging deployment state (not assumed, not diagnosed here)
+- **Which commit and compose file the running staging containers were created from:** `1295201`, `9192c50`, or something else.
+- **Whether the `proxy_staging` separation exists in the staging compose file in use, or was applied as a live attachment.** If it is live-only, a future `docker compose up` from an older ref (`1295201` / `nem-006a-staging`) would **re-attach staging to `proxy`**, recreating the cross-environment path.
+- **Whether staging auto-deploy is armed:** it was last recorded as not armed.
+
+These need confirming in the future staging-sync mission, not here.
+
+### F-3.4 Mandatory changes whenever staging is synchronized with a `main` containing PR #65
 - Its web is built from the new Dockerfile, so the `/api` rewrite defaults to `http://noetia-api.internal:4000`.
 - Staging then **must** have all of the following, in the same sync:
 
@@ -165,7 +189,7 @@ Post-deploy, the existing acceptance checks A2/A6/A9 (PR #65 §9) still confirm 
     networks:
       noetia_staging_net:
         aliases: [noetia-api.internal]                 # staging's OWN internal network only
-      proxy: {}                                        # (proxy_staging after NEM-017): NO aliases here
+      proxy_staging: {}                                # staging's Traefik network as then approved: NO aliases here
   web:
     build:
       args:                                            # keep the existing NEXT_PUBLIC_* args
@@ -176,24 +200,27 @@ Post-deploy, the existing acceptance checks A2/A6/A9 (PR #65 §9) still confirm 
     networks:
       noetia_staging_net:
         aliases: [noetia-storage.internal]
-      proxy: {}
+      proxy_staging: {}
 ```
 
 **Rules:**
 - **ST-1: same names, different networks.** Production and staging may both use `noetia-api.internal` / `noetia-storage.internal`, because aliases are network-scoped. Production's web can only see production's `noetia_net`, and staging's web only staging's.
+- **ST-0: the topology must be in the compose file, not only live.** The synced `docker-compose.staging.yml` must declare whatever Traefik network is then approved: `proxy_staging` if PR #26, or its successor, is accepted. It must **never** declare production's `proxy`. That way a compose `up` cannot silently undo a live-only separation (F-3.3).
 - **ST-2: never declare a `*.internal` alias on `proxy` or `proxy_staging`.**
   - A `*.internal` alias on a shared network would make production's web fall through to staging, or the reverse, whenever one side's api is down.
   - Contract C2/C4/C13 enforce this for production. Staging needs the same check before its sync is deployed.
   - `contract.sh` reads only `docker-compose.server.yml`; parameterizing it for staging would be a separate authorized change.
 - **ST-3: all three parts in the same sync.** Missing parts fail in different ways:
   - Missing api alias: staging `/api` and SSR return `500`. This fails closed, but staging is broken.
-  - Missing runtime `INTERNAL_API_URL`: SSR keeps `http://api:4000` from `.env.staging`, and can reach **production's or AGX's api** while staging's api is down.
-  - Missing storage part: the staging api's S3 client keeps `storage`, and can reach **production's MinIO** on `proxy` while staging's storage is down. This is a cross-environment path.
-- **ST-4: staging transition.** The staging deploy that introduces this must use web-first (stop `noetia_staging-web-1` before its `up`), for the same reason as F-1: the old staging web resolves `api` and can reach production's api.
+  - Missing runtime `INTERNAL_API_URL`: SSR keeps `http://api:4000` from `.env.staging`. While staging's api is down, it can reach whatever else advertises `api` on staging's shared network: production or AGX if staging is on `proxy`, or any future member of `proxy_staging`.
+  - Missing storage part: the staging api's S3 client keeps `storage`. While staging's storage is down, it can reach any other `storage` on staging's shared network (production's MinIO if staging is on `proxy`). This is a cross-environment path.
+- **ST-4: staging transition.** The staging deploy that introduces the aliases must use web-first: stop `noetia_staging-web-1` before its `up`, for the same reason as F-1. The old staging web resolves the generic `api`, which can fall through to another member of staging's shared network while staging's api is recreated. On `proxy_staging` with no other members, the exposure is nil, but web-first keeps it fail-closed without depending on the unverified topology.
 - **ST-5: verification after the staging sync deploy:**
   - From `noetia_staging-web-1`, `noetia-api.internal` = the staging api's `noetia_staging_net` IP.
   - From `noetia-web-1`, `noetia-api.internal` = the production IP only.
   - `printenv` and the `routes-manifest.json` check as A3/A4 with staging container names.
 - **Until staging syncs:**
-  - Staging keeps its current exposure. Its web resolves `api` across `proxy`, where production's api still advertises the generic service name `api` (Compose adds it on every network; PR #65 does not remove it).
-  - That staging→production direction is the staging equivalent of the inbound residual R-1, closed only by network separation (NEM-017 / PR #62 / NEM-018).
+  - Staging keeps its generic names (`api`, `storage`), and PR #65 changes nothing for it.
+  - **Given the verified live topology** (no staging members on `proxy`), there is no staging↔production fall-through path today.
+  - **If staging were ever re-attached to `proxy`** (an older-ref `up`, see F-3.3), its generic lookups could again reach production's api or MinIO, which still advertise the Compose service names `api`/`storage` on `proxy`. Production's own internal calls would stay protected by S-ALT.
+  - ST-0 exists to prevent that.
