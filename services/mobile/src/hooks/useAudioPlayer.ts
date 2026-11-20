@@ -86,6 +86,9 @@ export function useAudioPlayer(audioUrl: string | null, phrases: SyncPhrase[]) {
           playsInSilentModeIOS: true,
           staysActiveInBackground: true,
         });
+        // Cleanup may have run while the audio mode was being configured; `sound` was still
+        // null then, so nothing could unload it. Never create a Sound for a cancelled effect.
+        if (cancelled) return;
         sound = new Audio.Sound();
         sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
           if (cancelled || !status.isLoaded) return;
@@ -94,10 +97,14 @@ export function useAudioPlayer(audioUrl: string | null, phrases: SyncPhrase[]) {
           setIsPlaying(status.isPlaying);
         });
         await sound.loadAsync({ uri: url }, { shouldPlay: false });
-        if (!cancelled) {
-          soundRef.current = sound;
-          setIsLoaded(true);
+        if (cancelled) {
+          // Cleanup ran mid-load and already requested an unload; repeat it once the load has
+          // settled so the native player is released even if the first unload raced the load.
+          sound.unloadAsync().catch(() => {});
+          return;
         }
+        soundRef.current = sound;
+        setIsLoaded(true);
       } catch {
         if (!cancelled) setError('No se pudo cargar el audio.');
       } finally {

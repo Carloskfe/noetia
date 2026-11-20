@@ -503,12 +503,10 @@ describe('useAudioPlayer hook', () => {
       expect(result.current.error).toBe(errorBefore);
     });
 
-    // DEFECT M-D3 (documented, not fixed in CI-4.1 — test-only mission). If the component
-    // unmounts (or the URL changes) while Audio.setAudioModeAsync is still pending, cleanup
-    // runs while `sound` is still null; load() then resumes, creates a Sound and loads the file
-    // anyway, and nothing ever unloads it → the audio resource leaks. Marked `failing` so the
-    // suite stays green today and turns red (prompting removal of `.failing`) once fixed.
-    it.failing('M-D3: a sound created after unmount is unloaded (currently leaks)', async () => {
+    // Regression M-D3 (fixed in PR-A; pinned with `it.failing` by CI-4.1). If the component
+    // unmounts while Audio.setAudioModeAsync is still pending, cleanup runs while `sound` is still
+    // null. load() must not go on to create and load a Sound that nothing would ever unload.
+    it('M-D3: no sound is created or left loaded after unmount during audio-mode setup', async () => {
       const gate = deferred<object>();
       setAudioModeAsync.mockReturnValueOnce(gate.promise);
       const { unmount } = renderHook(useHook, { url: URL_A, phrases: PHRASES });
@@ -517,6 +515,54 @@ describe('useAudioPlayer hook', () => {
       await flush();
       const leaked = mockSounds.filter((s) => s.loadAsync.mock.calls.length > 0 && s.unloadAsync.mock.calls.length === 0);
       expect(leaked).toHaveLength(0);
+      expect(mockSounds).toHaveLength(0);
+    });
+
+    it('M-D3: a URL change during audio-mode setup creates no sound for the old URL', async () => {
+      const gate = deferred<object>();
+      setAudioModeAsync.mockReturnValueOnce(gate.promise);
+      const { result, rerender } = renderHook(useHook, { url: URL_A, phrases: PHRASES });
+      rerender({ url: URL_B, phrases: PHRASES });
+      await flush();
+      await act(async () => { gate.resolve({}); });
+      await flush();
+      expect(mockSounds).toHaveLength(1);
+      expect(mockSounds[0].loadAsync).toHaveBeenCalledWith({ uri: URL_B }, { shouldPlay: false });
+      expect(result.current.isLoaded).toBe(true);
+      await act(async () => { await result.current.play(); });
+      expect(mockSounds[0].playAsync).toHaveBeenCalledTimes(1);
+    });
+
+    it('M-D3: a sound cancelled mid-load is unloaded again once its load settles, and never becomes active', async () => {
+      const slowLoad = deferred<object>();
+      const gate = deferred<object>();
+      setAudioModeAsync.mockReturnValueOnce(gate.promise);
+      const { result, unmount } = renderHook(useHook, { url: URL_A, phrases: PHRASES });
+      mockSoundsNextLoadReturns(slowLoad.promise);
+      await act(async () => { gate.resolve({}); });
+      const sound = mockSounds[0];
+      unmount();
+      expect(sound.unloadAsync).toHaveBeenCalledTimes(1); // cleanup's unload, issued mid-load
+      await act(async () => { slowLoad.resolve({}); });
+      await flush();
+      expect(sound.unloadAsync).toHaveBeenCalledTimes(2); // defensive unload after the load settled
+      expect(result.current.isLoaded).toBe(false);
+      expect(sound.playAsync).not.toHaveBeenCalled();
+    });
+
+    it('M-D3: a failing defensive unload after a cancelled load is swallowed', async () => {
+      const slowLoad = deferred<object>();
+      const gate = deferred<object>();
+      setAudioModeAsync.mockReturnValueOnce(gate.promise);
+      const { unmount } = renderHook(useHook, { url: URL_A, phrases: PHRASES });
+      mockSoundsNextLoadReturns(slowLoad.promise);
+      await act(async () => { gate.resolve({}); });
+      const sound = mockSounds[0];
+      sound.unloadAsync.mockRejectedValue(new Error('not loaded'));
+      unmount();
+      await act(async () => { slowLoad.resolve({}); });
+      await flush();
+      expect(sound.unloadAsync).toHaveBeenCalledTimes(2);
     });
   });
 });
