@@ -37,11 +37,43 @@ Whatever order Compose then uses, no request can reach another project. Why this
 - `restart: unless-stopped` never restarts a manually stopped container, not even after a daemon restart.
 - `up` *recreates* web because its image and environment changed, so it never starts the old container.
 
+### PA question: does making Noetia web unavailable during the api recreation prevent credential forwarding?
+
+**Yes**, with one precise condition. The old web must be unavailable for **the whole window in which Noetia's api can be absent**. That window runs from before CD's `up` starts until the new web (alias-only) replaces it. The reason:
+
+- **The old web is the only Noetia component using the generic name.** It is the only one that resolves `api`:
+  - its baked `/api` rewrite;
+  - its SSR `INTERNAL_API_URL`, which comes from `.env.production`.
+- **The other paths can't forward:**
+  - The api's own S3 client and the internal-only services (`worker`, `image-gen`, `prometheus`) are not on `proxy`, or are switched by this PR.
+  - Traefik never uses DNS. It routes to containers by label.
+- **Both forwarding paths go through the old web.**
+  - (a) While the api container is absent or unhealthy, Traefik drops the `noetia-api` router. So **every** `noetia.app/api/*` request, from the **browser and the mobile app alike** with their `Authorization` and cookies, falls through to the `noetia-web` router, then to the old web's rewrite, then to `api`, which resolves to AGX.
+  - (b) SSR share pages fetch `api` from the old web.
+- **With the old web stopped,** (a) gets a Traefik `404` (no router matches) and (b) doesn't exist. No Noetia request can leave the project, whatever order Compose recreates things in.
+- **Measured:** `transition.sh … web-first`, 0 foreign requests forward ×1 and ×3 and on rollback. CD as-is leaked in 2 of 2 runs.
+
+**The condition can't be met by stopping web only "around" the api recreation.** CD runs build and then `up` in one SSH script, so an operator timing `stop web` during the build is a race. A late stop leaves the old web up during the recreation, so it is **not** fail-closed. Web must therefore be stopped **before the merge**, which makes the outage include the in-CD web build.
+
+### Options compared
+
+| Option | Fail-closed guarantee | Web-page downtime | `/api` downtime (mobile + browser) | Operational steps | Rollback risk | Needs |
+|---|---|---|---|---|---|---|
+| **A. Web-first, single merge (recommended)** | **Yes**, independent of Compose order (tested) | **~5–7 min** (CD 4m18s–5m48s with the web rebuild, plus operator latency) | ~25 s (normal api gap) | PO: record state, `stop web`, verify. Claude: merge at SHA, watch CD. PO + Claude: A1–A9 | Rollback uses the same web-first sequence (tested 0 foreign); it restores pre-S-ALT S19 exposure; ~5–7 min again | PO authorization for the merge and the one server `stop` |
+| B. Operator stops web during the CD build | **No**: race against `up` | ~1–3 min if on time | ~25 s | Watch the CD log, stop web before "Recreating changed containers" | A late stop means exposure | not acceptable |
+| C. CD change: build → `stop web` → `up` | Yes (same mechanism as A, scripted) | **~1–2 min** (no build inside the window) | ~25 s | Edit `cd.yml` (one-time or conditional), then a normal merge | The revert also needs the CD step; a CD change affects every later deploy | CI/CD NEM mission + PO authorization (out of scope here) |
+| D. Two-phase: (1) aliases + `MINIO_ENDPOINT` web-first, (2) web switch | Phase 1 yes. Phase 2 **only if the api is not recreated**, which can't be guaranteed in advance (build-cache loss changes the image ID), so it is guaranteed only if phase 2 is also web-first | (1) ~1–2 min (web image unchanged, cached). (2) 0 min or, if web-first, ~5–7 min | ~25 s in phase 1 | Two PRs, two merges, two acceptance rounds | Two rollback points, with a mixed state between phases | Scope change (split PR #65) |
+| E. Disconnect the old web from `proxy` instead of stopping it | Yes | the same as A (Traefik reaches web only via `proxy`) | ~25 s | Live `docker network disconnect` | Live network op; reconnecting is manual | **excluded**: live network modification |
+| F. CD as-is | **No** (leaked 2/2) | ~0 | ~25 s | none | — | **excluded**: accepts temporary credential exposure |
+| G. Stop AutoGuildX during the deploy | Yes for AGX, not for staging (staging's api also advertises `api` on `proxy`) | ~0 | ~25 s | Cross-project operation | — | **excluded by PA** |
+
+**Recommendation: A** now, with no repository or CD change beyond PR #65. **C** is the better long-term pattern if the PO wants shorter windows for future transitions, as a separate CI/CD mission.
+
 ### Recommended sequence (single merge of PR #65)
 
 | Step | Who | Action (one line each) | Check / pass condition |
 |---|---|---|---|
-| 0 | PO | **F-2 DNS gate** (below) | all criteria met, otherwise STOP |
+| 0 | — | **F-2 DNS gate: PASSED** (PA-accepted 2026-11-19; not repeated) | — |
 | 1 | Claude | `gh run list --workflow cd.yml --limit 3`: no deploy running or queued; PR #65 HEAD = authorized SHA; CI state recorded | idle; SHA matches |
 | 2 | PO | `docker inspect -f '{{.Name}} {{.State.StartedAt}} {{.Image}}' noetia-api-1 noetia-web-1 noetia-storage-1` | record the values (needed to decide the abort path) |
 | 3 | PO | `cd /opt/noetia && docker compose --env-file .env.production -f docker-compose.server.yml stop web` | — |
@@ -91,48 +123,27 @@ Note: after a successful S-ALT deploy, **later deploys need no special sequencin
 - **Tested:** `rollback web-first`, 0 foreign requests.
 - **Never** hot-fix by editing `INTERNAL_API_URL` or `MINIO_ENDPOINT` on the server.
 
-### Alternatives (each needs a separate PO decision; not recommended here)
+### Residual risk for PO review (not accepted here)
 
-| Option | Interruption | Why not recommended now |
-|---|---|---|
-| **CD change:** build → `stop web` → `up` | ~1–2 min (no build inside the window) | changes `cd.yml`, which needs a CI/CD mission (NEM) and authorization; best long-term for any future transition of this kind |
-| **Two-phase:** (1) aliases and `MINIO_ENDPOINT` only, web-first, short window because the web build is cached; (2) web switch only | (1) ~1–2 min, (2) ~0 | splits PR #65 (scope change). Phase 2 is fail-closed **only if the api is not recreated**, which can't be guaranteed in advance (e.g. build-cache loss changes the image ID), so phase 2 would also need web-first to be guaranteed |
-| **Pre-building on the server** to shorten the window | unverified | a build from the GitHub URL did **not** reuse the cache locally (269 s vs 1.3 s for a same-tree path build), because the cache depends on the exact working-tree contents; it adds server-side state |
-| Stopping AutoGuildX during the deploy | — | excluded by PA |
-| CD as-is (accept the transition window) | ~25 s | **temporary credential exposure: excluded by PA**; shown to leak in `transition.sh forward compose-order` |
-
-**Residual risk for PO review (not accepted here):** none on the deploy path if the sequence above is followed. The interruption of web pages for about 5–7 min is the cost, and the PO must decide it. Operator error is the remaining risk, mitigated by the step-4/5 checks and the abort table:
+No credential exposure remains on the deploy path if the sequence above is followed. The interruption of web pages for about 5–7 min is the cost, and the PO must decide it. Operator error is the remaining risk, mitigated by the step-4/5 checks and the abort table:
 - starting the old web during `up`;
 - merging before web is confirmed stopped.
 
-## F-2: Pre-deployment DNS gate (production's existing resolver, read-only)
+## F-2: Pre-deployment DNS verification: PASSED (PA-accepted 2026-11-19)
 
-Run on the server before step 3, one line at a time. Lookups go through each container's real resolver: Docker embedded DNS → host upstream, including the tailnet. The host lookups cover the host resolver directly.
+The PO ran the verification through production's existing resolver:
 
-| # | Command | Pass |
-|---|---|---|
-| D1 | `docker exec noetia-web-1 node -e "const d=require('dns');for(const n of ['noetia-api.internal','noetia-storage.internal','zz-s-alt-control.internal','noetia-api.internal.tail52ba4d.ts.net','noetia-storage.internal.tail52ba4d.ts.net','api','github.com']){const t=Date.now();d.lookup(n,{all:true},(e,a)=>console.log(n.padEnd(44),e?e.code:a.map(x=>x.address).join(','),(Date.now()-t)+'ms'))}"` | see criteria |
-| D2 | the same command with `noetia-api-1` instead of `noetia-web-1` | see criteria |
-| D3 | `for n in noetia-api.internal noetia-storage.internal zz-s-alt-control.internal; do echo "$n: $(getent ahosts $n \| head -1 \|\| true)"; done` | all empty |
-| D4 | `docker inspect -f '{{.Name}} {{(index .NetworkSettings.Networks "noetia_noetia_net").IPAddress}}' noetia-api-1 noetia-storage-1` | reference IPs for D1 `api` |
-| D5 | `docker exec noetia-web-1 sh -c "grep -E '^(search\|options\|# ExtServers\|# Overrides)' /etc/resolv.conf"` | records the search domain, any `ndots` and the upstream servers |
-| D6 | `tailscale dns status 2>&1 \| head -40` | no split-DNS route for `internal` or `noetia-*` |
+| Name | Result |
+|---|---|
+| `noetia-api.internal` | `ENOTFOUND` |
+| `noetia-storage.internal` | `ENOTFOUND` |
+| `zz-s-alt-check.internal` (control) | `ENOTFOUND` |
 
-**Criteria:**
-- **G-a:** in both containers, `noetia-api.internal`, `noetia-storage.internal`, the control `zz-s-alt-control.internal` and the two search-domain forms return `ENOTFOUND` (or `EAI_AGAIN`). **Any address means STOP**: residual R-5 is real, and the design returns to PA.
-- **G-b:** the control and the two exact names behave identically. This shows no record or route exists for the exact names specifically.
-- **G-c:** `api` from web returns Noetia's `noetia_net` api IP from D4. This is the positive control that the resolver works.
-- **G-d:** `github.com` resolves. This proves the upstream is reachable, so the negative answers are real answers and not timeouts.
-  - If `github.com` fails (`EAI_AGAIN`), the upstream is unreachable from the containers. Today the exact names would fail closed anyway, but **record it and return to PA** before deploying.
-  - In that case the gate cannot show how a reachable upstream would answer.
-- **G-e:** D3 is empty, and D6 shows no `internal` split DNS.
-- **Record the `ms` timings.** They give the expected fail-closed latency, R-6: `EAI_AGAIN` after a resolver timeout makes slow 500s.
+PA accepted F-2 as passed for the current production DNS configuration. **No further pre-deployment DNS verification is requested.**
 
-**Post-deploy repeat** (part of acceptance):
-- D1 from web: `noetia-api.internal` = Noetia api's `noetia_net` IP; the control still `ENOTFOUND`.
-- D2 from api: `noetia-storage.internal` = the storage IP.
-- `docker exec autoguildx-web-1 node -e "require('dns').lookup('noetia-api.internal',(e,a)=>console.log(e?e.code:a))"` → not found, because the aliases are invisible on `proxy`. Use `getent hosts` if AGX web has no node.
-- If staging is running: the same from `noetia_staging-web-1` → not found.
+The exact names and the control fail identically with `ENOTFOUND`. That is a definitive negative answer, not a timeout, so no resolver, search domain or tailnet split DNS answers them. The `.internal` architecture is kept.
+
+Post-deploy, the existing acceptance checks A2/A6/A9 (PR #65 §9) still confirm the positive case: the aliases resolve to Noetia's own containers, and stay invisible from AGX.
 
 ## F-3: Staging compatibility requirement when staging later syncs with `main`
 
