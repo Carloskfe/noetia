@@ -25,9 +25,12 @@ export function useClubSession(sessionId: string | null) {
     if (!sessionId) return;
 
     let socket: Socket;
+    let cancelled = false;
 
     AsyncStorage.getItem('noetia_access_token').then(token => {
-      if (!token) return;
+      // Cleanup may run before the token read resolves; `socket` is unset then, so opening one
+      // now would leave it connected and joined with nothing to disconnect it.
+      if (cancelled || !token) return;
 
       socket = io(`${BASE_URL}/sessions`, {
         auth: { token: `Bearer ${token}` },
@@ -51,7 +54,7 @@ export function useClubSession(sessionId: string | null) {
       socket.on('error', (e: { message: string }) => setError(e.message));
     });
 
-    return () => { socket?.disconnect(); socketRef.current = null; };
+    return () => { cancelled = true; socket?.disconnect(); socketRef.current = null; };
   }, [sessionId]);
 
   const isHost = playback.hostId === myUserId;

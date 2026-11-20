@@ -102,16 +102,35 @@ describe('useClubSession — connection', () => {
     expect(mockSockets[1].emit).toHaveBeenCalledWith('join-session', { sessionId: 's-2' });
   });
 
-  // DEFECT M-D6 (documented, not fixed in CI-4.1). Same race as M-D3: if the session closes
-  // (unmount / sessionId → null) before AsyncStorage returns the token, cleanup runs while
-  // `socket` is still undefined; the .then() then opens a socket that nothing disconnects —
-  // a live connection left joined to the session after the user left the screen.
-  it.failing('M-D6: a socket opened after unmount is disconnected (currently left open)', async () => {
+  // Regression M-D6 (fixed in PR-A; pinned with `it.failing` by CI-4.1). If the session closes
+  // (unmount / sessionId change) before AsyncStorage returns the token, cleanup runs while
+  // `socket` is still undefined; the token callback must not then open a socket nobody owns.
+  it('M-D6: no socket is opened after unmount, so none is left connected', async () => {
     const hook = renderHook(({ id }: { id: string | null }) => useClubSession(id), { id: 's-1' });
     hook.unmount();
     await flush();
     const leaked = mockSockets.filter((s) => s.disconnect.mock.calls.length === 0);
     expect(leaked).toHaveLength(0);
+    expect(ioMock).not.toHaveBeenCalled();
+  });
+
+  it('M-D6: leaving the session (id → null) before the token resolves opens no socket', async () => {
+    const hook = renderHook(({ id }: { id: string | null }) => useClubSession(id), { id: 's-1' as string | null });
+    hook.rerender({ id: null });
+    await flush();
+    expect(ioMock).not.toHaveBeenCalled();
+    expect(hook.result.current.connected).toBe(false);
+  });
+
+  it('M-D6: switching session before the token resolves opens exactly one socket, for the new session', async () => {
+    const hook = renderHook(({ id }: { id: string | null }) => useClubSession(id), { id: 's-1' });
+    hook.rerender({ id: 's-2' });
+    await flush();
+    expect(ioMock).toHaveBeenCalledTimes(1);
+    expect(mockSockets).toHaveLength(1);
+    server(mockSockets[0], 'connect');
+    expect(mockSockets[0].emit).toHaveBeenCalledWith('join-session', { sessionId: 's-2' });
+    expect(mockSockets[0].emit).not.toHaveBeenCalledWith('join-session', { sessionId: 's-1' });
   });
 });
 
