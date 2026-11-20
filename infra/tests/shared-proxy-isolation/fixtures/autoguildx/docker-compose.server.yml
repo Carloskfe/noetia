@@ -1,0 +1,151 @@
+# Production server deployment — Contabo VPS + Traefik v2.11
+#
+# Usage:
+#   docker compose --env-file .env.production -f docker-compose.server.yml up -d --build
+#   docker compose --env-file .env.production -f docker-compose.server.yml exec -T api npm run migration:run:prod
+#
+# Prerequisites on server:
+#   - Traefik v2.11 running at /opt/traefik/ (do not touch)
+#   - Docker network "proxy" already exists
+#   - /opt/autoguildx/.env.production populated with all vars
+#
+# NestJS global prefix is "api/v1" so Traefik does NOT strip /api before
+# forwarding — the full path /api/v1/... is passed through unchanged.
+
+networks:
+  agx_net:
+    driver: bridge
+  proxy:
+    external: true
+
+volumes:
+  postgres_data:
+
+services:
+
+  # ─── Web (Next.js) ────────────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: https://autoguildx.com/api/v1
+        NEXT_PUBLIC_SITE_URL: https://autoguildx.com
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
+        NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
+        NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-https://eu.i.posthog.com}
+    environment:
+      NODE_ENV: production
+      HOSTNAME: "0.0.0.0"
+      # Server-side API URL for generateMetadata / Server Components (container-to-container)
+      API_URL: http://api:4000/api/v1
+    depends_on:
+      - api
+    networks:
+      - agx_net
+      - proxy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.agx-web.rule=Host(`autoguildx.com`)"
+      - "traefik.http.routers.agx-web.entrypoints=websecure"
+      - "traefik.http.routers.agx-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.agx-web.loadbalancer.server.port=3000"
+      # www → apex redirect
+      - "traefik.http.routers.agx-www.rule=Host(`www.autoguildx.com`)"
+      - "traefik.http.routers.agx-www.entrypoints=websecure"
+      - "traefik.http.routers.agx-www.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.agx-www.service=agx-web"
+      - "traefik.http.middlewares.agx-www-redirect.redirectregex.regex=^https://www\\.autoguildx\\.com/(.*)"
+      - "traefik.http.middlewares.agx-www-redirect.redirectregex.replacement=https://autoguildx.com/$${1}"
+      - "traefik.http.middlewares.agx-www-redirect.redirectregex.permanent=true"
+      - "traefik.http.routers.agx-www.middlewares=agx-www-redirect"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ─── API (NestJS + Socket.IO) ─────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: production
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      # Construct DATABASE_URL from individual DB vars so the app and TypeORM CLI both work
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASS}@db:5432/${DB_NAME}
+      FRONTEND_URL: https://autoguildx.com
+    env_file: .env.production
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - agx_net
+      - proxy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      # REST API — full path forwarded unchanged; NestJS handles /api/v1/...
+      - "traefik.http.routers.agx-api.rule=Host(`autoguildx.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.agx-api.entrypoints=websecure"
+      - "traefik.http.routers.agx-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.agx-api.loadbalancer.server.port=4000"
+      # Socket.IO — separate router so WebSocket upgrade headers are preserved
+      - "traefik.http.routers.agx-sio.rule=Host(`autoguildx.com`) && PathPrefix(`/socket.io`)"
+      - "traefik.http.routers.agx-sio.entrypoints=websecure"
+      - "traefik.http.routers.agx-sio.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.agx-sio.service=agx-api"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ─── PostgreSQL — internal only, no host port ─────────────────────────────
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-autoguildx}
+      POSTGRES_USER: ${DB_USER:-autoguildx}
+      POSTGRES_PASSWORD: ${DB_PASS:?DB_PASS is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-autoguildx}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - agx_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
