@@ -39,7 +39,7 @@ answers *every* name, including reserved TLDs (`UPSTREAM_MODE=all`), defeats any
 | `run.sh [candidate\|generic\|plain][-b2]` | Disposable failure-path harness: real web image, real Traefik v2.11, AutoGuildX-like neighbour, foreign `storage`, MagicDNS-like upstream (`fakedns.py`) and tailnet sink. |
 | `storage-client.sh` | The real `StorageService` from the api image against a real MinIO reachable only via the alias. Covers round trip, unchanged presigned/public URLs, and fail-closed behaviour when MinIO is down. |
 | `transition.sh forward\|rollback compose-order\|web-first` | Deployment-transition test (PA F-1): switches old to new with real Compose recreation under continuous credentialed traffic, and reports foreign requests and outage windows. |
-| `ROLLOUT.md` | **Fail-closed rollout and rollback runbook (F-1), pre-deployment DNS gate (F-2), staging sync requirement (F-3).** |
+| `ROLLOUT.md` | **Fail-closed rollout and rollback runbook with options compared (F-1), DNS verification record (F-2, passed), staging sync requirement (F-3).** |
 | `noetia.yml`, `agx.yml`, `ndots.yml`, `responder.py`, `fakedns.py`, `storage-client.js`, `traffic.py` | Harness parts. |
 
 ## Running
