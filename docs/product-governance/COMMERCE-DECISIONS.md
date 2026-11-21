@@ -139,3 +139,176 @@ Resolves the F-01 ambiguity raised in the PR #60 report §14.B. **Final product 
 - **App copy** is updated on `/pricing` and the mobile paywall.
 - **Terms and Privacy Policy are not modified;** legal approval is required. Proposed Terms wording is in report §13.6.
 
+---
+
+## COMMERCE-W1-W2: financial protection for one-time purchases and paid-fulfillment exceptions (approved 2026-11-21)
+
+| | |
+|---|---|
+| **Document ID** | COMMERCE-W1-W2 |
+| **Decided by** | Product Owner. **FINAL approval, 2026-11-21** (mission COMMERCE-W1-W2-DOC) |
+| **Status** | **Final.** Changing any of these rules requires a new explicit Product Owner decision. |
+| **Scope** | Checkout safeguards related to subscriptions, one-time token-package purchases, individual book purchases, gifts, and paid-fulfillment exceptions |
+| **Architecture reference** | PR60-I1 ([PR #60 comment](https://github.com/Carloskfe/noetia/pull/60#issuecomment-7065424483)) and PR60-I1-R1 ([PR #60 comment](https://github.com/Carloskfe/noetia/pull/60#issuecomment-7065619039)) |
+| **Implemented in** | **Not implemented.** Approving these policies authorizes product policy only (see "What this approval does not authorize" below). |
+
+This entry has three parts, kept deliberately separate:
+- **Part A** is final PO policy.
+- **Part B** is engineering design that is still pending Product Architecture review and is not policy.
+- **Part C** lists the prerequisites for the financial launch.
+
+### Part A: final Product Owner policies
+
+#### W1-PO-1: original purchase protection
+
+When a customer completes a valid, verified purchase, Noetia must honour the **original purchased quantity and agreed price**, even if the corresponding token package is later modified or deactivated.
+
+- Fulfillment uses verified purchase-time information, never the package's later-modified quantity.
+- Payment, currency, amount, product identity and purchased quantity must be validated against authoritative transaction evidence.
+- An inactive package alone is not sufficient reason to deny a verified purchase.
+- Missing, inconsistent or unverifiable purchase evidence must stop automatic fulfillment and create a reviewable exception.
+- Noetia must never guess the number of tokens owed.
+
+**Decision:** honour the original verified purchase.
+
+#### W1-PO-2: paid-fulfillment exceptions
+
+A confirmed paid purchase that cannot be fulfilled correctly must enter a **durable, auditable exception process**.
+
+**Resolution target:** **48 consecutive calendar hours**, measured **from confirmed payment**.
+
+**Resolution priority:**
+1. Verify the transaction and attempt delivery of the exact purchased value.
+2. If correct delivery is impossible, issue a **full refund** for the undelivered purchase.
+3. If neither can be completed immediately, keep the exception open, escalate it, and maintain customer communication.
+
+**Customer protection rules:**
+- No paid purchase may be silently closed without fulfillment, a verified refund, or an explicitly authorized remedy.
+- Customers must be informed **when a confirmed paid purchase runs into a material delivery problem**, and **again when resolution is completed**.
+- An unresolved exception remains open and visible after the 48-hour target expires.
+- A refund initiated within 48 hours satisfies the operator-action target **only when its outcome is tracked**. The customer's bank may take longer to return the funds.
+- Duplicate webhook events, retries and repeated operator actions must not grant the same purchased value twice.
+
+**Decision:** verified fulfillment first; refund if fulfillment is impossible; a 48-hour resolution target; customer notification; no silent closure.
+
+#### W1-PO-3: duplicate book purchase
+
+If a customer already has permanent ownership of a book before a separate paid purchase of it is fulfilled:
+- The later duplicate purchase must not create an additional entitlement.
+- The duplicate purchase must be **fully refunded**.
+- Existing ownership must remain intact.
+- Refund completion must be recorded against the duplicate transaction.
+- No equivalent credit is issued as the default remedy.
+
+**Decision:** full refund of the duplicate purchase.
+
+#### W1-PO-4: refund after value delivery
+
+If a payment is refunded after Noetia has delivered value:
+- Books already redeemed or permanently owned must **not** be automatically revoked.
+- Unused tokens associated with the refunded transaction must be **reviewed individually**.
+- **No automatic token revocation is authorized.**
+- The review must consider the transaction, the refund reason, the value already delivered and the available token balance.
+- Any adjustment requires an authorized decision and an auditable record.
+- Noetia must prevent accidental duplicate compensation.
+
+**Decision:** preserve redeemed-book ownership; review unused tokens and refund circumstances case by case.
+
+#### W2-PO: payment verification before fulfillment
+
+For one-time purchases of tokens, books and gifts, Noetia must verify the transaction before delivering value. Required conditions include:
+- an authoritative Stripe payment status of `paid`;
+- the approved commercial currency, **USD**;
+- the correct transaction amount;
+- a verified product or purchase snapshot;
+- a payment method authorized by Noetia;
+- successful payment confirmation consistent with Stripe's associated payment records;
+- no disqualifying refund or dispute condition at the time of a manually authorized grant.
+
+**`checkout.session.completed` alone is not sufficient evidence of payment.**
+
+A one-time purchase showing `unpaid`, `no_payment_required` or an unknown payment state must not produce purchased value without a separately approved commercial policy.
+
+**Subscription trials are different:** valid free-trial token allocations remain governed by the approved **T-1** decision and must not be blocked by the one-time-purchase rules.
+
+**Decision:** no confirmed valid payment, no one-time-purchase fulfillment.
+
+#### Refund authority: initial financial release
+
+- Refunds are made **manually in the Stripe Dashboard by authorized administrators**.
+- **No automated refund engine is authorized.**
+- Each refund must be linked to the original transaction and documented.
+- A refund must not be recorded as completed before authoritative Stripe confirmation.
+- Refund actions must not unintentionally trigger duplicate grants or the automatic deletion of permanent book ownership.
+- Resolution records must distinguish fulfillment, refund, and cases still awaiting action.
+
+**Decision:** manual, authorized Stripe refunds with durable reconciliation.
+
+#### Implementation boundaries (part of the approved policy)
+
+These decisions authorize product policy only. Engineering must preserve the previously approved:
+- `PAYMENTS_ENABLED` activation gate;
+- disabled purchase controls;
+- T-1 initial trial-token allocation;
+- USD currency policy;
+- D1–D6 subscription rules;
+- F-01 Option B;
+- permanent ownership of redeemed books;
+- Noetia+ and NoetiaX Coming Soon status.
+
+Engineering choices about reconciliation, administrative interfaces, database records, scheduled checks and exception processing remain subject to independent Product Architecture review.
+
+#### Governance
+
+A change to any of these approved rules requires a new explicit Product Owner decision.
+
+### Part B: pending engineering design choices (not policy; independent PA review required)
+
+These are **open engineering questions**. They implement Part A and must not change it. The current proposal is PR60-I1-R1 (linked above). How Part A affects that proposal is under PA review.
+
+| Area | Open choice |
+|---|---|
+| Exception and resolution records | How exceptions, refunds-in-progress and resolutions are durably recorded. R1 proposes keys in the existing `stripe_processed_events` table with no migration; an audit-column migration is optional and would need its own approval |
+| Serialization and idempotency | Locking and state checks so webhooks, retries and operator actions cannot double-grant |
+| Transient versus permanent failures | Which failures Stripe retries and which become durable exceptions; the trade-off between acknowledging a webhook and letting Stripe retry it |
+| Reconciliation and scheduled checks | How often to check for unprocessed paid sessions and how the 48-hour clock is tracked from confirmed payment; whether the check re-runs fulfillment or only detects |
+| Administrative interfaces | SQL-only operations or admin endpoints, and in which slice |
+| Customer notifications | How the "delivery problem" and "resolution completed" notices are delivered (no such emails exist today) |
+| Escalation | How cases past 48 hours and failed refunds are escalated |
+| Refund and dispute events | How confirmed refunds are reconciled, and how a refund after delivery opens a W1-PO-4 review case (no refund or dispute handling exists in code today) |
+| Payment verification detail | The exact W2-PO checks: re-reading the session from Stripe, purchase-time snapshot fields, card-only, USD, exact amount |
+
+**Clarifications raised during PA analysis but not decided by this approval:** these stay open, and none is interpreted here.
+1. For gift purchases, who receives the W1-PO-2 customer notifications (the buyer, the recipient, or both).
+2. Whether new customer-facing refund and notification copy needs legal review before the financial launch.
+3. The recipient or role for W1-PO-2 escalations.
+4. Whether failed **subscription** token grants (for example, a renewal without a resolvable plan) fall under the W1-PO-2 exception process.
+5. Whether an **unclaimed** gift card may be held during a W1-PO-4 review.
+
+### Part C: financial-launch prerequisites
+
+Payments stay disabled (`PAYMENTS_ENABLED` absent or not `true`) until **all** of the following are complete:
+1. **Integration:** PR #60's lifecycle work is integrated on a main-based Draft PR, with the PR60-I1 P0 corrections. Every Stripe client goes through the activation gate (P0-I1), and the web purchase restrictions are kept (P0-I2).
+2. **W-1/W-2 implementation and qualification:** Part A is implemented and qualified per the PA-reviewed design. That covers the exception process, the 48-hour tracking, customer notification, escalation, refund reconciliation and pre-fulfillment verification. It needs CI on the integrated tree and real-PostgreSQL concurrency and crash tests.
+3. **Stripe configuration, verified by the PO in the Dashboard:**
+   - every referenced Price is in USD (USD verification item above);
+   - the portal configuration is verified (D4);
+   - the webhook endpoint and its events are configured.
+4. **Operations:** authorized administrators are named for manual refunds and exception handling, and the procedure is documented.
+5. **Legal:** the Terms of Service §3 reconciliation and the pending Terms review (OP-3 / legal-gated PR #22) are complete. These policies do not modify the Terms.
+6. **Reviews:** independent PA review of the implementation and release.
+7. **Activation:** a separate, explicit Product Owner authorization to enable payments.
+
+### What this approval does not authorize
+
+- Any automated refund system.
+- Any new admin endpoint or other functional implementation.
+- Any merge, deployment or payment activation.
+- Any change to the Terms of Service or other legal texts.
+
+### Provenance of this file on `main`
+
+- **Origin:** this register was first written on PR #60. Through the T-1, USD, D1–D6 and F-01 Option B sections it is a byte-identical copy of PR #60 head `d8e61e24e0b8c35c08c9d0f722f6ff6876d71689`, and those sections are unchanged.
+- **References not yet on `main`:** some paths they cite exist only on the PR #60 branch until it is integrated:
+  - `docs/reports/payment-lifecycle-20261112/` (report §11, §13, §14);
+  - `services/web/lib/currency.ts`.
