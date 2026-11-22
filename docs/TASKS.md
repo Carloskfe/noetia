@@ -533,6 +533,17 @@
 
 ---
 
+## Backlog — Admin `@noetia.app` email addresses (added 2026-11-22, PO request)
+
+Full register, with where each address is published and its purpose: [`docs/operations/email-addresses.md`](operations/email-addresses.md). Mailbox existence has not been verified from the dev environment, so the PO verifies each one.
+
+- [ ] **A1: create `payments@noetia.app`** (name to be confirmed; `ops@` is the alternative). Payment escalation recipient (PR #60 R2 §C5, Q3 = option A). Forward it to the Stripe refund owner. Recommended prerequisite before payment activation.
+- [ ] **B1: verify `legal@noetia.app`.** Privacy Policy, GDPR/CCPA requests, store listings. **High.**
+- [ ] **B2: verify `hola@noetia.app`.** Support address in every transactional email footer. **High.**
+- [ ] **B3–B9: verify** `info@`, `autores@`, `causas@`, `editorial@`, `socios@`, `prensa@`, `equipo@` (published on `/contact`, footer, `/causas`, `/careers`, upload guide).
+- [ ] **C1: `noreply@noetia.app`.** Confirm prod sending; decide whether customer emails get `Reply-To: hola@noetia.app`.
+- [ ] **C2: `alerts@noetia.app`** (Grafana sender). Decide whether to move alert recipients from a personal address to a role address.
+
 ## Backlog — Prod sshd reliability (added 2026-07-15, from a live incident)
 
 > **What happened:** SSH to prod was fully unreachable — `Connection refused` on both 222 and 22, while the site (Traefik + all containers) stayed up. Root cause: `ssh.service` was **`disabled` and `inactive (dead)`** (`systemctl status ssh` → `disabled; preset: enabled`). A reboot did **not** bring it back because it was disabled at boot. Recovered only via the **Contabo VNC console** (VNC must be enabled in the panel + a reboot; VNC IP is `161.97.77.108`, *not* the server IP — see incident-response.md once documented). Fix applied in the moment: `systemctl enable --now ssh` → back on 222.
