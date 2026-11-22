@@ -24,7 +24,7 @@ A durable register of every `@noetia.app` address that Noetia **publishes, sends
 
 | # | Address | Purpose | Needed by | Routing | Status |
 |---|---|---|---|---|---|
-| A1 | `ops@noetia.app` *(proposed trilingual name, see §E; earlier proposal `payments@noetia.app`; PO to confirm)* | **Payment escalation recipient (Q3 = option A).** Receives one internal alert per case per stage when a paid purchase is still unresolved 48 h after payment, or when a Stripe refund fails. It carries no customer personal data, only the Stripe session id. | Before **payment activation** (recommended launch prerequisite; PO to confirm) | Forward to whoever holds **Stripe Dashboard refund rights** *and* a Noetia admin account | [ ] **Pending:** create alias, set forwarding, test, then set `PAYMENT_ESCALATION_EMAIL` in `.env.production` on the server (only after the escalation code is implemented and authorized) |
+| A1 | `ops@noetia.app` *(**PO-approved 2026-11-22**; see §E)* | **Payment escalation recipient (Q3 = option A).** Receives one internal alert per case per stage when a paid purchase is still unresolved 48 h after payment, or when a Stripe refund fails. It carries no customer personal data, only the Stripe session id. | **Before payment activation: launch prerequisite, PO-approved 2026-11-22.** Payments may not be activated until `ops@` exists, forwards to the Stripe refund owner, and a test message has arrived | Forward to whoever holds **Stripe Dashboard refund rights** *and* a Noetia admin account | [ ] **Pending:** create alias, set forwarding, test, then set `PAYMENT_ESCALATION_EMAIL` in `.env.production` on the server (only after the escalation code is implemented and authorized) |
 
 Design reference: PR #60, PR60-I1-R2 §C5 and addenda E/F.
 
@@ -37,14 +37,14 @@ These addresses are **shown to users today** (website, legal pages, store listin
 | # | Address | Where it is published (on `main`) | Purpose | Priority | Status |
 |---|---|---|---|---|---|
 | B1 | `legal@noetia.app` | Privacy Policy (`services/web/lib/legal/privacy-policy.ts`: contact, GDPR rights, CCPA requests), Cookie Policy, Footer, `/contact`, `/trust`, App Store privacy label and Google Play data-safety docs (`docs/store-listings/`) | Legal, privacy and data-subject requests | **High.** Legal and store-compliance obligation; GDPR/CCPA requests must be answerable | [ ] Verify exists and is monitored |
-| B2 | `hola@noetia.app` | Footer of transactional emails (`services/api/src/email/email.service.ts`: "Have questions? Write to us at …") | General customer support; customers reply here about payments, gifts and accounts | **High.** Every customer email points here, including the future payment-exception and gift notices | [ ] Verify exists and is monitored |
+| B2 | `hola@noetia.app` → **`support@noetia.app`** (rename approved; `hola@` kept as alias) | Footer of transactional emails (`services/api/src/email/email.service.ts`: "Have questions? Write to us at …") | General customer support; customers reply here about payments, gifts and accounts | **High.** Every customer email points here, including the future payment-exception and gift notices | [ ] Verify exists and is monitored |
 | B3 | `info@noetia.app` | Footer, `/contact` | General information | Medium | [ ] Verify |
 | B4 | `autores@noetia.app` | `/contact`, author dashboard (`(admin)/author/page.tsx`), upload guide (web + `docs/upload-guide.md`), `docs/PRD.md` | Author onboarding and upload support | Medium–High (author supply chain) | [ ] Verify |
 | B5 | `causas@noetia.app` | `/causas` page, `/contact`; Causas program terms draft | Causas Noetia (social giving) enquiries | Medium | [ ] Verify |
 | B6 | `editorial@noetia.app` | `/contact` | Publishers: large catalogues, distribution agreements | Medium | [ ] Verify |
-| B7 | `socios@noetia.app` | `/contact` | Strategic partners and integrations | Low–Medium | [ ] Verify |
-| B8 | `prensa@noetia.app` | `/contact` | Press and media | Low–Medium | [ ] Verify |
-| B9 | `equipo@noetia.app` | `/careers`, `/contact` | Careers and job applications | Low–Medium | [ ] Verify |
+| B7 | `socios@noetia.app` → **`partners@noetia.app`** (rename approved; `socios@` kept as alias) | `/contact` | Strategic partners and integrations | Low–Medium | [ ] Verify |
+| B8 | `prensa@noetia.app` → **`media@noetia.app`** (rename approved; `prensa@` kept as alias) | `/contact` | Press and media | Low–Medium | [ ] Verify |
+| B9 | `equipo@noetia.app` → **`talent@noetia.app`** (rename approved; `equipo@` kept as alias) | `/careers`, `/contact` | Careers and job applications | Low–Medium | [ ] Verify |
 
 **Suggestion (PO decision):** fewer real mailboxes is easier to monitor. For example, B3, B6, B7, B8 and B9 can be aliases that forward to one shared inbox, while B1, B2 and B4 stay separately monitored. All of them still need to *receive*.
 
@@ -59,7 +59,7 @@ These addresses are **shown to users today** (website, legal pages, store listin
 
 ---
 
-## E. Proposed trilingual names: English, Spanish, French (PO decision)
+## E. Trilingual names: English, Spanish, French — **APPROVED by PO 2026-11-22**
 
 **Goal (PO, 2026-11-22):** each address should be understood in all three of Noetia's target languages: **Spanish** (launch market), **English**, and **French (Canada)**, which the PO named as the third target market. *(Note: `docs/PRD.md` currently lists Spanish at launch and English from Year 2, and does not yet mention French or Québec. Updating the PRD is a separate PO decision.)*
 
@@ -86,10 +86,10 @@ These addresses are **shown to users today** (website, legal pages, store listin
 
 **Summary:** keep 7 (`info`, `legal`, `autores`, `causas`, `editorial`, `noreply`, `alerts`); rename 4 (`hola` → `support`, `socios` → `partners`, `prensa` → `media`, `equipo` → `talent`); create 1 (`ops`).
 
-**If the PO approves the renames:**
+**Decision (PO, 2026-11-22): all four renames approved, and `ops@` approved.** Rollout order:
 1. **Create the new addresses first** (`support@`, `partners@`, `media@`, `talent@`).
 2. **Keep the old addresses** (`hola@`, `socios@`, `prensa@`, `equipo@`) **as permanent forwarding aliases**, so cached pages, printed material and emails already sent keep working.
-3. **Changing the website and emails is a separate, code-level PR**, and it needs its own PO approval. That PR would touch `/contact`, `/careers`, the Footer, and the transactional-email footer in `services/api/src/email/email.service.ts` (`hola@` → `support@`), with EN/ES copy. This register does not change any page or email.
+3. **Changing the website and emails is a separate, code-level PR**, which needs its own PO execution instruction (not yet given). That PR would touch `/contact`, `/careers`, the Footer, and the transactional-email footer in `services/api/src/email/email.service.ts` (`hola@` → `support@`), with EN/ES copy. This register does not change any page or email.
 
 ## D. Change log
 
@@ -98,3 +98,4 @@ These addresses are **shown to users today** (website, legal pages, store listin
 | 2026-11-22 | Register created: A1 (payment escalation, PO Q3 = option A), B1–B9 from a repository scan of `main` at `8f2f294`, C1–C2 sending identities. Mail-provider existence not verified. |
 | 2026-11-22 | Added §E: proposed bilingual names. Keep 9; rename `socios@` → `partners@`, `prensa@` → `media@`, `equipo@` → `talento@` (old ones kept as aliases); A1 proposed as `ops@`. Awaiting PO decision. |
 | 2026-11-22 | §E revised to EN/ES/**FR (Canada)** at PO request: `hola@` → `support@` added; `talento@` → `talent@`; keep 7, rename 4, create `ops@`. Awaiting PO decision. |
+| 2026-11-22 | **PO approved:** renames `hola@` → `support@`, `socios@` → `partners@`, `prensa@` → `media@`, `equipo@` → `talent@` (old ones kept as aliases); A1 = `ops@`; `ops@` working = **prerequisite before payment activation**. Website/email code change not yet instructed. |

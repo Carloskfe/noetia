@@ -537,13 +537,15 @@
 
 Full register, with where each address is published and its purpose: [`docs/operations/email-addresses.md`](operations/email-addresses.md). Mailbox existence has not been verified from the dev environment, so the PO verifies each one.
 
-- [ ] **A1: create `ops@noetia.app`** (proposed trilingual EN/ES/FR name; earlier proposal `payments@`; to be confirmed). Payment escalation recipient (PR #60 R2 §C5, Q3 = option A). Forward it to the Stripe refund owner. Recommended prerequisite before payment activation.
+- [ ] **A1: create `ops@noetia.app`** (PO-approved 2026-11-22). Payment escalation recipient (PR #60 R2 §C5). Forward it to the Stripe refund owner and send a test message. **Launch gate (PO-approved): payments may not be activated until this is done.**
 - [ ] **B1: verify `legal@noetia.app`.** Privacy Policy, GDPR/CCPA requests, store listings. **High.**
 - [ ] **B2: verify `hola@noetia.app`.** Support address in every transactional email footer. **High.**
 - [ ] **B3–B9: verify** `info@`, `autores@`, `causas@`, `editorial@`, `socios@`, `prensa@`, `equipo@` (published on `/contact`, footer, `/causas`, `/careers`, upload guide).
 - [ ] **C1: `noreply@noetia.app`.** Confirm prod sending; decide whether customer emails get `Reply-To: hola@noetia.app`.
 - [ ] **C2: `alerts@noetia.app`** (Grafana sender). Decide whether to move alert recipients from a personal address to a role address.
-- [ ] **E: PO decision on trilingual (EN/ES/FR-Canada) names.** Proposed renames `hola@` → `support@`, `socios@` → `partners@`, `prensa@` → `media@`, `equipo@` → `talent@`, keeping the old addresses as aliases. The website change would be a separate approved PR. See register §E.
+- [x] **E: trilingual names: APPROVED by PO 2026-11-22** (`hola@` → `support@`, `socios@` → `partners@`, `prensa@` → `media@`, `equipo@` → `talent@`; old addresses kept as aliases).
+- [ ] **E1: create** `support@`, `partners@`, `media@`, `talent@` and set the old addresses to forward to them (mail provider, PO).
+- [ ] **E2: website + email-footer update** (`/contact`, `/careers`, Footer, `email.service.ts` footer `hola@` → `support@`). Code PR; needs a PO execution instruction, **after E1** so no published address bounces.
 
 ## Backlog — Prod sshd reliability (added 2026-07-15, from a live incident)
 
