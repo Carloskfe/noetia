@@ -537,13 +537,13 @@
 
 Full register, with where each address is published and its purpose: [`docs/operations/email-addresses.md`](operations/email-addresses.md). Mailbox existence has not been verified from the dev environment, so the PO verifies each one.
 
-- [ ] **A1: create `ops@noetia.app`** (proposed bilingual name; earlier proposal `payments@`; to be confirmed). Payment escalation recipient (PR #60 R2 §C5, Q3 = option A). Forward it to the Stripe refund owner. Recommended prerequisite before payment activation.
+- [ ] **A1: create `ops@noetia.app`** (proposed trilingual EN/ES/FR name; earlier proposal `payments@`; to be confirmed). Payment escalation recipient (PR #60 R2 §C5, Q3 = option A). Forward it to the Stripe refund owner. Recommended prerequisite before payment activation.
 - [ ] **B1: verify `legal@noetia.app`.** Privacy Policy, GDPR/CCPA requests, store listings. **High.**
 - [ ] **B2: verify `hola@noetia.app`.** Support address in every transactional email footer. **High.**
 - [ ] **B3–B9: verify** `info@`, `autores@`, `causas@`, `editorial@`, `socios@`, `prensa@`, `equipo@` (published on `/contact`, footer, `/causas`, `/careers`, upload guide).
 - [ ] **C1: `noreply@noetia.app`.** Confirm prod sending; decide whether customer emails get `Reply-To: hola@noetia.app`.
 - [ ] **C2: `alerts@noetia.app`** (Grafana sender). Decide whether to move alert recipients from a personal address to a role address.
-- [ ] **E: PO decision on bilingual names.** Proposed renames `socios@` → `partners@`, `prensa@` → `media@`, `equipo@` → `talento@`, keeping the old addresses as aliases. The website change would be a separate approved PR. See register §E.
+- [ ] **E: PO decision on trilingual (EN/ES/FR-Canada) names.** Proposed renames `hola@` → `support@`, `socios@` → `partners@`, `prensa@` → `media@`, `equipo@` → `talent@`, keeping the old addresses as aliases. The website change would be a separate approved PR. See register §E.
 
 ## Backlog — Prod sshd reliability (added 2026-07-15, from a live incident)
 
