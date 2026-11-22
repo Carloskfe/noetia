@@ -533,6 +533,20 @@
 
 ---
 
+## Backlog — Admin `@noetia.app` email addresses (added 2026-11-22, PO request)
+
+Full register, with where each address is published and its purpose: [`docs/operations/email-addresses.md`](operations/email-addresses.md). Mailbox existence has not been verified from the dev environment, so the PO verifies each one.
+
+- [ ] **A1: create `ops@noetia.app`** (PO-approved 2026-11-22). Payment escalation recipient (PR #60 R2 §C5). Forward it to the Stripe refund owner and send a test message. **Launch gate (PO-approved): payments may not be activated until this is done.**
+- [ ] **B1: verify `legal@noetia.app`.** Privacy Policy, GDPR/CCPA requests, store listings. **High.**
+- [ ] **B2: verify `hola@noetia.app`.** Support address in every transactional email footer. **High.**
+- [ ] **B3–B9: verify** `info@`, `autores@`, `causas@`, `editorial@`, `socios@`, `prensa@`, `equipo@` (published on `/contact`, footer, `/causas`, `/careers`, upload guide).
+- [ ] **C1: `noreply@noetia.app`.** Confirm prod sending; decide whether customer emails get `Reply-To: hola@noetia.app`.
+- [ ] **C2: `alerts@noetia.app`** (Grafana sender). Decide whether to move alert recipients from a personal address to a role address.
+- [x] **E: trilingual names: APPROVED by PO 2026-11-22** (`hola@` → `support@`, `socios@` → `partners@`, `prensa@` → `media@`, `equipo@` → `talent@`; old addresses kept as aliases).
+- [ ] **E1: create** `support@`, `partners@`, `media@`, `talent@` and set the old addresses to forward to them (mail provider, PO).
+- [ ] **E2: website + email-footer update** (`/contact`, `/careers`, Footer, `email.service.ts` footer `hola@` → `support@`). Code PR; needs a PO execution instruction, **after E1** so no published address bounces.
+
 ## Backlog — Prod sshd reliability (added 2026-07-15, from a live incident)
 
 > **What happened:** SSH to prod was fully unreachable — `Connection refused` on both 222 and 22, while the site (Traefik + all containers) stayed up. Root cause: `ssh.service` was **`disabled` and `inactive (dead)`** (`systemctl status ssh` → `disabled; preset: enabled`). A reboot did **not** bring it back because it was disabled at boot. Recovered only via the **Contabo VNC console** (VNC must be enabled in the panel + a reboot; VNC IP is `161.97.77.108`, *not* the server IP — see incident-response.md once documented). Fix applied in the moment: `systemctl enable --now ssh` → back on 222.
