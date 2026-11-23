@@ -1,12 +1,14 @@
-# NEM-025 (trilingual platform): alignment requirements
+# NEM-025 (trilingual platform): reconciliation checklist
 
-**Status:** governance alignment annex. **Not** a mission specification, and **not** an execution authorization.
+**Status:** reconciliation checklist for PA. **It does not replace, summarise or amend the full PO-approved NEM-025 specification.** It is not a mission specification and not an execution authorization.
 
-> **Baseline finding:** the approved NEM-025 specification file from the PO's finalized approval packet is **not in the repository**. It is absent from `main` at `8f2f294`, from every remote branch, and from GitHub issues and PRs (searched 2026-11-22). `docs/engineering-missions/APPROVED/` contains only `.gitkeep`. Its content therefore **could not be compared**.
+> **Source of truth:** the **full PO-approved NEM-025 specification** in the PO's finalized approval packet governs. Per PA review of PR #76, that specification exists but **is not yet in GitHub**. It was not found on `main` at `8f2f294`, on any remote branch, or in issues or PRs (searched 2026-11-22).
 >
-> This annex lists what the approved specification **must contain** after the PO decisions of 2026-11-22. When the approved NEM-025 text is committed, PA reconciles it against this checklist. Any gap is a specification change for PA/PO, never a silent edit by the implementation agent.
+> **Where the full file must be committed (engineering-mission governance):** `docs/engineering-missions/APPROVED/NEM-025-<approved-title-slug>.md`, verbatim from the approval packet. This follows the established pattern, for example `APPROVED/NEM-021-provider-neutral-ai-contract-and-cost-accounting.md` and `APPROVED/NEM-022-…` on PR #49, preferably with the PO approval record committed alongside, as was done for NEM-019/021/022. The slug is the approved title; it is not invented here. Committing the file is documentation work, and **it does not authorize execution** (APPROVED ≠ EXECUTE).
+>
+> **How to use this checklist:** once the full file is committed, PA checks each item below against it and records the result per item: **covered** (cite the spec section), **not covered**, or **conflicts**. A *not covered* or *conflicts* result goes to PA/PO as a specification question. **It is never resolved by editing the approved specification without PO approval, and never by substituting this checklist.**
 
-## A. PO decisions to incorporate (FINAL, 2026-11-22)
+## A. PO decisions to verify in the full specification (FINAL, 2026-11-22)
 
 | # | Requirement | Source |
 |---|---|---|
@@ -15,13 +17,13 @@
 | A3 | **A book's original language is independent of the interface language.** Interface switching never changes book text or audio; book-language filtering is a separate control. | PO |
 | A4 | **The French pilot stays private and unpublished** until a separate, independent checkpoint approves a public French release. | PO |
 | A5 | **USD is the only financial currency** (USD-LOCAL-REFERENCE §1–§2). | PO: financial currency, FINAL |
-| A6 | **Optional informational CAD (and other local-currency) equivalents**, displayed only per USD-LOCAL-REFERENCE §3–§6. | PO |
-| A7 | Reference-rate sourcing, date disclosure, freshness and unavailable-rate behaviour; Bank of Canada evaluated for CAD (USD-LOCAL-REFERENCE §4–§5). | PO |
+| A6 | Informational local-currency equivalents follow USD-LOCAL-REFERENCE §3–§6 **if and when approved**. **CAD scope and currency-selection behaviour are PENDING PO decisions (P-1, P-2); do not assume approval.** Until decided, USD only. | PO; P-1/P-2 pending |
+| A7 | Reference-rate sourcing, date disclosure, freshness and unavailable-rate behaviour (USD-LOCAL-REFERENCE §4–§5). The Bank of Canada is an evaluated candidate only; **legal-source clearance is PENDING (P-3).** | PO; P-3 pending |
 | A8 | **French transactional message coverage** (see C). | PO mission §3.B |
 | A9 | **Tests preventing accidental use of converted amounts in checkout** (see D). | PO mission §3.B |
 | A10 | **Backward compatibility** for existing `es`/`en` users and clients (see B). | PO mission §3.B |
 
-## B. Backward compatibility requirements (repository facts, `main` 8f2f294)
+## B. Backward compatibility: repository facts to check against the spec (`main` 8f2f294)
 
 1. **Stored preference:** `users.uiLanguage` is `VARCHAR(5) NOT NULL DEFAULT 'es'` (migration 044). `fr-CA` is 5 characters, so **no schema change is needed** to store it. Existing `es`/`en` values stay valid and unchanged; there is no data migration.
 2. **Input validation:** `UpdateUserDto.uiLanguage` is only `@IsString() @MaxLength(5)`, so any five-character string is accepted today. NEM-025 should restrict it to `es | en | fr-CA` while accepting every existing stored value.
@@ -30,7 +32,7 @@
 5. **Older mobile builds** that only know `es`/`en` must keep working if the server stores `fr-CA`: they must fall back without crashing. Mobile language changes are JS-only (OTA-eligible), unless a native locale configuration changes.
 6. **Public pages that pick a language from `Accept-Language`** (for example `app/s/[id]/page.tsx` `pickLang()`) must map `fr*` to `fr-CA` only once French is public (A4). Until then, they keep `es`/`en`.
 
-## C. French transactional message coverage (inventory)
+## C. French transactional message coverage: inventory to check against the spec
 
 French versions are required for every user-facing system message, including:
 - **Email** (`services/api/src/email/email.service.ts`, 8 methods on `main`): `sendEmailConfirmation`, `sendPasswordReset`, `sendFarewell`, `sendWaitlistConfirmation`, `sendGiftCard`, `sendGiftConfirmation`, `sendPlanInvite`, `sendWaitlistInvite`. The email footer contact line is included.
@@ -39,7 +41,7 @@ French versions are required for every user-facing system message, including:
 - **Stripe-hosted surfaces:** Checkout `locale` (Stripe supports `fr-CA`; to verify at implementation) and customer `preferred_locales` for Stripe receipts and invoices. **Locale only; never currency.**
 - **Legal surfaces** (Terms, Privacy, Cookies): French versions are a **legal dependency** (see the report, risks), not an engineering translation task.
 
-## D. Currency safeguards and tests (minimum set)
+## D. Currency safeguards and tests: minimum set to check against the spec
 
 1. A checkout-session test for each Checkout path (subscription, book, token package, gift): `currency === 'usd'` and `unit_amount` or `price` equal the server-side configuration, **whether a rate is available, stale or extreme**.
 2. A DTO test: checkout requests carrying `amount`, `currency` or `fxRate` fields have them stripped or rejected, and the session is unchanged.

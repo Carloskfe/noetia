@@ -4,7 +4,14 @@
 
 **Relationship to existing decisions:** this addendum **extends** the PO decision *"USD as Noetia's commercial and financial currency"* (2026-11-13), recorded in `docs/product-governance/COMMERCE-DECISIONS.md` (Draft PR #74, not merged at the time of writing).
 - It does **not** modify or reopen T-1, D1–D6, F-01 Option B, W-1/W-2 (COMMERCE-W1-W2), subscription, token, royalty or book-ownership decisions.
-- Where this text and an earlier decision seem to differ, the earlier decision governs until the PO decides otherwise.
+- **Precedence (corrected per PA review of PR #76):** the **latest explicit PO decision governs the specific matter it addresses**. This addendum is the latest PO decision on transaction currency and informational local-currency display, so it governs those matters. **All unrelated earlier commerce decisions remain fully in force.**
+
+> **PENDING PO DECISIONS: not approved by this record, do not assume.**
+> - **P-1, CAD scope:** whether and where informational CAD equivalents are shown, to whom, and whether any other currency is in scope (§9 U-2).
+> - **P-2, currency-selection behaviour:** how the displayed currency is chosen (§9 U-2, U-3).
+> - **P-3, legal-source clearance:** legal clearance of any reference-rate source, the Bank of Canada included, and of the disclosure copy (§9 U-1).
+>
+> Until the PO decides P-1 to P-3, **no local-currency equivalent may be displayed**, and every price shows the authoritative USD amount only. The policy below defines the rules any approved display must follow.
 
 **Authorization:** documentation only. Implementation, Stripe changes, payment activation, merge and deployment are **not authorized** by this record.
 
@@ -41,11 +48,11 @@
 ## 4. Reference-rate sourcing
 
 1. **Verifiable reference source only:** a published, publicly checkable rate from an identified institution, with its **publication date disclosed** to the user.
-2. **CAD: the Bank of Canada is the evaluated source** (findings, 2026-11-22):
+2. **CAD: the Bank of Canada is the candidate evaluated at the PO's request** (findings, 2026-11-22). **It is not cleared:** source clearance is pending (P-3), and CAD scope is pending (P-1).
    - daily average rates are published **once each business day by 16:30 ET**, and publication may be delayed;
    - available free through the Valet API (`https://www.bankofcanada.ca/valet/observations/FXUSDCAD/json?recent=1`), with **no API key** (tested: HTTP 200, observation 2026-11-20 = 1.4325 CAD per USD);
    - the Bank describes its rates as **"indicative rates only"**, "released for statistical and analytical purposes only and … not intended to be used as the benchmark rate for executing foreign exchange trades". This fits informational display, where Noetia executes no FX;
-   - the Bank's Terms require **attribution** ("You must attribute the Bank of Canada as the source of the content, and indicate if changes were made") and contain a **paid-services clause** (§1.3), a request-limit clause (§3) and a third-party-content clause (§2.3; the rates are described as sourced from LSEG). **Legal confirmation of reuse on Noetia's pages is a prerequisite** (see §9).
+   - the Bank's Terms require **attribution** ("You must attribute the Bank of Canada as the source of the content, and indicate if changes were made") and contain a **paid-services clause** (§1.3), a request-limit clause (§3) and a third-party-content clause (§2.3; the rates are described as sourced from LSEG). **Legal confirmation of reuse on Noetia's pages is a prerequisite and is PENDING** (P-3, §9 U-1).
 3. **Other currencies:** the Bank of Canada also publishes MXN, BRL, PEN and EUR, among others, as CAD rates, so USD→X can be **derived** (FXUSDCAD ÷ FXXCAD). A derived rate must be disclosed as calculated from Bank of Canada reference rates. **COP, CLP and ARS are not published by the Bank of Canada.** Any other source, or any currency beyond CAD, needs a PO decision (§9).
 4. **Never described as guaranteed or legally mandated.** No published reference rate is presented as the rate a customer will be charged, as a guaranteed rate or as a legally required conversion rate.
 
@@ -100,11 +107,11 @@ Source attribution (for example *"Taux de référence : Banque du Canada"* / *"R
 4. **Module isolation:** the rate module is not imported by the subscription, gift, webhook, token, royalty or Causas modules, and this is enforced by a test.
 5. **Tests prove** that rate availability, staleness or value has **no effect** on any Stripe call parameter or ledger entry (see the report's test list).
 
-## 9. Open items (not decided by this policy)
+## 9. Open items: PENDING PO DECISIONS (not decided by this policy)
 
 | # | Item | Owner |
 |---|---|---|
-| U-1 | **Legal confirmation** that showing Bank of Canada-derived equivalents with attribution on Noetia's pages is permitted under the Bank's Terms (§1.1, §1.3, §2.3 LSEG third-party content, §3 request limits), and review of the FR/EN/ES disclosure copy | PO / legal |
-| U-2 | **Which currencies, for whom:** CAD only (for the `fr-CA` interface) first, or also MXN/BRL/PEN/EUR as derived rates; how the currency is chosen (interface language, explicit user preference; **no IP geolocation** is proposed) | PO |
-| U-3 | Currencies the Bank of Canada does not publish (COP, CLP, ARS): no estimate, or another verifiable free source | PO |
+| U-1 (P-3) | **Legal-source clearance:** that showing Bank of Canada-derived equivalents with attribution on Noetia's pages is permitted under the Bank's Terms (§1.1, §1.3, §2.3 LSEG third-party content, §3 request limits), and review of the FR/EN/ES disclosure copy | PO / legal |
+| U-2 (P-1, P-2) | **CAD scope and currency selection:** whether CAD equivalents are shown and to whom; whether MXN/BRL/PEN/EUR (derived) are in scope; how the currency is chosen. Options for the PO include interface language or an explicit user preference. *Engineering note only, not a decision:* IP geolocation would add personal-data processing | PO |
+| U-3 (P-2) | Currencies the Bank of Canada does not publish (COP, CLP, ARS): no estimate, or another verifiable free source | PO |
 | U-4 | The exact freshness limit (proposed 5 calendar days) | NEM-025 / PA |

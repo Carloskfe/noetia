@@ -4,8 +4,8 @@
 **Authorization:** specification preparation and governance alignment only. Implementation, merge, deployment and payment activation are **not authorized**.
 **Deliverables on this branch (docs only):**
 - [`docs/product-governance/COMMERCE-USD-LOCAL-REFERENCE.md`](../../product-governance/COMMERCE-USD-LOCAL-REFERENCE.md): deliverable A, the commerce policy addendum.
-- [`nem-025-alignment.md`](nem-025-alignment.md): deliverable B.
-- [`nem-026-alignment.md`](nem-026-alignment.md): deliverable C.
+- [`nem-025-reconciliation-checklist.md`](nem-025-reconciliation-checklist.md): deliverable B, a PA reconciliation checklist. **It does not replace the full approved NEM-025 specification.**
+- [`nem-026-reconciliation-checklist.md`](nem-026-reconciliation-checklist.md): deliverable C, a PA reconciliation checklist. **It does not replace the full approved NEM-026 specification.**
 - This report: §4 engineering map and the completion report.
 
 ---
@@ -18,7 +18,7 @@
 | **PR #74** (COMMERCE-W1-W2 policy record; holds `COMMERCE-DECISIONS.md`) | Draft, head `e0663d1`, **not merged**. **Not modified** by this mission. |
 | **PR #60** (payment lifecycle; holds `services/web/lib/currency.ts` `formatUsd`) | Draft, stacked on #59, head `d8e61e2`. **Not modified.** Design addenda A–G are in its comments. |
 | PR #75 (admin email register) | Draft, head `cb95360`. Not modified. |
-| **NEM-025 / NEM-026 approved specification files** | **NOT FOUND**: not on `main`, not on any remote branch, not in GitHub issues or PRs; `docs/engineering-missions/APPROVED/` holds only `.gitkeep`. See §6, Q-1. |
+| **NEM-025 / NEM-026 approved specification files** | Exist in the PO's finalized approval packet (PA confirmation) but are **not yet in GitHub**: not on `main`, not on any remote branch, not in GitHub issues or PRs; `docs/engineering-missions/APPROVED/` holds only `.gitkeep`. Required location: `docs/engineering-missions/APPROVED/NEM-025-<approved-title-slug>.md` and `…/NEM-026-<approved-title-slug>.md`, verbatim (§6, Q-1). |
 
 Governance read: `CLAUDE.md` and `docs/engineering-missions/README.md` (APPROVED ≠ execute; DOCUMENTATION ONLY level; stop for PA).
 
@@ -68,6 +68,7 @@ All amounts are server-side today. The global `ValidationPipe({ whitelist: true 
 - **The Bank of Canada Valet API needs no key** (tested 2026-11-22: `GET https://www.bankofcanada.ca/valet/observations/FXUSDCAD/json?recent=1` → 200, `{"d":"2026-11-20","FXUSDCAD":{"v":"1.4325"}}`). **No secret is involved.**
 - **Fetch server-side** (API), not from browsers: one outbound call per refresh instead of one per visitor, which respects the Terms §3 request limits and avoids exposing third-party calls client-side.
 - **Smallest practical approach:**
+  *Applies only if the PO approves P-1 to P-3; CAD is used below as the worked example, not as an approved scope.*
   1. **API:** a small read-only module (for example `fx/`) with `GET /api/fx/reference?currency=CAD` → `{ currency, rate, rateDate, source: 'Bank of Canada', derived: false }` or `204`/`null` when unavailable or stale. No auth is needed (public reference data, no PII).
   2. **Cache in the existing Redis** (`ioredis` is already a dependency), key `fx:USD:CAD` = `{rate, rateDate, fetchedAt}`, refreshed at most every 6 h, either lazily on request or with an existing `@nestjs/schedule` cron. **Keep the last good value**; serve it only while `rateDate` is within the freshness limit (proposed 5 calendar days).
   3. **Web and mobile:** one shared formatter, `formatLocalEstimate(usdCents, ref, locale)` → display string or `null`; render it under the USD price with the disclosure. Nothing returned is ever sent back to the API.
@@ -90,30 +91,30 @@ All amounts are server-side today. The global `ValidationPipe({ whitelist: true 
 | Recurring cost | **No** | free public source |
 | Stripe | **No change** | display only |
 | **Legal** | **Yes** | Bank of Canada Terms reuse (§1.1 attribution, §1.3 paid services, §2.3 LSEG third-party content, §3 request limits); FR/EN/ES disclosure copy; French legal documents and Québec French-language obligations before any public French release (§6) |
-| Product (PO) | **Yes** | currencies in scope and selection rule (policy U-2, U-3) |
+| Product (PO) | **Yes, PENDING** | CAD scope, currency-selection behaviour (P-1, P-2) and legal-source clearance (P-3) |
 
 ### 4.6 Tests ensuring exchange rates never affect payment amounts
 
-See NEM-025 annex §D (D1–D6): Checkout parameter tests under available, stale and extreme rates; stripping of client-supplied amount or currency; module-isolation source scan; formatter null-on-stale and explicit marking; W-2 unchanged; UI renders USD and allows checkout when the rate endpoint fails.
+See the NEM-025 reconciliation checklist §D (D1–D6): Checkout parameter tests under available, stale and extreme rates; stripping of client-supplied amount or currency; module-isolation source scan; formatter null-on-stale and explicit marking; W-2 unchanged; UI renders USD and allows checkout when the rate endpoint fails.
 
 ## 5. NEM-025 / NEM-026 consistency verification
 
 | Check | Result |
 |---|---|
-| Approved NEM-025 text vs repository | **Could not be performed:** the file is not in the repository (Q-1). Required content provided as annex B. |
-| Approved NEM-026 text vs repository | **Could not be performed:** same (Q-1). Required content provided as annex C. |
-| Annexes vs PO decisions | Consistent: three interface languages, the exact label, independent book language, private pilot, exactly five titles, edition #14155, USD only, informational equivalents. |
-| Annexes vs commerce policy | Consistent: NEM-025 §A5–A7 and §D reference USD-LOCAL-REFERENCE §1–§8. |
-| Annexes vs existing decisions | No change to T-1, D1–D6, F-01, W-1/W-2, tokens or ownership. |
+| Full approved NEM-025 text vs repository | **Pending:** the full file is not yet in GitHub (Q-1). Checklist B is ready for PA to apply once it is committed. |
+| Full approved NEM-026 text vs repository | **Pending:** same (Q-1). Checklist C is ready. |
+| Checklists vs PO decisions | Consistent: three interface languages, the exact label, independent book language, private pilot, exactly five titles, edition #14155, USD only, informational equivalents. |
+| Checklists vs commerce policy | Consistent: NEM-025 §A5–A7 and §D reference USD-LOCAL-REFERENCE §1–§8. |
+| Checklists vs existing decisions | No change to T-1, D1–D6, F-01, W-1/W-2, tokens or ownership. |
 | Repository facts | `uiLanguage` VARCHAR(5) fits `fr-CA`; `books.language` fits `fr`; no French titles in the catalogue; binary `isEn` language handling would silently serve Spanish to `fr-CA` users. |
 
 ## 6. Risks, dependencies and unresolved material questions
 
 **Material questions**
-- **Q-1:** **The NEM-025 and NEM-026 approved specification files are not in the repository.** Please commit them, or provide the text, so PA can reconcile them with the annexes. Until then, the annexes are the only repository record of the required content.
-- **Q-2 (policy U-2):** which local currencies, and how a currency is chosen (proposed: CAD only for the `fr-CA` interface first; no IP geolocation).
-- **Q-3 (policy U-3):** COP/CLP/ARS: no estimate, or another verifiable free source.
-- **Q-4 (policy U-1):** legal confirmation of Bank of Canada data reuse, and of the disclosure copy.
+- **Q-1:** **The full PO-approved NEM-025 and NEM-026 specifications must be committed verbatim** to `docs/engineering-missions/APPROVED/NEM-025-<approved-title-slug>.md` and `…/NEM-026-<approved-title-slug>.md` (pattern of NEM-019/021/022), with their approval records, in a documentation-only change authorized by the PO. Committing them does not authorize execution. Then PA applies the reconciliation checklists. *(Not done in this PR: the full texts are not available to the agent, and this correction authorizes only the documentation fix.)*
+- **Q-2 (policy P-1/P-2, U-2): PENDING PO DECISION.** CAD scope (whether CAD equivalents are shown, and to whom; any other currencies) and currency-selection behaviour. **Not approved; nothing is assumed.** Until decided, USD only.
+- **Q-3 (policy P-2, U-3): PENDING PO DECISION.**** COP/CLP/ARS: no estimate, or another verifiable free source.
+- **Q-4 (policy P-3, U-1): PENDING PO DECISION / legal.** Legal-source clearance of Bank of Canada data reuse, and of the disclosure copy.
 
 **Risks and dependencies**
 - **R-1, dependency on PR #60:** the USD formatter (`currency.ts`) and the explicit `US$` marking exist only on PR #60. `main` still shows bare `$` and stale metadata (`$9.99`). NEM-025 must land after #60, or transplant that utility.
@@ -135,3 +136,15 @@ See NEM-025 annex §D (D1–D6): Checkout parameter tests under available, stale
 Link recorded in the PR body and the completion comment.
 
 **FR-CA-USD GOVERNANCE ALIGNMENT COMPLETE — STOP FOR INDEPENDENT PRODUCT ARCHITECTURE REVIEW.**
+
+---
+
+## 9. PA review corrections (2026-11-22)
+
+PA accepted PR #76 with two documentation corrections, applied in the follow-up commit:
+1. **Policy precedence corrected:** the latest explicit PO decision governs the specific matter it addresses; all unrelated earlier commerce decisions remain in force (USD-LOCAL-REFERENCE header).
+2. **Full specifications preserved:** the former "alignment annexes" are renamed and reframed as **reconciliation checklists**. They no longer claim to define what the specifications contain. The full PO-approved NEM-025 and NEM-026 specifications govern and must be committed verbatim under `docs/engineering-missions/APPROVED/` (Q-1).
+
+Also made explicit: **CAD scope, currency-selection behaviour and legal-source clearance are PENDING PO decisions (P-1 to P-3).** No local-currency equivalent may be displayed until they are decided.
+
+**STOP FOR INDEPENDENT PA RE-REVIEW.**
