@@ -1,5 +1,6 @@
-import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUrl, MaxLength, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, IsUrl, MaxLength, Min } from 'class-validator';
 import { UserType } from '../user.entity';
+import { SUPPORTED_UI_LOCALES } from '../ui-locale';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -29,9 +30,9 @@ export class UpdateUserDto {
   @IsString({ each: true })
   interests?: string[];
 
+  /** Interface locale. Only canonical values are accepted; `fr-CA` is additionally gated in the controller. */
   @IsOptional()
-  @IsString()
-  @MaxLength(5)
+  @IsIn(SUPPORTED_UI_LOCALES)
   uiLanguage?: string;
 
   @IsOptional()

@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, HttpCode, Patch, Request, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Patch, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateOnboardingDto } from './dto/update-onboarding.dto';
 import { UsersService } from './users.service';
+import { selectableUiLocales, UiLocale } from './ui-locale';
 
 @Controller('users')
 export class UsersController {
@@ -20,6 +21,10 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Patch('me')
   async updateMe(@Request() req: any, @Body() dto: UpdateUserDto) {
+    // fr-CA stays unreachable while the French readiness gate is closed (NEM-025 Checkpoint A).
+    if (dto.uiLanguage !== undefined && !selectableUiLocales().includes(dto.uiLanguage as UiLocale)) {
+      throw new BadRequestException('Unsupported interface language');
+    }
     await this.usersService.update(req.user.id, dto);
     const user = await this.usersService.findById(req.user.id);
     if (!user) return null;
