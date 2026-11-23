@@ -29,7 +29,7 @@ jest.mock('next/navigation', () => ({
 jest.mock('@/lib/api', () => ({
   apiFetch: jest.fn((path: string) => {
     if (String(path).startsWith('/collections/')) {
-      return Promise.resolve({ id: 'c1', slug: 'clasicos', name: 'Clásicos', description: 'Obras maestras', books: [] });
+      return Promise.resolve({ id: 'c1', slug: 'clasicos', name: 'Clásicos', description: 'Obras maestras', bookCount: 2, books: [] });
     }
     return Promise.resolve([]);
   }),

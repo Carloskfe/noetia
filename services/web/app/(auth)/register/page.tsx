@@ -9,6 +9,7 @@ import { apiFetch, saveToken, saveUserType, saveEmailConfirmed, postAuthRedirect
 import SocialAuthButtons from '@/components/SocialAuthButtons';
 import LanguagePicker from '@/components/LanguagePicker';
 import { useTranslation } from '@/lib/i18n';
+import { registerErrorMessage } from '@/lib/i18n/errors';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -39,7 +40,7 @@ export default function RegisterPage() {
       saveEmailConfirmed(data.user?.emailConfirmed ?? true);
       router.push(postAuthRedirect(data.user?.userType ?? null));
     } catch (err: any) {
-      setError('root', { message: err.message ?? t.auth.register.errors.generic });
+      setError('root', { message: registerErrorMessage(err, t) });
     }
   }
 

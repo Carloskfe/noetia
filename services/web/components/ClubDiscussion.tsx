@@ -79,7 +79,7 @@ export default function ClubDiscussion({ clubId, activeBook, canWrite, isAdmin }
               type="number"
               value={newPhrase}
               onChange={e => setNewPhrase(e.target.value)}
-              placeholder="Frase #"
+              placeholder={t.clubDiscussionForm.phrasePlaceholder}
               min={0}
               className="w-28 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               required

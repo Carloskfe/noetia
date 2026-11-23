@@ -30,9 +30,9 @@ export default function ConfirmEmailPage() {
         setState('success');
         setTimeout(() => router.push(postAuthRedirect(data.user?.userType ?? null)), 1500);
       })
-      .catch((err: any) => {
+      .catch(() => {
         setState('error');
-        setMessage(err?.message ?? t.auth.confirmEmailPage.expiredOrInvalid);
+        setMessage(t.auth.confirmEmailPage.expiredOrInvalid);
       });
   }, [params, router, t]);
 

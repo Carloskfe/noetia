@@ -7,6 +7,7 @@ export const en = {
     'fr-CA': 'Français (Canada)',
   },
   common: {
+    tooManyAttempts: 'Too many attempts. Wait a minute and try again.',
     loading: 'Loading…',
     error: 'Something went wrong. Try again.',
     cancel: 'Cancel',
@@ -39,6 +40,7 @@ export const en = {
         email: 'Invalid email',
         passwordRequired: 'Password is required',
         generic: 'Login failed',
+        invalidCredentials: 'Incorrect email or password.',
       },
     },
     register: {
@@ -55,6 +57,7 @@ export const en = {
         emailInvalid: 'Invalid email',
         passwordShort: 'Password must be at least 8 characters',
         generic: 'Registration failed',
+        emailTaken: 'An account with this email already exists.',
       },
     },
     forgot: {
@@ -114,6 +117,7 @@ export const en = {
       country: 'Country',
       countryPlaceholder: 'Select your country',
       readingLanguages: 'Reading languages',
+      otherCountry: 'Other',
       submit: 'Continue',
       submitting: 'Saving…',
     },
@@ -121,6 +125,7 @@ export const en = {
       title: 'What do you like to read?',
       subtitle: 'Choose up to 5 categories to personalize your library.',
       maxSelected: '5 selected',
+      selectedCount: (n: number, max: number) => `${n}/${max} selected`,
       submit: 'Go to my library',
       submitting: 'Saving…',
       categories: {
@@ -271,6 +276,7 @@ export const en = {
     admin: 'Admin',
     userTypes: { personal: 'Reader', author: 'Author', editorial: 'Publisher' },
     language: 'Language',
+    accountSection: 'Account',
     deleteModal: {
       ariaLabel: 'Delete account',
       title: 'Delete account',
@@ -564,9 +570,12 @@ export const en = {
       submit: 'Create club',
       submitting: 'Creating…',
       limitReached: 'You have reached the 3-club creation limit.',
+      bookRequired: 'Select a starting book.',
       subscriptionRequired: 'A subscription is required to start a club with a paid book.',
     },
     page: {
+      leaveConfirm: 'Leave the club?',
+      linkCopied: 'Link copied to clipboard',
       members: 'members',
       join: 'Join',
       leave: 'Leave club',
@@ -620,6 +629,9 @@ export const en = {
       upcoming: 'Upcoming',
       completed: 'Completed',
       cancelled: 'Cancelled',
+      cancelConfirm: 'Cancel this session?',
+      notFound: 'Session not found.',
+      loadError: 'Could not load the session.',
       cancel: 'Cancel session',
       join: 'Join session',
     },
@@ -978,6 +990,43 @@ export const en = {
       'ninez-y-juventud': { name: 'Children and youth', description: 'Projects that expand access to education, reading and opportunities for children and young people.' },
       'medio-ambiente': { name: 'Environment', description: 'Protecting the ecosystems, biodiversity and natural resources of our region.' },
     },
+  },
+  bookGrid: {
+    inLibrary: 'In your library',
+    addToLibrary: 'Add to your library',
+  },
+  emailBanner: {
+    message: 'Confirm your email to access payments and downloads.',
+    sent: 'Email sent!',
+    resend: 'Resend email',
+    sending: 'Sending…',
+    close: 'Close',
+  },
+  collection: {
+    back: 'Back',
+    label: 'Collection',
+    notFound: 'Collection not found',
+    bookCount: (n: number) => n === 1 ? '1 book' : `${n} books`,
+  },
+  clubLive: {
+    noAudio: 'This book has no audio available.',
+    playbackPosition: 'Playback position',
+  },
+  clubCard: {
+    tokenRequired: '1 token',
+  },
+  clubDiscussionForm: {
+    phrasePlaceholder: 'Phrase #',
+  },
+  accountNav: {
+    title: 'Account',
+    billing: 'Billing',
+  },
+  authCallback: {
+    signingIn: 'Signing you in…',
+  },
+  socialPage: {
+    title: 'Share',
   },
 };
 

@@ -76,7 +76,7 @@ function ClubPageContent() {
   }
 
   async function handleLeave() {
-    if (!confirm('¿Salir del club?')) return;
+    if (!confirm(t.clubs.page.leaveConfirm)) return;
     await clubsApi.leave(params.id);
     router.push('/clubs');
   }
@@ -85,7 +85,7 @@ function ClubPageContent() {
     try {
       const { url } = await clubsApi.generateInvite(params.id);
       await navigator.clipboard.writeText(url);
-      alert('Enlace copiado al portapapeles');
+      alert(t.clubs.page.linkCopied);
     } catch { setError(t.common.error); }
   }
 

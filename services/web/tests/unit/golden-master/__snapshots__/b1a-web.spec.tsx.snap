@@ -8,7 +8,7 @@ exports[`B1-A EN/ES golden master account/layout renders the same ES and EN text
   },
   "es": {
     "attrs": [],
-    "text": "AccountBillingchild",
+    "text": "CuentaFacturaciónchild",
   },
 }
 `;
@@ -42,9 +42,9 @@ exports[`B1-A EN/ES golden master book-grid renders the same ES and EN text and 
 {
   "en": {
     "attrs": [
-      "button[aria-label]=En tu biblioteca",
-      "button[aria-label]=Agregar a tu biblioteca",
-      "button[aria-label]=Agregar a tu biblioteca",
+      "button[aria-label]=In your library",
+      "button[aria-label]=Add to your library",
+      "button[aria-label]=Add to your library",
     ],
     "text": "DDon QuijoteCervantesDon QuijoteCervantesCCandideVoltaireFRCandideVoltaireMMeditationsMarcus AureliusENMeditationsMarcus Aurelius",
   },
@@ -67,7 +67,7 @@ exports[`B1-A EN/ES golden master causas renders the same ES and EN text and acc
   },
   "es": {
     "attrs": [],
-    "text": "NOETIA← BibliotecaCausas NoetiaPrograma en preparación"Creemos que compartir es una forma de ayudar."Compartir aquí muevemás que páginas.Construimos Noetia para compartir conocimiento, y creemos que compartir tiene que significar algo más que alcance. Causas Noetia es un programa en preparación: planeamos destinar el 2,22% de los ingresos netos elegibles, después de las comisiones de procesamiento de pago, a organizaciones benéficas independientes en tres causas.Causas Noetia aún no ha comenzado. Las alianzas con organizaciones benéficas están pendientes: no se ha firmado ningún acuerdo y no se ha realizado ninguna contribución. Nombraremos a las organizaciones solo después de firmar los acuerdos.🐾Bienestar AnimalEnfoque previsto: iniciativas de rescate, cuidado, rehabilitación y protección de animales en América Latina.📚Niñez y JuventudEnfoque previsto: proyectos que amplían el acceso a la educación, la lectura y las oportunidades para niños y jóvenes.🌿Medio AmbienteEnfoque previsto: la protección de los ecosistemas, la biodiversidad y los recursos naturales de nuestra región.¿Cómo funciona?01Cuando el programa comience, planeamos destinar el 2,22% de los ingresos netos elegibles: lo que Noetia recibe después de las comisiones de procesamiento de pago.02Podrás elegir una causa para recibir esa asignación. Si no eliges ninguna, se repartirá por igual entre las tres.03La asignación irá a organizaciones benéficas independientes, no a causas operadas por Noetia.Para organizaciones benéficas¿Tu proyecto genera cambio real en América Latina?Buscamos organizaciones benéficas independientes en bienestar animal, niñez y juventud, y medio ambiente para las primeras alianzas del programa. Si tu organización trabaja con propósito, con transparencia y con impacto demostrable, queremos conocerte.✅Trabajo en una de las tres líneas estratégicas✅Operación en América Latina✅Impacto documentado y transparenteEscribenos a causas@noetia.appEvaluamos cada propuesta con base en transparencia, impacto documentado y alineación con nuestra comunidad de lectores.",
+    "text": "NOETIA← BibliotecaCausas NoetiaPrograma en preparación"Creemos que compartir es una forma de ayudar."Compartir aquí muevemás que páginas.Construimos Noetia para compartir conocimiento, y creemos que compartir tiene que significar algo más que alcance. Causas Noetia es un programa en preparación: planeamos destinar el 2,22% de los ingresos netos elegibles, después de las comisiones de procesamiento de pago, a organizaciones benéficas independientes en tres causas.Causas Noetia aún no ha comenzado. Las alianzas con organizaciones benéficas están pendientes: no se ha firmado ningún acuerdo y no se ha realizado ninguna contribución. Nombraremos a las organizaciones solo después de firmar los acuerdos.🐾Bienestar AnimalEnfoque previsto: iniciativas de rescate, cuidado, rehabilitación y protección de animales en América Latina.📚Niñez y JuventudEnfoque previsto: proyectos que amplían el acceso a la educación, la lectura y las oportunidades para niños y jóvenes.🌿Medio AmbienteEnfoque previsto: la protección de los ecosistemas, la biodiversidad y los recursos naturales de nuestra región.¿Cómo funciona?01Cuando el programa comience, planeamos destinar el 2,22% de los ingresos netos elegibles: lo que Noetia recibe después de las comisiones de procesamiento de pago.02Podrás elegir una causa para recibir esa asignación. Si no eliges ninguna, se repartirá por igual entre las tres.03La asignación irá a organizaciones benéficas independientes, no a causas operadas por Noetia.Para organizaciones benéficas¿Tu proyecto genera cambio real en América Latina?Buscamos organizaciones benéficas independientes en bienestar animal, niñez y juventud, y medio ambiente para las primeras alianzas del programa. Si tu organización trabaja con propósito, con transparencia y con impacto demostrable, queremos conocerte.✅Trabajo en una de las tres líneas estratégicas✅Operación en América Latina✅Impacto documentado y transparenteEscríbenos a causas@noetia.appEvaluamos cada propuesta con base en transparencia, impacto documentado y alineación con nuestra comunidad de lectores.",
   },
 }
 `;
@@ -206,11 +206,11 @@ exports[`B1-A EN/ES golden master discover/collection renders the same ES and EN
 {
   "en": {
     "attrs": [],
-    "text": "VolverColecciónClásicos librosObras maestras",
+    "text": "BackCollectionClásicos2 booksObras maestras",
   },
   "es": {
     "attrs": [],
-    "text": "VolverColecciónClásicos librosObras maestras",
+    "text": "VolverColecciónClásicos2 librosObras maestras",
   },
 }
 `;
@@ -219,9 +219,9 @@ exports[`B1-A EN/ES golden master email-verification-banner renders the same ES 
 {
   "en": {
     "attrs": [
-      "button[aria-label]=Cerrar",
+      "button[aria-label]=Close",
     ],
-    "text": "Confirma tu correo electrónico para acceder a pagos y descargas.Reenviar correo✕",
+    "text": "Confirm your email to access payments and downloads.Resend email✕",
   },
   "es": {
     "attrs": [
@@ -236,7 +236,7 @@ exports[`B1-A EN/ES golden master onboarding/interests renders the same ES and E
 {
   "en": {
     "attrs": [],
-    "text": "¿Qué te interesa leer?Elige hasta 5 categorías para personalizar tu biblioteca.0/5 seleccionadas🏆Liderazgo🌱Desarrollo Personal💼Negocios💰Finanzas📣Marketing🧠Psicología🔬Ciencia📜Historia🌌Ficción✨Autoayuda🏃Salud & Bienestar🕊️Espiritualidad💡Filosofía📰Biografías💻TecnologíaIr a mi biblioteca",
+    "text": "What do you like to read?Choose up to 5 categories to personalize your library.0/5 selected🏆Leadership🌱Self Development💼Business💰Finance📣Marketing🧠Psychology🔬Science📜History🌌Fiction✨Self Help🏃Health & Wellness🕊️Spirituality💡Philosophy📰Biographies💻TechnologyGo to my library",
   },
   "es": {
     "attrs": [],

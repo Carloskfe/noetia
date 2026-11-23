@@ -5,9 +5,11 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { clubsApi, ClubSession } from '@/lib/clubs';
 import EscuchaJuntosRoom from '@/components/EscuchaJuntosRoom';
+import { useTranslation } from '@/lib/i18n';
 
 export default function LiveSessionPage() {
   const params = useParams<{ id: string; sessionId: string }>();
+  const { t } = useTranslation();
   const [session,  setSession]  = useState<ClubSession | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [loading,  setLoading]  = useState(true);
@@ -18,13 +20,13 @@ export default function LiveSessionPage() {
       try {
         const sessions = await clubsApi.getSessions(params.id);
         const s = sessions.find(s => s.id === params.sessionId);
-        if (!s) { setError('Sesión no encontrada.'); return; }
+        if (!s) { setError(t.clubs.sessions.notFound); return; }
         setSession(s);
 
         const book = await apiFetch(`/books/${s.bookId}`).catch(() => null);
         if (book?.audioStreamKey) setAudioUrl(book.audioStreamKey);
       } catch {
-        setError('No se pudo cargar la sesión.');
+        setError(t.clubs.sessions.loadError);
       } finally {
         setLoading(false);
       }
