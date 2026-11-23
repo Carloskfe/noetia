@@ -3,11 +3,21 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { en } from './en';
 import { es } from './es';
+import { frCA } from './fr-ca';
 import type { Translations } from './en';
+import {
+  DEFAULT_LANGUAGE,
+  type Language,
+  normalizeLanguage,
+  resolveServerLanguage,
+  resolveStoredLanguage,
+} from './locales';
 
-export type Language = 'es' | 'en';
+export type { Language } from './locales';
+export { isFrenchEnabled, selectableLanguages, SUPPORTED_LANGUAGES } from './locales';
+
 const STORAGE_KEY = 'noetia_lang';
-const translations: Record<Language, Translations> = { es, en };
+const translations: Record<Language, Translations> = { es, en, 'fr-CA': frCA };
 
 interface LanguageContextValue {
   language: Language;
@@ -16,17 +26,16 @@ interface LanguageContextValue {
 }
 
 const LanguageContext = createContext<LanguageContextValue>({
-  language: 'es',
+  language: DEFAULT_LANGUAGE,
   t: es,
   setLanguage: () => {},
 });
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLang] = useState<Language>('es');
+  const [language, setLang] = useState<Language>(DEFAULT_LANGUAGE);
 
   useEffect(() => {
-    const saved = (localStorage.getItem(STORAGE_KEY) as Language) ?? 'es';
-    const lang = saved === 'en' ? 'en' : 'es';
+    const lang = resolveStoredLanguage(localStorage.getItem(STORAGE_KEY));
     setLang(lang);
     document.documentElement.lang = lang;
 
@@ -36,17 +45,21 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       fetch('/api/users/me', { headers: { Authorization: `Bearer ${token}` } })
         .then((r) => r.ok ? r.json() : null)
         .then((user) => {
-          if (user?.uiLanguage === 'en' || user?.uiLanguage === 'es') {
-            setLang(user.uiLanguage);
-            localStorage.setItem(STORAGE_KEY, user.uiLanguage);
-            document.documentElement.lang = user.uiLanguage;
-          }
+          if (!user) return;
+          const resolved = resolveServerLanguage(user.uiLanguage, lang);
+          if (resolved === lang) return;
+          setLang(resolved);
+          localStorage.setItem(STORAGE_KEY, resolved);
+          document.documentElement.lang = resolved;
         })
         .catch(() => {});
     }
   }, []);
 
-  const setLanguage = useCallback((lang: Language) => {
+  const setLanguage = useCallback((requested: Language) => {
+    // Fail closed: a language that is not selectable (fr-CA while the readiness gate is off) is ignored.
+    const lang = normalizeLanguage(requested);
+    if (!lang) return;
     setLang(lang);
     localStorage.setItem(STORAGE_KEY, lang);
     document.documentElement.lang = lang;
@@ -73,6 +86,6 @@ export function useTranslation() {
 }
 
 export function getStoredLanguage(): Language {
-  if (typeof window === 'undefined') return 'es';
-  return (localStorage.getItem(STORAGE_KEY) as Language) ?? 'es';
+  if (typeof window === 'undefined') return DEFAULT_LANGUAGE;
+  return resolveStoredLanguage(localStorage.getItem(STORAGE_KEY));
 }
