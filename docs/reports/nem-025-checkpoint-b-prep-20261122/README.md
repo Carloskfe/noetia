@@ -130,7 +130,7 @@ See `fr-ca-terminology-guide.md` §5.
 | **PRs #70/#72 vs #78** | **Both add `mobile/tests/unit/i18n/index.spec.ts`**, so an add/add conflict. #70's version renders the provider and asserts the es/en-only behaviour | Merge the two specs on rebase; adapt #70's assertions to the gated contract |
 | **PR #69 (`react-test-renderer`)** | Mobile render tests impossible without it | D-6: land #69 first, or authorize the dev dependency in Checkpoint B |
 | **PR #75 email renames** (`hola@` → `support@`) | Email templates and footers would change twice | Sequence B-T1 after the address change, or make the footer address a single constant |
-| **Checkpoint A not merged** | B must be stacked on #78 or wait | Stack the Checkpoint B branch on #78 (CI won't run on stacked PRs: memory/precedent) or target `main` after #78 merges |
+| **Checkpoint A not merged** | B must be stacked on #78 or wait | Stack the Checkpoint B branch on #78 (CI does not run on stacked PRs; CI only runs on PRs targeting `main`) or target `main` after #78 merges |
 
 ## 10. Estimated engineering complexity and resource costs
 
