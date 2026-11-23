@@ -68,7 +68,7 @@ All amounts are server-side today. The global `ValidationPipe({ whitelist: true 
 - **The Bank of Canada Valet API needs no key** (tested 2026-11-22: `GET https://www.bankofcanada.ca/valet/observations/FXUSDCAD/json?recent=1` → 200, `{"d":"2026-11-20","FXUSDCAD":{"v":"1.4325"}}`). **No secret is involved.**
 - **Fetch server-side** (API), not from browsers: one outbound call per refresh instead of one per visitor, which respects the Terms §3 request limits and avoids exposing third-party calls client-side.
 - **Smallest practical approach:**
-  *Applies only if the PO approves P-1 to P-3; CAD is used below as the worked example, not as an approved scope.*
+  *Scope now FINAL: P-1 (CAD only) and P-2 (USD default; CAD only by explicit user preference, independent of interface language; no IP selection). **Public display stays blocked until P-3 legal clearance.** The user's currency preference must be stored somewhere: on the device for visitors, and on the account for signed-in users. Account storage would be a schema change needing NEM-025 schema authorization.*
   1. **API:** a small read-only module (for example `fx/`) with `GET /api/fx/reference?currency=CAD` → `{ currency, rate, rateDate, source: 'Bank of Canada', derived: false }` or `204`/`null` when unavailable or stale. No auth is needed (public reference data, no PII).
   2. **Cache in the existing Redis** (`ioredis` is already a dependency), key `fx:USD:CAD` = `{rate, rateDate, fetchedAt}`, refreshed at most every 6 h, either lazily on request or with an existing `@nestjs/schedule` cron. **Keep the last good value**; serve it only while `rateDate` is within the freshness limit (proposed 5 calendar days).
   3. **Web and mobile:** one shared formatter, `formatLocalEstimate(usdCents, ref, locale)` → display string or `null`; render it under the USD price with the disclosure. Nothing returned is ever sent back to the API.
@@ -79,7 +79,7 @@ All amounts are server-side today. The global `ValidationPipe({ whitelist: true 
 
 - **Freshness:** the Bank publishes once per business day by 16:30 ET, with gaps on weekends and statutory holidays. A 6-hour refresh plus a 5-day staleness limit covers long weekends while still hiding an outdated rate.
 - **Validation:** reject non-numeric, ≤ 0 or implausible values (for example outside a configured sanity band); then USD only.
-- **No paid dependency:** the Bank of Canada is free. Derived MXN/BRL/PEN/EUR come from the same source. COP/CLP/ARS have no free source identified here, so **no estimate** is shown for them unless the PO approves a source (policy U-3). No subscription to a commercial FX API is proposed.
+- **No paid dependency:** the Bank of Canada is free. Other currencies are **not authorized** (P-1 FINAL), so no other source is needed. No commercial FX API subscription is proposed.
 
 ### 4.5 Authorization needs of the proposed implementation
 
@@ -91,11 +91,11 @@ All amounts are server-side today. The global `ValidationPipe({ whitelist: true 
 | Recurring cost | **No** | free public source |
 | Stripe | **No change** | display only |
 | **Legal** | **Yes** | Bank of Canada Terms reuse (§1.1 attribution, §1.3 paid services, §2.3 LSEG third-party content, §3 request limits); FR/EN/ES disclosure copy; French legal documents and Québec French-language obligations before any public French release (§6) |
-| Product (PO) | **Yes, PENDING** | CAD scope, currency-selection behaviour (P-1, P-2) and legal-source clearance (P-3) |
+| Product (PO) | **P-1, P-2 decided (FINAL); P-3 PENDING** | P-3 = legal clearance of Bank of Canada reuse and approval of customer-facing disclosures |
 
 ### 4.6 Tests ensuring exchange rates never affect payment amounts
 
-See the NEM-025 reconciliation checklist §D (D1–D6): Checkout parameter tests under available, stale and extreme rates; stripping of client-supplied amount or currency; module-isolation source scan; formatter null-on-stale and explicit marking; W-2 unchanged; UI renders USD and allows checkout when the rate endpoint fails.
+See the NEM-025 reconciliation checklist §D (D1–D7): Checkout parameter tests under available, stale and extreme rates **and under a USD or CAD preference**; stripping of client-supplied amount or currency; module-isolation source scan (rate module and currency preference); P-2 preference tests (USD default, independent of interface language, no IP-derived selection); formatter null-on-stale and explicit marking; W-2 unchanged; the UI renders USD and allows checkout when the rate endpoint fails.
 
 ## 5. NEM-025 / NEM-026 consistency verification
 
@@ -112,9 +112,10 @@ See the NEM-025 reconciliation checklist §D (D1–D6): Checkout parameter tests
 
 **Material questions**
 - **Q-1:** **The full PO-approved NEM-025 and NEM-026 specifications must be committed verbatim** to `docs/engineering-missions/APPROVED/NEM-025-<approved-title-slug>.md` and `…/NEM-026-<approved-title-slug>.md` (pattern of NEM-019/021/022), with their approval records, in a documentation-only change authorized by the PO. Committing them does not authorize execution. Then PA applies the reconciliation checklists. *(Not done in this PR: the full texts are not available to the agent, and this correction authorizes only the documentation fix.)*
-- **Q-2 (policy P-1/P-2, U-2): PENDING PO DECISION.** CAD scope (whether CAD equivalents are shown, and to whom; any other currencies) and currency-selection behaviour. **Not approved; nothing is assumed.** Until decided, USD only.
-- **Q-3 (policy P-2, U-3): PENDING PO DECISION.**** COP/CLP/ARS: no estimate, or another verifiable free source.
-- **Q-4 (policy P-3, U-1): PENDING PO DECISION / legal.** Legal-source clearance of Bank of Canada data reuse, and of the disclosure copy.
+- **Q-2 (P-1/P-2): DECIDED, FINAL (PO 2026-11-22).** CAD is the only informational currency for the initial French pilot. USD is the default; CAD is shown only by explicit user preference, independent of interface language; no IP-based selection; the preference never changes Checkout or subscription currency.
+- **Q-3: CLOSED by P-1.** No other informational currencies are authorized (COP/CLP/ARS and others get no estimate).
+- **Q-4 (P-3): PENDING.** Legal clearance of Bank of Canada reference-rate reuse, and approval of customer-facing conversion disclosures. **Until granted, no CAD equivalents may be publicly displayed.**
+- **Q-5 (for PA):** whether non-public display (private pilot or staging) is allowed before P-3. Not assumed: treated as not allowed until confirmed (policy U-5).
 
 **Risks and dependencies**
 - **R-1, dependency on PR #60:** the USD formatter (`currency.ts`) and the explicit `US$` marking exist only on PR #60. `main` still shows bare `$` and stale metadata (`$9.99`). NEM-025 must land after #60, or transplant that utility.
@@ -148,3 +149,18 @@ PA accepted PR #76 with two documentation corrections, applied in the follow-up 
 Also made explicit: **CAD scope, currency-selection behaviour and legal-source clearance are PENDING PO decisions (P-1 to P-3).** No local-currency equivalent may be displayed until they are decided.
 
 **STOP FOR INDEPENDENT PA RE-REVIEW.**
+
+---
+
+## 10. PO decision update FR-CA-USD-P1-P2 (2026-11-22)
+
+| Decision | Status | Recorded in |
+|---|---|---|
+| **P-1** CAD scope | **FINAL:** CAD is the only informational currency for the initial French pilot; no others; every financial record stays USD | policy §3A; NEM-025 checklist A6 |
+| **P-2** currency selection | **FINAL:** USD default; CAD only by explicit user preference; independent of interface language; never changes Checkout or subscription currency; missing/invalid/stale/unavailable rate → USD; no IP-based selection | policy §3B; NEM-025 checklist A6b, D1/D4 |
+| **P-3** legal clearance and disclosure approval | **PENDING:** no public CAD display until granted | policy header, §6, §9 U-1; NEM-025 checklist A7 |
+
+§9's "P-1 to P-3 pending" statement is superseded by this section for P-1 and P-2. The approved NEM-025 and NEM-026 specifications were **not** changed; checklist items record the decisions for PA reconciliation only.
+
+**STOP FOR INDEPENDENT PA REVIEW.**
+

@@ -6,12 +6,15 @@
 - It does **not** modify or reopen T-1, D1–D6, F-01 Option B, W-1/W-2 (COMMERCE-W1-W2), subscription, token, royalty or book-ownership decisions.
 - **Precedence (corrected per PA review of PR #76):** the **latest explicit PO decision governs the specific matter it addresses**. This addendum is the latest PO decision on transaction currency and informational local-currency display, so it governs those matters. **All unrelated earlier commerce decisions remain fully in force.**
 
-> **PENDING PO DECISIONS: not approved by this record, do not assume.**
-> - **P-1, CAD scope:** whether and where informational CAD equivalents are shown, to whom, and whether any other currency is in scope (§9 U-2).
-> - **P-2, currency-selection behaviour:** how the displayed currency is chosen (§9 U-2, U-3).
-> - **P-3, legal-source clearance:** legal clearance of any reference-rate source, the Bank of Canada included, and of the disclosure copy (§9 U-1).
+> **Decision status (PO decision update FR-CA-USD-P1-P2, 2026-11-22):**
 >
-> Until the PO decides P-1 to P-3, **no local-currency equivalent may be displayed**, and every price shows the authoritative USD amount only. The policy below defines the rules any approved display must follow.
+> | | Decision | Status |
+> |---|---|---|
+> | **P-1** | CAD scope | **FINAL** (§3A) |
+> | **P-2** | Currency-selection behaviour | **FINAL** (§3B) |
+> | **P-3** | Legal clearance of Bank of Canada reference-rate reuse, and approval of customer-facing conversion disclosures | **PENDING** (§9) |
+>
+> **Until P-3 is granted, no CAD equivalents may be publicly displayed.** Every publicly displayed price shows the authoritative USD amount only.
 
 **Authorization:** documentation only. Implementation, Stripe changes, payment activation, merge and deployment are **not authorized** by this record.
 
@@ -40,20 +43,39 @@
 
 ## 3. Informational local-currency equivalents
 
-1. **Optional:** a screen may show an approximate equivalent in a local currency next to the authoritative USD price, **never instead of it**, and always visually subordinate to it.
+1. **Optional, CAD only, by explicit user preference** (§3A, §3B), and **not publicly before P-3 clearance**: a screen may show an approximate CAD equivalent next to the authoritative USD price, **never instead of it**, and always visually subordinate to it.
 2. **No alternative price:** an equivalent does not create a price, a quote, an offer or an entitlement. It does not modify tokens, royalties, subscriptions, Causas contributions or any commercial term.
 3. **Always labelled as an estimate**, with the reference-rate publication date.
 4. **Explicit currency marking for the equivalent too:** for example `≈ 12,88 $ CA`, never a bare `$`, which would collide with the USD rule. *(Engineering note: `Intl.NumberFormat('fr-CA', {currency: 'CAD'})` renders a bare `12,88 $`; the `CA` marker must be added explicitly.)*
 
+## 3A. P-1: CAD scope (FINAL, PO 2026-11-22)
+
+- **CAD is the only authorized informational currency for the initial French pilot.**
+- Every actual price, charge, invoice, refund and financial record remains **USD**.
+- **No other informational currencies are authorized.**
+
+## 3B. P-2: currency-selection behaviour (FINAL, PO 2026-11-22)
+
+1. **The default display is USD only.**
+2. **CAD may be displayed only following an explicit user preference.**
+3. **Currency preference is independent of interface language.** A user who selects English, Spanish or Canadian French can independently choose CAD.
+4. **Currency preference never modifies Stripe Checkout or subscription currency.**
+5. A **missing, invalid, stale or unavailable** reference rate produces **USD-only display**.
+6. **No IP-based automatic currency selection.**
+
+*Engineering notes for NEM-025 (not decisions):*
+- Where the preference is stored is an implementation question: on the device for visitors, and on the account for signed-in users. Account storage would be a schema change, which needs NEM-025 schema authorization.
+- The preference must never be read by any commerce module (§8.4).
+
 ## 4. Reference-rate sourcing
 
 1. **Verifiable reference source only:** a published, publicly checkable rate from an identified institution, with its **publication date disclosed** to the user.
-2. **CAD: the Bank of Canada is the candidate evaluated at the PO's request** (findings, 2026-11-22). **It is not cleared:** source clearance is pending (P-3), and CAD scope is pending (P-1).
+2. **CAD: the Bank of Canada is the candidate evaluated at the PO's request** (findings, 2026-11-22). CAD scope is now FINAL (P-1). **The source is not cleared: legal clearance is PENDING (P-3).**
    - daily average rates are published **once each business day by 16:30 ET**, and publication may be delayed;
    - available free through the Valet API (`https://www.bankofcanada.ca/valet/observations/FXUSDCAD/json?recent=1`), with **no API key** (tested: HTTP 200, observation 2026-11-20 = 1.4325 CAD per USD);
    - the Bank describes its rates as **"indicative rates only"**, "released for statistical and analytical purposes only and … not intended to be used as the benchmark rate for executing foreign exchange trades". This fits informational display, where Noetia executes no FX;
    - the Bank's Terms require **attribution** ("You must attribute the Bank of Canada as the source of the content, and indicate if changes were made") and contain a **paid-services clause** (§1.3), a request-limit clause (§3) and a third-party-content clause (§2.3; the rates are described as sourced from LSEG). **Legal confirmation of reuse on Noetia's pages is a prerequisite and is PENDING** (P-3, §9 U-1).
-3. **Other currencies:** the Bank of Canada also publishes MXN, BRL, PEN and EUR, among others, as CAD rates, so USD→X can be **derived** (FXUSDCAD ÷ FXXCAD). A derived rate must be disclosed as calculated from Bank of Canada reference rates. **COP, CLP and ARS are not published by the Bank of Canada.** Any other source, or any currency beyond CAD, needs a PO decision (§9).
+3. **Other currencies: not authorized (P-1 FINAL).** *Background only:* the Bank of Canada also publishes MXN, BRL, PEN and EUR as CAD rates, and does not publish COP, CLP or ARS. Any other informational currency would need a new PO decision.
 4. **Never described as guaranteed or legally mandated.** No published reference rate is presented as the rate a customer will be charged, as a guaranteed rate or as a legally required conversion rate.
 
 ## 5. Freshness and unavailable rates
@@ -64,6 +86,8 @@
 4. **Fail toward USD:** any error in retrieving, parsing or validating a rate (non-numeric, zero, negative or implausible values) results in USD-only display.
 
 ## 6. User disclosures
+
+> **Approval PENDING (P-3):** customer-facing conversion disclosures require approval. The FR wording below is the PO's example, and the EN/ES wording is a draft; neither is approved customer copy until P-3 is granted.
 
 Wherever an equivalent is shown, the screen must:
 1. **distinguish** the informational estimate from the actual USD charge;
@@ -104,14 +128,15 @@ Source attribution (for example *"Taux de référence : Banque du Canada"* / *"R
 1. **Presentation-only:** equivalents are computed only in the display layer, or in a read-only, display-only endpoint. The result is a **formatted string or a display object**, never a value stored in, or passed to, any commerce module.
 2. **Server-side amounts only:** checkout continues to use **server-side** prices only (Stripe Price IDs for plans and token packages; `book.priceCents` and the gift price table for ad-hoc USD amounts). No checkout endpoint accepts an amount or currency from the client. *(Today the global `ValidationPipe({ whitelist: true })` strips unknown DTO fields; that must be kept.)*
 3. **Hard-coded `usd`:** every Checkout `price_data.currency` stays `'usd'`. Any webhook amount or currency verification (W-2) continues to compare against USD.
-4. **Module isolation:** the rate module is not imported by the subscription, gift, webhook, token, royalty or Causas modules, and this is enforced by a test.
+4. **Module isolation:** neither the rate module **nor the user's currency preference** is imported or read by the subscription, gift, webhook, token, royalty or Causas modules, and this is enforced by a test.
 5. **Tests prove** that rate availability, staleness or value has **no effect** on any Stripe call parameter or ledger entry (see the report's test list).
 
-## 9. Open items: PENDING PO DECISIONS (not decided by this policy)
+## 9. Open items and decision log
 
 | # | Item | Owner |
 |---|---|---|
-| U-1 (P-3) | **Legal-source clearance:** that showing Bank of Canada-derived equivalents with attribution on Noetia's pages is permitted under the Bank's Terms (§1.1, §1.3, §2.3 LSEG third-party content, §3 request limits), and review of the FR/EN/ES disclosure copy | PO / legal |
-| U-2 (P-1, P-2) | **CAD scope and currency selection:** whether CAD equivalents are shown and to whom; whether MXN/BRL/PEN/EUR (derived) are in scope; how the currency is chosen. Options for the PO include interface language or an explicit user preference. *Engineering note only, not a decision:* IP geolocation would add personal-data processing | PO |
-| U-3 (P-2) | Currencies the Bank of Canada does not publish (COP, CLP, ARS): no estimate, or another verifiable free source | PO |
+| U-1 (P-3) | **PENDING. Legal-source clearance:** that showing Bank of Canada-derived equivalents with attribution on Noetia's pages is permitted under the Bank's Terms (§1.1, §1.3, §2.3 LSEG third-party content, §3 request limits), and review of the FR/EN/ES disclosure copy | PO / legal |
+| U-2 (P-1, P-2) | **DECIDED (FINAL, 2026-11-22):** CAD only; USD default; CAD only by explicit user preference, independent of interface language; no IP-based selection (§3A, §3B) | PO |
+| U-3 | **CLOSED by P-1:** no other informational currencies are authorized, so COP, CLP, ARS and any other currency get no estimate | PO |
 | U-4 | The exact freshness limit (proposed 5 calendar days) | NEM-025 / PA |
+| U-5 (P-3) | **For PA:** P-3 says "no CAD equivalents may be **publicly** displayed" before clearance. Whether a **non-public** display (private pilot or staging) is permitted before clearance is **not assumed**; it is treated as not permitted until PA/PO confirm | PA / PO |

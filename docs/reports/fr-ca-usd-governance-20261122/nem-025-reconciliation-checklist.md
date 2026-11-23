@@ -17,8 +17,9 @@
 | A3 | **A book's original language is independent of the interface language.** Interface switching never changes book text or audio; book-language filtering is a separate control. | PO |
 | A4 | **The French pilot stays private and unpublished** until a separate, independent checkpoint approves a public French release. | PO |
 | A5 | **USD is the only financial currency** (USD-LOCAL-REFERENCE §1–§2). | PO: financial currency, FINAL |
-| A6 | Informational local-currency equivalents follow USD-LOCAL-REFERENCE §3–§6 **if and when approved**. **CAD scope and currency-selection behaviour are PENDING PO decisions (P-1, P-2); do not assume approval.** Until decided, USD only. | PO; P-1/P-2 pending |
-| A7 | Reference-rate sourcing, date disclosure, freshness and unavailable-rate behaviour (USD-LOCAL-REFERENCE §4–§5). The Bank of Canada is an evaluated candidate only; **legal-source clearance is PENDING (P-3).** | PO; P-3 pending |
+| A6 | **P-1 (FINAL):** CAD is the only authorized informational currency for the initial French pilot; no other informational currencies; every actual price, charge, invoice, refund and record remains USD (USD-LOCAL-REFERENCE §3A). | PO, FINAL 2026-11-22 |
+| A6b | **P-2 (FINAL):** USD-only default; CAD only by **explicit user preference**; the preference is **independent of interface language** (en/es/fr-CA users can each choose CAD); it never modifies Stripe Checkout or subscription currency; a missing, invalid, stale or unavailable rate → USD only; **no IP-based selection** (§3B). | PO, FINAL 2026-11-22 |
+| A7 | **P-3 (PENDING):** legal clearance of Bank of Canada reference-rate reuse, and approval of customer-facing conversion disclosures. **Until granted, no CAD equivalents may be publicly displayed.** Rate sourcing, date, freshness and fallback rules: §4–§6. Whether non-public (pilot/staging) display is permitted before clearance is not assumed (policy U-5). | PO; **PENDING** |
 | A8 | **French transactional message coverage** (see C). | PO mission §3.B |
 | A9 | **Tests preventing accidental use of converted amounts in checkout** (see D). | PO mission §3.B |
 | A10 | **Backward compatibility** for existing `es`/`en` users and clients (see B). | PO mission §3.B |
@@ -43,12 +44,13 @@ French versions are required for every user-facing system message, including:
 
 ## D. Currency safeguards and tests: minimum set to check against the spec
 
-1. A checkout-session test for each Checkout path (subscription, book, token package, gift): `currency === 'usd'` and `unit_amount` or `price` equal the server-side configuration, **whether a rate is available, stale or extreme**.
+1. A checkout-session test for each Checkout path (subscription, book, token package, gift): `currency === 'usd'` and `unit_amount` or `price` equal the server-side configuration, **whether a rate is available, stale or extreme, and whether the user's currency preference is USD or CAD**.
 2. A DTO test: checkout requests carrying `amount`, `currency` or `fxRate` fields have them stripped or rejected, and the session is unchanged.
 3. Module-isolation test: no file under `subscriptions/`, `gifts/`, `webhooks`, token, royalty or Causas modules imports the rate module (a source-scan unit test; no new dependency).
-4. Formatter tests: USD always rendered with an explicit marker in `en`/`es`/`fr-CA`; the equivalent is rendered only with a fresh rate, always with `CA`/ISO marking and the date; stale, missing, zero, negative or non-numeric rates → `null` (USD only).
-5. Webhook W-2 amount/currency verification remains USD-only (PR #60 R2 tests unaffected).
-6. A UI test: when the rate endpoint fails, the pricing, gift, token and paywall screens still render the USD price and allow checkout.
+4. Preference tests (P-2): default is USD for every interface language; CAD appears only after an explicit preference; changing the interface language never changes the currency preference, and the reverse; the preference never reaches any Checkout or subscription call; no request header or IP-derived value sets it.
+5. Formatter tests: USD always rendered with an explicit marker in `en`/`es`/`fr-CA`; the equivalent is rendered only with a fresh rate, always with `CA`/ISO marking and the date; stale, missing, zero, negative or non-numeric rates → `null` (USD only).
+6. Webhook W-2 amount/currency verification remains USD-only (PR #60 R2 tests unaffected).
+7. A UI test: when the rate endpoint fails, the pricing, gift, token and paywall screens still render the USD price and allow checkout.
 
 ## E. Out of scope for NEM-025 unless the PO adds it
 
