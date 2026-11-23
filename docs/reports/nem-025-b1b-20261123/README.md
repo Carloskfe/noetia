@@ -1,7 +1,7 @@
 # NEM-025 Checkpoint B1-B: Mobile Interface Completeness, completion report
 
 **Authorization:** PO execution authorization "NEM-025 / CHECKPOINT B1-B — MOBILE INTERFACE COMPLETENESS" (B1-B only).
-**Status:** implemented on a Draft PR stacked on Checkpoint A. **MANDATORY STOP:** awaiting independent PA review. No B2, no merge, no deployment, no OTA, no mobile build, French not enabled.
+**Status:** implemented on a Draft PR stacked on Checkpoint A. PA review found it substantially aligned, with two follow-ups answered in §14 (F-B1B-1 diagnostic, F-B1B-2 clarification). **MANDATORY STOP:** awaiting independent PA re-review. No B2, no merge, no deployment, no OTA, no mobile build, French not enabled.
 
 ## 1. Verified baseline and dependencies
 
@@ -160,15 +160,20 @@ All heads were re-checked on 2026-11-23 before work started and match the author
   - es/en preferences are kept;
   - the server preference never leaks another account's device value;
   - anonymous users keep the local preference.
-- **Navigation state (M-1):** the navigators read the language context and re-render with the same navigator type, keys, route names and screen component references, so React Navigation keeps every screen mounted and its state. Tested by comparing the ES and EN navigator trees. A runtime switch inside a real `NavigationContainer` needs a renderer (PR #69) or device QA (§10).
+- **Navigation (M-1), what is verified and what is not:**
+  - **Verified (unit tests):** the navigator *structure* and the *translated labels*.
+    - Tab labels and stack back titles come from the active dictionary in ES, EN and fr-CA.
+    - Rendering the navigator in ES and in EN produces the same navigator type, the same keys, the same route names and the same screen component references; only the label options differ.
+    - These are the conditions under which React keeps mounted screens and React Navigation keeps its state.
+  - **Not yet verified:** **runtime navigation-state preservation during a language change inside a real `NavigationContainer`.** No test mounts the app's navigators, navigates to a nested screen, changes the language and checks that the stack, the active tab and screen state survive. That needs a real renderer (`react-test-renderer`, PR #69, not authorized here) or a device/simulator check. Until then, state preservation is an expectation derived from the verified structure, **not a tested result**.
 - **No French legal exposure:** the consent screen renders identically in fr-CA and ES (asserted), with no French legal text.
 
 ## 8. Unit tests, coverage, typecheck and lint (local, Node 20, `--maxWorkers=2`)
 
 | Check | Checkpoint A (#78) | B1-B |
 |---|---|---|
-| Mobile unit tests | 198 passed (27 suites) | **257 passed (31 suites)** |
-| Mobile coverage stmts / branches / funcs / lines | 30.76 / 16.29 / 22.48 / 32.35 | **44.2 / 35.84 / 31.57 / 47.19** |
+| Mobile unit tests | 198 passed (27 suites) | **261 passed (31 suites)** (257 at `dc3b257`; +4 F-B1B-1 tests) |
+| Mobile coverage stmts / branches / funcs / lines | 30.76 / 16.29 / 22.48 / 32.35 | **45.34 / 37.01 / 32.26 / 48.27** |
 | Mobile typecheck (`tsc --noEmit`) | pass | pass |
 | Lint | no mobile lint script | — |
 | API / web | untouched | untouched |
@@ -187,7 +192,7 @@ All heads were re-checked on 2026-11-23 before work started and match the author
   - #70 asserts only that the audio error is a non-empty string, which still holds because the hook is unchanged.
 - **#72's hook fixes** are independent: B1-B maps the hooks' outputs at display time.
 - **Existing conflict, not introduced by B1-B:** #70 and #72 add `tests/unit/i18n/index.spec.ts`, which #78 also creates (PR #79 §9).
-- **Rendering limitation:** without `react-test-renderer` (#69), B1-B tests cover the first render with stubbed hooks. They do not run effects, async loading or user interaction. A full render pass, including a runtime language switch inside `NavigationContainer`, is recommended after #69 lands, or on a device.
+- **Rendering limitation:** without `react-test-renderer` (#69), B1-B tests cover the first render with stubbed hooks. They do not run effects, async loading or user interaction. A full render pass, including a runtime language switch inside `NavigationContainer`, is recommended after #69 lands, or on a device. Runtime navigation-state preservation remains **unverified** until then (§7).
 
 ## 11. Protected-systems confirmation
 
@@ -216,9 +221,40 @@ See the PR this report belongs to (base `feat/nem-025-checkpoint-a`). The head S
 | R-1 | French consent screen needs legal translation and approval (M-5) | Legal |
 | R-2 | Qualified Canadian-French review of all mobile fr-CA copy; terminology D-T1 to D-T6 (e.g. "Clavardage", "Séance", "vous") | Linguistic |
 | R-3 | French visual QA on devices (tab bar at 11 pt, buttons, live-session header); automated checks only bound tab-label length | Testing |
-| R-4 | Full rendering and runtime language-switch tests need `react-test-renderer` (PR #69, not authorized here) or device QA | Testing |
+| R-4 | Full rendering tests, and **runtime verification that navigation state survives a language change inside a real `NavigationContainer`** (currently unverified; §7), need `react-test-renderer` (PR #69, not authorized here) or device QA | Testing |
 | R-5 | Push notification language and content (B2) | B2 |
 | R-6 | Integration: rebase and re-verify against #69/#70/#72 and #60 (mobile paywall keys) before any merge; CI evidence missing on the stacked PR | Integration |
 | R-7 | Optional hook-level error codes for `useAudioPlayer`/`useClubSession` after #72 | Audio/session (separate authorization) |
 
-**MANDATORY STOP AFTER B1-B — awaiting independent Product Architecture review.**
+## 14. PA follow-up (F-B1B-1, F-B1B-2)
+
+### F-B1B-1: can OAuth response effects use stale translation messages?
+
+**Finding: not demonstrated in any reachable flow. No code change made.**
+
+- **How messages are chosen:** the Google and Facebook response effects in `SocialAuthButtons.tsx` depend only on the response object (`[googleResponse]`, `[fbResponse]`). React runs an effect after the render in which its dependency changed, and that render reads the current language context. So **the message is taken from the language active when the OAuth response arrives**, not from when sign-in started.
+- **Residual window:** after a successful OAuth response, the token exchange (`POST /auth/{google,facebook}/mobile`) is asynchronous. If it fails, the message comes from the render that received the response. A language change *during the exchange* would therefore show the message in the previous language.
+- **Why that window can't be reached today:** the buttons render only on Login and Register, before authentication. The language changes only in three places, and none can fire there:
+  - the language screen, shown before consent and login;
+  - the account screen, after login;
+  - the provider's mount-time sync. It reads device storage once, and `GET /users/me` fails without a token.
+
+  Neither Login nor Register has a language control.
+- **Effect: no worse than an ordinary error.** The parent stores the error as a string (`setError(msg)`), like every other login and register error. The worst case is a one-time message in the language that was active seconds earlier. **B1-B did not introduce any reprocessing risk:** the effect dependencies are unchanged from Checkpoint A. Before B1-B every message was a fixed Spanish string.
+- **Evidence:** four tests in `tests/unit/golden-master/b1b-mobile.spec.tsx` (describe "F-B1B-1") record each render's effects and run them:
+  1. Google OAuth error: sign-in starts in ES, the response arrives in EN, and the message is English, reported once.
+  2. Facebook OAuth error: the same, with the response arriving in fr-CA, so the message is French.
+  3. Missing Google token: the message is in the current language, and no token exchange happens.
+  4. Residual window: a language change during a failing exchange keeps the language of the response. **The token is exchanged exactly once.** The later render does not re-run the response effect.
+- **Proposed minimal correction, only if PA wants the residual window closed (not applied):**
+  - Keep a ref to the latest messages: `const msgRef = useRef(msg); msgRef.current = msg;`.
+  - Read `msgRef.current.errors.*` inside the response effects and the token handlers.
+  - Effect dependencies, the token exchange, success handling and the request lifecycle stay unchanged.
+  - Regression test: extend test 4 to expect the message in the *new* language.
+  - **Recommendation: no change.** The window is unreachable and the correction adds code to the authentication component.
+
+### F-B1B-2: navigation-state verification
+
+§7, §10 and R-4 now separate what is **verified** (navigator structure and translated labels) from what is **not yet verified**: runtime navigation-state preservation during a language change inside a real `NavigationContainer`. No dependency was added, PR #69 was not merged, and no device build was run.
+
+**MANDATORY STOP AFTER B1-B — awaiting independent Product Architecture re-review.**

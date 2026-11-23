@@ -304,3 +304,84 @@ describe('B1-B social sign-in errors are localized (M-2)', () => {
     },
   );
 });
+
+// ── F-B1B-1 (PA follow-up): which language do OAuth response messages use? ─────────────────────
+// SocialAuthButtons handles Google/Facebook responses in effects keyed only on the response object
+// ([googleResponse], [fbResponse]), so a response is processed once. These tests record the effects
+// of each render and run them, the way React runs the effect of the render in which a dependency
+// changed.
+describe('F-B1B-1: OAuth response messages use the language active when the response arrives', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const AuthSession = require('expo-auth-session');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { apiClient } = require('../../../src/api/client');
+
+  let googleResponse: unknown = null;
+  let fbResponse: unknown = null;
+  let calls = 0;
+  beforeEach(() => {
+    googleResponse = null; fbResponse = null; calls = 0;
+    // useAuthRequest is called twice per render: Google first, then Facebook.
+    jest.spyOn(AuthSession, 'useAuthRequest').mockImplementation(() => {
+      const response = calls++ % 2 === 0 ? googleResponse : fbResponse;
+      return [{}, response, jest.fn()];
+    });
+    (apiClient.post as jest.Mock).mockReset();
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  function renderButtons(lang: Lang, onError: jest.Mock) {
+    resetHarness();
+    setLang(lang);
+    mockHarness.effects = [];
+    mockHarness.current = 'SocialAuthButtons';
+    (SocialAuthButtons as any)({ onSuccess: jest.fn(), onError });
+    // Effect order in the component: Google response effect, then Facebook response effect.
+    return mockHarness.effects as Array<() => unknown>;
+  }
+
+  it('reports a Google OAuth error in the language of the render that received it', () => {
+    const onError = jest.fn();
+    renderButtons('es', onError);              // sign-in started in Spanish, no response yet
+    googleResponse = { type: 'error' };
+    const [googleEffect] = renderButtons('en', onError); // language is English when the response arrives
+    googleEffect();
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith('Could not connect to Google. Try again.');
+  });
+
+  it('reports a Facebook OAuth error in the language of the render that received it', () => {
+    const onError = jest.fn();
+    renderButtons('es', onError);
+    fbResponse = { type: 'error' };
+    const [, fbEffect] = renderButtons('fr-CA', onError);
+    fbEffect();
+    expect(onError).toHaveBeenCalledWith('Impossible de se connecter à Facebook. Réessayez.');
+  });
+
+  it('reports a missing Google token in the current language', () => {
+    const onError = jest.fn();
+    googleResponse = { type: 'success', params: {} };
+    const [googleEffect] = renderButtons('en', onError);
+    googleEffect();
+    expect(onError).toHaveBeenCalledWith('Google did not return a sign-in token.');
+    expect(apiClient.post).not.toHaveBeenCalled();
+  });
+
+  it('residual window: a language change during the token exchange keeps the language of the response (exchange runs once)', async () => {
+    const onError = jest.fn();
+    let reject!: (e: unknown) => void;
+    (apiClient.post as jest.Mock).mockReturnValue(new Promise((_, r) => { reject = r; }));
+    googleResponse = { type: 'success', params: { id_token: 'id-token' } };
+    const [googleEffect] = renderButtons('en', onError);
+    googleEffect();
+    // A later render in another language does not re-run the response effect (its dependency,
+    // the response object, is unchanged), so the token is exchanged exactly once.
+    renderButtons('es', onError);
+    reject(new Error('network'));
+    await new Promise((r) => setImmediate(r));
+    expect(apiClient.post).toHaveBeenCalledTimes(1);
+    expect(apiClient.post).toHaveBeenCalledWith('/auth/google/mobile', { idToken: 'id-token' });
+    expect(onError).toHaveBeenCalledWith('Google sign-in failed.');
+  });
+});

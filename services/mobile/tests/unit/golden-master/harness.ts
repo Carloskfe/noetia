@@ -16,6 +16,8 @@ export interface HarnessState {
   current: string;
   index: number;
   route: { params: Record<string, unknown> };
+  /** When set, effect callbacks are recorded here (in call order) instead of being ignored. */
+  effects: Array<() => unknown> | null;
 }
 
 export const mockHarness: HarnessState = {
@@ -24,6 +26,7 @@ export const mockHarness: HarnessState = {
   current: '',
   index: 0,
   route: { params: {} },
+  effects: null,
 };
 
 export function resetHarness(): void {
@@ -31,6 +34,7 @@ export function resetHarness(): void {
   mockHarness.current = '';
   mockHarness.index = 0;
   mockHarness.route = { params: {} };
+  mockHarness.effects = null;
 }
 
 /** Replacement hooks installed by `jest.mock('react', …)` in the golden-master spec. */
@@ -42,7 +46,7 @@ export function stubHooks(actual: Record<string, unknown>) {
       const value = o && i in o ? o[i] : typeof init === 'function' ? (init as () => unknown)() : init;
       return [value, () => {}];
     },
-    useEffect: () => {},
+    useEffect: (fn: () => unknown) => { mockHarness.effects?.push(fn); },
     useLayoutEffect: () => {},
     useCallback: (fn: unknown) => fn,
     useMemo: (fn: () => unknown) => fn(),
