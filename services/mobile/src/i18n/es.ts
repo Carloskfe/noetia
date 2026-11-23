@@ -6,6 +6,7 @@ export const es: MobileTranslations = {
     subtitle: 'Puedes cambiarlo después en configuración.',
     es: 'Español',
     en: 'English',
+    'fr-CA': 'Français (Canada)',
     continue: 'Continuar',
   },
   common: {
