@@ -17,13 +17,13 @@ exports[`B1-A EN/ES golden master author-portal renders the same ES and EN text 
 {
   "en": {
     "attrs": [
-      "input[placeholder]=El nombre completo de tu libro",
-      "input[placeholder]=Nombre completo del autor",
-      "textarea[placeholder]=Breve descripción del libro para los lectores (2–4 oraciones).",
-      "input[placeholder]=978-…  (opcional)",
+      "input[placeholder]=The full title of your book",
+      "input[placeholder]=The author's full name",
+      "textarea[placeholder]=A short description of the book for readers (2–4 sentences).",
+      "input[placeholder]=978-…  (optional)",
       "input[placeholder]=NOETIA-XXXX-XXXX",
     ],
-    "text": "Portal de autoresPublica tu libro, audiolibro o curso en Noetia y llega a miles de lectores.Plan free1 de 3 libros utilizadoActividad reciente4Lectores2Compartidos12 MBAlmacenamientoMi libro4 lectores2 compartidosSubir nuevo libroTodos los libros pasan por revisión antes de publicarse. Ver guía de formatos →Título *Autor *Categoría *Seleccionar…LiderazgoDesarrollo PersonalNegociosClásicoIdiomaEspañolEnglishPortuguêsDescripciónISBNArchivosPortada JPG o PNG · Mínimo 800 × 1200 px (proporción 2:3) · Máx 5 MBTexto del libro *.txt preferido (UTF-8, párrafos separados por línea en blanco) · Máx 10 MBAudio de la narración MP3 o M4A · 128 kbps mínimo · Máx 500 MB · Sin música de fondoAñadir sincronización texto-audio RecomendadoActiva el resaltado frase por frase en Modo Escucha Activa. ¿Cómo crear el archivo?¿Tienes un código de cortesía?Código de cortesíaUn código válido te permite subir este libro sin que cuente contra tu cuota de plan.Enviar para revisiónMis librosMMi libroAutoraPublicado4 lectores2 compartidos12 MBSubir sincronización SRT/VTTBBorradorAutoraEn revisiónSubir sincronización SRT/VTT¿Tienes preguntas?Revisa la guía de formatos o contáctanos directamente.Guía de publicaciónautores@noetia.app",
+    "text": "Author portalPublish your book, audiobook or course on Noetia and reach thousands of readers.free plan1 of 3 books usedRecent activity4Readers2Shares12 MBStorageMi libro4 readers2 sharesUpload a new bookEvery book is reviewed before it is published. See the format guide →Title *Author *Category *Select…LeadershipPersonal DevelopmentBusinessClassicLanguageEspañolEnglishPortuguêsDescriptionISBNFilesCover JPG or PNG · Minimum 800 × 1200 px (2:3 ratio) · Max 5 MBBook text *.txt preferred (UTF-8, paragraphs separated by a blank line) · Max 10 MBNarration audio MP3 or M4A · 128 kbps minimum · Max 500 MB · No background musicAdd text-audio synchronization RecommendedTurns on phrase-by-phrase highlighting in Active Listening mode. How do I create the file?Do you have a courtesy code?Courtesy codeA valid code lets you upload this book without counting against your plan quota.Submit for reviewMy booksMMi libroAutoraPublished4 readers2 shares12 MBUpload SRT/VTT syncBBorradorAutoraIn reviewUpload SRT/VTT syncQuestions?Check the format guide or contact us directly.Publishing guideautores@noetia.app",
   },
   "es": {
     "attrs": [
