@@ -1,7 +1,7 @@
 # NEM-025 Checkpoint B1-A: Web Interface Completeness, completion report
 
 **Authorization:** PO execution authorization "NEM-025 / CHECKPOINT B1-A — WEB INTERFACE COMPLETENESS". The B1 specification, including B1-D1 to B1-D4, was approved by the PO.
-**Status:** implemented on a Draft PR stacked on Checkpoint A. **MANDATORY STOP:** awaiting independent PA review. No B1-B (mobile), no B2 (email/push), no merge, no deployment.
+**Status:** implemented on a Draft PR stacked on Checkpoint A. **PA review: conditionally accepted.** This revision is a documentation-only correction requested by that review (billing dependency, golden-master counts, release-readiness limitations in §12); no implementation or test file changed. **MANDATORY STOP:** awaiting independent PA re-review. No B1-B (mobile), no B2 (email/push), no merge, no deployment.
 
 ## 1. Verified baseline and dependency commits
 
@@ -25,7 +25,8 @@ See the PR body. Commits, in order:
 4. `28cb77f`: remaining surfaces and approved corrections.
 5. `f1e32fc`: author portal.
 6. `bd91e2f`: tests.
-7. This report and the SEO note.
+7. `ad55aff`: this report and the SEO note.
+8. Documentation-only correction after PA review (this report only).
 
 ## 3. Changed files (59 under `services/web/`, plus 2 docs)
 
@@ -54,8 +55,8 @@ See the PR body. Commits, in order:
 | Book grid, email banner, collection, onboarding interests and countries, account nav, profile (status, section, dates), auth callback, social page, club confirm/alert/errors/aria/labels/dates | literals → dictionary | ✅ | DONE |
 | Login, register, confirm-email error display | raw API text → localized mapping | ✅ | DONE |
 | Main dictionaries (`en`/`es`/`fr-ca`) | — | ✅ 100% keys | DONE |
-| Billing page `account/billing` | Spanish-only | ❌ | **EXCLUDED: PR #60 rewrites it** (pre-execution check V-2) |
-| Pricing and gift price display | `$` formatting | — | **EXCLUDED: PR #60 owns `currency.ts`** (V-3); no CAD |
+| Billing page `account/billing` | Spanish-only | ❌ | **UNRESOLVED INTEGRATION DEPENDENCY on PR #60** (pre-execution check V-2). **Not complete and not approved for French exposure.** Only the account-nav link label ("Billing"/"Facturación"/"Facturation") is localized; the page it opens is Spanish-only in every language. |
+| Pricing and gift price display | `$` formatting | — | **UNRESOLVED INTEGRATION DEPENDENCY on PR #60** (`currency.ts`, V-3). Not complete; no CAD |
 | Legal pages (`LegalPage`, `lib/legal/*`) | ES+EN side by side | ❌ | **EXCLUDED: legal agreements not translated or altered** |
 | `WaitlistForm`, `PlanCard` | Spanish / English literals | ❌ | **Unused** (no route renders them); recommend removal (separate decision) |
 | Internal admin console `(admin)/admin` | Spanish-only | ❌ | **EXCLUDED** (B1-D1) |
@@ -65,11 +66,48 @@ See the PR body. Commits, in order:
 
 ## 5. EN/ES golden-master comparisons
 
-- **Method:** commit `69a0501` recorded, **before any refactor**, the visible text and accessible attributes (aria-label, title, placeholder, alt) of 20 surfaces in ES and EN as Jest snapshots.
-- **Result:** every later commit ran against those snapshots.
-- **Byte-identical ES and EN** (14 surfaces): the 8 corporate pages, the corporate header, the upload guide, the club card, and the unused `WaitlistForm` and `PlanCard`.
-- **Changed only by the approved corrections in §6:** book grid, email banner, onboarding interests, collection, account nav, author portal, Causas.
-- **Snapshot diff lines** (`git log -p -- …__snapshots__`) show exactly the corrected entries. The only fixture change is that the collection fixture now provides `bookCount`.
+- **Method:** commit `69a0501` recorded, **before any refactor**, the visible text and accessible attributes (aria-label, title, placeholder, alt) of 20 surfaces as Jest snapshots: one snapshot per surface, each holding an ES entry and an EN entry (20 snapshots, 40 language entries). Every later commit ran against them.
+- **Correction of the earlier count:** the first version of this report said "14 byte-identical surfaces" and "7 changed entries". The exact counts, from comparing the snapshot file at `69a0501` with `ad55aff`, are: **13 surfaces unchanged, 7 surfaces changed, 8 language entries changed** (the collection surface changed in both ES and EN). 32 of 40 language entries are byte-identical.
+
+**The 20 tested surfaces** (`SURFACES` in `services/web/tests/unit/golden-master/b1a-web.spec.tsx`):
+
+| # | Surface | ES entry | EN entry |
+|---|---|---|---|
+| 1 | `corporate/about` | unchanged | unchanged |
+| 2 | `corporate/careers` | unchanged | unchanged |
+| 3 | `corporate/company` | unchanged | unchanged |
+| 4 | `corporate/contact` | unchanged | unchanged |
+| 5 | `corporate/how-we-build` | unchanged | unchanged |
+| 6 | `corporate/milestones` | unchanged | unchanged |
+| 7 | `corporate/team` | unchanged | unchanged |
+| 8 | `corporate/trust` | unchanged | unchanged |
+| 9 | `corporate/nav` | unchanged | unchanged |
+| 10 | `upload-guide` | unchanged | unchanged |
+| 11 | `causas` | **changed** (C-1) | unchanged |
+| 12 | `book-grid` | unchanged | **changed** (C-2) |
+| 13 | `waitlist-form` (unused component) | unchanged | unchanged |
+| 14 | `email-verification-banner` | unchanged | **changed** (C-3) |
+| 15 | `onboarding/interests` | unchanged | **changed** (C-4) |
+| 16 | `discover/collection` | **changed** (C-5, fixture) | **changed** (C-6) |
+| 17 | `plan-card` (unused component) | unchanged | unchanged |
+| 18 | `account/layout` | **changed** (C-7) | unchanged |
+| 19 | `author-portal` | unchanged | **changed** (C-8) |
+| 20 | `club-card` | unchanged | unchanged |
+
+**Each changed ES/EN snapshot entry:**
+
+| ID | Entry | Before (baseline `69a0501`) | After (`ad55aff`) | Reason |
+|---|---|---|---|---|
+| C-1 | `causas` ES, text | "Escribenos a causas@noetia.app" | "Escríbenos a causas@noetia.app" | §6 #6 (accent) |
+| C-2 | `book-grid` EN, aria-label ×3 | "En tu biblioteca", "Agregar a tu biblioteca" ×2 | "In your library", "Add to your library" ×2 | §6 #1 |
+| C-3 | `email-verification-banner` EN, text + aria-label | "Confirma tu correo electrónico para acceder a pagos y descargas. Reenviar correo"; aria "Cerrar" | "Confirm your email to access payments and downloads. Resend email"; aria "Close" | §6 #2 |
+| C-4 | `onboarding/interests` EN, text | Spanish ("¿Qué te interesa leer? Elige hasta 5 categorías…") | English ("What do you like to read? Choose up to 5 categories…") | §6 #3 |
+| C-5 | `discover/collection` ES, text | "… Clásicos libros …" | "… Clásicos2 libros …" | **Test-fixture change, not a product change:** the baseline fixture had no `bookCount`, so the count rendered empty in both versions of the code. Adding `bookCount: 2` to the fixture is the only fixture change. Spanish copy is otherwise identical. |
+| C-6 | `discover/collection` EN, text | "Volver Colección … libros" (Spanish) | "Back Collection … 2 books" | §6 #4, plus the same fixture change as C-5 |
+| C-7 | `account/layout` ES, text | "Account", "Billing" (English) | "Cuenta", "Facturación" | §6 #5 |
+| C-8 | `author-portal` EN, text + 4 placeholders | Spanish ("Portal de autores…"; placeholders "El nombre completo de tu libro", "Nombre completo del autor", "Breve descripción…", "978-… (opcional)") | English ("Author portal…"; "The full title of your book", "The author's full name", "A short description…", "978-… (optional)") | §6 #7 |
+
+Collection, book titles and descriptions in the fixtures ("Clásicos", "Obras maestras") are book/catalogue data and stay in their original language by design.
 
 ## 6. Intentional EN/ES corrections (B1-D2) and supporting tests
 
@@ -142,7 +180,7 @@ Untouched:
 ## 11. Outstanding issues for B1-B, B2 or PO decision
 
 - **Human review:** the fr-CA review by a qualified Canadian-French reviewer (NEM-025 §16.2) covers about 7 000 French words added so far. Terminology is pending: "vous", "jeton", "Écoute active" (D-T1 to D-T6).
-- **Billing page and USD price display:** after PR #60 lands (V-2, V-3).
+- **Billing page and USD price display: unresolved integration dependency on PR #60** (V-2, V-3). Not complete and not approved for French exposure (§4, §12).
 - **SEO / `<html lang>` / metadata:** decision on Option A, B or C (`seo-design-note.md`, D-9).
 - **Onboarding country list has no Canada** (Latin America, Spain, US, Other). A French-Canadian user must choose "Other". Adding Canada is a product data decision (PO).
 - **Upload-guide and author-portal copy** say books reach "readers across Latin America". They are translated faithfully, not changed.
@@ -150,4 +188,20 @@ Untouched:
 - **Visual layout QA** of French text expansion (manual or Playwright).
 - **B1-B (mobile)** and **B2 (email/push, gate readiness)** need separate PO instructions.
 
-**MANDATORY STOP AFTER B1-A — awaiting independent Product Architecture review.**
+## 12. Release-readiness limitations
+
+B1-A is **not** release-ready for French. Even after PA acceptance of the code, French must stay gated off until each limitation below is closed by its own approved work:
+
+| # | Limitation | Status | Closed by |
+|---|---|---|---|
+| L-1 | **French visual layout QA** (text expansion ~15–30%, wrapping and truncation at phone and desktop widths) | Outstanding: not performed | Manual or Playwright pass on B1-A surfaces |
+| L-2 | **Qualified Canadian-French review** of all fr-CA copy (~7 000 words) and terminology D-T1 to D-T6 | Outstanding: all fr-CA copy is draft | NEM-025 §16.2 reviewer (PO to appoint; cost not yet approved) |
+| L-3 | **SEO** (`<html lang>`, metadata, hreflang, SSR language) | Outside B1-A: design note only, no French SEO readiness claimed | PO choice of option in `seo-design-note.md`, then a separate authorization |
+| L-4 | **Legal localization** (Terms, Privacy, legal pages) | Outside B1-A: not translated or altered | Separate legal work and approval |
+| L-5 | **Account billing and USD price display** | Unresolved integration dependency on PR #60; not complete, not approved for French exposure | Localization after PR #60 lands, under a separate authorization |
+| L-6 | **Transactional email and push readiness** (fr-CA templates, server language, gate readiness) | Pending B2 | B2 PO authorization |
+| L-7 | **Automated CI evidence** | Missing: CI does not run on this stacked PR; all results in §9 are local | CI run after retargeting to `main` or after #78 merges |
+| L-8 | **Integration verification** with the dependency stack (#78 Checkpoint A, #60 payments, #59 public site) | Pending dependency reconciliation: B1-A has been verified only on top of `81143790` | Rebase/merge-order reconciliation and re-verification before any merge |
+| L-9 | **Mobile** | Not started | B1-B PO authorization |
+
+**MANDATORY STOP AFTER B1-A — awaiting independent Product Architecture re-review.**
