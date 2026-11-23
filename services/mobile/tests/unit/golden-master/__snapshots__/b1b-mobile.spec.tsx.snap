@@ -1,0 +1,626 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`B1-B ES/EN golden master account renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [
+      "TouchableOpacity[accessibilityLabel]=Sign out",
+    ],
+    "text": [
+      "My account",
+      "A",
+      "Ana",
+      "ana@example.com",
+      "Personal reader",
+      "Language",
+      "🇪🇸 ES Latam",
+      "🇺🇸 English",
+      "Help",
+      "Replay tour",
+      "›",
+      "Sign out",
+    ],
+  },
+  "es": {
+    "attrs": [
+      "TouchableOpacity[accessibilityLabel]=Cerrar sesión",
+    ],
+    "text": [
+      "Mi cuenta",
+      "A",
+      "Ana",
+      "ana@example.com",
+      "Lector personal",
+      "Idioma",
+      "🇪🇸 Español",
+      "🇺🇸 English",
+      "Ayuda",
+      "Ver tour de nuevo",
+      "›",
+      "Cerrar sesión",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master audio-bar/error renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [],
+    "text": [
+      "◀15",
+      "▶",
+      "15▶",
+      "1x",
+      "✕",
+      "0:00",
+      "No se pudo cargar el audio.",
+      "0:00",
+    ],
+  },
+  "es": {
+    "attrs": [],
+    "text": [
+      "◀15",
+      "▶",
+      "15▶",
+      "1x",
+      "✕",
+      "0:00",
+      "No se pudo cargar el audio.",
+      "0:00",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master audio-bar/loading renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [],
+    "text": [
+      "◀15",
+      "15▶",
+      "1x",
+      "✕",
+      "0:00",
+      "Cargando…",
+      "0:00",
+    ],
+  },
+  "es": {
+    "attrs": [],
+    "text": [
+      "◀15",
+      "15▶",
+      "1x",
+      "✕",
+      "0:00",
+      "Cargando…",
+      "0:00",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master club/polls renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [],
+    "text": [
+      "C",
+      "Club Uno",
+      "Desc",
+      "Joined",
+      "Chat",
+      "Discussion",
+      "Polls",
+      "Sessions",
+      "¿Qué libro sigue?",
+      "Open",
+      "<date:device>",
+    ],
+  },
+  "es": {
+    "attrs": [],
+    "text": [
+      "C",
+      "Club Uno",
+      "Desc",
+      "Miembro",
+      "Chat",
+      "Discusión",
+      "Sondeos",
+      "Sesiones",
+      "¿Qué libro sigue?",
+      "Abierto",
+      "<date:device>",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master club/sessions renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [],
+    "text": [
+      "C",
+      "Club Uno",
+      "Desc",
+      "Join",
+      "Chat",
+      "Discussion",
+      "Polls",
+      "Sessions",
+      "Sesión 1",
+      "Upcoming",
+      "<date:device>",
+      "Frases 10–40 · Libro",
+      "Join session",
+    ],
+  },
+  "es": {
+    "attrs": [],
+    "text": [
+      "C",
+      "Club Uno",
+      "Desc",
+      "Unirme",
+      "Chat",
+      "Discusión",
+      "Sondeos",
+      "Sesiones",
+      "Sesión 1",
+      "Próxima",
+      "<date:device>",
+      "Frases 10–40 · Libro",
+      "Unirme a la sesión",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master clubs-list renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [
+      "TextInput[placeholder]=Search clubs…",
+    ],
+    "text": [
+      "Clubs",
+      "Explore",
+      "My Clubs",
+      "No clubs found.",
+    ],
+  },
+  "es": {
+    "attrs": [
+      "TextInput[placeholder]=Buscar clubes…",
+    ],
+    "text": [
+      "Clubes",
+      "Explorar",
+      "Mis Clubes",
+      "No se encontraron clubes.",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master consent renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [],
+    "text": [
+      "Noetia",
+      "Privacidad y Términos · Privacy & Terms",
+      "🇪🇸 Español",
+      "Política de Privacidad",
+      "Noetia recopila tu correo electrónico, nombre e información de suscripción (procesada por Stripe) para prestarte el servicio. También guardamos tu progreso de lectura y los fragmentos que crees. No vendemos tus datos a terceros.",
+      "Tienes derecho a acceder, rectificar y eliminar tus datos en cualquier momento. Para más información, consulta nuestra política completa:",
+      "noetia.app/legal/privacy",
+      "Términos de Servicio",
+      "Al usar Noetia aceptas que el contenido está protegido por derechos de autor y no puede descargarse ni redistribuirse. La suscripción se renueva automáticamente; puedes cancelarla en cualquier momento. Debes tener al menos 18 años.",
+      "noetia.app/legal/terms",
+      "🇺🇸 English",
+      "Privacy Policy",
+      "Noetia collects your email, name, and subscription information (processed by Stripe) to provide the service. We also store your reading progress and the fragments you create. We do not sell your data to third parties.",
+      "You have the right to access, correct, and delete your data at any time. For full details, see our privacy policy:",
+      "noetia.app/legal/privacy",
+      "Terms of Service",
+      "By using Noetia you agree that content is copyright-protected and may not be downloaded or redistributed. Subscriptions renew automatically; you may cancel at any time. You must be at least 18 years old.",
+      "noetia.app/legal/terms",
+      "Acepto / I agree",
+      "No acepto / I decline",
+    ],
+  },
+  "es": {
+    "attrs": [],
+    "text": [
+      "Noetia",
+      "Privacidad y Términos · Privacy & Terms",
+      "🇪🇸 Español",
+      "Política de Privacidad",
+      "Noetia recopila tu correo electrónico, nombre e información de suscripción (procesada por Stripe) para prestarte el servicio. También guardamos tu progreso de lectura y los fragmentos que crees. No vendemos tus datos a terceros.",
+      "Tienes derecho a acceder, rectificar y eliminar tus datos en cualquier momento. Para más información, consulta nuestra política completa:",
+      "noetia.app/legal/privacy",
+      "Términos de Servicio",
+      "Al usar Noetia aceptas que el contenido está protegido por derechos de autor y no puede descargarse ni redistribuirse. La suscripción se renueva automáticamente; puedes cancelarla en cualquier momento. Debes tener al menos 18 años.",
+      "noetia.app/legal/terms",
+      "🇺🇸 English",
+      "Privacy Policy",
+      "Noetia collects your email, name, and subscription information (processed by Stripe) to provide the service. We also store your reading progress and the fragments you create. We do not sell your data to third parties.",
+      "You have the right to access, correct, and delete your data at any time. For full details, see our privacy policy:",
+      "noetia.app/legal/privacy",
+      "Terms of Service",
+      "By using Noetia you agree that content is copyright-protected and may not be downloaded or redistributed. Subscriptions renew automatically; you may cancel at any time. You must be at least 18 years old.",
+      "noetia.app/legal/terms",
+      "Acepto / I agree",
+      "No acepto / I decline",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master fragments renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [
+      "TouchableOpacity[accessibilityLabel]=Share fragment",
+    ],
+    "text": [
+      "Fragments",
+      "Una frase.",
+      "<date:es>",
+      "📤",
+    ],
+  },
+  "es": {
+    "attrs": [
+      "TouchableOpacity[accessibilityLabel]=Compartir fragmento",
+    ],
+    "text": [
+      "Fragmentos",
+      "Una frase.",
+      "<date:es>",
+      "📤",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master language-screen renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [
+      "TouchableOpacity[accessibilityLabel]=ES Latam",
+      "TouchableOpacity[accessibilityLabel]=English",
+      "TouchableOpacity[accessibilityLabel]=Continue",
+    ],
+    "text": [
+      "Noetia",
+      "Choose your language",
+      "You can change this later in settings.",
+      "🌎",
+      "ES Latam",
+      "Latin America",
+      "✓",
+      "🇺🇸",
+      "English",
+      "Inglés",
+      "Continue",
+    ],
+  },
+  "es": {
+    "attrs": [
+      "TouchableOpacity[accessibilityLabel]=ES Latam",
+      "TouchableOpacity[accessibilityLabel]=English",
+      "TouchableOpacity[accessibilityLabel]=Continuar",
+    ],
+    "text": [
+      "Noetia",
+      "Elige tu idioma",
+      "Puedes cambiarlo después en configuración.",
+      "🌎",
+      "ES Latam",
+      "Latin America",
+      "✓",
+      "🇺🇸",
+      "English",
+      "Inglés",
+      "Continuar",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master library/empty renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [],
+    "text": [
+      "Biblioteca",
+      "No books available.",
+    ],
+  },
+  "es": {
+    "attrs": [],
+    "text": [
+      "Biblioteca",
+      "No hay libros disponibles.",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master library/loaded renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [],
+    "text": [
+      "Biblioteca",
+      "My Library",
+      "ML",
+      "Mi Libro",
+      "A",
+      "General Collection",
+      "L",
+      "Libre",
+      "B",
+    ],
+  },
+  "es": {
+    "attrs": [],
+    "text": [
+      "Biblioteca",
+      "Mi Biblioteca",
+      "ML",
+      "Mi Libro",
+      "A",
+      "Colección General",
+      "L",
+      "Libre",
+      "B",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master live-session/connected-paused-error renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [
+      "TextInput[placeholder]=Write a message…",
+    ],
+    "text": [
+      "2 escuchando",
+      "Sesión 1",
+      "Frases 10–40",
+      "Not a club member",
+      "0:00",
+      "⏸ En pausa",
+      "Tú",
+      "👤",
+      "Chat en vivo",
+      "No messages yet.",
+      "Send",
+    ],
+  },
+  "es": {
+    "attrs": [
+      "TextInput[placeholder]=Escribe un mensaje…",
+    ],
+    "text": [
+      "2 escuchando",
+      "Sesión 1",
+      "Frases 10–40",
+      "Not a club member",
+      "0:00",
+      "⏸ En pausa",
+      "Tú",
+      "👤",
+      "Chat en vivo",
+      "Aún no hay mensajes.",
+      "Enviar",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master live-session/connecting-playing renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [
+      "TextInput[placeholder]=Write a message…",
+    ],
+    "text": [
+      "Conectando…",
+      "Sesión 1",
+      "Frases 10–40",
+      "1:05",
+      "🎧 Sincronizando…",
+      "Tú",
+      "👤",
+      "Chat en vivo",
+      "No messages yet.",
+      "Send",
+    ],
+  },
+  "es": {
+    "attrs": [
+      "TextInput[placeholder]=Escribe un mensaje…",
+    ],
+    "text": [
+      "Conectando…",
+      "Sesión 1",
+      "Frases 10–40",
+      "1:05",
+      "🎧 Sincronizando…",
+      "Tú",
+      "👤",
+      "Chat en vivo",
+      "Aún no hay mensajes.",
+      "Enviar",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master login renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [
+      "TextInput[placeholder]=you@example.com",
+      "TextInput[placeholder]=••••••••",
+      "TouchableOpacity[accessibilityLabel]=Sign in",
+      "TouchableOpacity[accessibilityLabel]=Continuar con Google",
+      "TouchableOpacity[accessibilityLabel]=Continuar con Facebook",
+    ],
+    "text": [
+      "Noetia",
+      "Your synchronized library",
+      "Email",
+      "Password",
+      "Sign in",
+      "o continúa con",
+      "🅶  Continuar con Google",
+      "f  Continuar con Facebook",
+      "Don't have an account? ",
+      "Sign up",
+    ],
+  },
+  "es": {
+    "attrs": [
+      "TextInput[placeholder]=tu@correo.com",
+      "TextInput[placeholder]=••••••••",
+      "TouchableOpacity[accessibilityLabel]=Iniciar sesión",
+      "TouchableOpacity[accessibilityLabel]=Continuar con Google",
+      "TouchableOpacity[accessibilityLabel]=Continuar con Facebook",
+    ],
+    "text": [
+      "Noetia",
+      "Tu biblioteca sincronizada",
+      "Correo electrónico",
+      "Contraseña",
+      "Iniciar sesión",
+      "o continúa con",
+      "🅶  Continuar con Google",
+      "f  Continuar con Facebook",
+      "¿No tienes cuenta? ",
+      "Regístrate",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master navigation renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [],
+    "text": [
+      "tab Library: Biblioteca",
+      "stack LibraryHome: title=- back=-",
+      "stack Reader: title=<book> back=Biblioteca",
+      "tab Clubs: Clubes",
+      "stack ClubsHome: title=- back=-",
+      "stack ClubDetail: title=<club> back=Clubes",
+      "stack LiveSession: title=<session> back=Club",
+      "tab Fragments: Fragmentos",
+      "tab Account: Cuenta",
+    ],
+  },
+  "es": {
+    "attrs": [],
+    "text": [
+      "tab Library: Biblioteca",
+      "stack LibraryHome: title=- back=-",
+      "stack Reader: title=<book> back=Biblioteca",
+      "tab Clubs: Clubes",
+      "stack ClubsHome: title=- back=-",
+      "stack ClubDetail: title=<club> back=Clubes",
+      "stack LiveSession: title=<session> back=Club",
+      "tab Fragments: Fragmentos",
+      "tab Account: Cuenta",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master register renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [
+      "TextInput[placeholder]=Your name",
+      "TextInput[placeholder]=you@example.com",
+      "TextInput[placeholder]=At least 8 characters",
+      "TouchableOpacity[accessibilityLabel]=Create account",
+      "TouchableOpacity[accessibilityLabel]=Continuar con Google",
+      "TouchableOpacity[accessibilityLabel]=Continuar con Facebook",
+    ],
+    "text": [
+      "Noetia",
+      "Create your free account",
+      "Name",
+      "Email",
+      "Password",
+      "Create account",
+      "o continúa con",
+      "🅶  Continuar con Google",
+      "f  Continuar con Facebook",
+      "Already have an account? ",
+      "Sign in",
+    ],
+  },
+  "es": {
+    "attrs": [
+      "TextInput[placeholder]=Tu nombre",
+      "TextInput[placeholder]=tu@correo.com",
+      "TextInput[placeholder]=Mínimo 8 caracteres",
+      "TouchableOpacity[accessibilityLabel]=Crear cuenta",
+      "TouchableOpacity[accessibilityLabel]=Continuar con Google",
+      "TouchableOpacity[accessibilityLabel]=Continuar con Facebook",
+    ],
+    "text": [
+      "Noetia",
+      "Crea tu cuenta gratis",
+      "Nombre",
+      "Correo electrónico",
+      "Contraseña",
+      "Crear cuenta",
+      "o continúa con",
+      "🅶  Continuar con Google",
+      "f  Continuar con Facebook",
+      "¿Ya tienes cuenta? ",
+      "Inicia sesión",
+    ],
+  },
+}
+`;
+
+exports[`B1-B ES/EN golden master social-auth-buttons renders the same ES and EN text and accessibility attributes 1`] = `
+{
+  "en": {
+    "attrs": [
+      "TouchableOpacity[accessibilityLabel]=Continuar con Google",
+      "TouchableOpacity[accessibilityLabel]=Continuar con Facebook",
+    ],
+    "text": [
+      "o continúa con",
+      "🅶  Continuar con Google",
+      "f  Continuar con Facebook",
+    ],
+  },
+  "es": {
+    "attrs": [
+      "TouchableOpacity[accessibilityLabel]=Continuar con Google",
+      "TouchableOpacity[accessibilityLabel]=Continuar con Facebook",
+    ],
+    "text": [
+      "o continúa con",
+      "🅶  Continuar con Google",
+      "f  Continuar con Facebook",
+    ],
+  },
+}
+`;
