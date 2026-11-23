@@ -3,10 +3,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from '../api/client';
 import { en, type MobileTranslations } from './en';
 import { es } from './es';
+import { frCA } from './fr-ca';
+import {
+  DEFAULT_LANGUAGE,
+  type Language,
+  normalizeLanguage,
+  resolveServerLanguage,
+  resolveStoredLanguage,
+} from './locales';
 
-export type Language = 'es' | 'en';
+export type { Language } from './locales';
+export { isFrenchEnabled, selectableLanguages, SUPPORTED_LANGUAGES } from './locales';
+
 const STORAGE_KEY = 'noetia_lang';
-const translations: Record<Language, MobileTranslations> = { es, en };
+const translations: Record<Language, MobileTranslations> = { es, en, 'fr-CA': frCA };
 
 interface LanguageContextValue {
   language: Language;
@@ -16,27 +26,30 @@ interface LanguageContextValue {
 }
 
 const LanguageContext = createContext<LanguageContextValue>({
-  language: 'es',
+  language: DEFAULT_LANGUAGE,
   t: es,
   setLanguage: async () => {},
   isLoaded: false,
 });
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLang] = useState<Language>('es');
+  const [language, setLang] = useState<Language>(DEFAULT_LANGUAGE);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then(async (saved) => {
-      if (saved === 'en' || saved === 'es') setLang(saved);
+      const local = resolveStoredLanguage(saved);
+      setLang(local);
       setIsLoaded(true);
 
       // Sync from API — server-side preference wins over stale local storage
       try {
         const user = await apiClient.get<{ uiLanguage?: string }>('/users/me');
-        if (user?.uiLanguage === 'en' || user?.uiLanguage === 'es') {
-          setLang(user.uiLanguage);
-          AsyncStorage.setItem(STORAGE_KEY, user.uiLanguage);
+        if (!user) return;
+        const resolved = resolveServerLanguage(user.uiLanguage, local);
+        if (resolved !== local) {
+          setLang(resolved);
+          AsyncStorage.setItem(STORAGE_KEY, resolved);
         }
       } catch {
         // Not logged in or network error — local preference stays
@@ -44,7 +57,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const setLanguage = useCallback(async (lang: Language) => {
+  const setLanguage = useCallback(async (requested: Language) => {
+    // Fail closed: a language that is not selectable (fr-CA while the readiness gate is off) is ignored.
+    const lang = normalizeLanguage(requested);
+    if (!lang) return;
     setLang(lang);
     await AsyncStorage.setItem(STORAGE_KEY, lang);
     apiClient.patch('/users/me', { uiLanguage: lang }).catch(() => {});
@@ -62,11 +78,9 @@ export function useTranslation() {
 }
 
 export async function getStoredLanguage(): Promise<Language> {
-  const saved = await AsyncStorage.getItem(STORAGE_KEY);
-  return saved === 'en' ? 'en' : 'es';
+  return resolveStoredLanguage(await AsyncStorage.getItem(STORAGE_KEY));
 }
 
 export async function hasStoredLanguage(): Promise<boolean> {
-  const saved = await AsyncStorage.getItem(STORAGE_KEY);
-  return saved === 'en' || saved === 'es';
+  return normalizeLanguage(await AsyncStorage.getItem(STORAGE_KEY)) !== null;
 }

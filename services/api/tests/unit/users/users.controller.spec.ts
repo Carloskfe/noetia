@@ -44,6 +44,52 @@ describe('UsersController', () => {
       expect(mockUsersService.update).toHaveBeenCalledWith('u1', { name: 'Bob' });
       expect(result).toEqual({ id: 'u1', name: 'Bob' });
     });
+
+    describe('interface language (NEM-025 Checkpoint A)', () => {
+      const prev = process.env.FR_CA_ENABLED;
+      afterEach(() => {
+        if (prev === undefined) delete process.env.FR_CA_ENABLED;
+        else process.env.FR_CA_ENABLED = prev;
+      });
+
+      it.each(['es', 'en'])('stores %p as before', async (lang) => {
+        delete process.env.FR_CA_ENABLED;
+        mockUsersService.findById.mockResolvedValue({ id: 'u1', uiLanguage: lang });
+        await controller.updateMe({ user: { id: 'u1' } }, { uiLanguage: lang } as any);
+        expect(mockUsersService.update).toHaveBeenCalledWith('u1', { uiLanguage: lang });
+      });
+
+      it('refuses fr-CA while the French readiness gate is closed, without writing anything', async () => {
+        delete process.env.FR_CA_ENABLED;
+        await expect(
+          controller.updateMe({ user: { id: 'u1' } }, { uiLanguage: 'fr-CA' } as any),
+        ).rejects.toThrow('Unsupported interface language');
+        expect(mockUsersService.update).not.toHaveBeenCalled();
+      });
+
+      it('refuses fr-CA when the gate has any value other than exactly "true"', async () => {
+        process.env.FR_CA_ENABLED = 'TRUE';
+        await expect(
+          controller.updateMe({ user: { id: 'u1' } }, { uiLanguage: 'fr-CA' } as any),
+        ).rejects.toThrow('Unsupported interface language');
+        expect(mockUsersService.update).not.toHaveBeenCalled();
+      });
+
+      it('stores fr-CA only when the gate is explicitly open', async () => {
+        process.env.FR_CA_ENABLED = 'true';
+        mockUsersService.findById.mockResolvedValue({ id: 'u1', uiLanguage: 'fr-CA' });
+        await controller.updateMe({ user: { id: 'u1' } }, { uiLanguage: 'fr-CA' } as any);
+        expect(mockUsersService.update).toHaveBeenCalledWith('u1', { uiLanguage: 'fr-CA' });
+      });
+
+      it('only ever updates the authenticated caller (no cross-account write)', async () => {
+        delete process.env.FR_CA_ENABLED;
+        mockUsersService.findById.mockResolvedValue({ id: 'u2', uiLanguage: 'en' });
+        await controller.updateMe({ user: { id: 'u2' } }, { uiLanguage: 'en' } as any);
+        expect(mockUsersService.update).toHaveBeenCalledTimes(1);
+        expect(mockUsersService.update).toHaveBeenCalledWith('u2', { uiLanguage: 'en' });
+      });
+    });
   });
 
   describe('updateOnboarding', () => {

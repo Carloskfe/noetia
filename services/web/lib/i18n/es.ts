@@ -6,6 +6,7 @@ export const es: Translations = {
     subtitle: 'Puedes cambiarlo más tarde en tu perfil.',
     es: 'ES Latam',
     en: 'English',
+    'fr-CA': 'Français (Canada)',
   },
   common: {
     loading: 'Cargando…',

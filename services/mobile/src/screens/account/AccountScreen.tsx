@@ -6,7 +6,7 @@ import {
 import { apiClient } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
 import { useTour } from '../../components/TourContext';
-import { useTranslation, type Language } from '../../i18n';
+import { selectableLanguages, useTranslation, type Language } from '../../i18n';
 
 interface User {
   id: string;
@@ -15,7 +15,8 @@ interface User {
   userType: string;
 }
 
-const LANG_FLAGS: Record<Language, string> = { es: '🇪🇸', en: '🇺🇸' };
+// Flags are decorative only; fr-CA is shown by its label alone.
+const LANG_FLAGS: Record<Language, string> = { es: '🇪🇸', en: '🇺🇸', 'fr-CA': '' };
 
 export function AccountScreen() {
   const { logout } = useAuth();
@@ -67,14 +68,15 @@ export function AccountScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t.account.language}</Text>
         <View style={styles.langRow}>
-          {(['es', 'en'] as Language[]).map((lang) => (
+          {/* fr-CA appears only when the French readiness gate is enabled (default: hidden). */}
+          {selectableLanguages().map((lang) => (
             <TouchableOpacity
               key={lang}
               style={[styles.langBtn, language === lang && styles.langBtnActive]}
               onPress={() => setLanguage(lang)}
             >
               <Text style={[styles.langBtnText, language === lang && styles.langBtnTextActive]}>
-                {LANG_FLAGS[lang]} {t.lang[lang]}
+                {LANG_FLAGS[lang] ? `${LANG_FLAGS[lang]} ` : ''}{t.lang[lang]}
               </Text>
             </TouchableOpacity>
           ))}

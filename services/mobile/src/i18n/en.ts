@@ -4,6 +4,7 @@ export const en = {
     subtitle: 'You can change this later in settings.',
     es: 'ES Latam',
     en: 'English',
+    'fr-CA': 'Français (Canada)',
     continue: 'Continue',
   },
   common: {
