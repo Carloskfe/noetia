@@ -24,8 +24,8 @@ Governance read: `CLAUDE.md` and `docs/engineering-missions/README.md` (APPROVED
 
 ## 2. Approved decisions incorporated
 
-- **Trilingual platform:** `en`, `es`, `fr-CA`; label "Français (Canada)"; book language independent of interface language; private, unpublished French pilot until separately approved. → NEM-025 annex §A.
-- **Initial French catalogue, exactly five titles** (*Candide*; *Le Horla*; *Le Tour du monde en quatre-vingts jours*; *Madame Bovary*, Gutenberg #14155; *Maria Chapdelaine*). These are candidates, not cleared. → NEM-026 annex §A.
+- **Trilingual platform:** `en`, `es`, `fr-CA`; label "Français (Canada)"; book language independent of interface language; private, unpublished French pilot until separately approved. → NEM-025 reconciliation checklist §A.
+- **Initial French catalogue, exactly five titles** (*Candide*; *Le Horla*; *Le Tour du monde en quatre-vingts jours*; *Madame Bovary*, Gutenberg #14155; *Maria Chapdelaine*). These are candidates, not cleared. → NEM-026 reconciliation checklist §A.
 - **USD exclusive transaction currency,** with informational local equivalents, reference-rate sourcing (Bank of Canada evaluated for CAD), date disclosure, card-issuer and bank disclaimer, USD-only fallback, and no other currencies, Stripe prices or FX settlement. → policy addendum.
 - **Not reopened:** T-1, D1–D6, F-01, W-1/W-2, subscription, token and ownership rules.
 
