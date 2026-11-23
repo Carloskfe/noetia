@@ -12,6 +12,7 @@ export const frCA: MobileTranslations = {
     en: 'English',
     'fr-CA': 'Français (Canada)',
     continue: 'Continuer',
+    sublabels: { es: 'Amérique latine', en: 'Anglais', 'fr-CA': 'Français (Canada)' },
   },
   common: {
     loading: 'Chargement…',
@@ -23,6 +24,14 @@ export const frCA: MobileTranslations = {
     continue: 'Continuer',
     delete: 'Supprimer',
     ok: 'OK',
+    errorTitle: 'Erreur',
+  },
+  nav: {
+    library: 'Bibliothèque',
+    clubs: 'Clubs',
+    fragments: 'Fragments',
+    account: 'Compte',
+    club: 'Club',
   },
   auth: {
     login: {
@@ -58,6 +67,21 @@ export const frCA: MobileTranslations = {
         generic: 'L’inscription a échoué. Veuillez réessayer.',
       },
     },
+    social: {
+      divider: 'ou continuez avec',
+      google: 'Continuer avec Google',
+      facebook: 'Continuer avec Facebook',
+      errors: {
+        googleConnect: 'Impossible de se connecter à Google. Réessayez.',
+        googleNoToken: 'Google n’a renvoyé aucun identifiant de connexion.',
+        googleSignIn: 'La connexion avec Google a échoué.',
+        facebookConnect: 'Impossible de se connecter à Facebook. Réessayez.',
+        facebookNoToken: 'Facebook n’a renvoyé aucun identifiant de connexion.',
+        facebookSignIn: 'La connexion avec Facebook a échoué.',
+        facebookNotConfigured: 'La connexion avec Facebook n’est pas configurée.',
+        appleSignIn: 'La connexion avec Apple a échoué.',
+      },
+    },
   },
   library: {
     title: 'Bibliothèque',
@@ -76,6 +100,7 @@ export const frCA: MobileTranslations = {
     audioMode: 'Mode Écoute active',
     selectionMode: 'Sélectionner du texte',
     selectionModeHint: 'Touchez des phrases pour composer une citation, puis enregistrez-la',
+    audioLoadError: 'Impossible de charger l’audio.',
   },
   fragments: {
     title: 'Fragments',
@@ -211,6 +236,20 @@ export const frCA: MobileTranslations = {
     noClubs: 'Vous n’êtes membre d’aucun club qui lit ce livre.',
     polls: { empty: 'Aucun sondage pour l’instant.', open: 'Ouvert', closed: 'Terminé', vote: 'Voter', close: 'Clore', winner: 'Gagnant' },
     sessions: { empty: 'Aucune séance prévue.', upcoming: 'À venir', live: 'En direct', completed: 'Terminée', cancelled: 'Annulée', join: 'Rejoindre la séance' },
+    live: {
+      listening: (n: number) => `${n} à l’écoute`,
+      connecting: 'Connexion…',
+      phrases: (from?: number, to?: number) => `Phrases ${from ?? ''}–${to ?? ''}`,
+      syncing: 'Synchronisation…',
+      paused: 'En pause',
+      you: 'Vous',
+      chatTitle: 'Clavardage en direct',
+      errors: {
+        sessionNotFound: 'Séance introuvable.',
+        notMember: 'Vous n’êtes pas membre de ce club.',
+        generic: 'Impossible de se connecter à la séance.',
+      },
+    },
     errors: {
       alreadyMember: 'Vous êtes déjà membre.',
       clubFull: 'Le club est complet.',
