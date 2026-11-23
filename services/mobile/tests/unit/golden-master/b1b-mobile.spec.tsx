@@ -193,3 +193,114 @@ describe('B1-B ES/EN golden master', () => {
     expect({ es: esOut, en: enOut }).toMatchSnapshot();
   });
 });
+
+// ── Added after the refactor (not part of the ES/EN baseline) ──────────────────────────────────
+
+// The consent screen deliberately stays ES/EN bilingual: French legal text is not authorized (M-5).
+const STAYS_BILINGUAL_LEGAL = new Set(['consent']);
+
+describe('B1-B fr-CA rendering', () => {
+  it.each(SURFACES.filter(([n]) => !STAYS_BILINGUAL_LEGAL.has(n)))('%s renders French copy that differs from ES and EN', (_name, make) => {
+    const fr = renderIn('fr-CA', make) as { text: string[]; attrs: string[] };
+    const enOut = renderIn('en', make);
+    const esOut = renderIn('es', make);
+    const all = JSON.stringify(fr);
+    expect(fr.text.length).toBeGreaterThan(0);
+    expect(all).not.toContain('undefined');
+    expect(all).not.toBe(JSON.stringify(enOut));
+    expect(all).not.toBe(JSON.stringify(esOut));
+  });
+
+  it('shows French navigation labels', () => {
+    setLang('fr-CA');
+    expect(navigationSurface()).toEqual(expect.arrayContaining([
+      'tab Library: Bibliothèque', 'tab Account: Compte', 'stack Reader: title=<book> back=Bibliothèque',
+    ]));
+  });
+
+  it('maps the live-session socket error and uses French typography', () => {
+    Object.assign(mockClubSession, { connected: true, playback: { isPlaying: false, positionMs: 0 }, error: 'Not a club member' });
+    mockHarness.route = { params: { clubId: 'c1', sessionId: 'sess1' } };
+    const fr = renderIn('fr-CA', () => {
+      mockHarness.overrides = { LiveSessionScreen: { 0: SESSION, 1: 'https://audio', 2: false } };
+      return shallowRender(<LiveSessionScreen />);
+    }) as { text: string[] };
+    expect(fr.text).toEqual(expect.arrayContaining(['2 à l’écoute', 'Vous n’êtes pas membre de ce club.', '⏸ En pause', 'Clavardage en direct']));
+    expect(fr.text.join(' ')).not.toContain('Not a club member');
+  });
+
+  it('keeps the consent screen ES/EN only, with no French legal text', () => {
+    const fr = renderIn('fr-CA', () => shallowRender(<ConsentScreen onConsent={() => {}} />));
+    const esOut = renderIn('es', () => shallowRender(<ConsentScreen onConsent={() => {}} />));
+    expect(fr).toEqual(esOut);
+    expect(JSON.stringify(fr)).not.toMatch(/Confidentialité|Conditions d|J’accepte/);
+  });
+});
+
+describe('B1-B navigation keeps its state when the language changes (M-1)', () => {
+  function tree(lang: Lang) {
+    resetHarness();
+    setLang(lang);
+    return (MainNavigator as () => any)();
+  }
+
+  it('re-renders the same navigator and screens with new labels only', () => {
+    const esTree = tree('es');
+    const enTree = tree('en');
+    expect(enTree.type).toBe(esTree.type);
+    expect(enTree.key).toBe(esTree.key);
+    const screens = (t: any) => (React.Children.toArray(t.props.children) as any[]).map((s) => [s.props.name, s.props.component]);
+    // Same route names and the same component references: React keeps every screen mounted.
+    expect(screens(enTree)).toEqual(screens(esTree));
+    expect(esTree.props.screenOptions({ route: { name: 'Library' } }).tabBarLabel).toBe('Biblioteca');
+    expect(enTree.props.screenOptions({ route: { name: 'Library' } }).tabBarLabel).toBe('Library');
+  });
+
+  it('falls back to the route name for an unknown route', () => {
+    const t = tree('en');
+    expect(t.props.screenOptions({ route: { name: 'Mystery' } }).tabBarLabel).toBe('Mystery');
+  });
+});
+
+describe('B1-B French gate on mobile surfaces', () => {
+  function languageOptions(gate?: string) {
+    if (gate === undefined) delete process.env.EXPO_PUBLIC_FR_CA_ENABLED;
+    else process.env.EXPO_PUBLIC_FR_CA_ENABLED = gate;
+    return renderIn('es', () => shallowRender(<LanguageScreen onSelect={() => {}} />)) as { attrs: string[] };
+  }
+  afterEach(() => { delete process.env.EXPO_PUBLIC_FR_CA_ENABLED; });
+
+  it('hides French by default', () => {
+    expect(languageOptions().attrs.join('|')).not.toContain('Français (Canada)');
+  });
+
+  it('keeps French hidden for any value other than exactly "true"', () => {
+    for (const v of ['TRUE', '1', 'yes', ' true', '']) expect(languageOptions(v).attrs.join('|')).not.toContain('Français (Canada)');
+  });
+
+  it('offers French only when the gate is exactly "true"', () => {
+    expect(languageOptions('true').attrs).toContain('TouchableOpacity[accessibilityLabel]=Français (Canada)');
+  });
+});
+
+describe('B1-B social sign-in errors are localized (M-2)', () => {
+  function find(node: any, pred: (n: any) => boolean): any {
+    if (!node || typeof node !== 'object') return null;
+    if (Array.isArray(node)) { for (const n of node) { const f = find(n, pred); if (f) return f; } return null; }
+    if (pred(node)) return node;
+    return find(node.props?.children, pred);
+  }
+
+  it.each([['es', 'Facebook no está configurado.'], ['en', 'Facebook sign-in is not configured.'], ['fr-CA', 'La connexion avec Facebook n’est pas configurée.']] as const)(
+    'reports a missing Facebook configuration in %s', (lang, expected) => {
+      resetHarness();
+      setLang(lang);
+      const onError = jest.fn();
+      mockHarness.current = 'SocialAuthButtons';
+      const tree = (SocialAuthButtons as any)({ onSuccess: jest.fn(), onError });
+      const fb = find(tree, (n) => n.props?.accessibilityLabel === DICTS[lang].auth.social.facebook);
+      fb.props.onPress();
+      expect(onError).toHaveBeenCalledWith(expected);
+    },
+  );
+});

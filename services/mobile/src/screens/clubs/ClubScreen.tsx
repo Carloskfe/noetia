@@ -10,6 +10,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { clubsApi, Club, ClubBook, ClubDiscussion, ClubMessage, ClubMember, ClubPoll, ClubSession } from '../../api/clubs';
 import { useTranslation } from '../../i18n';
+import { formatDateTime } from '../../i18n/format';
 import type { ClubsStackParamList } from '../../navigation/types';
 
 type Route = RouteProp<ClubsStackParamList, 'ClubDetail'>;
@@ -187,7 +188,7 @@ function DiscussionTab({ clubId, activeBook, canWrite }: { clubId: string; activ
 // ── Polls Tab ─────────────────────────────────────────────────────────────────
 
 function PollsTab({ clubId }: { clubId: string }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const c = t.clubs.polls;
   const [polls, setPolls]   = useState<ClubPoll[]>([]);
   const [loading, setLoading] = useState(true);
@@ -212,7 +213,7 @@ function PollsTab({ clubId }: { clubId: string }) {
               </View>
             </View>
             {p.winnerOptionId && <Text style={styles.winner}>🏆 {c.winner}</Text>}
-            <Text style={styles.pollMeta}>{new Date(p.closesAt).toLocaleString()}</Text>
+            <Text style={styles.pollMeta}>{formatDateTime(p.closesAt, language)}</Text>
           </View>
         ))
       )}
@@ -223,7 +224,7 @@ function PollsTab({ clubId }: { clubId: string }) {
 // ── Sessions Tab ──────────────────────────────────────────────────────────────
 
 function SessionsTab({ clubId }: { clubId: string }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const c = t.clubs.sessions;
   const navigation = useNavigation<NativeStackNavigationProp<ClubsStackParamList>>();
   const [sessions, setSessions] = useState<ClubSession[]>([]);
@@ -252,8 +253,8 @@ function SessionsTab({ clubId }: { clubId: string }) {
                 <Text style={styles.statusText}>{statusLabel[s.status]}</Text>
               </View>
             </View>
-            <Text style={styles.pollMeta}>{new Date(s.scheduledAt).toLocaleString()}</Text>
-            <Text style={styles.pollMeta}>Frases {s.startPhraseIndex}–{s.endPhraseIndex} · {s.book?.title}</Text>
+            <Text style={styles.pollMeta}>{formatDateTime(s.scheduledAt, language)}</Text>
+            <Text style={styles.pollMeta}>{t.clubs.live.phrases(s.startPhraseIndex, s.endPhraseIndex)} · {s.book?.title}</Text>
             {(s.status === 'scheduled' || s.status === 'live') && (
               <TouchableOpacity
                 style={[styles.joinSessionBtn, s.status === 'live' && styles.joinSessionBtnLive]}
@@ -314,7 +315,7 @@ export function ClubScreen() {
       const code = err?.data?.error;
       const errors = c.errors;
       Alert.alert(
-        'Error',
+        t.common.errorTitle,
         code === 'club_full'                  ? errors.clubFull
         : code === 'must_own_active_book_to_join' ? errors.mustOwnBook
         : code === 'user_banned_from_club'    ? errors.banned

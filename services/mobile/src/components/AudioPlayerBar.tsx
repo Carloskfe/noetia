@@ -3,6 +3,7 @@ import {
   ActivityIndicator, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
+import { useTranslation } from '../i18n';
 
 const SPEEDS = [0.75, 1.0, 1.25, 1.5, 2.0];
 
@@ -35,6 +36,7 @@ export function AudioPlayerBar({
   onPlay, onPause, onSkipBack, onSkipForward,
   onSeek, onSetSpeed, onClose,
 }: Props) {
+  const { t } = useTranslation();
   const [barWidth, setBarWidth] = useState(1);
   const progress = duration > 0 ? Math.min(position / duration, 1) : 0;
   const speedIndex = SPEEDS.indexOf(speed);
@@ -95,10 +97,12 @@ export function AudioPlayerBar({
       {/* Time row */}
       <View style={styles.timeRow}>
         <Text style={styles.timeText}>{formatTime(position)}</Text>
+        {/* useAudioPlayer reports a single load failure (M-D4). Its message is shown in the active
+            language here, without changing the hook or the audio lifecycle. */}
         {error
-          ? <Text style={styles.errorText}>{error}</Text>
+          ? <Text style={styles.errorText}>{t.reader.audioLoadError}</Text>
           : isLoading
-          ? <Text style={styles.timeText}>Cargando…</Text>
+          ? <Text style={styles.timeText}>{t.common.loading}</Text>
           : null}
         <Text style={styles.timeText}>{formatTime(duration)}</Text>
       </View>
