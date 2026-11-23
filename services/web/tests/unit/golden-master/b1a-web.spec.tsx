@@ -163,3 +163,65 @@ describe('B1-A EN/ES golden master', () => {
     expect({ es, en }).toMatchSnapshot();
   });
 });
+
+// ── fr-CA rendering and French gate (added after the refactor; not part of the ES/EN baseline) ──
+// Unused components (no route renders them) are not localized in B1-A; see the completion report.
+const NOT_LOCALIZED_UNUSED = new Set(['waitlist-form', 'plan-card']);
+// The club-card fixture renders only user data (no token badge), so it has no localizable text.
+const NO_LOCALIZABLE_TEXT_IN_FIXTURE = new Set(['club-card']);
+
+describe('B1-A fr-CA rendering', () => {
+  it.each(SURFACES.filter(([n]) => !NOT_LOCALIZED_UNUSED.has(n) && !NO_LOCALIZABLE_TEXT_IN_FIXTURE.has(n)))('%s renders French copy that differs from ES and EN', async (_name, make) => {
+    const fr = await render(make(), 'fr-CA');
+    act(() => root.unmount());
+    root = createRoot(container);
+    const en = await render(make(), 'en');
+    act(() => root.unmount());
+    root = createRoot(container);
+    const es = await render(make(), 'es');
+    expect(fr.text.length).toBeGreaterThan(0);
+    expect(fr.text).not.toContain('undefined');
+    // Visible text plus accessible attributes: some surfaces differ only in aria labels.
+    const all = (r: { text: string; attrs: string[] }) => JSON.stringify(r);
+    expect(all(fr)).not.toBe(all(en));
+    expect(all(fr)).not.toBe(all(es));
+  });
+
+  it('club card shows the French token badge', async () => {
+    const fr = await render(<ClubCard club={{ ...CLUB, tokenRequired: true }} />, 'fr-CA');
+    expect(fr.text).toContain('1 jeton');
+  });
+
+  it('corporate pages keep the 2.22% commitment in French', async () => {
+    const about = await render(<AboutContent />, 'fr-CA');
+    expect(about.text).toContain('2,22 %');
+  });
+});
+
+describe('B1-A French readiness gate (corporate header)', () => {
+  const prev = process.env.NEXT_PUBLIC_FR_CA_ENABLED;
+  afterEach(() => {
+    if (prev === undefined) delete process.env.NEXT_PUBLIC_FR_CA_ENABLED;
+    else process.env.NEXT_PUBLIC_FR_CA_ENABLED = prev;
+  });
+
+  const buttons = () => Array.from(container.querySelectorAll('button')).map((b) => b.textContent);
+
+  it('shows only ES and EN by default', async () => {
+    delete process.env.NEXT_PUBLIC_FR_CA_ENABLED;
+    await render(<CorporateNav />, 'es');
+    expect(buttons()).toEqual(['ES', 'EN']);
+  });
+
+  it('keeps French hidden for any value other than exactly "true"', async () => {
+    process.env.NEXT_PUBLIC_FR_CA_ENABLED = 'TRUE';
+    await render(<CorporateNav />, 'es');
+    expect(buttons()).toEqual(['ES', 'EN']);
+  });
+
+  it('offers FR only when the gate is enabled', async () => {
+    process.env.NEXT_PUBLIC_FR_CA_ENABLED = 'true';
+    await render(<CorporateNav />, 'es');
+    expect(buttons()).toEqual(['ES', 'EN', 'FR']);
+  });
+});

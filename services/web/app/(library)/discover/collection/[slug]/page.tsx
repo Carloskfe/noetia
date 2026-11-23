@@ -33,7 +33,8 @@ export default function CollectionPage() {
   const [collection, setCollection] = useState<CollectionDetail | null>(null);
   const [libraryIds, setLibraryIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  // The failure itself is stored; its localized text is resolved at render time.
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
     Promise.all([
@@ -44,7 +45,7 @@ export default function CollectionPage() {
         setCollection(col);
         setLibraryIds(new Set(ids));
       })
-      .catch((err) => setError(genericErrorMessage(err, t)))
+      .catch((err) => setError(err ?? new Error('collection')))
       .finally(() => setLoading(false));
   }, [slug]);
 
@@ -60,7 +61,7 @@ export default function CollectionPage() {
   if (loading) return <CollectionSkeleton />;
   if (error || !collection) return (
     <div className="max-w-lg mx-auto px-4 pt-16 text-center">
-      <p className="text-red-500 text-sm">{error || t.collection.notFound}</p>
+      <p className="text-red-500 text-sm">{error ? genericErrorMessage(error, t) : t.collection.notFound}</p>
     </div>
   );
 

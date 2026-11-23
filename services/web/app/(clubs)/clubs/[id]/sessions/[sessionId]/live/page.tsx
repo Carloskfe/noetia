@@ -13,20 +13,21 @@ export default function LiveSessionPage() {
   const [session,  setSession]  = useState<ClubSession | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState('');
+  // Error kind, resolved to text at render time so a language change never shows stale copy.
+  const [error,    setError]    = useState<'' | 'notFound' | 'loadError'>('');
 
   useEffect(() => {
     async function load() {
       try {
         const sessions = await clubsApi.getSessions(params.id);
         const s = sessions.find(s => s.id === params.sessionId);
-        if (!s) { setError(t.clubs.sessions.notFound); return; }
+        if (!s) { setError('notFound'); return; }
         setSession(s);
 
         const book = await apiFetch(`/books/${s.bookId}`).catch(() => null);
         if (book?.audioStreamKey) setAudioUrl(book.audioStreamKey);
       } catch {
-        setError(t.clubs.sessions.loadError);
+        setError('loadError');
       } finally {
         setLoading(false);
       }
@@ -40,7 +41,7 @@ export default function LiveSessionPage() {
     </div>
   );
 
-  if (error || !session) return <p className="text-center text-red-500 py-20">{error}</p>;
+  if (error || !session) return <p className="text-center text-red-500 py-20">{error ? t.clubs.sessions[error] : null}</p>;
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-6">
