@@ -15,8 +15,19 @@ describe('RegisterDto', () => {
     expect(await errorsFor(base)).toEqual([]);
   });
 
-  it.each(['es', 'en', 'fr-CA'])('canonical %p passes the DTO (fr-CA is gated in AuthService)', async (v) => {
+  it.each(['es', 'en'])('%p passes the DTO', async (v) => {
     expect(await errorsFor({ ...base, uiLanguage: v })).toEqual([]);
+  });
+
+  it('fr-CA is rejected by the DTO even with FR_CA_ENABLED=true (F-B2A2a-1)', async () => {
+    const saved = process.env.FR_CA_ENABLED;
+    process.env.FR_CA_ENABLED = 'true';
+    try {
+      expect(await errorsFor({ ...base, uiLanguage: 'fr-CA' })).toEqual(['uiLanguage']);
+    } finally {
+      if (saved === undefined) delete process.env.FR_CA_ENABLED;
+      else process.env.FR_CA_ENABLED = saved;
+    }
   });
 
   it.each(['pt', 'EN', 'fr', 'es-MX', '', 42, ['es'], { v: 'es' }])('non-canonical %p is rejected', async (v) => {

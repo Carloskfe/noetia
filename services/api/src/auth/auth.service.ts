@@ -4,7 +4,7 @@ import { AuthProvider, User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../email/email.service';
 import { accountEmailLocale } from '../email/locale';
-import { normalizeUiLocale, selectableUiLocales, UiLocale } from '../users/ui-locale';
+import { REGISTRATION_UI_LOCALES, RegistrationUiLocale } from './dto/register.dto';
 import { TokenService } from './token.service';
 
 @Injectable()
@@ -18,8 +18,8 @@ export class AuthService {
   /**
    * Local email/password registration. `uiLanguage` (NEM-025 B2-A2a) is the interface language the reader
    * registered from. It is optional for old clients: when omitted, nothing extra is inserted and the column
-   * default (`es`) applies, exactly as before. A supplied value must be selectable right now (`es`/`en`;
-   * `fr-CA` only behind the French gate); anything else is rejected BEFORE the email lookup, so the language
+   * default (`es`) applies, exactly as before. A supplied value must be `es` or `en` (F-B2A2a-1: `fr-CA` is
+   * rejected even when FR_CA_ENABLED=true); anything else is rejected BEFORE the email lookup, so the language
    * can never change an authentication decision or reveal whether an account exists.
    */
   async register(name: string, email: string, password: string, uiLanguage?: string) {
@@ -190,15 +190,14 @@ export class AuthService {
 }
 
 /**
- * Validates the registration language (B2-A2a). `undefined` → no explicit value (column default `es`).
- * Unsupported, malformed or gated (`fr-CA` while French is off) → 400, never stored. The DTO already
- * rejects non-canonical strings; this is the service-level guard and the French gate.
+ * Validates the registration language (B2-A2a, F-B2A2a-1). `undefined` → no explicit value (column default
+ * `es`). Only `es` and `en` are accepted; `fr-CA` (regardless of FR_CA_ENABLED), unsupported or malformed
+ * values → 400, never stored. The DTO enforces the same list; this is the service-level guard.
  */
-function registrationUiLocale(value: unknown): UiLocale | undefined {
+function registrationUiLocale(value: unknown): RegistrationUiLocale | undefined {
   if (value === undefined) return undefined;
-  const locale = normalizeUiLocale(value);
-  if (!locale || !selectableUiLocales().includes(locale)) {
+  if (typeof value !== 'string' || !(REGISTRATION_UI_LOCALES as readonly string[]).includes(value)) {
     throw new BadRequestException('Unsupported interface language');
   }
-  return locale;
+  return value as RegistrationUiLocale;
 }

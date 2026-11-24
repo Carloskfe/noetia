@@ -104,8 +104,8 @@ describe('local registration language (A2a-1)', () => {
     },
   );
 
-  it('5. fr-CA is rejected while the French gate is closed (and with any non-"true" gate value)', async () => {
-    for (const gate of [undefined, 'TRUE', '1', 'yes']) {
+  it('5. fr-CA is rejected whatever the French gate says, including FR_CA_ENABLED=true (F-B2A2a-1)', async () => {
+    for (const gate of [undefined, 'TRUE', '1', 'yes', 'true']) {
       if (gate === undefined) delete process.env.FR_CA_ENABLED;
       else process.env.FR_CA_ENABLED = gate;
       const { auth, users } = harness();
@@ -117,14 +117,32 @@ describe('local registration language (A2a-1)', () => {
     expect(mockSendMail).not.toHaveBeenCalled();
   });
 
-  it('5b. with the interface gate on, fr-CA follows the Checkpoint A contract, but the email stays Spanish', async () => {
+  it('5b. with FR_CA_ENABLED=true: fr-CA → 400 before lookup, nothing stored, no email; es/en still work', async () => {
+    process.env.FR_CA_ENABLED = 'true';
+    expect(FR_CA_TRANSACTIONAL_READY).toBe(false);
+    const rejected = harness();
+    await expect(rejected.auth.register('X', 'x@example.com', 'password123', 'fr-CA')).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(rejected.users.findByEmail).not.toHaveBeenCalled();
+    expect(rejected.users.create).not.toHaveBeenCalled();
+    expect(mockSendMail).not.toHaveBeenCalled();
+
+    for (const [lang, subject] of [['es', 'Confirma tu cuenta en Noetia'], ['en', 'Confirm your Noetia account']]) {
+      const ok = harness();
+      await ok.auth.register('X', `${lang}@example.com`, 'password123', lang);
+      expect(ok.users.create.mock.calls[0][0]).toMatchObject({ uiLanguage: lang });
+      expect(lastMail().subject).toBe(subject);
+    }
+  });
+
+  it('5c. with FR_CA_ENABLED=true, omitting the language still registers in Spanish', async () => {
     process.env.FR_CA_ENABLED = 'true';
     const { auth, users } = harness();
-    await auth.register('X', 'x@example.com', 'password123', 'fr-CA');
-    expect(users.create.mock.calls[0][0]).toMatchObject({ uiLanguage: 'fr-CA' });
-    expect(FR_CA_TRANSACTIONAL_READY).toBe(false);
+    const { user } = await auth.register('Bo', 'bo@example.com', 'password123');
+    expect(users.create.mock.calls[0][0]).not.toHaveProperty('uiLanguage');
+    expect(user.uiLanguage).toBe('es');
     expect(lastMail().subject).toBe('Confirma tu cuenta en Noetia');
-    expect(lastMail().html).toContain('<html lang="es">');
   });
 
   it('a language never bypasses the duplicate-email rule (same 409 as before)', async () => {
