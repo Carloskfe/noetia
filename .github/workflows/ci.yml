@@ -104,9 +104,11 @@ jobs:
         run: pytest --cov=. --cov-report=term-missing --cov-fail-under=80
 
   # ── E2E tests (Playwright) ───────────────────────────────────────────────────
+  # Tests the checked-out web build on loopback (playwright.config.ts `webServer`), never a deployed site.
   e2e:
     name: web — E2E tests (Playwright)
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to 26.04, which Playwright 1.59.1 cannot install Chromium on (supported: 24.04).
+    runs-on: ubuntu-24.04
     needs: [lint-typecheck-build]
 
     steps:
@@ -132,13 +134,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build candidate web app (production build)
+        run: pnpm --filter @noetia/web build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          # /api rewrites are fixed at build time: point them at a closed loopback port so nothing leaves the runner.
+          INTERNAL_API_URL: http://127.0.0.1:9
+
       - name: Install Playwright browsers
         run: pnpm --filter @noetia/web exec playwright install --with-deps chromium
 
-      - name: Run E2E tests
+      - name: Run E2E tests (local build on http://127.0.0.1:3000)
         run: pnpm --filter @noetia/web test:e2e
         env:
           CI: true
+          # BASE_URL must stay unset: playwright.config.ts starts the build above and refuses any BASE_URL under CI.
 
       - name: Upload Playwright report on failure
         if: failure()
