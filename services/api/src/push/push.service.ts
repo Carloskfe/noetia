@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { PushToken } from './push-token.entity';
 
@@ -36,6 +36,12 @@ function buildContent(lang: string, type: string, vars: Record<string, unknown>)
   }
 }
 
+/**
+ * Namespace (first key) for the transaction-scoped advisory lock that serializes registrations of one token
+ * (SP-1-I1). The second key is `hashtext(token)`; a hash collision only serializes two unrelated tokens.
+ */
+export const PUSH_TOKEN_LOCK_NAMESPACE = 53010001;
+
 @Injectable()
 export class PushService {
   private readonly logger = new Logger(PushService.name);
@@ -47,11 +53,26 @@ export class PushService {
     private readonly userRepo: Repository<User>,
   ) {}
 
+  /**
+   * Registers `token` for `userId` as its SOLE owner (SP-1-I1, PO decision SP-D1): in one transaction, take a
+   * transaction-scoped advisory lock for the token, remove the token's registrations held by other accounts,
+   * then upsert this account's registration. Concurrent registrations of the same token are serialized by the
+   * lock, so exactly one account owns it after commit. Any failure rolls the whole reassignment back. Different
+   * tokens of the same user are untouched (multi-device). No raw token or identifier is logged.
+   */
   async registerToken(userId: string, token: string, platform: string): Promise<void> {
-    await this.tokenRepo.upsert(
-      { userId, token, platform },
-      { conflictPaths: ['userId', 'token'] },
-    );
+    const evicted = await this.tokenRepo.manager.transaction(async (em) => {
+      await em.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [PUSH_TOKEN_LOCK_NAMESPACE, token]);
+      const removed = await em.delete(PushToken, { token, userId: Not(userId) });
+      await em.getRepository(PushToken).upsert(
+        { userId, token, platform },
+        { conflictPaths: ['userId', 'token'] },
+      );
+      return removed.affected ?? 0;
+    });
+    if (evicted > 0) {
+      this.logger.log(`push.register: token reassigned; ${evicted} previous registration(s) removed`);
+    }
   }
 
   async sendToUser(userId: string, type: string, vars: Record<string, unknown> = {}): Promise<void> {
@@ -59,9 +80,12 @@ export class PushService {
       this.tokenRepo.findBy({ userId }),
       this.userRepo.findOneBy({ id: userId }),
     ]);
+    // SP-1-I1 (mandatory): never submit for an account that no longer exists, even if orphaned
+    // registrations remain (e.g. a deleted gift buyer whose old gift is claimed later).
+    if (!user) return;
     if (!tokens.length) return;
 
-    const lang = user?.uiLanguage ?? 'es';
+    const lang = user.uiLanguage ?? 'es';
     const { title, body, data } = buildContent(lang, type, vars);
 
     await Promise.allSettled(
@@ -82,7 +106,8 @@ export class PushService {
         body: JSON.stringify({ to, title, body, data: data ?? {}, sound: 'default' }),
       });
     } catch (err) {
-      this.logger.warn(`Push failed to ${to}: ${(err as Error).message}`);
+      // SP-1-I1: never log the token (a bearer-like device address) or any identifier.
+      this.logger.warn(`Push submission failed: ${(err as Error).message}`);
     }
   }
 }
