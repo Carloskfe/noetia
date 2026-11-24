@@ -7,7 +7,7 @@
  */
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PushService, PUSH_TOKEN_LOCK_NAMESPACE } from '../../../src/push/push.service';
+import { PushService, PUSH_TOKEN_LOCK_NAMESPACE, PUSH_SUBMISSION_FAILED_LOG } from '../../../src/push/push.service';
 import { GiftsService } from '../../../src/gifts/gifts.service';
 
 type Row = { userId: string; token: string; platform: string };
@@ -233,7 +233,8 @@ describe('logging and external calls', () => {
       expect(line).not.toMatch(/user-[AB]/);
       expect(line).not.toMatch(/@/);
     }
-    expect(logs[1]).toBe('Push submission failed: getaddrinfo ENOTFOUND exp.host');
+    // F-SP1-I1-1: the raw exception text is withheld entirely.
+    expect(logs[1]).toBe(PUSH_SUBMISSION_FAILED_LOG);
   });
 
   it('16. registration makes no external call; sends only ever target the existing Expo endpoint', async () => {

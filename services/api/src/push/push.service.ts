@@ -40,6 +40,9 @@ function buildContent(lang: string, type: string, vars: Record<string, unknown>)
  * Namespace (first key) for the transaction-scoped advisory lock that serializes registrations of one token
  * (SP-1-I1). The second key is `hashtext(token)`; a hash collision only serializes two unrelated tokens.
  */
+/** Static warning for a failed Expo submission (F-SP1-I1-1): carries no exception text or identifier. */
+export const PUSH_SUBMISSION_FAILED_LOG = 'Push submission failed (details withheld)';
+
 export const PUSH_TOKEN_LOCK_NAMESPACE = 53010001;
 
 @Injectable()
@@ -105,9 +108,10 @@ export class PushService {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ to, title, body, data: data ?? {}, sound: 'default' }),
       });
-    } catch (err) {
-      // SP-1-I1: never log the token (a bearer-like device address) or any identifier.
-      this.logger.warn(`Push submission failed: ${(err as Error).message}`);
+    } catch {
+      // SP-1-I1 / F-SP1-I1-1: static, identifier-free message. The exception text is uncontrolled
+      // (it may echo the token, an email or a user ID), so it is never interpolated or logged.
+      this.logger.warn(PUSH_SUBMISSION_FAILED_LOG);
     }
   }
 }
