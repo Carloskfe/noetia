@@ -6,6 +6,7 @@ import {
 import { apiClient } from '../../api/client';
 import { loadFragments, deleteFragment } from '../../offline/fragment-storage';
 import { useTranslation } from '../../i18n';
+import { formatLongDate } from '../../i18n/format';
 import { ShareSheet } from '../../components/ShareSheet';
 
 interface Fragment {
@@ -16,7 +17,7 @@ interface Fragment {
 }
 
 export function FragmentsScreen() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [fragments, setFragments] = useState<Fragment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -92,9 +93,7 @@ export function FragmentsScreen() {
               <Text style={styles.cardText} numberOfLines={5}>{item.text}</Text>
               <View style={styles.cardFooter}>
                 <Text style={styles.cardMeta}>
-                  {new Date(item.createdAt).toLocaleDateString('es', {
-                    day: 'numeric', month: 'long', year: 'numeric',
-                  })}
+                  {formatLongDate(item.createdAt, language)}
                 </Text>
                 <TouchableOpacity
                   style={styles.shareBtn}

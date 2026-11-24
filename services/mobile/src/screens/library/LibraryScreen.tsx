@@ -49,7 +49,9 @@ export function LibraryScreen() {
   const [freeBooks, setFreeBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
+  // Error kind, not text: the message is resolved at render time so it follows the active language
+  // (M-D2: `load` is memoized once and must not capture a stale `t`).
+  const [error, setError] = useState<'' | 'loadError'>('');
 
   const load = useCallback(async () => {
     setError('');
@@ -66,7 +68,7 @@ export function LibraryScreen() {
       setFreeBooks((booksRes.value ?? []).filter((b) => b.isFree));
     }
     if (libraryRes.status === 'rejected' && booksRes.status === 'rejected') {
-      setError(t.library.errorLoading);
+      setError('loadError');
     }
   }, []);
 
@@ -94,8 +96,8 @@ export function LibraryScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Biblioteca</Text>
-      {error !== '' && <Text style={styles.errorText}>{error}</Text>}
+      <Text style={styles.header}>{t.library.title}</Text>
+      {error !== '' && <Text style={styles.errorText}>{t.library.errorLoading}</Text>}
       {sections.length === 0 && !error && (
         <View style={styles.center}>
           <Text style={styles.emptyText}>{t.library.empty}</Text>

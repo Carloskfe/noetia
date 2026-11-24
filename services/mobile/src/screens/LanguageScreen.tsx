@@ -6,11 +6,13 @@ interface Props {
   onSelect: () => void;
 }
 
-const ALL_OPTIONS: Array<{ lang: Language; flag: string; label: string; sublabel: string }> = [
-  { lang: 'es', flag: '🌎', label: 'ES Latam', sublabel: 'Latin America' },
-  { lang: 'en', flag: '🇺🇸', label: 'English', sublabel: 'Inglés' },
+// Labels are each language's own name (endonyms) and never change with the interface language.
+// Sub-labels describe each option in the active interface language (t.lang.sublabels).
+const ALL_OPTIONS: Array<{ lang: Language; flag: string; label: string }> = [
+  { lang: 'es', flag: '🌎', label: 'ES Latam' },
+  { lang: 'en', flag: '🇺🇸', label: 'English' },
   // Shown only when the French readiness gate is enabled (default: hidden). No flag: flags never identify a language.
-  { lang: 'fr-CA', flag: '', label: 'Français (Canada)', sublabel: 'French (Canada)' },
+  { lang: 'fr-CA', flag: '', label: 'Français (Canada)' },
 ];
 
 export function LanguageScreen({ onSelect }: Props) {
@@ -42,7 +44,7 @@ export function LanguageScreen({ onSelect }: Props) {
               <Text style={[styles.optionLabel, selected === opt.lang && styles.optionLabelSelected]}>
                 {opt.label}
               </Text>
-              <Text style={styles.optionSublabel}>{opt.sublabel}</Text>
+              <Text style={styles.optionSublabel}>{t.lang.sublabels[opt.lang]}</Text>
             </View>
             {selected === opt.lang && <Text style={styles.check}>✓</Text>}
           </TouchableOpacity>

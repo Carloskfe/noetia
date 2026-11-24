@@ -45,6 +45,8 @@ describe('mobile i18n parity (en, es, fr-CA)', () => {
     'fragments.title', 'paywall.title', 'sharing.platforms.instagram', 'sharing.platforms.facebook',
     'sharing.platforms.linkedin', 'sharing.platforms.pinterest', 'consent.ok', 'clubs.nav',
     'clubs.tabs.discussion',
+    // NEM-025 B1-B navigation labels: cognates, as in clubs.nav and fragments.title.
+    'nav.clubs', 'nav.fragments', 'nav.club',
   ]);
 
   it('leaves no English string untranslated outside the reviewed allowlist', () => {
