@@ -10,7 +10,9 @@
 - merges, deployments, builds for release or OTA updates;
 - real emails or expenses.
 
-**STOP FOR INDEPENDENT PRODUCT ARCHITECTURE REVIEW.**
+**Revision 2:** the F-B2A2a-1 correction after PA review (§18). Explicit registration languages are now `es`/`en` only, and `fr-CA` is rejected even when `FR_CA_ENABLED=true`. R-1 was accepted by the PA.
+
+**STOP FOR INDEPENDENT PA RE-REVIEW.**
 
 ---
 
@@ -110,9 +112,9 @@ LanguageProvider.language (es | en | fr-CA*)        *fr-CA only if the client Fr
   └─ registerRequestBody(fields, language)          web lib/register-request.ts · mobile src/auth/register-request.ts
        → { name, email, password, uiLanguage?: 'es' | 'en' }    fr-CA / anything else → field omitted
 POST /auth/register
-  └─ ValidationPipe: RegisterDto.uiLanguage optional, @IsIn(es, en, fr-CA)            else 400
+  └─ ValidationPipe: RegisterDto.uiLanguage optional, @IsIn(es, en)  (rev 2)       else 400
   └─ AuthService.register
-       1. registrationUiLocale(): undefined → none; not selectable now (fr-CA gate off) → 400   ← BEFORE findByEmail
+       1. registrationUiLocale(): undefined → none; not es/en (incl. fr-CA, any gate) → 400   ← BEFORE findByEmail
        2. findByEmail → 409 (unchanged)
        3. bcrypt hash (unchanged)
        4. usersService.create({ name, email, passwordHash, provider: local, emailConfirmed: false, uiLanguage? })
@@ -131,7 +133,7 @@ GET /users/me → { …, uiLanguage }  (established contract; reports the persis
 | New client, old API | The field is stripped by whitelist validation, and the reader registers in Spanish, as before |
 | Registration response | **Unchanged** for web and mobile (golden master `registration response body`, byte-identical) |
 
-**Decision for PA (R-1), on the response contract.** The register response comes from the shared `safeUser()`, which is also used by login, refresh, confirm and the OAuth callbacks. Adding `uiLanguage` there would change OAuth responses, which this mission excludes.
+**R-1, on the response contract (accepted by PA in revision 2).** The register response comes from the shared `safeUser()`, which is also used by login, refresh, confirm and the OAuth callbacks. Adding `uiLanguage` there would change OAuth responses, which this mission excludes.
 - The persisted preference is reported through the established contract, `GET /users/me`. **Test 6** asserts it returns the stored value after registration.
 - Both clients already read `GET /users/me`.
 - The register response neither contains nor contradicts the value.
@@ -193,7 +195,7 @@ All mail goes through the real EmailService with nodemailer mocked.
 | — | Language set on create, not by a later update | `register-locale` | ✅ |
 | 3 | Old client omits the language → Spanish registration | `register-locale` 3; golden master | ✅ |
 | 4 | Unsupported values (`pt`, `EN`, `fr`, `es-MX`, `''`, `<b>`, `null`, `42`) → 400 before lookup; nothing stored; no email | `register-locale` 4; DTO spec | ✅ |
-| 5 | `fr-CA` rejected while the gate is closed (unset, `TRUE`, `1`, `yes`) | `register-locale` 5 | ✅ |
+| 5 | `fr-CA` rejected with every gate value, **including `FR_CA_ENABLED=true`** (rev 2) | `register-locale` 5, 5b; DTO spec | ✅ |
 | 6 | The persisted preference is what `GET /users/me` reports | `register-locale` 6 | ✅ |
 | 7 | Resend unchanged for `es`/`en` | Golden master | ✅ byte-identical |
 | 8 | Password reset unchanged for `es`/`en` | Golden master | ✅ byte-identical |
@@ -255,8 +257,8 @@ B2-A2b (OAuth localization) was not started.
 | Layer | Behaviour |
 |---|---|
 | `FR_CA_TRANSACTIONAL_READY` | Still `false`; asserted in `register-locale` 5b |
-| API registration | `fr-CA` → 400 unless `FR_CA_ENABLED === 'true'`, the same gate as `PATCH /users/me` |
-| API with the gate on | Accepts `fr-CA` per the Checkpoint A contract (**decision for PA, R-2**). The confirmation is Spanish with `lang="es"`. |
+| API registration (rev 2) | Explicit values `es`/`en` only. `fr-CA` → 400 in the DTO and the service, **whatever `FR_CA_ENABLED` says**. |
+| API with the gate on (rev 2) | `fr-CA` → 400 before the lookup: nothing stored, no email. `es`/`en` and omitted still work (tests 5b, 5c). `PATCH /users/me` is unchanged (outside B2-A2a). |
 | Account emails | Stored `fr-CA` → Spanish, gate on or off |
 | Web and mobile | `fr-CA` is never sent from registration, whatever the client gate. This avoids a gate mismatch turning into a failed registration. |
 
@@ -270,7 +272,7 @@ All runs are local with `--maxWorkers=2`.
 
 | Check | Base | B2-A2a |
 |---|---|---|
-| Unit tests | 1,467 passed | **1,541 passed** (+74), 85 suites |
+| Unit tests | 1,467 passed | **1,542 passed** (+75), 85 suites (rev 2; 1,541 at `2bd021b`) |
 | Snapshots | 46 | 58 (46 + 12 new) |
 | Coverage, all files (statements / branches / functions / lines) | 78.66 branches (B2-A1 report) | 91.70 / **78.98** / 90.50 / 93.13 |
 | `email.service.ts`, `users.service.ts` | 100 | 100 |
@@ -344,8 +346,8 @@ All runs are local with `--maxWorkers=2`.
 **B2-B:** push localization.
 
 **For PA:**
-- **R-1:** register-response contract (§6).
-- **R-2:** whether the API should accept `fr-CA` at registration when only the interface gate is on (§12). Current behaviour follows the Checkpoint A contract, and the confirmation still falls back to Spanish.
+- **R-1:** register-response contract (§6). **Accepted by PA**; no change.
+- **R-2:** resolved by F-B2A2a-1 (§18). Registration rejects `fr-CA` regardless of the gate.
 
 **Unchanged and noted:** F-X1, found in SP-1-I1. `AuthController`'s class-level `@Throttle({ default: … })` is not applied (the throttler is named `global`). Registration throttling is unchanged by this mission.
 
@@ -366,8 +368,49 @@ The historical account-deletion erasure claim remains a separately tracked priva
 - no French activation;
 - no payment-gate, USD, legal-copy or account-deletion-procedure change.
 
+## 18. Revision 2: correction F-B2A2a-1
+
+**Finding (PA, conditional acceptance at `2bd021b`):** explicit local-registration languages must be limited to `es` and `en`, and `fr-CA` must be rejected even when `FR_CA_ENABLED=true`.
+
+**Fix (commit `b626d36`, API only):**
+- `register.dto.ts`: new `REGISTRATION_UI_LOCALES = ['es', 'en']`; `@IsIn(REGISTRATION_UI_LOCALES)`.
+- `auth.service.ts` `registrationUiLocale()`:
+  - accepts only `es`/`en`, with no dependence on the French gate;
+  - still runs before `findByEmail`;
+  - the imports of `selectableUiLocales` and `normalizeUiLocale` are removed.
+- **Unchanged:**
+  - omitted language: the insert is unchanged and the column default `es` applies;
+  - the `es`/`en` persistence and confirmation path;
+  - N-1 on the four account emails;
+  - EmailService;
+  - the Checkpoint A contract file and `PATCH /users/me`;
+  - OAuth;
+  - excluded callers.
+- **Web #87 and mobile #88 are not modified.** They already send only `es`/`en`.
+
+**Tests:**
+- `register-locale` 5: `fr-CA` → 400 for gate unset, `TRUE`, `1`, `yes` **and `true`**.
+- `register-locale` 5b, with `FR_CA_ENABLED=true`:
+  - `fr-CA` → 400 before the lookup; nothing stored; no email;
+  - `es` and `en` still persist and confirm in their language.
+- `register-locale` 5c, with `FR_CA_ENABLED=true`: an omitted language still registers in Spanish, with an unchanged insert.
+- DTO spec: `fr-CA` is rejected even with `FR_CA_ENABLED=true`; `es`/`en` pass.
+- **Negative control:** against the revision 1 `src/auth`, 3 of the new or updated tests fail; with the fix, all pass.
+
+**Re-run (local, `--maxWorkers=2`):**
+- **API tests:** 85 suites, **1,542** pass.
+- **Snapshots:** 58 pass. The snapshot files are unchanged since `a2472e3`, so all Spanish and English emails are byte-identical.
+- **Coverage:** 91.70 / 78.98 / 90.50 / 93.13.
+- **`tsc`:** pass.
+- **`npm run lint`:** 0 errors / 254 warnings (unchanged).
+- **`nest build`:** pass.
+
+**CI:** still not run (stacked PR). Pre-existing failures are as listed in §14.
+
+**Final HEAD:** recorded in the PR #86 revision comment, because this file is part of the commit it would name. The code fix is `b626d36`.
+
 ---
 
-**STOP AFTER IMPLEMENTATION FOR INDEPENDENT PRODUCT ARCHITECTURE REVIEW.**
+**STOP FOR INDEPENDENT PA RE-REVIEW.**
 
 The Product Owner retains final authority over integration, release and subsequent engineering missions.
