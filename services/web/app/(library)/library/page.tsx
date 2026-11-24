@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { apiFetch } from '@/lib/api';
 import { BookGrid } from '@/components/BookGrid';
 import { useTranslation } from '@/lib/i18n';
+import { bookLanguageFor } from '@/lib/i18n/locales';
 
 type Book = {
   id: string;
@@ -117,7 +118,8 @@ export default function LibraryPage() {
   // Search results keep their relevance order; the browsed library is ordered
   // with the user's language first.
   const { groups, standalone } = groupLibrary(
-    searchHits ?? orderByLanguage(allBooks, language),
+    // Interface locale and book language are independent; fr-CA readers see `fr` books first.
+    searchHits ?? orderByLanguage(allBooks, bookLanguageFor(language)),
     collectionMeta,
   );
   const isSearching = Boolean(query.trim());

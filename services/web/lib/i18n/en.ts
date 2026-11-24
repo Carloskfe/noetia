@@ -4,6 +4,7 @@ export const en = {
     subtitle: 'You can change this later in your profile.',
     es: 'ES Latam',
     en: 'English',
+    'fr-CA': 'Français (Canada)',
   },
   common: {
     loading: 'Loading…',

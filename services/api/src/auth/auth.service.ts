@@ -3,6 +3,8 @@ import * as bcrypt from 'bcrypt';
 import { AuthProvider, User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../email/email.service';
+import { accountEmailLocale } from '../email/locale';
+import { REGISTRATION_UI_LOCALES, RegistrationUiLocale } from './dto/register.dto';
 import { TokenService } from './token.service';
 
 @Injectable()
@@ -13,7 +15,15 @@ export class AuthService {
     private readonly emailService: EmailService,
   ) {}
 
-  async register(name: string, email: string, password: string) {
+  /**
+   * Local email/password registration. `uiLanguage` (NEM-025 B2-A2a) is the interface language the reader
+   * registered from. It is optional for old clients: when omitted, nothing extra is inserted and the column
+   * default (`es`) applies, exactly as before. A supplied value must be `es` or `en` (F-B2A2a-1: `fr-CA` is
+   * rejected even when FR_CA_ENABLED=true); anything else is rejected BEFORE the email lookup, so the language
+   * can never change an authentication decision or reveal whether an account exists.
+   */
+  async register(name: string, email: string, password: string, uiLanguage?: string) {
+    const selected = registrationUiLocale(uiLanguage);
     const existing = await this.usersService.findByEmail(email);
     if (existing) throw new ConflictException('Email already in use');
     const passwordHash = await bcrypt.hash(password, 12);
@@ -23,9 +33,11 @@ export class AuthService {
       passwordHash,
       provider: AuthProvider.LOCAL,
       emailConfirmed: false,
+      ...(selected ? { uiLanguage: selected } : {}),
     });
     const confirmToken = await this.tokenService.generateEmailConfirmToken(user.id);
-    await this.emailService.sendEmailConfirmation(email, name, confirmToken);
+    // Confirmation in the persisted preference (B2-D2); N-1 normalized (B2-D4).
+    await this.emailService.sendEmailConfirmation(email, name, confirmToken, accountEmailLocale(user.uiLanguage));
     return this.issueTokens(user);
   }
 
@@ -49,7 +61,7 @@ export class AuthService {
     const user = await this.usersService.findById(userId);
     if (!user || !user.email || user.emailConfirmed) return;
     const token = await this.tokenService.generateEmailConfirmToken(userId);
-    await this.emailService.sendEmailConfirmation(user.email, user.name ?? user.email, token, (user.uiLanguage as 'es' | 'en') ?? 'es');
+    await this.emailService.sendEmailConfirmation(user.email, user.name ?? user.email, token, accountEmailLocale(user.uiLanguage));
   }
 
   async upsertOAuthUser(data: {
@@ -166,7 +178,7 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
     if (!user || user.provider !== 'local') return; // silent — don't reveal account existence
     const token = await this.tokenService.generatePasswordResetToken(user.id);
-    await this.emailService.sendPasswordReset(email, user.name ?? email, token, (user.uiLanguage as 'es' | 'en') ?? 'es');
+    await this.emailService.sendPasswordReset(email, user.name ?? email, token, accountEmailLocale(user.uiLanguage));
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
@@ -175,4 +187,17 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(newPassword, 12);
     await this.usersService.update(userId, { passwordHash });
   }
+}
+
+/**
+ * Validates the registration language (B2-A2a, F-B2A2a-1). `undefined` → no explicit value (column default
+ * `es`). Only `es` and `en` are accepted; `fr-CA` (regardless of FR_CA_ENABLED), unsupported or malformed
+ * values → 400, never stored. The DTO enforces the same list; this is the service-level guard.
+ */
+function registrationUiLocale(value: unknown): RegistrationUiLocale | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string' || !(REGISTRATION_UI_LOCALES as readonly string[]).includes(value)) {
+    throw new BadRequestException('Unsupported interface language');
+  }
+  return value as RegistrationUiLocale;
 }

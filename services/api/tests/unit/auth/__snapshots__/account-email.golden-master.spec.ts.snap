@@ -1,0 +1,426 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`B2-A2a golden master — valid preferences (must stay byte-identical) account-deletion farewell without a name, stored en: farewell/no-name/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Until next time, Reader.</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Your account has been successfully deleted. All your data — fragments, library, and preferences — has been erased from our systems.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            If you changed your mind or deleted your account by mistake, you can register again at any time at <a href="https://noetia.test/register" style="color:#0D1B2A;font-weight:600;">noetia.app</a>.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">
+            Thank you for being part of the Noetia community. We hope to see you again.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Your Noetia account has been deleted",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`B2-A2a golden master — valid preferences (must stay byte-identical) account-deletion farewell without a name, stored es: farewell/no-name/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Hasta pronto, Lector.</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Tu cuenta ha sido eliminada correctamente. Todos tus datos — fragmentos, biblioteca y preferencias — han sido borrados de nuestros sistemas.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Si cambiaste de opinión o eliminaste tu cuenta por error, puedes volver a registrarte en cualquier momento en <a href="https://noetia.test/register" style="color:#0D1B2A;font-weight:600;">noetia.app</a>.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">
+            Gracias por haber sido parte de la comunidad Noetia. Esperamos verte de nuevo.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Tu cuenta de Noetia ha sido eliminada",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`B2-A2a golden master — valid preferences (must stay byte-identical) account-deletion farewell, stored en: farewell/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Until next time, Ana.</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Your account has been successfully deleted. All your data — fragments, library, and preferences — has been erased from our systems.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            If you changed your mind or deleted your account by mistake, you can register again at any time at <a href="https://noetia.test/register" style="color:#0D1B2A;font-weight:600;">noetia.app</a>.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">
+            Thank you for being part of the Noetia community. We hope to see you again.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Your Noetia account has been deleted",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`B2-A2a golden master — valid preferences (must stay byte-identical) account-deletion farewell, stored es: farewell/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Hasta pronto, Ana.</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Tu cuenta ha sido eliminada correctamente. Todos tus datos — fragmentos, biblioteca y preferencias — han sido borrados de nuestros sistemas.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Si cambiaste de opinión o eliminaste tu cuenta por error, puedes volver a registrarte en cualquier momento en <a href="https://noetia.test/register" style="color:#0D1B2A;font-weight:600;">noetia.app</a>.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">
+            Gracias por haber sido parte de la comunidad Noetia. Esperamos verte de nuevo.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Tu cuenta de Noetia ha sido eliminada",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`B2-A2a golden master — valid preferences (must stay byte-identical) local registration from a client that sends no language: register/omitted/create 1`] = `
+[
+  {
+    "email": "new@example.com",
+    "emailConfirmed": false,
+    "name": "Bruno",
+    "passwordHash": "hashed:password123",
+    "provider": "local",
+  },
+]
+`;
+
+exports[`B2-A2a golden master — valid preferences (must stay byte-identical) local registration from a client that sends no language: register/omitted/email 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Bienvenido/a, Bruno!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Gracias por crear tu cuenta. Confirma tu dirección de correo para comenzar a leer, escuchar y compartir fragmentos.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/confirm-email?token=tok-confirm" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Confirmar mi cuenta</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/confirm-email?token=tok-confirm</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 24 horas. Si no creaste esta cuenta, ignora este mensaje.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Confirma tu cuenta en Noetia",
+  "to": "new@example.com",
+}
+`;
+
+exports[`B2-A2a golden master — valid preferences (must stay byte-identical) password reset, stored en: password-reset/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Hi, Ana</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            We received a request to reset your account password. Click the button below to create a new one.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/reset-password?token=tok-reset" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reset password</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            If the button doesn't work, copy this link into your browser:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/reset-password?token=tok-reset</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            This link expires in 1 hour. If you didn't request this change, you can ignore this email — your password will not be modified.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Reset your Noetia password",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`B2-A2a golden master — valid preferences (must stay byte-identical) password reset, stored es: password-reset/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Hola, Ana</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Recibimos una solicitud para restablecer la contraseña de tu cuenta. Haz clic en el botón para crear una nueva.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/reset-password?token=tok-reset" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Restablecer contraseña</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/reset-password?token=tok-reset</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 1 hora. Si no solicitaste este cambio, ignora este mensaje — tu contraseña no será modificada.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Recupera tu contraseña en Noetia",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`B2-A2a golden master — valid preferences (must stay byte-identical) registration response body (mobile) 1`] = `
+{
+  "accessToken": "access",
+  "refreshToken": "u-new:refresh-id",
+  "user": {
+    "email": "new@example.com",
+    "emailConfirmed": false,
+    "id": "u-new",
+    "name": "Bruno",
+    "userType": null,
+  },
+}
+`;
+
+exports[`B2-A2a golden master — valid preferences (must stay byte-identical) registration response body (web) 1`] = `
+{
+  "accessToken": "access",
+  "user": {
+    "email": "new@example.com",
+    "emailConfirmed": false,
+    "id": "u-new",
+    "name": "Bruno",
+    "userType": null,
+  },
+}
+`;
+
+exports[`B2-A2a golden master — valid preferences (must stay byte-identical) resend confirmation, stored en: resend/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Welcome, Ana!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Thank you for creating your account. Confirm your email address to start reading, listening, and sharing fragments.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/confirm-email?token=tok-confirm" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Confirm my account</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            If the button doesn't work, copy this link into your browser:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/confirm-email?token=tok-confirm</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            This link expires in 24 hours. If you didn't create this account, you can ignore this email.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Confirm your Noetia account",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`B2-A2a golden master — valid preferences (must stay byte-identical) resend confirmation, stored es: resend/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Bienvenido/a, Ana!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Gracias por crear tu cuenta. Confirma tu dirección de correo para comenzar a leer, escuchar y compartir fragmentos.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/confirm-email?token=tok-confirm" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Confirmar mi cuenta</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/confirm-email?token=tok-confirm</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 24 horas. Si no creaste esta cuenta, ignora este mensaje.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Confirma tu cuenta en Noetia",
+  "to": "reader@example.com",
+}
+`;
