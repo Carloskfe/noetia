@@ -1,0 +1,111 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`UsersService.deleteAccount order golden master (SP-1-I1) records the full deletion sequence for a user with an email: sequence/with-email 1`] = `
+[
+  {
+    "params": [
+      "u-1",
+    ],
+    "sql": "DELETE FROM "user_books" WHERE "userId" = $1",
+    "step": "query",
+  },
+  {
+    "params": [
+      "u-1",
+    ],
+    "sql": "DELETE FROM "token_ledger" WHERE "userId" = $1",
+    "step": "query",
+  },
+  {
+    "params": [
+      "u-1",
+    ],
+    "sql": "DELETE FROM "user_cause_preferences" WHERE "userId" = $1",
+    "step": "query",
+  },
+  {
+    "params": [
+      "u-1",
+    ],
+    "sql": "DELETE FROM "courtesy_token_quotas" WHERE "creatorId" = $1",
+    "step": "query",
+  },
+  {
+    "params": [
+      "u-1",
+    ],
+    "sql": "DELETE FROM "subscriptions" WHERE "userId" = $1",
+    "step": "query",
+  },
+  {
+    "params": [
+      "reader@example.com",
+    ],
+    "sql": "DELETE FROM "waitlist_entries" WHERE "email" = $1",
+    "step": "query",
+  },
+  {
+    "id": "u-1",
+    "step": "repo.delete",
+  },
+  {
+    "args": [
+      "reader@example.com",
+      "Ana",
+      "en",
+    ],
+    "step": "sendFarewell",
+  },
+]
+`;
+
+exports[`UsersService.deleteAccount order golden master (SP-1-I1) records the sequence for a user without an email (no farewell): sequence/no-email 1`] = `
+[
+  {
+    "params": [
+      "u-2",
+    ],
+    "sql": "DELETE FROM "user_books" WHERE "userId" = $1",
+    "step": "query",
+  },
+  {
+    "params": [
+      "u-2",
+    ],
+    "sql": "DELETE FROM "token_ledger" WHERE "userId" = $1",
+    "step": "query",
+  },
+  {
+    "params": [
+      "u-2",
+    ],
+    "sql": "DELETE FROM "user_cause_preferences" WHERE "userId" = $1",
+    "step": "query",
+  },
+  {
+    "params": [
+      "u-2",
+    ],
+    "sql": "DELETE FROM "courtesy_token_quotas" WHERE "creatorId" = $1",
+    "step": "query",
+  },
+  {
+    "params": [
+      "u-2",
+    ],
+    "sql": "DELETE FROM "subscriptions" WHERE "userId" = $1",
+    "step": "query",
+  },
+  {
+    "params": [
+      null,
+    ],
+    "sql": "DELETE FROM "waitlist_entries" WHERE "email" = $1",
+    "step": "query",
+  },
+  {
+    "id": "u-2",
+    "step": "repo.delete",
+  },
+]
+`;

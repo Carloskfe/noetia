@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { EmailService } from '../email/email.service';
@@ -8,6 +8,8 @@ import { UpdateOnboardingDto } from './dto/update-onboarding.dto';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectRepository(User) private readonly repo: Repository<User>,
     private readonly dataSource: DataSource,
@@ -68,6 +70,15 @@ export class UsersService {
 
     // Delete user — DB CASCADE covers: fragments, reading_progress
     await this.repo.delete(userId);
+
+    // SP-1-I1: best-effort push-registration cleanup, AFTER the user row is gone. push_tokens has no FK, so
+    // rows would otherwise be orphaned. A failure here must not undo or fail a completed deletion; any
+    // remaining rows are inert because PushService.sendToUser never submits for a non-existent user.
+    try {
+      await manager.query(`DELETE FROM "push_tokens" WHERE "userId" = $1`, [userId]);
+    } catch {
+      this.logger.warn('account deletion: push-token cleanup failed (registrations left inert)');
+    }
 
     // Farewell email (best-effort — don't block deletion if it fails)
     if (user.email) {
