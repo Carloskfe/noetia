@@ -9,6 +9,8 @@
 | SP-D12 (ticket pruning) | Deferred |
 | SP-D13 (best-effort cleanup with send-time guard) | Approved |
 
+**Revision:** F-SP1-I1-1 correction after PA review, see §18.
+
 **Not done:**
 - merge, deployment, SQL against a live environment, or data cleanup;
 - mobile change, build or OTA;
@@ -16,7 +18,7 @@
 - B2 work;
 - expenses.
 
-**MANDATORY STOP FOR INDEPENDENT PA REVIEW.**
+**STOP FOR INDEPENDENT PA RE-REVIEW.**
 
 ---
 
@@ -198,7 +200,7 @@ There is no new transaction and no change to the SQL, cascades, commerce tables 
 
 | Location | Before | After |
 |---|---|---|
-| `sendExpo` network failure | `Push failed to ExponentPushToken[…]: <message>` | `Push submission failed: <message>` |
+| `sendExpo` network failure | `Push failed to ExponentPushToken[…]: <message>` | `Push submission failed (details withheld)`: static; **no exception text** (F-SP1-I1-1, §18) |
 | Reassignment (new) | — | `push.register: token reassigned; N previous registration(s) removed` |
 | Deletion cleanup failure (new) | — | `account deletion: push-token cleanup failed (registrations left inert)` |
 
@@ -210,15 +212,15 @@ All runs are local, with `jest --maxWorkers=2 --ci`. CI only runs on PRs into `m
 
 | Metric | Baseline `main` `8f2f294` | SP-1-I1 |
 |---|---|---|
-| API test suites | 75 passed | **81 passed** |
-| API tests | 1,293 passed | **1,361 passed** (+68, 0 failing) |
+| API test suites | 75 passed | **82 passed** |
+| API tests | 1,293 passed | **1,366 passed** (+73, 0 failing) |
 | Snapshots | — | 18 passed (unchanged since `a3073f6`) |
-| All files (statements / branches / functions / lines) | 90.58 / 69.14 / 87.56 / 91.83 | **90.72 / 70.09 / 87.59 / 91.97** |
+| All files (statements / branches / functions / lines) | 90.58 / 69.14 / 87.56 / 91.83 | **90.72 / 70.09 / 87.59 / 91.98** |
 | `push.service.ts` | 96.42 / 57.14 / 100 / 96 | **100 / 96 / 100 / 100** |
 | `users.service.ts` | 100 / 80 / 100 / 100 | 100 / 80 / 100 / 100 |
 | Global 80% branch gate | fails (69.14) | fails (70.09); **pre-existing**, improved |
 
-Push and users suites: 94 tests, all passing.
+Push and users suites: 99 tests, all passing (push alone: 72). Figures updated after the F-SP1-I1-1 correction (§18).
 
 ## 12. Typecheck, lint and build
 
@@ -228,6 +230,8 @@ Push and users suites: 94 tests, all passing.
 | `npm run lint` | 0 errors, 254 warnings | 0 errors, **253** warnings (one pre-existing `any` removed) |
 | `eslint` on changed `src` files | clean | clean |
 | `nest build` | — | pass |
+
+Re-run after the F-SP1-I1-1 correction: `tsc` pass, `npm run lint` 0 errors / 253 warnings (unchanged), `nest build` pass.
 
 ## 13. Existing versus introduced failures
 
@@ -279,8 +283,48 @@ Confirmed. All 16 push golden-master snapshots (five types × es/en, plus fallba
 - The only runtime data effects the code introduces are the approved token-registration operations (deleting other accounts' rows for the same token at registration time) and the departing user's `push_tokens` rows at deletion.
 - Gift purchase, claim and fulfilment; ledger and courtesy tokens; subscriptions; Stripe; USD-only pricing; the 2.22% Causas share; Noetia+ and NoetiaX Coming Soon; library, reading progress, clubs, the reader and Escucha Activa; email templates; localization; NEM-025/026; and the French and payment gates are **untouched**.
 
+## 18. Correction F-SP1-I1-1: no exception text in the submission-failure log
+
+**Finding (PA, conditional acceptance at `16fb85b`):** `PushService.sendExpo()` logged `(err as Error).message`. That text is uncontrolled and could contain an Expo token, email address or other identifier.
+
+**Fix (commit `4e0cb9c`):**
+- The catch block no longer binds or reads the exception. It logs the exported constant `PUSH_SUBMISSION_FAILED_LOG = 'Push submission failed (details withheld)'`.
+- No error category was added: a static message is the smallest change and carries nothing derived from the exception.
+- Nothing else changed. Ownership/advisory lock, DTO and throttle, deletion cleanup, payloads, recipient selection, ticket handling, schema, mobile/web and commerce code are untouched.
+
+**Regression tests:** `tests/unit/push/push.submission-log-redaction.spec.ts` (5 tests). Every `Logger` method and `console` method is captured (Nest bootstrap output cleared first).
+
+| # | PA requirement | Test |
+|---|---|---|
+| 1–3 | Rejection containing a full `ExponentPushToken[…]`, an email and a user ID; none appears in any log | The message also includes the Expo URL. Variants: identifiers in `stack`, `cause`, and a non-`Error` (string) rejection. The only warning is exactly the static message. |
+| 4 | Best-effort; no propagation | `sendToUser` resolves `undefined`. With two devices, the first rejects and the second is still submitted (recipients asserted in order); one warning. |
+| 5 | Successful payloads byte-identical | `push.golden-master.spec.ts` 16 snapshots and `users.delete-order` 2 snapshots pass. Snapshot files unchanged since `a3073f6`. The success path logs nothing. |
+| — | Static message has no placeholder or identifier | Asserted |
+
+**Negative control:** run against the pre-fix `sendExpo` logging, the three failure-path tests fail; with the fix, all pass.
+
+**Directly related test change:** `push.single-owner.spec.ts` test 15 pinned the old message text (`Push submission failed: getaddrinfo ENOTFOUND exp.host`). It now expects `PUSH_SUBMISSION_FAILED_LOG`. Its no-token / no-user-ID / no-`@` assertions are unchanged.
+
+**Re-run (local, `jest --maxWorkers=2 --ci`):**
+
+| Check | Result |
+|---|---|
+| Push tests | 6 suites, 72 tests pass; 16 snapshots pass |
+| API | 82 suites, **1,366 tests** pass; 18 snapshots pass |
+| Coverage | 90.72 / 70.09 / 87.59 / 91.98; `push.service.ts` 100 / 96 / 100 / 100 |
+| `tsc --noEmit` | pass |
+| `npm run lint` | 0 errors, 253 warnings (unchanged). The new spec has no warnings. The 9 `any` warnings in `push.single-owner.spec.ts` are on lines this correction did not touch. |
+| `nest build` | pass |
+
+**Pre-existing CI failures (unchanged by this correction):**
+- The API global branch-coverage gate (70.09 vs 80; 69.14 on `main`).
+- Mobile unit, web unit and web E2E: the same set fails on docs-only PR #84 against the same base.
+- The final CI run for this HEAD is reported in the PR comment.
+
+**Final commit SHA:** recorded in the PR #85 correction comment, because this report is part of the commit it would name. The code fix is `4e0cb9c`.
+
 ---
 
-**MANDATORY STOP AFTER IMPLEMENTATION FOR INDEPENDENT PA REVIEW.**
+**STOP FOR INDEPENDENT PA RE-REVIEW.**
 
 The Product Owner retains authority over integration, merge, deployment and any further work.
