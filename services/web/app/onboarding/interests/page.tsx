@@ -3,29 +3,35 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
+import { useTranslation } from '@/lib/i18n';
+import type { Translations } from '@/lib/i18n/en';
+import { genericErrorMessage } from '@/lib/i18n/errors';
 
 const MAX = 5;
 
-const CATEGORIES = [
-  { value: 'leadership', label: 'Liderazgo', emoji: '🏆' },
-  { value: 'personal-development', label: 'Desarrollo Personal', emoji: '🌱' },
-  { value: 'business', label: 'Negocios', emoji: '💼' },
-  { value: 'finance', label: 'Finanzas', emoji: '💰' },
-  { value: 'marketing', label: 'Marketing', emoji: '📣' },
-  { value: 'psychology', label: 'Psicología', emoji: '🧠' },
-  { value: 'science', label: 'Ciencia', emoji: '🔬' },
-  { value: 'history', label: 'Historia', emoji: '📜' },
-  { value: 'fiction', label: 'Ficción', emoji: '🌌' },
-  { value: 'self-help', label: 'Autoayuda', emoji: '✨' },
-  { value: 'health', label: 'Salud & Bienestar', emoji: '🏃' },
-  { value: 'spirituality', label: 'Espiritualidad', emoji: '🕊️' },
-  { value: 'philosophy', label: 'Filosofía', emoji: '💡' },
-  { value: 'biography', label: 'Biografías', emoji: '📰' },
-  { value: 'technology', label: 'Tecnología', emoji: '💻' },
+// Values are what the API stores (unchanged); labels come from the dictionary.
+const CATEGORIES: { value: string; key: keyof Translations['onboarding']['interests']['categories']; emoji: string }[] = [
+  { value: 'leadership', key: 'leadership', emoji: '🏆' },
+  { value: 'personal-development', key: 'selfDevelopment', emoji: '🌱' },
+  { value: 'business', key: 'business', emoji: '💼' },
+  { value: 'finance', key: 'finance', emoji: '💰' },
+  { value: 'marketing', key: 'marketing', emoji: '📣' },
+  { value: 'psychology', key: 'psychology', emoji: '🧠' },
+  { value: 'science', key: 'science', emoji: '🔬' },
+  { value: 'history', key: 'history', emoji: '📜' },
+  { value: 'fiction', key: 'fiction', emoji: '🌌' },
+  { value: 'self-help', key: 'selfHelp', emoji: '✨' },
+  { value: 'health', key: 'health', emoji: '🏃' },
+  { value: 'spirituality', key: 'spirituality', emoji: '🕊️' },
+  { value: 'philosophy', key: 'philosophy', emoji: '💡' },
+  { value: 'biography', key: 'biography', emoji: '📰' },
+  { value: 'technology', key: 'technology', emoji: '💻' },
 ];
 
 export default function InterestsPage() {
   const router = useRouter();
+  const { t } = useTranslation();
+  const c = t.onboarding.interests;
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -50,7 +56,7 @@ export default function InterestsPage() {
       router.push('/library');
     } catch (err: any) {
       if (err.status === 401) { router.replace('/login'); return; }
-      setError(err.message ?? 'Something went wrong.');
+      setError(genericErrorMessage(err, t));
       setLoading(false);
     }
   }
@@ -65,12 +71,12 @@ export default function InterestsPage() {
           <div className="w-8 h-1 rounded-full bg-blue-600" />
         </div>
 
-        <h1 className="text-2xl font-bold text-center mb-1">¿Qué te interesa leer?</h1>
+        <h1 className="text-2xl font-bold text-center mb-1">{c.title}</h1>
         <p className="text-gray-500 text-center mb-2">
-          Elige hasta {MAX} categorías para personalizar tu biblioteca.
+          {c.subtitle}
         </p>
         <p className="text-center text-sm font-medium text-blue-600 mb-8">
-          {selected.length}/{MAX} seleccionadas
+          {c.selectedCount(selected.length, MAX)}
         </p>
 
         <div className="grid grid-cols-2 gap-3 mb-8">
@@ -92,7 +98,7 @@ export default function InterestsPage() {
               >
                 <span className="text-2xl">{cat.emoji}</span>
                 <span className="text-sm font-medium text-gray-800 leading-tight">
-                  {cat.label}
+                  {c.categories[cat.key]}
                 </span>
               </button>
             );
@@ -106,7 +112,7 @@ export default function InterestsPage() {
           disabled={selected.length === 0 || loading}
           className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-40 transition"
         >
-          {loading ? 'Guardando…' : 'Ir a mi biblioteca'}
+          {loading ? c.submitting : c.submit}
         </button>
       </div>
     </div>

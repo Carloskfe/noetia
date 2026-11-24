@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
+import { countryName } from '@/lib/i18n/format';
 
 const COUNTRIES = [
   { value: 'AR', label: 'Argentina' },
@@ -38,7 +39,7 @@ const LANGUAGES = [
 
 export default function PreferencesPage() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [country, setCountry] = useState('');
   const [languages, setLanguages] = useState<string[]>(['es']);
   const [loading, setLoading] = useState(false);
@@ -91,7 +92,12 @@ export default function PreferencesPage() {
             <option value="">{t.onboarding.prefs.countryPlaceholder}</option>
             {COUNTRIES.map((c) => (
               <option key={c.value} value={c.value}>
-                {c.label}
+                {/* Spanish keeps the existing labels; other interface languages get localized names. */}
+                {language === 'es'
+                  ? c.label
+                  : c.value === 'OTHER'
+                    ? t.onboarding.prefs.otherCountry
+                    : countryName(c.value, language, c.label)}
               </option>
             ))}
           </select>

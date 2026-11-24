@@ -8,6 +8,8 @@ import DeleteAccountModal from '@/components/DeleteAccountModal';
 import StatsTab from '@/components/StatsTab';
 import PrivacyTab from '@/components/PrivacyTab';
 import { useTranslation } from '@/lib/i18n';
+import { formatLongDate } from '@/lib/i18n/format';
+import type { Language } from '@/lib/i18n';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -71,9 +73,9 @@ function initials(name: string | null, email: string | null): string {
   return '?';
 }
 
-function fmtDate(iso: string | null): string {
+function fmtDate(iso: string | null, language: Language): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+  return formatLongDate(iso, language);
 }
 
 type Tab = 'profile' | 'stats' | 'privacy';
@@ -82,7 +84,7 @@ type Tab = 'profile' | 'stats' | 'privacy';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -219,8 +221,8 @@ export default function ProfilePage() {
 
   const subStatus = sub?.status ?? 'none';
   const subBadge = SUB_STATUS[subStatus] ?? SUB_STATUS.none;
-  const renewalDate = sub?.currentPeriodEnd ? fmtDate(sub.currentPeriodEnd) : null;
-  const trialDate   = sub?.trialEnd ? fmtDate(sub.trialEnd) : null;
+  const renewalDate = sub?.currentPeriodEnd ? fmtDate(sub.currentPeriodEnd, language) : null;
+  const trialDate   = sub?.trialEnd ? fmtDate(sub.trialEnd, language) : null;
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'profile', label: t.profile.tabs.profile },
@@ -357,7 +359,7 @@ export default function ProfilePage() {
             action={<Link href="/account/billing" className="text-xs text-blue-600 hover:text-blue-800 font-medium">{t.account.manage}</Link>}
           >
             <Row label={t.account.status}>
-              <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${subBadge.color}`}>{subBadge.label}</span>
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${subBadge.color}`}>{t.account.statuses[(subStatus in t.account.statuses ? subStatus : 'none') as keyof typeof t.account.statuses]}</span>
             </Row>
             {sub && sub.tokenBalance > 0 && (
               <Row label={t.account.tokens}>
@@ -398,7 +400,7 @@ export default function ProfilePage() {
           </Section>
 
           {/* ── Cuenta ───────────────────────────────────────────────────── */}
-          <Section title="Cuenta">
+          <Section title={t.account.accountSection}>
             <Row label={t.account.provider}>
               <span className="text-sm text-gray-800 capitalize">{user.provider}</span>
             </Row>
@@ -407,8 +409,8 @@ export default function ProfilePage() {
                 ? <span className="text-xs font-semibold text-green-700 bg-green-50 px-2.5 py-0.5 rounded-full">{t.account.confirmed}</span>
                 : <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full">{t.account.pending}</span>}
             </Row>
-            <Row label={t.account.memberSince}><Value>{fmtDate(user.createdAt)}</Value></Row>
-            <Row label={t.account.lastLogin}><Value>{fmtDate(user.lastLoginAt)}</Value></Row>
+            <Row label={t.account.memberSince}><Value>{fmtDate(user.createdAt, language)}</Value></Row>
+            <Row label={t.account.lastLogin}><Value>{fmtDate(user.lastLoginAt, language)}</Value></Row>
           </Section>
 
           {/* ── Acciones ─────────────────────────────────────────────────── */}

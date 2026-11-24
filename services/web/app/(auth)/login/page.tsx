@@ -10,6 +10,7 @@ import { apiFetch, saveToken, saveUserType, saveEmailConfirmed, postAuthRedirect
 import SocialAuthButtons from '@/components/SocialAuthButtons';
 import LanguagePicker from '@/components/LanguagePicker';
 import { useTranslation } from '@/lib/i18n';
+import { loginErrorMessage } from '@/lib/i18n/errors';
 
 /** Only allow internal absolute paths as a post-login destination — blocks
  *  open-redirects (external URLs, protocol-relative //host). */
@@ -51,7 +52,7 @@ function LoginForm() {
       // otherwise fall back to the role-based landing.
       router.push(nextPath ?? postAuthRedirect(data.user?.userType ?? null));
     } catch (err: any) {
-      setError('root', { message: err.message ?? t.auth.login.errors.generic });
+      setError('root', { message: loginErrorMessage(err, t) });
     }
   }
 

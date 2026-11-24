@@ -187,6 +187,7 @@ describe('i18n en/fr-CA parity', () => {
     'shareCard.bgImage', 'landing.nav.menu', 'landing.hero.demoSource', 'landing.hero.demoBefore',
     'landing.hero.demoPhrase', 'landing.hero.demoAfter', 'landing.hero.demoQuote',
     'landing.hero.demoAuthor', 'landing.causas.eyebrow', 'causeSelector.eyebrow',
+    'collection.label',
   ]);
 
   it('leaves no English string untranslated outside the reviewed allowlist', () => {

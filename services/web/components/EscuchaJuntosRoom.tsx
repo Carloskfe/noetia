@@ -101,7 +101,7 @@ export default function EscuchaJuntosRoom({ session, audioUrl }: { session: Club
               onChange={isHost ? handleSeek : undefined}
               disabled={!isHost}
               className="w-full accent-blue-600"
-              aria-label="Playback position"
+              aria-label={t.clubLive.playbackPosition}
             />
             <div className="flex justify-between text-xs text-gray-400">
               <span>{formatTime(playback.positionMs)}</span>
@@ -122,7 +122,7 @@ export default function EscuchaJuntosRoom({ session, audioUrl }: { session: Club
             )}
           </div>
         ) : (
-          <p className="text-sm text-gray-400 text-center">Este libro no tiene audio disponible.</p>
+          <p className="text-sm text-gray-400 text-center">{t.clubLive.noAudio}</p>
         )}
 
         {/* Members */}

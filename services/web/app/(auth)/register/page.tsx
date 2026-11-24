@@ -9,10 +9,12 @@ import { apiFetch, saveToken, saveUserType, saveEmailConfirmed, postAuthRedirect
 import SocialAuthButtons from '@/components/SocialAuthButtons';
 import LanguagePicker from '@/components/LanguagePicker';
 import { useTranslation } from '@/lib/i18n';
+import { registerErrorMessage } from '@/lib/i18n/errors';
+import { registerRequestBody } from '@/lib/register-request';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   const schema = z.object({
     name: z.string().min(1, t.auth.register.errors.nameRequired),
@@ -32,14 +34,14 @@ export default function RegisterPage() {
     try {
       const data = await apiFetch('/auth/register', {
         method: 'POST',
-        body: JSON.stringify(values),
+        body: JSON.stringify(registerRequestBody(values, language)),
       });
       saveToken(data.accessToken);
       saveUserType(data.user?.userType ?? null);
       saveEmailConfirmed(data.user?.emailConfirmed ?? true);
       router.push(postAuthRedirect(data.user?.userType ?? null));
     } catch (err: any) {
-      setError('root', { message: err.message ?? t.auth.register.errors.generic });
+      setError('root', { message: registerErrorMessage(err, t) });
     }
   }
 

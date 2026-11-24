@@ -35,7 +35,7 @@ export default function CreateClubPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedBook) { setError('Select a starting book.'); return; }
+    if (!selectedBook) { setError(c.bookRequired); return; }
     setSubmitting(true);
     setError('');
     try {
