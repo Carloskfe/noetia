@@ -148,7 +148,7 @@ jobs:
         run: pnpm --filter @noetia/web test:e2e
         env:
           CI: true
-          # BASE_URL deliberately unset: playwright.config.ts starts the build above and refuses non-loopback targets.
+          # BASE_URL must stay unset: playwright.config.ts starts the build above and refuses any BASE_URL under CI.
 
       - name: Upload Playwright report on failure
         if: failure()
