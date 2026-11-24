@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
 
 // CI-1 guard: the suite tests the checked-out build on loopback and cannot reach a deployed site.
-// Skipped only in the manual production mode (BASE_URL explicitly set outside CI; see playwright.config.ts).
+// Never skipped under CI (playwright.config.ts refuses BASE_URL there). Skipped only in the manual mode: an explicit
+// BASE_URL outside CI.
 test.describe('E2E isolation', () => {
-  test.skip(Boolean(process.env.BASE_URL?.trim()), 'Manual run against an explicit BASE_URL.');
+  test.skip(!process.env.CI && Boolean(process.env.BASE_URL?.trim()), 'Manual run against an explicit BASE_URL.');
 
   test('targets the local build on loopback', async ({ page, baseURL }) => {
     expect(baseURL).toBeDefined();

@@ -1,35 +1,31 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // E2E target (CI-1).
-// - Default (local and CI): the checked-out web app, served from its own production build on loopback.
-//   Build it first (`pnpm --filter @noetia/web build`); `webServer` then starts it with `next start` and waits
-//   until it answers. If the build is missing or the server cannot start, the run fails before any test.
-// - Manual only: set BASE_URL to test an already-running deployment (e.g. BASE_URL=https://noetia.app). This is
-//   refused under CI, so CI can never test, or send traffic to, production.
+// - CI: always the checked-out web app, served from its own production build on loopback. Build it first
+//   (`pnpm --filter @noetia/web build`); `webServer` then starts it with `next start` and waits until it answers.
+//   If the build is missing or the server cannot start, the run fails before any test. Any BASE_URL supplied under
+//   CI, including a loopback one, is refused at configuration load (F-CI1-1): it would replace the managed build
+//   and switch off the browser host restriction below.
+// - Local default: the same managed local build.
+// - Manual only, outside CI: set BASE_URL to test an already-running deployment (e.g. BASE_URL=https://noetia.app).
 const LOCAL_HOST = '127.0.0.1';
 // CI always uses 3000; E2E_PORT lets a developer pick a free port locally (e.g. when a dev server holds 3000).
 const LOCAL_PORT = Number(process.env.E2E_PORT ?? 3000);
 const LOCAL_URL = `http://${LOCAL_HOST}:${LOCAL_PORT}`;
 
 const isCI = Boolean(process.env.CI);
-const explicitBaseURL = process.env.BASE_URL?.trim() || undefined;
 
-function isLoopback(url: string): boolean {
-  try {
-    return ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(url).hostname);
-  } catch {
-    return false;
-  }
-}
-
-if (isCI && explicitBaseURL && !isLoopback(explicitBaseURL)) {
+if (isCI && process.env.BASE_URL !== undefined) {
   throw new Error(
-    `E2E: BASE_URL=${explicitBaseURL} is not a loopback address. CI must test the checked-out build on ${LOCAL_URL}, never a deployed site.`,
+    `E2E: BASE_URL must not be set under CI (got "${process.env.BASE_URL}"). CI always tests the checked-out build ` +
+      `served by the managed webServer on ${LOCAL_URL}; unset BASE_URL.`,
   );
 }
 
+const explicitBaseURL = isCI ? undefined : process.env.BASE_URL?.trim() || undefined;
 const baseURL = explicitBaseURL ?? LOCAL_URL;
-const targetsLocalBuild = explicitBaseURL === undefined;
+// Under CI this is always true (BASE_URL is refused above).
+const targetsLocalBuild = isCI || explicitBaseURL === undefined;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -43,9 +39,10 @@ export default defineConfig({
     baseURL,
     headless: true,
     trace: 'on-first-retry',
-    // Against the local build, the browser cannot resolve any hostname except loopback. Tests mock the API with
-    // page.route (intercepted before DNS), so a request that is not mocked fails locally instead of reaching
-    // noetia.app, storage.noetia.app or any other external host.
+    // Against the local build, the test BROWSER cannot resolve any hostname except loopback. Tests mock the API
+    // with page.route (intercepted before DNS), so a browser request that is not mocked fails locally instead of
+    // reaching noetia.app, storage.noetia.app or any other external host. This restricts the browser only; it is
+    // not a network sandbox for the Next.js server process (see INTERNAL_API_URL below).
     launchOptions: targetsLocalBuild
       ? { args: ['--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE localhost'] }
       : {},
@@ -69,9 +66,10 @@ export default defineConfig({
         stderr: 'pipe',
         env: {
           NEXT_TELEMETRY_DISABLED: '1',
-          // Server-rendered pages that call the API (INTERNAL_API_URL) reach a closed loopback port, so an API
-          // call the tests do not mock fails locally and never leaves the runner. The /api rewrite target is
-          // fixed at build time; CI builds with the same value.
+          // Server-rendered pages and the /api rewrite use INTERNAL_API_URL, which points at a closed loopback
+          // port, so those API calls fail locally instead of reaching a deployed API. The rewrite target is fixed
+          // at build time; CI builds with the same value. This covers the configured API paths only: it does not
+          // stop other server-side code from opening external connections, and the runner itself has network access.
           INTERNAL_API_URL: 'http://127.0.0.1:9',
         },
       }
