@@ -104,11 +104,12 @@ describe('EmailService stays ES/EN-only in this build (French inert)', () => {
     expect(subject).toBe('Recupera tu contraseña en Noetia');
     expect(html).toContain('Restablecer contraseña');
     expect(html).not.toMatch(/Réinitialis|courriel|vous/);
-    // `<html lang>` still echoes the argument exactly as before (X-4; N-1 not authorized).
+    // At the EmailService level `<html lang>` still echoes the argument (X-4). B2-A2a normalizes in the
+    // account callers instead (accountEmailLocale), so excluded gift/waitlist/invite callers are unchanged.
     expect(html).toContain('<html lang="fr-CA">');
   });
 
-  it.each(['pt', 'EN', 'fr'])("invalid lang %p keeps today's output: Spanish body, raw lang attribute (N-1 inactive)", async (v) => {
+  it.each(['pt', 'EN', 'fr'])("invalid lang %p keeps today's output: Spanish body, raw lang attribute (EmailService level; N-1 lives in the account callers)", async (v) => {
     const svc = new EmailService();
     await svc.sendFarewell('r@example.com', 'Ana', v as any);
     const { subject, html } = mockSendMail.mock.calls[0][0];

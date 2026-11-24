@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { EmailService } from '../email/email.service';
+import { accountEmailLocale } from '../email/locale';
 import { AuthProvider, DEFAULT_ONBOARDING_STATE, OnboardingState, User } from './user.entity';
 import { UpdateOnboardingDto } from './dto/update-onboarding.dto';
 
@@ -70,7 +71,8 @@ export class UsersService {
 
     // Farewell email (best-effort — don't block deletion if it fails)
     if (user.email) {
-      const lang = (user.uiLanguage as 'es' | 'en') ?? 'es';
+      // N-1 normalized (B2-A2a): canonical locale, never the raw stored string. Wording unchanged.
+      const lang = accountEmailLocale(user.uiLanguage);
       await this.emailService.sendFarewell(user.email, user.name ?? (lang === 'en' ? 'Reader' : 'Lector'), lang).catch(() => {});
     }
   }

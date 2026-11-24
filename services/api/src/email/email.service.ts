@@ -3,7 +3,7 @@ import * as nodemailer from 'nodemailer';
 import { Transporter } from 'nodemailer';
 import { EMAIL_COPY, EmailCopy } from './copy';
 import { escapeHtml, trustedHtml } from './escape';
-import { dispatchCopyLocale } from './locale';
+import { dispatchCopyLocale, EmailLocale } from './locale';
 import {
   renderConfirmation,
   renderFarewell,
@@ -16,6 +16,8 @@ import {
 } from './templates';
 
 type Lang = 'es' | 'en';
+/** Account-security emails receive a canonical locale resolved by their callers (B2-A2a, see ./locale). Type-only widening. */
+type AccountLang = EmailLocale;
 
 /** Support address shown in the gift confirmation. Single constant; value unchanged (PR #75 governs any rename). */
 export const SUPPORT_EMAIL = 'hola@noetia.app';
@@ -49,7 +51,7 @@ export class EmailService {
     });
   }
 
-  async sendEmailConfirmation(to: string, name: string, token: string, lang: Lang = 'es'): Promise<void> {
+  async sendEmailConfirmation(to: string, name: string, token: string, lang: AccountLang = 'es'): Promise<void> {
     const link = `${this.webUrl}/confirm-email?token=${token}`;
     const copy = copyFor(lang);
     await this.send({
@@ -59,7 +61,7 @@ export class EmailService {
     });
   }
 
-  async sendPasswordReset(to: string, name: string, token: string, lang: Lang = 'es'): Promise<void> {
+  async sendPasswordReset(to: string, name: string, token: string, lang: AccountLang = 'es'): Promise<void> {
     const link = `${this.webUrl}/reset-password?token=${token}`;
     const copy = copyFor(lang);
     await this.send({
@@ -69,7 +71,7 @@ export class EmailService {
     });
   }
 
-  async sendFarewell(to: string, name: string, lang: Lang = 'es'): Promise<void> {
+  async sendFarewell(to: string, name: string, lang: AccountLang = 'es'): Promise<void> {
     const copy = copyFor(lang);
     const registerLink = trustedHtml(`<a href="${this.webUrl}/register" style="color:#0D1B2A;font-weight:600;">noetia.app</a>`);
     await this.send({
