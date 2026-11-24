@@ -4,7 +4,17 @@ import { User } from '../../../src/users/user.entity';
 import { PushToken } from '../../../src/push/push-token.entity';
 import { PushService } from '../../../src/push/push.service';
 
-const mockTokenRepo = { upsert: jest.fn(), findBy: jest.fn() };
+const mockTxUpsert = jest.fn();
+const mockEm = {
+  query: jest.fn().mockResolvedValue(undefined),
+  delete: jest.fn().mockResolvedValue({ affected: 0 }),
+  getRepository: jest.fn(() => ({ upsert: mockTxUpsert })),
+};
+const mockTokenRepo = {
+  upsert: jest.fn(),
+  findBy: jest.fn(),
+  manager: { transaction: jest.fn(async (fn: (em: typeof mockEm) => unknown) => fn(mockEm)) },
+};
 const mockUserRepo = { findOneBy: jest.fn() };
 
 global.fetch = jest.fn();
@@ -29,9 +39,10 @@ describe('PushService', () => {
 
   describe('registerToken', () => {
     it('upserts token for user', async () => {
-      mockTokenRepo.upsert.mockResolvedValue({});
+      mockTxUpsert.mockResolvedValue({});
       await service.registerToken('u1', 'ExponentPushToken[abc]', 'ios');
-      expect(mockTokenRepo.upsert).toHaveBeenCalledWith(
+      expect(mockTokenRepo.manager.transaction).toHaveBeenCalledTimes(1);
+      expect(mockTxUpsert).toHaveBeenCalledWith(
         { userId: 'u1', token: 'ExponentPushToken[abc]', platform: 'ios' },
         { conflictPaths: ['userId', 'token'] },
       );
