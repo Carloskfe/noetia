@@ -11,9 +11,11 @@ import { isFrenchUiEnabled, normalizeUiLocale, UiLocale } from '../users/ui-loca
  *   `FR_CA_TRANSACTIONAL_READY` (ships `false`) in addition to `FR_CA_ENABLED=true`. Enabling the
  *   interface gate alone never produces French email.
  *
- * - `resolveMessageLocale()` is the designed N-1 normalization (canonical locale + canonical `<html lang>`
- *   for legacy/invalid stored values). It is NOT authorized for dispatch and is not called by any
- *   runtime code; it exists so it can be reviewed and tested in isolation.
+ * - `resolveMessageLocale()` is the N-1 normalization (canonical locale + canonical `<html lang>` for
+ *   legacy/invalid stored values). B2-A2a (B2-D4) activates it for the account-security emails ONLY, through
+ *   `accountEmailLocale()`, called by their four callers (registration, resend confirmation, password reset,
+ *   farewell). EmailService itself still selects with `dispatchCopyLocale()`, so gift, waitlist and
+ *   invitation emails are unchanged.
  */
 export type EmailLocale = UiLocale;
 
@@ -48,12 +50,12 @@ export function dispatchCopyLocale(lang: unknown, opts: FrenchReadiness = {}): E
 /** Canonical `<html lang>` values. */
 export const HTML_LANG: Record<EmailLocale, string> = { es: 'es', en: 'en', 'fr-CA': 'fr-CA' };
 
-/** B2-D4 fallback as recommended in the B2 preparation report. Pending PO decision. */
+/** B2-D4 fallback (PO-approved for B2-A2a): unsupported, unknown, malformed or gated values use Spanish. */
 export const N1_FALLBACK_LOCALE: EmailLocale = 'es';
 
 /**
- * N-1 normalization (DESIGN ONLY — not wired to dispatch; see PR #82 §3.3.1).
- * Returns a canonical locale and `<html lang>` for any stored value; never echoes the raw input.
+ * N-1 normalization (PR #82 §3.3.1; B2-D4). Returns a canonical locale and `<html lang>` for any stored
+ * value; never echoes the raw input.
  */
 export function resolveMessageLocale(
   stored: unknown,
@@ -64,4 +66,17 @@ export function resolveMessageLocale(
   if (normalized === 'es' || normalized === 'en') locale = normalized;
   else if (normalized === 'fr-CA' && isFrenchTransactionalActive(opts)) locale = 'fr-CA';
   return { locale, htmlLang: HTML_LANG[locale] };
+}
+
+/**
+ * Locale for the account-security emails of an existing or newly created account (NEM-025 B2-A2a, B2-D1/B2-D4):
+ * the account's stored interface preference, normalized by N-1. `es`/`en` pass through unchanged; anything
+ * else, including `fr-CA` while French transactional readiness is off, becomes Spanish. The caller passes
+ * the result to EmailService, so the raw stored string never reaches an HTML attribute.
+ *
+ * Authorized callers only: local registration, resend confirmation, password reset, account-deletion
+ * farewell. Gift, waitlist, invitation and commerce callers are excluded (B2-D6).
+ */
+export function accountEmailLocale(stored: unknown, opts: FrenchReadiness = {}): EmailLocale {
+  return resolveMessageLocale(stored, opts).locale;
 }

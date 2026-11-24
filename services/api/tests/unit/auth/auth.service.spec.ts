@@ -85,10 +85,13 @@ describe('AuthService', () => {
 
       await service.register('Name', 'new@test.com', 'password123');
 
+      // B2-A2a: the locale is now passed explicitly (persisted preference, N-1 normalized). A user with no
+      // stored value resolves to 'es' — the same email the old 3-argument call rendered by default.
       expect(mockEmailService.sendEmailConfirmation).toHaveBeenCalledWith(
         'new@test.com',
         'Name',
         'confirm-tok',
+        'es',
       );
     });
 

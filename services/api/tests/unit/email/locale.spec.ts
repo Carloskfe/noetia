@@ -75,7 +75,7 @@ describe('dispatchCopyLocale — live selection, behaviour-preserving', () => {
   });
 });
 
-describe('resolveMessageLocale — N-1 design, isolated (not used by dispatch)', () => {
+describe('resolveMessageLocale — N-1 (applied by account-email callers in B2-A2a, never inside EmailService)', () => {
   it('fallback is es (B2-D4 recommendation, pending PO)', () => {
     expect(N1_FALLBACK_LOCALE).toBe('es');
   });
@@ -99,7 +99,7 @@ describe('resolveMessageLocale — N-1 design, isolated (not used by dispatch)',
     expect(HTML_LANG).toEqual({ es: 'es', en: 'en', 'fr-CA': 'fr-CA' });
   });
 
-  it('is not referenced by EmailService (N-1 is not wired to dispatch)', () => {
+  it('is not referenced by EmailService (N-1 is applied by the authorized callers, not by dispatch)', () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const src = require('fs').readFileSync(require('path').join(__dirname, '../../../src/email/email.service.ts'), 'utf8');
     expect(src).not.toMatch(/resolveMessageLocale|N1_FALLBACK_LOCALE|HTML_LANG/);

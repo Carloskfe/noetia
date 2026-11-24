@@ -6,9 +6,9 @@
  * records the complete message for every VALID stored preference (`es`, `en`) plus registration from a
  * client that sends no language. B2-A2a must reproduce every snapshot byte for byte.
  *
- * The `pre-correction record` block pins today's behaviour for INVALID or gated stored values. B2-A2a is
- * authorized to change exactly that behaviour (N-1: Spanish body + canonical `lang="es"`); the change
- * must appear as an explicit edit of those expectations, never as a regenerated snapshot.
+ * The last block originally pinned the pre-correction behaviour for INVALID or gated stored values (see
+ * commit a2472e3). B2-A2a changes exactly that behaviour (N-1: Spanish body + canonical `lang="es"`;
+ * registration language persisted) as an explicit edit of those expectations — no snapshot regenerated.
  *
  * Nodemailer is mocked: no email is ever sent.
  */
@@ -133,37 +133,44 @@ describe('B2-A2a golden master — valid preferences (must stay byte-identical)'
   });
 });
 
-describe('B2-A2a pre-correction record — invalid or gated stored values', () => {
-  // Captured on unchanged code. N-1 (B2-D4) is authorized to change these expectations.
+describe('B2-A2a N-1 correction — invalid or gated stored values (intentional change)', () => {
+  // Pre-correction record (a2472e3, unchanged code): Spanish body with the RAW stored value in
+  // `<html lang="…">`, and registration ignored the client language. B2-D4 authorizes normalizing
+  // both: the body stays Spanish (same subject) and the attribute becomes the canonical `es`.
   const INVALID = ['pt', 'EN', 'fr', '', 'fr-CA'];
 
-  it.each(INVALID)('resend confirmation, stored %p: Spanish body, raw lang attribute', async (v) => {
+  function expectCanonicalSpanish(html: string, v: string) {
+    expect(html).toContain('<html lang="es">');
+    if (v !== 'es') expect(html).not.toContain(`<html lang="${v}">`);
+  }
+
+  it.each(INVALID)('resend confirmation, stored %p: Spanish body, lang="es" (was: raw attribute)', async (v) => {
     const { auth } = harness(v);
     await auth.resendConfirmation('u-1');
     const { subject, html } = lastMail();
     expect(subject).toBe('Confirma tu cuenta en Noetia');
-    expect(html).toContain(`<html lang="${v}">`);
+    expectCanonicalSpanish(html, v);
   });
 
-  it.each(INVALID)('password reset, stored %p: Spanish body, raw lang attribute', async (v) => {
+  it.each(INVALID)('password reset, stored %p: Spanish body, lang="es" (was: raw attribute)', async (v) => {
     const { auth } = harness(v);
     await auth.requestPasswordReset('reader@example.com');
     const { subject, html } = lastMail();
     expect(subject).toBe('Recupera tu contraseña en Noetia');
-    expect(html).toContain(`<html lang="${v}">`);
+    expectCanonicalSpanish(html, v);
   });
 
-  it.each(INVALID)('farewell, stored %p: Spanish body, raw lang attribute', async (v) => {
+  it.each(INVALID)('farewell, stored %p: Spanish body, lang="es" (was: raw attribute)', async (v) => {
     await usersServiceWith({ id: 'u-1', email: 'reader@example.com', name: 'Ana', uiLanguage: v }).deleteAccount('u-1');
     const { subject, html } = lastMail();
     expect(subject).toBe('Tu cuenta de Noetia ha sido eliminada');
-    expect(html).toContain(`<html lang="${v}">`);
+    expectCanonicalSpanish(html, v);
   });
 
-  it('registration ignores the client language: nothing is stored and the email is Spanish', async () => {
+  it('registration persists the client language and confirms in it (was: ignored, Spanish)', async () => {
     const { auth, created } = harness();
-    await (auth.register as (...a: unknown[]) => Promise<unknown>)('Bruno', 'new@example.com', 'password123', 'en');
-    expect(created[0]).not.toHaveProperty('uiLanguage');
-    expect(lastMail().subject).toBe('Confirma tu cuenta en Noetia');
+    await auth.register('Bruno', 'new@example.com', 'password123', 'en');
+    expect(created[0]).toMatchObject({ uiLanguage: 'en' });
+    expect(lastMail().subject).toBe('Confirm your Noetia account');
   });
 });
