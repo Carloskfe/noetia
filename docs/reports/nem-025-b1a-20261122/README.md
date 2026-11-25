@@ -204,4 +204,13 @@ B1-A is **not** release-ready for French. Even after PA acceptance of the code, 
 | L-8 | **Integration verification** with the dependency stack (#78 Checkpoint A, #60 payments, #59 public site) | Pending dependency reconciliation: B1-A has been verified only on top of `81143790` | Rebase/merge-order reconciliation and re-verification before any merge |
 | L-9 | **Mobile** | Not started | B1-B PO authorization |
 
+## 13. E2E regression correction preserved (F-IR2H-1, IR-3A)
+
+**Commit:** `135f82d21049bd170ffbbf52d7fcdf8c2229cdd9` (test-only; one file, +5 / −1), cherry-picked with `-x` from PR #90 `a169e7c` (IR-2H-C). The patch is identical (`git patch-id` `b6c98d64…`) and so is the resulting file blob (`03d9044`).
+
+- **Why:** row 11 of §6 localizes the 409 registration error. `services/web/tests/e2e/sign-up-to-read.spec.ts` still expected the raw server text.
+- **Now:** the HTTP 409 mock is kept. The test expects `en.auth.register.errors.emailTaken` from the canonical dictionary and asserts that the raw server message is absent.
+- **Validation (local):** web `tsc` passes; ESLint is clean on the spec; `playwright test --list` loads its 3 tests; web unit 35/35 suites, 615/615 tests, 20/20 snapshots. **The browser test was not run on this branch** (no Chromium; CI doesn't run on this stacked PR). The same file blob passed in hosted CI on PR #90 (run `45523204643`, E2E 13 passed / 9 skipped / 0 failed).
+- No application, translation, configuration, dependency or workflow file changed.
+
 **MANDATORY STOP AFTER B1-A — awaiting independent Product Architecture re-review.**
