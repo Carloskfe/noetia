@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+import { en } from '../../lib/i18n/en';
+
 const BOOK_ID = 'book-e2e-1';
 
 const MOCK_BOOK = {
@@ -123,6 +125,8 @@ test.describe('Flow: sign-up → read', () => {
     await page.locator('input[type="password"]').fill('secure-password-123');
     await page.getByRole('button', { name: /create account/i }).click();
 
-    await expect(page.getByText(/email already in use/i)).toBeVisible();
+    // B1-A: a 409 is shown as the localized emailTaken copy; the raw server message is never displayed.
+    await expect(page.getByText(en.auth.register.errors.emailTaken, { exact: true })).toBeVisible();
+    await expect(page.getByText(/email already in use/i)).toHaveCount(0);
   });
 });
