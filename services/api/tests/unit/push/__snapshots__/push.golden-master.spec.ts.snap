@@ -1,0 +1,234 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`PushService golden master (SP-1-I1) default vars → payload still produced for existing user: club_new_book/no-vars 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"Noetia","body":"","data":{},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;
+
+exports[`PushService golden master (SP-1-I1) existing user with no stored language falls back to Spanish: invite_accepted/null-language 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"Invitación aceptada","body":"Alguien se unió a tu plan Duo en Noetia","data":{"type":"invite_accepted"},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;
+
+exports[`PushService golden master (SP-1-I1) existing user with stored 'fr-CA' receives the Spanish payload (unchanged): gift_claimed/fr-CA-stored 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"¡Regalo reclamado! 🎉","body":"Tu regalo de 3 tokens fue reclamado","data":{"type":"gift_claimed"},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;
+
+exports[`PushService golden master (SP-1-I1) multi-device: one request per token, in token order: invite_accepted/two-devices 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"Invitation accepted","body":"Someone joined your Family plan on Noetia","data":{"type":"invite_accepted"},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+  {
+    "body": "{"to":"ExpoPushToken[gm-device-2]","title":"Invitation accepted","body":"Someone joined your Family plan on Noetia","data":{"type":"invite_accepted"},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;
+
+exports[`PushService golden master (SP-1-I1) uiLanguage=en club_nearby_comment: club_nearby_comment/en 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"Noetia","body":"","data":{},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;
+
+exports[`PushService golden master (SP-1-I1) uiLanguage=en club_new_book: club_new_book/en 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"Noetia","body":"","data":{},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;
+
+exports[`PushService golden master (SP-1-I1) uiLanguage=en club_session_scheduled: club_session_scheduled/en 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"Noetia","body":"","data":{},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;
+
+exports[`PushService golden master (SP-1-I1) uiLanguage=en gift_claimed/1: gift_claimed/1/en 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"Gift claimed! 🎉","body":"Your 1 token gift has been claimed","data":{"type":"gift_claimed"},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;
+
+exports[`PushService golden master (SP-1-I1) uiLanguage=en gift_claimed/3: gift_claimed/3/en 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"Gift claimed! 🎉","body":"Your 3 token gift has been claimed","data":{"type":"gift_claimed"},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;
+
+exports[`PushService golden master (SP-1-I1) uiLanguage=en invite_accepted: invite_accepted/en 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"Invitation accepted","body":"Someone joined your Duo plan on Noetia","data":{"type":"invite_accepted"},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;
+
+exports[`PushService golden master (SP-1-I1) uiLanguage=es club_nearby_comment: club_nearby_comment/es 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"Noetia","body":"","data":{},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;
+
+exports[`PushService golden master (SP-1-I1) uiLanguage=es club_new_book: club_new_book/es 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"Noetia","body":"","data":{},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;
+
+exports[`PushService golden master (SP-1-I1) uiLanguage=es club_session_scheduled: club_session_scheduled/es 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"Noetia","body":"","data":{},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;
+
+exports[`PushService golden master (SP-1-I1) uiLanguage=es gift_claimed/1: gift_claimed/1/es 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"¡Regalo reclamado! 🎉","body":"Tu regalo de 1 token fue reclamado","data":{"type":"gift_claimed"},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;
+
+exports[`PushService golden master (SP-1-I1) uiLanguage=es gift_claimed/3: gift_claimed/3/es 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"¡Regalo reclamado! 🎉","body":"Tu regalo de 3 tokens fue reclamado","data":{"type":"gift_claimed"},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;
+
+exports[`PushService golden master (SP-1-I1) uiLanguage=es invite_accepted: invite_accepted/es 1`] = `
+[
+  {
+    "body": "{"to":"ExponentPushToken[gm-device-1]","title":"Invitación aceptada","body":"Alguien se unió a tu plan Duo en Noetia","data":{"type":"invite_accepted"},"sound":"default"}",
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    "method": "POST",
+    "url": "https://exp.host/--/api/v2/push/send",
+  },
+]
+`;

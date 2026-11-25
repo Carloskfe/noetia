@@ -1,0 +1,2766 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`EmailService golden master (B2-A1) lang=en confirmation: confirmation/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Welcome, Ana!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Thank you for creating your account. Confirm your email address to start reading, listening, and sharing fragments.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/confirm-email?token=tok-confirm-123" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Confirm my account</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            If the button doesn't work, copy this link into your browser:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/confirm-email?token=tok-confirm-123</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            This link expires in 24 hours. If you didn't create this account, you can ignore this email.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Confirm your Noetia account",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=en escaping: hostile user values in every template: escaping/en 1`] = `
+{
+  "confirmation": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Welcome, Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Thank you for creating your account. Confirm your email address to start reading, listening, and sharing fragments.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/confirm-email?token=t" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Confirm my account</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            If the button doesn't work, copy this link into your browser:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/confirm-email?token=t</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            This link expires in 24 hours. If you didn't create this account, you can ignore this email.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Confirm your Noetia account",
+    "to": "r@example.com",
+  },
+  "farewell": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Until next time, Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'.</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Your account has been successfully deleted. All your data — fragments, library, and preferences — has been erased from our systems.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            If you changed your mind or deleted your account by mistake, you can register again at any time at <a href="https://noetia.test/register" style="color:#0D1B2A;font-weight:600;">noetia.app</a>.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">
+            Thank you for being part of the Noetia community. We hope to see you again.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Your Noetia account has been deleted",
+    "to": "r@example.com",
+  },
+  "gift-card": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 4px;font-size:24px;text-align:center;">🎂 &lt;i&gt;Cumpleaños&lt;/i&gt; &amp; más</p>
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'</strong> sent you a gift
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">3</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Tokens</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Each token unlocks a book of your choice</p>
+          </div>
+          
+          <div style="border-left:3px solid #0D1B2A;padding:12px 16px;margin:0 0 24px;background:#F8FAFC;border-radius:0 8px 8px 0;">
+            <p style="margin:0;color:#475569;font-size:15px;font-style:italic;">"&lt;script&gt;alert("x")&lt;/script&gt; &amp; más 'gracias'"</p>
+          </div>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=c" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Claim my gift →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">If the button doesn't work, copy this link:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=c</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">This gift is valid for 1 year.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C' sent you 3 Noetia tokens",
+    "to": "f@example.com",
+  },
+  "gift-confirmation": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Your gift was sent! 🎁</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Hi Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C', we sent <strong>1 Noetia token</strong> to <strong>a&amp;b&lt;c&gt;@example.com</strong>. When they claim them they'll be able to unlock books of their choice.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">Have questions? Write to us at hola@noetia.app</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Your Noetia gift was sent to a&b<c>@example.com",
+    "to": "b@example.com",
+  },
+  "password-reset": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Hi, Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            We received a request to reset your account password. Click the button below to create a new one.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/reset-password?token=t" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reset password</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            If the button doesn't work, copy this link into your browser:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/reset-password?token=t</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            This link expires in 1 hour. If you didn't request this change, you can ignore this email — your password will not be modified.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Reset your Noetia password",
+    "to": "r@example.com",
+  },
+  "plan-invite": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">You've been invited to read together</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            <strong>Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'</strong> is inviting you to join their <strong>Duo &amp; &lt;Family&gt; "Plus"</strong> plan on Noetia. With this plan you share tokens to unlock books, each with your own personal library.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/join?token=t" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Accept invitation →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            If the button doesn't work, copy this link into your browser:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/join?token=t</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            This link expires in 48 hours. If you weren't expecting this invitation, you can ignore this email.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C' invites you to Noetia Duo &amp; &lt;Family&gt; "Plus"",
+    "to": "i@example.com",
+  },
+  "waitlist-confirmation": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html><html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">You're on the list, Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Thank you for your interest in Noetia. We're a synchronized reading platform with audio and visual quote generation for social media sharing.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            We'll email you as soon as your beta access is available. You don't need to do anything else.
+          </p>
+          <div style="background:#F1F5F9;border-radius:8px;padding:20px;margin:0 0 24px;">
+            <p style="margin:0 0 8px;color:#0D1B2A;font-size:14px;font-weight:600;">What is Noetia?</p>
+            <p style="margin:0;color:#475569;font-size:14px;line-height:1.6;">
+              🎧 <strong>Active Listening</strong> — text and audio synchronized phrase by phrase.<br>
+              ✍️ <strong>Fragments</strong> — capture the ideas that impact you most.<br>
+              📲 <strong>Share</strong> — create visual cards for LinkedIn, Instagram and more.
+            </p>
+          </div>
+          <p style="margin:0;color:#CBD5E1;font-size:12px;text-align:center;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>",
+    "subject": "You're on the Noetia waitlist!",
+    "to": "r@example.com",
+  },
+  "waitlist-invite": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html><html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 8px;color:#0D1B2A;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Beta Access</p>
+          <p style="margin:0 0 16px;color:#1E293B;font-size:22px;font-weight:700;">Your access is ready, Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'</p>
+          <p style="margin:0 0 28px;color:#475569;font-size:15px;line-height:1.6;">
+            You're one of the first readers to access Noetia. Create your account and start reading with Active Listening mode.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:16px 40px;text-align:center;">
+              <a href="https://noetia.test/register?email=r%26x%40example.com" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Create my account →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            If the button doesn't work, copy this link:
+          </p>
+          <p style="margin:0 0 32px;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/register?email=r%26x%40example.com</p>
+          <p style="margin:0;color:#CBD5E1;font-size:12px;text-align:center;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>",
+    "subject": "Your Noetia Beta access is ready!",
+    "to": "r&x@example.com",
+  },
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=en farewell: farewell/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Until next time, Ana.</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Your account has been successfully deleted. All your data — fragments, library, and preferences — has been erased from our systems.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            If you changed your mind or deleted your account by mistake, you can register again at any time at <a href="https://noetia.test/register" style="color:#0D1B2A;font-weight:600;">noetia.app</a>.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">
+            Thank you for being part of the Noetia community. We hope to see you again.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Your Noetia account has been deleted",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=en gift card 1-token+message+occasion: gift-card/1-token+message+occasion/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 4px;font-size:24px;text-align:center;">🎂 Cumpleaños</p>
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>Bruno</strong> sent you a gift
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">1</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Token</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Each token unlocks a book of your choice</p>
+          </div>
+          
+          <div style="border-left:3px solid #0D1B2A;padding:12px 16px;margin:0 0 24px;background:#F8FAFC;border-radius:0 8px 8px 0;">
+            <p style="margin:0;color:#475569;font-size:15px;font-style:italic;">"Feliz cumpleaños"</p>
+          </div>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=claim-tok-789" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Claim my gift →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">If the button doesn't work, copy this link:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=claim-tok-789</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">This gift is valid for 1 year.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Bruno sent you 1 Noetia token",
+  "to": "friend@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=en gift card 1-token+message: gift-card/1-token+message/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>Bruno</strong> sent you a gift
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">1</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Token</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Each token unlocks a book of your choice</p>
+          </div>
+          
+          <div style="border-left:3px solid #0D1B2A;padding:12px 16px;margin:0 0 24px;background:#F8FAFC;border-radius:0 8px 8px 0;">
+            <p style="margin:0;color:#475569;font-size:15px;font-style:italic;">"Para ti"</p>
+          </div>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=claim-tok-789" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Claim my gift →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">If the button doesn't work, copy this link:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=claim-tok-789</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">This gift is valid for 1 year.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Bruno sent you 1 Noetia token",
+  "to": "friend@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=en gift card 3-tokens+occasion: gift-card/3-tokens+occasion/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 4px;font-size:24px;text-align:center;">🎓 Graduación</p>
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>Bruno</strong> sent you a gift
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">3</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Tokens</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Each token unlocks a book of your choice</p>
+          </div>
+          
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=claim-tok-789" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Claim my gift →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">If the button doesn't work, copy this link:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=claim-tok-789</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">This gift is valid for 1 year.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Bruno sent you 3 Noetia tokens",
+  "to": "friend@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=en gift card 3-tokens-plain: gift-card/3-tokens-plain/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>Bruno</strong> sent you a gift
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">3</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Tokens</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Each token unlocks a book of your choice</p>
+          </div>
+          
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=claim-tok-789" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Claim my gift →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">If the button doesn't work, copy this link:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=claim-tok-789</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">This gift is valid for 1 year.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Bruno sent you 3 Noetia tokens",
+  "to": "friend@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=en gift confirmation 1 token(s): gift-confirmation/1/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Your gift was sent! 🎁</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Hi Bruno, we sent <strong>1 Noetia token</strong> to <strong>friend@example.com</strong>. When they claim them they'll be able to unlock books of their choice.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">Have questions? Write to us at hola@noetia.app</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Your Noetia gift was sent to friend@example.com",
+  "to": "buyer@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=en gift confirmation 3 token(s): gift-confirmation/3/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Your gift was sent! 🎁</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Hi Bruno, we sent <strong>3 Noetia tokens</strong> to <strong>friend@example.com</strong>. When they claim them they'll be able to unlock books of their choice.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">Have questions? Write to us at hola@noetia.app</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Your Noetia gift was sent to friend@example.com",
+  "to": "buyer@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=en password reset: password-reset/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Hi, Ana</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            We received a request to reset your account password. Click the button below to create a new one.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/reset-password?token=tok-reset-456" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reset password</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            If the button doesn't work, copy this link into your browser:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/reset-password?token=tok-reset-456</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            This link expires in 1 hour. If you didn't request this change, you can ignore this email — your password will not be modified.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Reset your Noetia password",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=en plan invite: plan-invite/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">You've been invited to read together</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            <strong>Carla</strong> is inviting you to join their <strong>Duo</strong> plan on Noetia. With this plan you share tokens to unlock books, each with your own personal library.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/join?token=invite-tok-321" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Accept invitation →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            If the button doesn't work, copy this link into your browser:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/join?token=invite-tok-321</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            This link expires in 48 hours. If you weren't expecting this invitation, you can ignore this email.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Carla invites you to Noetia Duo",
+  "to": "invitee@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=en unicode names and messages pass through unchanged: unicode/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>José Ñúñez — 李小龍 ’«»</strong> sent you a gift
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">1</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Token</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Each token unlocks a book of your choice</p>
+          </div>
+          
+          <div style="border-left:3px solid #0D1B2A;padding:12px 16px;margin:0 0 24px;background:#F8FAFC;border-radius:0 8px 8px 0;">
+            <p style="margin:0;color:#475569;font-size:15px;font-style:italic;">"Ça va? — ¡Qué bien! 📚"</p>
+          </div>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=c" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Claim my gift →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">If the button doesn't work, copy this link:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=c</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">This gift is valid for 1 year.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "José Ñúñez — 李小龍 ’«» sent you 1 Noetia token",
+  "to": "f@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=en waitlist confirmation: waitlist-confirmation/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html><html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">You're on the list, Ana!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Thank you for your interest in Noetia. We're a synchronized reading platform with audio and visual quote generation for social media sharing.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            We'll email you as soon as your beta access is available. You don't need to do anything else.
+          </p>
+          <div style="background:#F1F5F9;border-radius:8px;padding:20px;margin:0 0 24px;">
+            <p style="margin:0 0 8px;color:#0D1B2A;font-size:14px;font-weight:600;">What is Noetia?</p>
+            <p style="margin:0;color:#475569;font-size:14px;line-height:1.6;">
+              🎧 <strong>Active Listening</strong> — text and audio synchronized phrase by phrase.<br>
+              ✍️ <strong>Fragments</strong> — capture the ideas that impact you most.<br>
+              📲 <strong>Share</strong> — create visual cards for LinkedIn, Instagram and more.
+            </p>
+          </div>
+          <p style="margin:0;color:#CBD5E1;font-size:12px;text-align:center;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>",
+  "subject": "You're on the Noetia waitlist!",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=en waitlist invite (email with + is URL-encoded in the link): waitlist-invite/en 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html><html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Read. Listen. Share.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 8px;color:#0D1B2A;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Beta Access</p>
+          <p style="margin:0 0 16px;color:#1E293B;font-size:22px;font-weight:700;">Your access is ready, Ana</p>
+          <p style="margin:0 0 28px;color:#475569;font-size:15px;line-height:1.6;">
+            You're one of the first readers to access Noetia. Create your account and start reading with Active Listening mode.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:16px 40px;text-align:center;">
+              <a href="https://noetia.test/register?email=lector%2Bbeta%40example.com" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Create my account →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            If the button doesn't work, copy this link:
+          </p>
+          <p style="margin:0 0 32px;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/register?email=lector%2Bbeta%40example.com</p>
+          <p style="margin:0;color:#CBD5E1;font-size:12px;text-align:center;">© 2026 Noetia. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>",
+  "subject": "Your Noetia Beta access is ready!",
+  "to": "lector+beta@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=es confirmation: confirmation/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Bienvenido/a, Ana!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Gracias por crear tu cuenta. Confirma tu dirección de correo para comenzar a leer, escuchar y compartir fragmentos.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/confirm-email?token=tok-confirm-123" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Confirmar mi cuenta</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/confirm-email?token=tok-confirm-123</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 24 horas. Si no creaste esta cuenta, ignora este mensaje.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Confirma tu cuenta en Noetia",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=es escaping: hostile user values in every template: escaping/es 1`] = `
+{
+  "confirmation": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Bienvenido/a, Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Gracias por crear tu cuenta. Confirma tu dirección de correo para comenzar a leer, escuchar y compartir fragmentos.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/confirm-email?token=t" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Confirmar mi cuenta</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/confirm-email?token=t</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 24 horas. Si no creaste esta cuenta, ignora este mensaje.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Confirma tu cuenta en Noetia",
+    "to": "r@example.com",
+  },
+  "farewell": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Hasta pronto, Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'.</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Tu cuenta ha sido eliminada correctamente. Todos tus datos — fragmentos, biblioteca y preferencias — han sido borrados de nuestros sistemas.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Si cambiaste de opinión o eliminaste tu cuenta por error, puedes volver a registrarte en cualquier momento en <a href="https://noetia.test/register" style="color:#0D1B2A;font-weight:600;">noetia.app</a>.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">
+            Gracias por haber sido parte de la comunidad Noetia. Esperamos verte de nuevo.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Tu cuenta de Noetia ha sido eliminada",
+    "to": "r@example.com",
+  },
+  "gift-card": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 4px;font-size:24px;text-align:center;">🎂 &lt;i&gt;Cumpleaños&lt;/i&gt; &amp; más</p>
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'</strong> te envía un regalo
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">3</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Tokens</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Cada token desbloquea un libro de tu elección</p>
+          </div>
+          
+          <div style="border-left:3px solid #0D1B2A;padding:12px 16px;margin:0 0 24px;background:#F8FAFC;border-radius:0 8px 8px 0;">
+            <p style="margin:0;color:#475569;font-size:15px;font-style:italic;">"&lt;script&gt;alert("x")&lt;/script&gt; &amp; más 'gracias'"</p>
+          </div>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=c" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reclamar mi regalo →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">Si el botón no funciona, copia este enlace:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=c</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">Este regalo es válido por 1 año.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C' te regala 3 tokens en Noetia",
+    "to": "f@example.com",
+  },
+  "gift-confirmation": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Tu regalo fue enviado! 🎁</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Hola Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C', enviamos <strong>1 token Noetia</strong> a <strong>a&amp;b&lt;c&gt;@example.com</strong>. Cuando los reclamen podrán desbloquear libros de su elección.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">¿Tienes preguntas? Escríbenos a hola@noetia.app</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Tu regalo de Noetia fue enviado a a&b<c>@example.com",
+    "to": "b@example.com",
+  },
+  "password-reset": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Hola, Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Recibimos una solicitud para restablecer la contraseña de tu cuenta. Haz clic en el botón para crear una nueva.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/reset-password?token=t" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Restablecer contraseña</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/reset-password?token=t</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 1 hora. Si no solicitaste este cambio, ignora este mensaje — tu contraseña no será modificada.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Recupera tu contraseña en Noetia",
+    "to": "r@example.com",
+  },
+  "plan-invite": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Te han invitado a leer juntos</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            <strong>Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'</strong> te está invitando a unirte a su plan <strong>Duo &amp; &lt;Family&gt; "Plus"</strong> en Noetia. Con este plan comparten tokens para desbloquear libros, cada uno con su biblioteca personal.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/join?token=t" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Aceptar invitación →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/join?token=t</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 48 horas. Si no esperabas esta invitación, puedes ignorar este mensaje.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C' te invita a Noetia Duo &amp; &lt;Family&gt; "Plus"",
+    "to": "i@example.com",
+  },
+  "waitlist-confirmation": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html><html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Ya estás en la lista, Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Gracias por tu interés en Noetia. Somos una plataforma de lectura sincronizada con audio y generación de citas visuales para compartir en redes sociales.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Te avisaremos por este correo en cuanto tu acceso beta esté disponible. No necesitas hacer nada más.
+          </p>
+          <div style="background:#F1F5F9;border-radius:8px;padding:20px;margin:0 0 24px;">
+            <p style="margin:0 0 8px;color:#0D1B2A;font-size:14px;font-weight:600;">¿Qué es Noetia?</p>
+            <p style="margin:0;color:#475569;font-size:14px;line-height:1.6;">
+              🎧 <strong>Escucha Activa</strong> — texto y audio sincronizados frase por frase.<br>
+              ✍️ <strong>Fragmentos</strong> — captura las ideas que más te impactan.<br>
+              📲 <strong>Comparte</strong> — crea tarjetas visuales para LinkedIn, Instagram y más.
+            </p>
+          </div>
+          <p style="margin:0;color:#CBD5E1;font-size:12px;text-align:center;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>",
+    "subject": "¡Estás en la lista de espera de Noetia!",
+    "to": "r@example.com",
+  },
+  "waitlist-invite": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html><html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 8px;color:#0D1B2A;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Acceso Beta</p>
+          <p style="margin:0 0 16px;color:#1E293B;font-size:22px;font-weight:700;">Tu acceso está listo, Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'</p>
+          <p style="margin:0 0 28px;color:#475569;font-size:15px;line-height:1.6;">
+            Eres uno de los primeros lectores en acceder a Noetia. Crea tu cuenta y empieza a leer con el modo de Escucha Activa.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:16px 40px;text-align:center;">
+              <a href="https://noetia.test/register?email=r%26x%40example.com" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Crear mi cuenta →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace:
+          </p>
+          <p style="margin:0 0 32px;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/register?email=r%26x%40example.com</p>
+          <p style="margin:0;color:#CBD5E1;font-size:12px;text-align:center;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>",
+    "subject": "¡Tu acceso a Noetia Beta está listo!",
+    "to": "r&x@example.com",
+  },
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=es farewell: farewell/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Hasta pronto, Ana.</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Tu cuenta ha sido eliminada correctamente. Todos tus datos — fragmentos, biblioteca y preferencias — han sido borrados de nuestros sistemas.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Si cambiaste de opinión o eliminaste tu cuenta por error, puedes volver a registrarte en cualquier momento en <a href="https://noetia.test/register" style="color:#0D1B2A;font-weight:600;">noetia.app</a>.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">
+            Gracias por haber sido parte de la comunidad Noetia. Esperamos verte de nuevo.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Tu cuenta de Noetia ha sido eliminada",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=es gift card 1-token+message+occasion: gift-card/1-token+message+occasion/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 4px;font-size:24px;text-align:center;">🎂 Cumpleaños</p>
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>Bruno</strong> te envía un regalo
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">1</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Token</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Cada token desbloquea un libro de tu elección</p>
+          </div>
+          
+          <div style="border-left:3px solid #0D1B2A;padding:12px 16px;margin:0 0 24px;background:#F8FAFC;border-radius:0 8px 8px 0;">
+            <p style="margin:0;color:#475569;font-size:15px;font-style:italic;">"Feliz cumpleaños"</p>
+          </div>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=claim-tok-789" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reclamar mi regalo →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">Si el botón no funciona, copia este enlace:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=claim-tok-789</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">Este regalo es válido por 1 año.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Bruno te regala 1 token en Noetia",
+  "to": "friend@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=es gift card 1-token+message: gift-card/1-token+message/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>Bruno</strong> te envía un regalo
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">1</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Token</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Cada token desbloquea un libro de tu elección</p>
+          </div>
+          
+          <div style="border-left:3px solid #0D1B2A;padding:12px 16px;margin:0 0 24px;background:#F8FAFC;border-radius:0 8px 8px 0;">
+            <p style="margin:0;color:#475569;font-size:15px;font-style:italic;">"Para ti"</p>
+          </div>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=claim-tok-789" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reclamar mi regalo →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">Si el botón no funciona, copia este enlace:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=claim-tok-789</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">Este regalo es válido por 1 año.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Bruno te regala 1 token en Noetia",
+  "to": "friend@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=es gift card 3-tokens+occasion: gift-card/3-tokens+occasion/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 4px;font-size:24px;text-align:center;">🎓 Graduación</p>
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>Bruno</strong> te envía un regalo
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">3</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Tokens</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Cada token desbloquea un libro de tu elección</p>
+          </div>
+          
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=claim-tok-789" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reclamar mi regalo →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">Si el botón no funciona, copia este enlace:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=claim-tok-789</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">Este regalo es válido por 1 año.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Bruno te regala 3 tokens en Noetia",
+  "to": "friend@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=es gift card 3-tokens-plain: gift-card/3-tokens-plain/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>Bruno</strong> te envía un regalo
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">3</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Tokens</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Cada token desbloquea un libro de tu elección</p>
+          </div>
+          
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=claim-tok-789" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reclamar mi regalo →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">Si el botón no funciona, copia este enlace:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=claim-tok-789</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">Este regalo es válido por 1 año.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Bruno te regala 3 tokens en Noetia",
+  "to": "friend@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=es gift confirmation 1 token(s): gift-confirmation/1/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Tu regalo fue enviado! 🎁</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Hola Bruno, enviamos <strong>1 token Noetia</strong> a <strong>friend@example.com</strong>. Cuando los reclamen podrán desbloquear libros de su elección.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">¿Tienes preguntas? Escríbenos a hola@noetia.app</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Tu regalo de Noetia fue enviado a friend@example.com",
+  "to": "buyer@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=es gift confirmation 3 token(s): gift-confirmation/3/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Tu regalo fue enviado! 🎁</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Hola Bruno, enviamos <strong>3 tokens Noetia</strong> a <strong>friend@example.com</strong>. Cuando los reclamen podrán desbloquear libros de su elección.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">¿Tienes preguntas? Escríbenos a hola@noetia.app</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Tu regalo de Noetia fue enviado a friend@example.com",
+  "to": "buyer@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=es password reset: password-reset/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Hola, Ana</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Recibimos una solicitud para restablecer la contraseña de tu cuenta. Haz clic en el botón para crear una nueva.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/reset-password?token=tok-reset-456" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Restablecer contraseña</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/reset-password?token=tok-reset-456</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 1 hora. Si no solicitaste este cambio, ignora este mensaje — tu contraseña no será modificada.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Recupera tu contraseña en Noetia",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=es plan invite: plan-invite/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Te han invitado a leer juntos</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            <strong>Carla</strong> te está invitando a unirte a su plan <strong>Duo</strong> en Noetia. Con este plan comparten tokens para desbloquear libros, cada uno con su biblioteca personal.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/join?token=invite-tok-321" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Aceptar invitación →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/join?token=invite-tok-321</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 48 horas. Si no esperabas esta invitación, puedes ignorar este mensaje.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Carla te invita a Noetia Duo",
+  "to": "invitee@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=es unicode names and messages pass through unchanged: unicode/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>José Ñúñez — 李小龍 ’«»</strong> te envía un regalo
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">1</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Token</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Cada token desbloquea un libro de tu elección</p>
+          </div>
+          
+          <div style="border-left:3px solid #0D1B2A;padding:12px 16px;margin:0 0 24px;background:#F8FAFC;border-radius:0 8px 8px 0;">
+            <p style="margin:0;color:#475569;font-size:15px;font-style:italic;">"Ça va? — ¡Qué bien! 📚"</p>
+          </div>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=c" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reclamar mi regalo →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">Si el botón no funciona, copia este enlace:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=c</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">Este regalo es válido por 1 año.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "José Ñúñez — 李小龍 ’«» te regala 1 token en Noetia",
+  "to": "f@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=es waitlist confirmation: waitlist-confirmation/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html><html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Ya estás en la lista, Ana!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Gracias por tu interés en Noetia. Somos una plataforma de lectura sincronizada con audio y generación de citas visuales para compartir en redes sociales.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Te avisaremos por este correo en cuanto tu acceso beta esté disponible. No necesitas hacer nada más.
+          </p>
+          <div style="background:#F1F5F9;border-radius:8px;padding:20px;margin:0 0 24px;">
+            <p style="margin:0 0 8px;color:#0D1B2A;font-size:14px;font-weight:600;">¿Qué es Noetia?</p>
+            <p style="margin:0;color:#475569;font-size:14px;line-height:1.6;">
+              🎧 <strong>Escucha Activa</strong> — texto y audio sincronizados frase por frase.<br>
+              ✍️ <strong>Fragmentos</strong> — captura las ideas que más te impactan.<br>
+              📲 <strong>Comparte</strong> — crea tarjetas visuales para LinkedIn, Instagram y más.
+            </p>
+          </div>
+          <p style="margin:0;color:#CBD5E1;font-size:12px;text-align:center;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>",
+  "subject": "¡Estás en la lista de espera de Noetia!",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=es waitlist invite (email with + is URL-encoded in the link): waitlist-invite/es 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html><html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 8px;color:#0D1B2A;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Acceso Beta</p>
+          <p style="margin:0 0 16px;color:#1E293B;font-size:22px;font-weight:700;">Tu acceso está listo, Ana</p>
+          <p style="margin:0 0 28px;color:#475569;font-size:15px;line-height:1.6;">
+            Eres uno de los primeros lectores en acceder a Noetia. Crea tu cuenta y empieza a leer con el modo de Escucha Activa.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:16px 40px;text-align:center;">
+              <a href="https://noetia.test/register?email=lector%2Bbeta%40example.com" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Crear mi cuenta →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace:
+          </p>
+          <p style="margin:0 0 32px;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/register?email=lector%2Bbeta%40example.com</p>
+          <p style="margin:0;color:#CBD5E1;font-size:12px;text-align:center;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>",
+  "subject": "¡Tu acceso a Noetia Beta está listo!",
+  "to": "lector+beta@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=undefined confirmation: confirmation/default 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Bienvenido/a, Ana!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Gracias por crear tu cuenta. Confirma tu dirección de correo para comenzar a leer, escuchar y compartir fragmentos.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/confirm-email?token=tok-confirm-123" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Confirmar mi cuenta</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/confirm-email?token=tok-confirm-123</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 24 horas. Si no creaste esta cuenta, ignora este mensaje.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Confirma tu cuenta en Noetia",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=undefined escaping: hostile user values in every template: escaping/default 1`] = `
+{
+  "confirmation": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Bienvenido/a, Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Gracias por crear tu cuenta. Confirma tu dirección de correo para comenzar a leer, escuchar y compartir fragmentos.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/confirm-email?token=t" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Confirmar mi cuenta</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/confirm-email?token=t</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 24 horas. Si no creaste esta cuenta, ignora este mensaje.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Confirma tu cuenta en Noetia",
+    "to": "r@example.com",
+  },
+  "farewell": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Hasta pronto, Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'.</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Tu cuenta ha sido eliminada correctamente. Todos tus datos — fragmentos, biblioteca y preferencias — han sido borrados de nuestros sistemas.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Si cambiaste de opinión o eliminaste tu cuenta por error, puedes volver a registrarte en cualquier momento en <a href="https://noetia.test/register" style="color:#0D1B2A;font-weight:600;">noetia.app</a>.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">
+            Gracias por haber sido parte de la comunidad Noetia. Esperamos verte de nuevo.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Tu cuenta de Noetia ha sido eliminada",
+    "to": "r@example.com",
+  },
+  "gift-card": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 4px;font-size:24px;text-align:center;">🎂 &lt;i&gt;Cumpleaños&lt;/i&gt; &amp; más</p>
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'</strong> te envía un regalo
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">3</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Tokens</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Cada token desbloquea un libro de tu elección</p>
+          </div>
+          
+          <div style="border-left:3px solid #0D1B2A;padding:12px 16px;margin:0 0 24px;background:#F8FAFC;border-radius:0 8px 8px 0;">
+            <p style="margin:0;color:#475569;font-size:15px;font-style:italic;">"&lt;script&gt;alert("x")&lt;/script&gt; &amp; más 'gracias'"</p>
+          </div>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=c" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reclamar mi regalo →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">Si el botón no funciona, copia este enlace:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=c</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">Este regalo es válido por 1 año.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C' te regala 3 tokens en Noetia",
+    "to": "f@example.com",
+  },
+  "gift-confirmation": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Tu regalo fue enviado! 🎁</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Hola Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C', enviamos <strong>1 token Noetia</strong> a <strong>a&amp;b&lt;c&gt;@example.com</strong>. Cuando los reclamen podrán desbloquear libros de su elección.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">¿Tienes preguntas? Escríbenos a hola@noetia.app</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Tu regalo de Noetia fue enviado a a&b<c>@example.com",
+    "to": "b@example.com",
+  },
+  "password-reset": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Hola, Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Recibimos una solicitud para restablecer la contraseña de tu cuenta. Haz clic en el botón para crear una nueva.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/reset-password?token=t" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Restablecer contraseña</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/reset-password?token=t</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 1 hora. Si no solicitaste este cambio, ignora este mensaje — tu contraseña no será modificada.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Recupera tu contraseña en Noetia",
+    "to": "r@example.com",
+  },
+  "plan-invite": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Te han invitado a leer juntos</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            <strong>Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'</strong> te está invitando a unirte a su plan <strong>Duo &amp; &lt;Family&gt; "Plus"</strong> en Noetia. Con este plan comparten tokens para desbloquear libros, cada uno con su biblioteca personal.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/join?token=t" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Aceptar invitación →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/join?token=t</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 48 horas. Si no esperabas esta invitación, puedes ignorar este mensaje.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+    "subject": "Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C' te invita a Noetia Duo &amp; &lt;Family&gt; "Plus"",
+    "to": "i@example.com",
+  },
+  "waitlist-confirmation": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html><html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Ya estás en la lista, Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Gracias por tu interés en Noetia. Somos una plataforma de lectura sincronizada con audio y generación de citas visuales para compartir en redes sociales.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Te avisaremos por este correo en cuanto tu acceso beta esté disponible. No necesitas hacer nada más.
+          </p>
+          <div style="background:#F1F5F9;border-radius:8px;padding:20px;margin:0 0 24px;">
+            <p style="margin:0 0 8px;color:#0D1B2A;font-size:14px;font-weight:600;">¿Qué es Noetia?</p>
+            <p style="margin:0;color:#475569;font-size:14px;line-height:1.6;">
+              🎧 <strong>Escucha Activa</strong> — texto y audio sincronizados frase por frase.<br>
+              ✍️ <strong>Fragmentos</strong> — captura las ideas que más te impactan.<br>
+              📲 <strong>Comparte</strong> — crea tarjetas visuales para LinkedIn, Instagram y más.
+            </p>
+          </div>
+          <p style="margin:0;color:#CBD5E1;font-size:12px;text-align:center;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>",
+    "subject": "¡Estás en la lista de espera de Noetia!",
+    "to": "r@example.com",
+  },
+  "waitlist-invite": {
+    "from": "Noetia <noreply@noetia.app>",
+    "html": "
+<!DOCTYPE html><html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 8px;color:#0D1B2A;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Acceso Beta</p>
+          <p style="margin:0 0 16px;color:#1E293B;font-size:22px;font-weight:700;">Tu acceso está listo, Ana &amp; &lt;b&gt;"Bo"&lt;/b&gt; 'C'</p>
+          <p style="margin:0 0 28px;color:#475569;font-size:15px;line-height:1.6;">
+            Eres uno de los primeros lectores en acceder a Noetia. Crea tu cuenta y empieza a leer con el modo de Escucha Activa.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:16px 40px;text-align:center;">
+              <a href="https://noetia.test/register?email=r%26x%40example.com" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Crear mi cuenta →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace:
+          </p>
+          <p style="margin:0 0 32px;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/register?email=r%26x%40example.com</p>
+          <p style="margin:0;color:#CBD5E1;font-size:12px;text-align:center;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>",
+    "subject": "¡Tu acceso a Noetia Beta está listo!",
+    "to": "r&x@example.com",
+  },
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=undefined farewell: farewell/default 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Hasta pronto, Ana.</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Tu cuenta ha sido eliminada correctamente. Todos tus datos — fragmentos, biblioteca y preferencias — han sido borrados de nuestros sistemas.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Si cambiaste de opinión o eliminaste tu cuenta por error, puedes volver a registrarte en cualquier momento en <a href="https://noetia.test/register" style="color:#0D1B2A;font-weight:600;">noetia.app</a>.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">
+            Gracias por haber sido parte de la comunidad Noetia. Esperamos verte de nuevo.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Tu cuenta de Noetia ha sido eliminada",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=undefined gift card 1-token+message+occasion: gift-card/1-token+message+occasion/default 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 4px;font-size:24px;text-align:center;">🎂 Cumpleaños</p>
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>Bruno</strong> te envía un regalo
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">1</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Token</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Cada token desbloquea un libro de tu elección</p>
+          </div>
+          
+          <div style="border-left:3px solid #0D1B2A;padding:12px 16px;margin:0 0 24px;background:#F8FAFC;border-radius:0 8px 8px 0;">
+            <p style="margin:0;color:#475569;font-size:15px;font-style:italic;">"Feliz cumpleaños"</p>
+          </div>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=claim-tok-789" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reclamar mi regalo →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">Si el botón no funciona, copia este enlace:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=claim-tok-789</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">Este regalo es válido por 1 año.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Bruno te regala 1 token en Noetia",
+  "to": "friend@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=undefined gift card 1-token+message: gift-card/1-token+message/default 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>Bruno</strong> te envía un regalo
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">1</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Token</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Cada token desbloquea un libro de tu elección</p>
+          </div>
+          
+          <div style="border-left:3px solid #0D1B2A;padding:12px 16px;margin:0 0 24px;background:#F8FAFC;border-radius:0 8px 8px 0;">
+            <p style="margin:0;color:#475569;font-size:15px;font-style:italic;">"Para ti"</p>
+          </div>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=claim-tok-789" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reclamar mi regalo →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">Si el botón no funciona, copia este enlace:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=claim-tok-789</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">Este regalo es válido por 1 año.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Bruno te regala 1 token en Noetia",
+  "to": "friend@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=undefined gift card 3-tokens+occasion: gift-card/3-tokens+occasion/default 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 4px;font-size:24px;text-align:center;">🎓 Graduación</p>
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>Bruno</strong> te envía un regalo
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">3</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Tokens</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Cada token desbloquea un libro de tu elección</p>
+          </div>
+          
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=claim-tok-789" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reclamar mi regalo →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">Si el botón no funciona, copia este enlace:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=claim-tok-789</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">Este regalo es válido por 1 año.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Bruno te regala 3 tokens en Noetia",
+  "to": "friend@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=undefined gift card 3-tokens-plain: gift-card/3-tokens-plain/default 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>Bruno</strong> te envía un regalo
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">3</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Tokens</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Cada token desbloquea un libro de tu elección</p>
+          </div>
+          
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=claim-tok-789" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reclamar mi regalo →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">Si el botón no funciona, copia este enlace:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=claim-tok-789</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">Este regalo es válido por 1 año.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Bruno te regala 3 tokens en Noetia",
+  "to": "friend@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=undefined gift confirmation 1 token(s): gift-confirmation/1/default 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Tu regalo fue enviado! 🎁</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Hola Bruno, enviamos <strong>1 token Noetia</strong> a <strong>friend@example.com</strong>. Cuando los reclamen podrán desbloquear libros de su elección.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">¿Tienes preguntas? Escríbenos a hola@noetia.app</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Tu regalo de Noetia fue enviado a friend@example.com",
+  "to": "buyer@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=undefined gift confirmation 3 token(s): gift-confirmation/3/default 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Tu regalo fue enviado! 🎁</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Hola Bruno, enviamos <strong>3 tokens Noetia</strong> a <strong>friend@example.com</strong>. Cuando los reclamen podrán desbloquear libros de su elección.
+          </p>
+          <p style="margin:0;color:#94A3B8;font-size:13px;">¿Tienes preguntas? Escríbenos a hola@noetia.app</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Tu regalo de Noetia fue enviado a friend@example.com",
+  "to": "buyer@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=undefined password reset: password-reset/default 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Hola, Ana</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Recibimos una solicitud para restablecer la contraseña de tu cuenta. Haz clic en el botón para crear una nueva.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/reset-password?token=tok-reset-456" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Restablecer contraseña</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/reset-password?token=tok-reset-456</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 1 hora. Si no solicitaste este cambio, ignora este mensaje — tu contraseña no será modificada.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Recupera tu contraseña en Noetia",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=undefined plan invite: plan-invite/default 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">Te han invitado a leer juntos</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            <strong>Carla</strong> te está invitando a unirte a su plan <strong>Duo</strong> en Noetia. Con este plan comparten tokens para desbloquear libros, cada uno con su biblioteca personal.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/join?token=invite-tok-321" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Aceptar invitación →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/join?token=invite-tok-321</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 48 horas. Si no esperabas esta invitación, puedes ignorar este mensaje.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Carla te invita a Noetia Duo",
+  "to": "invitee@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=undefined unicode names and messages pass through unchanged: unicode/default 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          
+          <p style="margin:0 0 16px;color:#1E293B;font-size:20px;font-weight:700;text-align:center;">
+            <strong>José Ñúñez — 李小龍 ’«»</strong> te envía un regalo
+          </p>
+          <div style="background:#F1F5F9;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0D1B2A;">1</p>
+            <p style="margin:0;font-size:16px;color:#475569;font-weight:600;">Noetia Token</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#94A3B8;">Cada token desbloquea un libro de tu elección</p>
+          </div>
+          
+          <div style="border-left:3px solid #0D1B2A;padding:12px 16px;margin:0 0 24px;background:#F8FAFC;border-radius:0 8px 8px 0;">
+            <p style="margin:0;color:#475569;font-size:15px;font-style:italic;">"Ça va? — ¡Qué bien! 📚"</p>
+          </div>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="https://noetia.test/gift/claim?token=c" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reclamar mi regalo →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">Si el botón no funciona, copia este enlace:</p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/gift/claim?token=c</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">Este regalo es válido por 1 año.</p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "José Ñúñez — 李小龍 ’«» te regala 1 token en Noetia",
+  "to": "f@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=undefined waitlist confirmation: waitlist-confirmation/default 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html><html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Ya estás en la lista, Ana!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Gracias por tu interés en Noetia. Somos una plataforma de lectura sincronizada con audio y generación de citas visuales para compartir en redes sociales.
+          </p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Te avisaremos por este correo en cuanto tu acceso beta esté disponible. No necesitas hacer nada más.
+          </p>
+          <div style="background:#F1F5F9;border-radius:8px;padding:20px;margin:0 0 24px;">
+            <p style="margin:0 0 8px;color:#0D1B2A;font-size:14px;font-weight:600;">¿Qué es Noetia?</p>
+            <p style="margin:0;color:#475569;font-size:14px;line-height:1.6;">
+              🎧 <strong>Escucha Activa</strong> — texto y audio sincronizados frase por frase.<br>
+              ✍️ <strong>Fragmentos</strong> — captura las ideas que más te impactan.<br>
+              📲 <strong>Comparte</strong> — crea tarjetas visuales para LinkedIn, Instagram y más.
+            </p>
+          </div>
+          <p style="margin:0;color:#CBD5E1;font-size:12px;text-align:center;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>",
+  "subject": "¡Estás en la lista de espera de Noetia!",
+  "to": "reader@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) lang=undefined waitlist invite (email with + is URL-encoded in the link): waitlist-invite/default 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html><html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 8px;color:#0D1B2A;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Acceso Beta</p>
+          <p style="margin:0 0 16px;color:#1E293B;font-size:22px;font-weight:700;">Tu acceso está listo, Ana</p>
+          <p style="margin:0 0 28px;color:#475569;font-size:15px;line-height:1.6;">
+            Eres uno de los primeros lectores en acceder a Noetia. Crea tu cuenta y empieza a leer con el modo de Escucha Activa.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:16px 40px;text-align:center;">
+              <a href="https://noetia.test/register?email=lector%2Bbeta%40example.com" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Crear mi cuenta →</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace:
+          </p>
+          <p style="margin:0 0 32px;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">https://noetia.test/register?email=lector%2Bbeta%40example.com</p>
+          <p style="margin:0;color:#CBD5E1;font-size:12px;text-align:center;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>",
+  "subject": "¡Tu acceso a Noetia Beta está listo!",
+  "to": "lector+beta@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) transport and sender a transport failure is swallowed and logged once, with no token or HTML in the log: transport/failure-log 1`] = `"Failed to send email to r@example.com: SMTP down"`;
+
+exports[`EmailService golden master (B2-A1) transport and sender configured SMTP auth and secure transport: transport/configured 1`] = `
+{
+  "auth": {
+    "pass": "secret-pass",
+    "user": "user",
+  },
+  "host": "smtp.example.com",
+  "port": 465,
+  "secure": true,
+}
+`;
+
+exports[`EmailService golden master (B2-A1) transport and sender defaults sender, web URL and transport when env is unset: confirmation/env-defaults 1`] = `
+{
+  "from": "Noetia <noreply@noetia.app>",
+  "html": "
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#0D1B2A;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:2px;">NOETIA</h1>
+          <p style="margin:6px 0 0;color:#94A3B8;font-size:13px;">Lee. Escucha. Comparte.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 16px;color:#1E293B;font-size:18px;font-weight:600;">¡Bienvenido/a, Ana!</p>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+            Gracias por crear tu cuenta. Confirma tu dirección de correo para comenzar a leer, escuchar y compartir fragmentos.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr><td style="background:#0D1B2A;border-radius:8px;padding:14px 32px;text-align:center;">
+              <a href="http://localhost:3000/confirm-email?token=tok" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Confirmar mi cuenta</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#94A3B8;font-size:13px;text-align:center;">
+            Si el botón no funciona, copia este enlace en tu navegador:
+          </p>
+          <p style="margin:0;color:#0D1B2A;font-size:12px;text-align:center;word-break:break-all;">http://localhost:3000/confirm-email?token=tok</p>
+          <p style="margin:32px 0 0;color:#CBD5E1;font-size:12px;text-align:center;">
+            Este enlace expira en 24 horas. Si no creaste esta cuenta, ignora este mensaje.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;padding:20px 40px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="margin:0;color:#94A3B8;font-size:12px;">© 2026 Noetia. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>",
+  "subject": "Confirma tu cuenta en Noetia",
+  "to": "r@example.com",
+}
+`;
+
+exports[`EmailService golden master (B2-A1) transport and sender defaults sender, web URL and transport when env is unset: transport/defaults 1`] = `
+{
+  "host": "mailhog",
+  "port": 1025,
+  "secure": false,
+}
+`;

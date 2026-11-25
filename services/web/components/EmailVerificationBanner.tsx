@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { apiFetch, getEmailConfirmed } from '@/lib/api';
+import { useTranslation } from '@/lib/i18n';
 
 export default function EmailVerificationBanner() {
+  const { t } = useTranslation();
   const [show, setShow] = useState(false);
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -30,8 +32,8 @@ export default function EmailVerificationBanner() {
   return (
     <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between gap-4 text-sm">
       <p className="text-amber-800">
-        Confirma tu correo electrónico para acceder a pagos y descargas.
-        {sent && <span className="ml-2 font-medium">¡Correo enviado!</span>}
+        {t.emailBanner.message}
+        {sent && <span className="ml-2 font-medium">{t.emailBanner.sent}</span>}
       </p>
       <div className="flex items-center gap-3 shrink-0">
         {!sent && (
@@ -40,12 +42,12 @@ export default function EmailVerificationBanner() {
             disabled={loading}
             className="text-amber-900 font-medium underline underline-offset-2 disabled:opacity-50"
           >
-            {loading ? 'Enviando…' : 'Reenviar correo'}
+            {loading ? t.emailBanner.sending : t.emailBanner.resend}
           </button>
         )}
         <button
           onClick={() => setShow(false)}
-          aria-label="Cerrar"
+          aria-label={t.emailBanner.close}
           className="text-amber-600 hover:text-amber-900"
         >
           ✕

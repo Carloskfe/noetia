@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { clubsApi, ClubPoll } from '@/lib/clubs';
 import { useTranslation } from '@/lib/i18n';
+import { formatDateTime } from '@/lib/i18n/format';
 
 export default function ClubPollCard({ clubId, isAdmin }: { clubId: string; isAdmin: boolean }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const c = t.clubs.polls;
 
   const [polls, setPolls]       = useState<ClubPoll[]>([]);
@@ -85,7 +86,7 @@ export default function ClubPollCard({ clubId, isAdmin }: { clubId: string; isAd
                 {poll.status === 'open' ? c.open : c.closed}
               </span>
             </div>
-            <p className="text-xs text-gray-400 mb-3">{c.closesAt}: {new Date(poll.closesAt).toLocaleString()}</p>
+            <p className="text-xs text-gray-400 mb-3">{c.closesAt}: {formatDateTime(poll.closesAt, language)}</p>
             {isAdmin && poll.status === 'open' && (
               <button onClick={() => close(poll.id)} className="text-xs text-red-500 hover:underline">{c.close}</button>
             )}

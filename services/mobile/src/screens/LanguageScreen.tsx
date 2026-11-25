@@ -1,18 +1,23 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useTranslation, type Language } from '../i18n';
+import { selectableLanguages, useTranslation, type Language } from '../i18n';
 
 interface Props {
   onSelect: () => void;
 }
 
-const OPTIONS: Array<{ lang: Language; flag: string; label: string; sublabel: string }> = [
-  { lang: 'es', flag: '🌎', label: 'ES Latam', sublabel: 'Latin America' },
-  { lang: 'en', flag: '🇺🇸', label: 'English', sublabel: 'Inglés' },
+// Labels are each language's own name (endonyms) and never change with the interface language.
+// Sub-labels describe each option in the active interface language (t.lang.sublabels).
+const ALL_OPTIONS: Array<{ lang: Language; flag: string; label: string }> = [
+  { lang: 'es', flag: '🌎', label: 'ES Latam' },
+  { lang: 'en', flag: '🇺🇸', label: 'English' },
+  // Shown only when the French readiness gate is enabled (default: hidden). No flag: flags never identify a language.
+  { lang: 'fr-CA', flag: '', label: 'Français (Canada)' },
 ];
 
 export function LanguageScreen({ onSelect }: Props) {
   const { setLanguage, t } = useTranslation();
+  const options = ALL_OPTIONS.filter((o) => selectableLanguages().includes(o.lang));
   const [selected, setSelected] = useState<Language>('es');
 
   async function handleContinue() {
@@ -27,19 +32,19 @@ export function LanguageScreen({ onSelect }: Props) {
       <Text style={styles.subtitle}>{t.lang.subtitle}</Text>
 
       <View style={styles.options}>
-        {OPTIONS.map((opt) => (
+        {options.map((opt) => (
           <TouchableOpacity
             key={opt.lang}
             style={[styles.option, selected === opt.lang && styles.optionSelected]}
             onPress={() => setSelected(opt.lang)}
             accessibilityLabel={opt.label}
           >
-            <Text style={styles.flag}>{opt.flag}</Text>
+            {opt.flag ? <Text style={styles.flag}>{opt.flag}</Text> : null}
             <View style={styles.optionText}>
               <Text style={[styles.optionLabel, selected === opt.lang && styles.optionLabelSelected]}>
                 {opt.label}
               </Text>
-              <Text style={styles.optionSublabel}>{opt.sublabel}</Text>
+              <Text style={styles.optionSublabel}>{t.lang.sublabels[opt.lang]}</Text>
             </View>
             {selected === opt.lang && <Text style={styles.check}>✓</Text>}
           </TouchableOpacity>

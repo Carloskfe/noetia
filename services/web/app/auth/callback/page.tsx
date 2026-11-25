@@ -3,6 +3,7 @@
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { saveToken } from '@/lib/api';
+import { useTranslation } from '@/lib/i18n';
 
 function CallbackHandler() {
   const router = useRouter();
@@ -23,9 +24,10 @@ function CallbackHandler() {
 }
 
 export default function AuthCallbackPage() {
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <p className="text-gray-500">Signing you in…</p>
+      <p className="text-gray-500">{t.authCallback.signingIn}</p>
       <Suspense>
         <CallbackHandler />
       </Suspense>

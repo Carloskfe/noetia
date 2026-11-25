@@ -7,6 +7,7 @@ import { apiClient } from '../../api/client';
 import { saveToken, saveRefreshToken, saveUserType } from '../../auth/token-storage';
 import { SocialAuthButtons } from '../../auth/SocialAuthButtons';
 import { useTranslation } from '../../i18n';
+import { registerRequestBody } from '../../auth/register-request';
 
 interface Props {
   onRegister: () => void;
@@ -14,7 +15,7 @@ interface Props {
 }
 
 export function RegisterScreen({ onRegister, onLogin }: Props) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,7 +29,7 @@ export function RegisterScreen({ onRegister, onLogin }: Props) {
     setError('');
     try {
       const data = await apiClient.post<{ accessToken: string; refreshToken?: string; userType?: string }>(
-        '/auth/register', { name: name.trim(), email: email.trim().toLowerCase(), password },
+        '/auth/register', registerRequestBody({ name: name.trim(), email: email.trim().toLowerCase(), password }, language),
       );
       await saveToken(data.accessToken);
       if (data.refreshToken) await saveRefreshToken(data.refreshToken);

@@ -4,13 +4,14 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { clubsApi, ClubBook, ClubSession } from '@/lib/clubs';
 import { useTranslation } from '@/lib/i18n';
+import { formatDateTime } from '@/lib/i18n/format';
 
 export default function ClubSessionCard({ clubId, activeBook, isAdmin }: {
   clubId: string;
   activeBook: ClubBook | null;
   isAdmin: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const c = t.clubs.sessions;
 
   const [sessions, setSessions]   = useState<ClubSession[]>([]);
@@ -48,7 +49,7 @@ export default function ClubSessionCard({ clubId, activeBook, isAdmin }: {
   }
 
   async function cancel(sessionId: string) {
-    if (!confirm('¿Cancelar esta sesión?')) return;
+    if (!confirm(t.clubs.sessions.cancelConfirm)) return;
     await clubsApi.cancelSession(clubId, sessionId);
     await load();
   }
@@ -125,7 +126,7 @@ export default function ClubSessionCard({ clubId, activeBook, isAdmin }: {
                 {statusLabel[s.status]}
               </span>
             </div>
-            <p className="text-xs text-gray-400 mb-1">{new Date(s.scheduledAt).toLocaleString()}</p>
+            <p className="text-xs text-gray-400 mb-1">{formatDateTime(s.scheduledAt, language)}</p>
             <p className="text-xs text-gray-400">Frases {s.startPhraseIndex}–{s.endPhraseIndex} · {s.book?.title}</p>
             {(s.status === 'scheduled' || s.status === 'live') && (
               <Link

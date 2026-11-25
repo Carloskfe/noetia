@@ -10,6 +10,7 @@ import { apiClient } from '../../api/client';
 import { clubsApi, ClubSession } from '../../api/clubs';
 import { useClubSession } from '../../hooks/useClubSession';
 import { useTranslation } from '../../i18n';
+import { liveSessionErrorMessage } from '../../i18n/errors';
 import type { ClubsStackParamList } from '../../navigation/types';
 
 type Route = RouteProp<ClubsStackParamList, 'LiveSession'>;
@@ -97,11 +98,11 @@ export function LiveSessionScreen() {
         <View style={s.header}>
           <View style={s.statusRow}>
             <View style={[s.dot, { backgroundColor: connected ? '#10B981' : '#D1D5DB' }]} />
-            <Text style={s.statusText}>{connected ? `${members.length} escuchando` : 'Conectando…'}</Text>
+            <Text style={s.statusText}>{connected ? t.clubs.live.listening(members.length) : t.clubs.live.connecting}</Text>
           </View>
           <Text style={s.title}>{session?.title}</Text>
-          <Text style={s.subtitle}>Frases {session?.startPhraseIndex}–{session?.endPhraseIndex}</Text>
-          {error ? <Text style={s.errorText}>{error}</Text> : null}
+          <Text style={s.subtitle}>{t.clubs.live.phrases(session?.startPhraseIndex, session?.endPhraseIndex)}</Text>
+          {error ? <Text style={s.errorText}>{liveSessionErrorMessage(t, error)}</Text> : null}
         </View>
 
         {/* Playback */}
@@ -115,7 +116,7 @@ export function LiveSessionScreen() {
             ) : (
               <View style={s.listenerPill}>
                 <Text style={s.listenerText}>
-                  {playback.isPlaying ? '🎧 Sincronizando…' : '⏸ En pausa'}
+                  {playback.isPlaying ? `🎧 ${t.clubs.live.syncing}` : `⏸ ${t.clubs.live.paused}`}
                 </Text>
               </View>
             )}
@@ -126,7 +127,7 @@ export function LiveSessionScreen() {
         <View style={s.membersRow}>
           {members.slice(0, 8).map(m => (
             <View key={m.socketId} style={[s.avatar, m.userId === myUserId && s.avatarMe]}>
-              <Text style={s.avatarText}>{m.userId === myUserId ? 'Tú' : '👤'}</Text>
+              <Text style={s.avatarText}>{m.userId === myUserId ? t.clubs.live.you : '👤'}</Text>
             </View>
           ))}
           {members.length > 8 && <Text style={s.moreText}>+{members.length - 8}</Text>}
@@ -134,7 +135,7 @@ export function LiveSessionScreen() {
 
         {/* Live chat */}
         <View style={s.chatContainer}>
-          <Text style={s.chatTitle}>Chat en vivo</Text>
+          <Text style={s.chatTitle}>{t.clubs.live.chatTitle}</Text>
           <FlatList
             ref={chatRef}
             data={messages}

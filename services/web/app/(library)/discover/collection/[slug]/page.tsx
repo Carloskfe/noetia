@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { BookGrid } from '@/components/BookGrid';
+import { useTranslation } from '@/lib/i18n';
+import { genericErrorMessage } from '@/lib/i18n/errors';
 
 type Book = {
   id: string;
@@ -26,11 +28,13 @@ type CollectionDetail = {
 
 export default function CollectionPage() {
   const { slug } = useParams<{ slug: string }>();
+  const { t } = useTranslation();
   const router = useRouter();
   const [collection, setCollection] = useState<CollectionDetail | null>(null);
   const [libraryIds, setLibraryIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  // The failure itself is stored; its localized text is resolved at render time.
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
     Promise.all([
@@ -41,7 +45,7 @@ export default function CollectionPage() {
         setCollection(col);
         setLibraryIds(new Set(ids));
       })
-      .catch((err) => setError(err.message ?? 'Error loading collection'))
+      .catch((err) => setError(err ?? new Error('collection')))
       .finally(() => setLoading(false));
   }, [slug]);
 
@@ -57,7 +61,7 @@ export default function CollectionPage() {
   if (loading) return <CollectionSkeleton />;
   if (error || !collection) return (
     <div className="max-w-lg mx-auto px-4 pt-16 text-center">
-      <p className="text-red-500 text-sm">{error || 'Colección no encontrada'}</p>
+      <p className="text-red-500 text-sm">{error ? genericErrorMessage(error, t) : t.collection.notFound}</p>
     </div>
   );
 
@@ -72,7 +76,7 @@ export default function CollectionPage() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
-          Volver
+          {t.collection.back}
         </button>
 
         <div className="flex items-start gap-4 mb-4">
@@ -82,9 +86,9 @@ export default function CollectionPage() {
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Colección</span>
+            <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">{t.collection.label}</span>
             <h1 className="text-xl font-bold text-gray-900 mt-0.5 leading-tight">{collection.name}</h1>
-            <p className="text-sm text-gray-500 mt-1">{collection.bookCount} libros</p>
+            <p className="text-sm text-gray-500 mt-1">{t.collection.bookCount(collection.bookCount)}</p>
           </div>
         </div>
 

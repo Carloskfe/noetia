@@ -3,13 +3,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/lib/i18n';
+import { authorPortalCopy } from '@/lib/i18n/pages/author-portal';
 
-const CATEGORIES = [
-  { value: 'leadership', label: 'Liderazgo' },
-  { value: 'personal-development', label: 'Desarrollo Personal' },
-  { value: 'business', label: 'Negocios' },
-  { value: 'classic', label: 'Clásico' },
-];
+// Category values are what the API stores; labels come from the page dictionary.
+const CATEGORIES = ['leadership', 'personal-development', 'business', 'classic'] as const;
 
 const LANGUAGES = [
   { value: 'es', label: 'Español' },
@@ -17,7 +15,6 @@ const LANGUAGES = [
   { value: 'pt', label: 'Português' },
 ];
 
-const TIER_LABELS: Record<string, string> = { basic: 'Básico', starter: 'Starter', pro: 'Pro' };
 
 type Book = {
   id: string;
@@ -97,6 +94,8 @@ function uploadWithProgress(
 
 export default function AuthorPage() {
   const router = useRouter();
+  const { language } = useTranslation();
+  const c = authorPortalCopy[language];
   const formRef = useRef<HTMLFormElement>(null);
   const [loading, setLoading] = useState(false);
   const [uploadPct, setUploadPct] = useState(0);
@@ -158,12 +157,13 @@ export default function AuthorPage() {
     const formData = new FormData(e.currentTarget);
     const t = token();
 
-    const { ok, data } = await uploadWithProgress('/api/books', formData, t, setUploadPct);
+    const { ok, status, data } = await uploadWithProgress('/api/books', formData, t, setUploadPct);
 
     if (!ok) {
-      setError(data.message ?? `Error al enviar (${data.status ?? 'sin conexión'})`);
+      // Localized message only; raw server messages are never shown (NEM-025 B1-A).
+      setError(c.submitError(status));
     } else {
-      setSuccess(`"${data.title}" enviado correctamente. Te notificaremos cuando sea publicado (3–5 días hábiles).`);
+      setSuccess(c.submitSuccess(data.title));
       formRef.current?.reset();
       setShowSync(false);
       fetchAll(t);
@@ -182,10 +182,10 @@ export default function AuthorPage() {
         body: text,
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message ?? `Error ${res.status}`);
-      setSrtState((s) => ({ ...s, [bookId]: { success: 'Sincronización guardada.' } }));
-    } catch (err: any) {
-      setSrtState((s) => ({ ...s, [bookId]: { error: err.message ?? 'Error al subir' } }));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setSrtState((s) => ({ ...s, [bookId]: { success: c.srtSaved } }));
+    } catch {
+      setSrtState((s) => ({ ...s, [bookId]: { error: c.srtError } }));
     }
   }
 
@@ -197,9 +197,9 @@ export default function AuthorPage() {
       {/* Page header */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-2xl mx-auto px-4 pt-10 pb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Portal de autores</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{c.title}</h1>
           <p className="text-gray-500 text-sm mt-1">
-            Publica tu libro, audiolibro o curso en Noetia y llega a miles de lectores.
+            {c.subtitle}
           </p>
         </div>
       </div>
@@ -212,9 +212,9 @@ export default function AuthorPage() {
             quotaFull ? 'bg-red-50 border border-red-200' : 'bg-white shadow-sm border border-gray-100'
           }`}>
             <div>
-              <p className="text-sm font-semibold text-gray-900">Plan {TIER_LABELS[quota.tier] ?? quota.tier}</p>
+              <p className="text-sm font-semibold text-gray-900">{c.plan(c.tiers[quota.tier as keyof typeof c.tiers] ?? quota.tier)}</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                {quota.used} de {quota.limit} libro{quota.limit !== 1 ? 's' : ''} utilizado{quota.used !== 1 ? 's' : ''}
+                {c.quotaUsage(quota.used, quota.limit)}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -223,7 +223,7 @@ export default function AuthorPage() {
                   <div key={i} className={`w-3 h-3 rounded-full ${i < quota.used ? 'bg-blue-500' : 'bg-gray-200'}`} />
                 ))}
               </div>
-              {quotaFull && <span className="text-xs font-medium text-red-600">Límite alcanzado</span>}
+              {quotaFull && <span className="text-xs font-medium text-red-600">{c.limitReached}</span>}
             </div>
           </div>
         )}
@@ -231,12 +231,12 @@ export default function AuthorPage() {
         {/* Analytics */}
         {analytics && analytics.books.length > 0 && (
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Actividad reciente</h2>
+            <h2 className="text-sm font-semibold text-gray-700 mb-4">{c.activityTitle}</h2>
             <div className="grid grid-cols-3 gap-4 mb-4">
               {[
-                { v: analytics.totalReaders, l: 'Lectores' },
-                { v: analytics.totalShares, l: 'Compartidos' },
-                { v: `${analytics.totalStorageMB} MB`, l: 'Almacenamiento' },
+                { v: analytics.totalReaders, l: c.readersLabel },
+                { v: analytics.totalShares, l: c.sharesLabel },
+                { v: `${analytics.totalStorageMB} MB`, l: c.storageLabel },
               ].map(({ v, l }) => (
                 <div key={l} className="text-center">
                   <p className="text-2xl font-bold text-gray-900">{v}</p>
@@ -249,8 +249,8 @@ export default function AuthorPage() {
                 <div key={b.id} className="flex items-center justify-between text-sm bg-gray-50 rounded-xl px-4 py-3">
                   <p className="font-medium text-gray-900 truncate max-w-[140px]">{b.title}</p>
                   <div className="flex gap-4 text-right flex-shrink-0">
-                    <span className="text-xs text-gray-500">{b.readers} lectores</span>
-                    <span className="text-xs text-gray-500">{b.shareCount} compartidos</span>
+                    <span className="text-xs text-gray-500">{c.readers(b.readers)}</span>
+                    <span className="text-xs text-gray-500">{c.shares(b.shareCount)}</span>
                   </div>
                 </div>
               ))}
@@ -261,11 +261,11 @@ export default function AuthorPage() {
         {/* Upload form */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-6 pt-6 pb-4 border-b border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900">Subir nuevo libro</h2>
+            <h2 className="text-lg font-bold text-gray-900">{c.uploadTitle}</h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              Todos los libros pasan por revisión antes de publicarse.{' '}
+              {c.uploadIntro}{' '}
               <Link href="/upload-guide" className="text-blue-600 hover:underline font-medium">
-                Ver guía de formatos →
+                {c.formatGuide}
               </Link>
             </p>
           </div>
@@ -274,9 +274,9 @@ export default function AuthorPage() {
           <form ref={formRef} onSubmit={handleSubmit} className="p-6 space-y-5">
               {quotaFull && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                  <p className="text-sm font-semibold text-amber-800 mb-0.5">Has alcanzado el límite de tu plan</p>
+                  <p className="text-sm font-semibold text-amber-800 mb-0.5">{c.quotaFullTitle}</p>
                   <p className="text-xs text-amber-700">
-                    Actualiza tu plan o introduce un <strong>código de cortesía</strong> en el campo de abajo para publicar este libro.
+                    {c.quotaFullBody[0]}<strong>{c.quotaFullBody[1]}</strong>{c.quotaFullBody[2]}
                   </p>
                 </div>
               )}
@@ -284,25 +284,25 @@ export default function AuthorPage() {
               {/* Metadata */}
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Título <span className="text-blue-600">*</span></label>
-                  <input name="title" required className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="El nombre completo de tu libro" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{c.titleLabel} <span className="text-blue-600">*</span></label>
+                  <input name="title" required className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder={c.titlePlaceholder} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Autor <span className="text-blue-600">*</span></label>
-                  <input name="author" required className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nombre completo del autor" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{c.authorLabel} <span className="text-blue-600">*</span></label>
+                  <input name="author" required className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder={c.authorPlaceholder} />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Categoría <span className="text-blue-600">*</span></label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{c.categoryLabel} <span className="text-blue-600">*</span></label>
                   <select name="category" required className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                    <option value="">Seleccionar…</option>
-                    {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    <option value="">{c.select}</option>
+                    {CATEGORIES.map((value) => <option key={value} value={value}>{c.categories[value]}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Idioma</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{c.languageLabel}</label>
                   <select name="language" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                     {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
                   </select>
@@ -310,39 +310,39 @@ export default function AuthorPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                <textarea name="description" rows={3} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="Breve descripción del libro para los lectores (2–4 oraciones)." />
+                <label className="block text-sm font-medium text-gray-700 mb-1">{c.descriptionLabel}</label>
+                <textarea name="description" rows={3} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder={c.descriptionPlaceholder} />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">ISBN</label>
-                <input name="isbn" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="978-…  (opcional)" />
+                <input name="isbn" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder={c.isbnPlaceholder} />
               </div>
 
               {/* Files */}
               <div className="border-t border-gray-100 pt-5 space-y-4">
-                <p className="text-sm font-semibold text-gray-700">Archivos</p>
+                <p className="text-sm font-semibold text-gray-700">{c.filesLabel}</p>
 
                 <FileInput
                   name="coverFile"
-                  label="Portada"
+                  label={c.cover}
                   accept=".jpg,.jpeg,.png"
-                  hint="JPG o PNG · Mínimo 800 × 1200 px (proporción 2:3) · Máx 5 MB"
+                  hint={c.coverHint}
                 />
 
                 <FileInput
                   name="textFile"
-                  label="Texto del libro"
+                  label={c.text}
                   accept=".txt,.epub,.pdf"
-                  hint=".txt preferido (UTF-8, párrafos separados por línea en blanco) · Máx 10 MB"
+                  hint={c.textHint}
                   required
                 />
 
                 <FileInput
                   name="audioFile"
-                  label="Audio de la narración"
+                  label={c.audio}
                   accept=".mp3,.m4a,.aac"
-                  hint="MP3 o M4A · 128 kbps mínimo · Máx 500 MB · Sin música de fondo"
+                  hint={c.audioHint}
                 />
               </div>
 
@@ -356,21 +356,21 @@ export default function AuthorPage() {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`w-4 h-4 transition-transform ${showSync ? 'rotate-90' : ''}`}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
-                  {showSync ? 'Ocultar' : 'Añadir'} sincronización texto-audio{' '}
-                  <span className="text-xs font-normal text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">Recomendado</span>
+                  {c.syncToggle(showSync)}{' '}
+                  <span className="text-xs font-normal text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">{c.recommended}</span>
                 </button>
                 <p className="text-xs text-gray-400 mt-1 ml-6">
-                  Activa el resaltado frase por frase en Modo Escucha Activa.{' '}
-                  <Link href="/upload-guide#sync" className="underline">¿Cómo crear el archivo?</Link>
+                  {c.syncHint}{' '}
+                  <Link href="/upload-guide#sync" className="underline">{c.syncHowTo}</Link>
                 </p>
 
                 {showSync && (
                   <div className="mt-3 ml-6">
                     <FileInput
                       name="srtFile"
-                      label="Archivo de sincronización"
+                      label={c.syncFile}
                       accept=".srt,.vtt"
-                      hint="SRT o WebVTT · Cada cue = una frase · Máx 2 MB"
+                      hint={c.syncFileHint}
                     />
                   </div>
                 )}
@@ -383,10 +383,10 @@ export default function AuthorPage() {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 transition-transform group-open:rotate-90">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
-                    ¿Tienes un código de cortesía?
+                    {c.courtesyQuestion}
                   </summary>
                   <div className="mt-3 ml-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Código de cortesía</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{c.courtesyLabel}</label>
                     <input
                       name="uploadCode"
                       type="text"
@@ -395,7 +395,7 @@ export default function AuthorPage() {
                       onChange={(e) => { e.target.value = e.target.value.toUpperCase(); }}
                     />
                     <p className="text-xs text-gray-400 mt-1">
-                      Un código válido te permite subir este libro sin que cuente contra tu cuota de plan.
+                      {c.courtesyHint}
                     </p>
                   </div>
                 </details>
@@ -405,7 +405,7 @@ export default function AuthorPage() {
               {loading && uploadPct > 0 && (
                 <div>
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>Subiendo archivos…</span>
+                    <span>{c.uploadingFiles}</span>
                     <span>{uploadPct}%</span>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-2">
@@ -426,22 +426,22 @@ export default function AuthorPage() {
                 disabled={loading}
                 className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-40 transition text-sm"
               >
-                {loading ? (uploadPct > 0 ? `Subiendo… ${uploadPct}%` : 'Procesando…') : 'Enviar para revisión'}
+                {loading ? (uploadPct > 0 ? c.uploadingPct(uploadPct) : c.processing) : c.submit}
               </button>
             </form>
         </div>
 
         {/* My books */}
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Mis libros</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">{c.myBooks}</h2>
           {loadingBooks ? (
             <div className="space-y-3">
               {[1, 2].map((i) => <div key={i} className="animate-pulse bg-white rounded-xl h-20 border border-gray-100" />)}
             </div>
           ) : myBooks.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
-              <p className="text-gray-400 text-sm">Aún no has enviado ningún libro.</p>
-              <p className="text-gray-400 text-xs mt-1">Cuando lo hagas aparecerá aquí.</p>
+              <p className="text-gray-400 text-sm">{c.noBooks}</p>
+              <p className="text-gray-400 text-xs mt-1">{c.noBooksNote}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -467,14 +467,14 @@ export default function AuthorPage() {
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${
                         book.isPublished ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
                       }`}>
-                        {book.isPublished ? 'Publicado' : 'En revisión'}
+                        {book.isPublished ? c.published : c.inReview}
                       </span>
                     </div>
 
                     {stats && (
                       <div className="flex gap-4 px-4 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-500">
-                        <span>{stats.readers} lectores</span>
-                        <span>{stats.shareCount} compartidos</span>
+                        <span>{c.readers(stats.readers)}</span>
+                        <span>{c.shares(stats.shareCount)}</span>
                         <span>{stats.storageMB} MB</span>
                       </div>
                     )}
@@ -485,7 +485,7 @@ export default function AuthorPage() {
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 3H12H8C6.34315 3 5 4.34315 5 6V18C5 19.6569 6.34315 21 8 21H16C17.6569 21 19 19.6569 19 18V13.5M13.5 3L19 8.5M13.5 3V8.5H19" />
                         </svg>
-                        Subir sincronización SRT/VTT
+                        {c.uploadSrt}
                         <input
                           type="file"
                           accept=".srt,.vtt"
@@ -497,7 +497,7 @@ export default function AuthorPage() {
                           }}
                         />
                       </label>
-                      {srt?.loading && <span className="text-xs text-gray-400">Subiendo…</span>}
+                      {srt?.loading && <span className="text-xs text-gray-400">{c.uploading}</span>}
                       {srt?.success && <span className="text-xs text-green-600">✓ {srt.success}</span>}
                       {srt?.error && <span className="text-xs text-red-500">{srt.error}</span>}
                     </div>
@@ -510,13 +510,13 @@ export default function AuthorPage() {
 
         {/* Help footer */}
         <div className="bg-white rounded-2xl border border-gray-100 p-5 text-center">
-          <p className="text-sm text-gray-700 font-medium mb-1">¿Tienes preguntas?</p>
+          <p className="text-sm text-gray-700 font-medium mb-1">{c.helpTitle}</p>
           <p className="text-xs text-gray-500 mb-3">
-            Revisa la guía de formatos o contáctanos directamente.
+            {c.helpBody}
           </p>
           <div className="flex justify-center gap-4 text-sm">
             <Link href="/upload-guide" className="text-blue-600 hover:underline font-medium">
-              Guía de publicación
+              {c.helpGuide}
             </Link>
             <a href="mailto:autores@noetia.app" className="text-blue-600 hover:underline font-medium">
               autores@noetia.app

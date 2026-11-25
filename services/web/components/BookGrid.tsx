@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { useTranslation } from '@/lib/i18n';
 
 const LANG_LABELS: Record<string, string> = {
   en: 'EN',
@@ -27,6 +28,7 @@ type Props = {
 };
 
 export function BookGrid({ books, libraryBookIds, onAdd }: Props) {
+  const { t } = useTranslation();
   return (
     <div className="grid grid-cols-2 gap-4 pb-6">
       {books.map((book) => {
@@ -62,7 +64,7 @@ export function BookGrid({ books, libraryBookIds, onAdd }: Props) {
             {onAdd && (
               <button
                 onClick={(e) => { e.preventDefault(); if (!inLibrary) onAdd(book.id); }}
-                aria-label={inLibrary ? 'En tu biblioteca' : 'Agregar a tu biblioteca'}
+                aria-label={inLibrary ? t.bookGrid.inLibrary : t.bookGrid.addToLibrary}
                 className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow transition ${
                   inLibrary
                     ? 'bg-blue-600 text-white'

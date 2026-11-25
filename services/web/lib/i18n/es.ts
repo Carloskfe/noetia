@@ -6,8 +6,10 @@ export const es: Translations = {
     subtitle: 'Puedes cambiarlo más tarde en tu perfil.',
     es: 'ES Latam',
     en: 'English',
+    'fr-CA': 'Français (Canada)',
   },
   common: {
+    tooManyAttempts: 'Demasiados intentos. Espera un minuto e inténtalo de nuevo.',
     loading: 'Cargando…',
     error: 'Algo salió mal. Inténtalo de nuevo.',
     cancel: 'Cancelar',
@@ -40,6 +42,7 @@ export const es: Translations = {
         email: 'Correo inválido',
         passwordRequired: 'La contraseña es requerida',
         generic: 'Error al iniciar sesión',
+        invalidCredentials: 'Correo o contraseña incorrectos.',
       },
     },
     register: {
@@ -56,6 +59,7 @@ export const es: Translations = {
         emailInvalid: 'Correo inválido',
         passwordShort: 'La contraseña debe tener al menos 8 caracteres',
         generic: 'Error al registrarse',
+        emailTaken: 'Ya existe una cuenta con este correo.',
       },
     },
     forgot: {
@@ -115,6 +119,7 @@ export const es: Translations = {
       country: 'País',
       countryPlaceholder: 'Selecciona tu país',
       readingLanguages: 'Idiomas de lectura',
+      otherCountry: 'Otro',
       submit: 'Continuar',
       submitting: 'Guardando…',
     },
@@ -122,6 +127,7 @@ export const es: Translations = {
       title: '¿Qué te interesa leer?',
       subtitle: 'Elige hasta 5 categorías para personalizar tu biblioteca.',
       maxSelected: '5 seleccionadas',
+      selectedCount: (n: number, max: number) => `${n}/${max} seleccionadas`,
       submit: 'Ir a mi biblioteca',
       submitting: 'Guardando…',
       categories: {
@@ -272,6 +278,7 @@ export const es: Translations = {
     admin: 'Admin',
     userTypes: { personal: 'Lector', author: 'Autor', editorial: 'Editorial' },
     language: 'Idioma',
+    accountSection: 'Cuenta',
     deleteModal: {
       ariaLabel: 'Eliminar cuenta',
       title: 'Eliminar cuenta',
@@ -565,9 +572,12 @@ export const es: Translations = {
       submit: 'Crear club',
       submitting: 'Creando…',
       limitReached: 'Alcanzaste el límite de 3 clubes creados.',
+      bookRequired: 'Selecciona un libro inicial.',
       subscriptionRequired: 'Se requiere suscripción para crear un club con un libro de pago.',
     },
     page: {
+      leaveConfirm: '¿Salir del club?',
+      linkCopied: 'Enlace copiado al portapapeles',
       members: 'miembros',
       join: 'Unirme',
       leave: 'Salir del club',
@@ -616,6 +626,9 @@ export const es: Translations = {
       upcoming: 'Próxima',
       completed: 'Completada',
       cancelled: 'Cancelada',
+      cancelConfirm: '¿Cancelar esta sesión?',
+      notFound: 'Sesión no encontrada.',
+      loadError: 'No se pudo cargar la sesión.',
       cancel: 'Cancelar sesión',
       join: 'Unirme a la sesión',
     },
@@ -974,5 +987,42 @@ export const es: Translations = {
       'ninez-y-juventud': { name: 'Niñez y juventud', description: 'Proyectos que amplían el acceso a la educación, la lectura y las oportunidades para niños y jóvenes.' },
       'medio-ambiente': { name: 'Medio ambiente', description: 'Protección de los ecosistemas, la biodiversidad y los recursos naturales de nuestra región.' },
     },
+  },
+  bookGrid: {
+    inLibrary: 'En tu biblioteca',
+    addToLibrary: 'Agregar a tu biblioteca',
+  },
+  emailBanner: {
+    message: 'Confirma tu correo electrónico para acceder a pagos y descargas.',
+    sent: '¡Correo enviado!',
+    resend: 'Reenviar correo',
+    sending: 'Enviando…',
+    close: 'Cerrar',
+  },
+  collection: {
+    back: 'Volver',
+    label: 'Colección',
+    notFound: 'Colección no encontrada',
+    bookCount: (n: number) => n === 1 ? '1 libro' : `${n} libros`,
+  },
+  clubLive: {
+    noAudio: 'Este libro no tiene audio disponible.',
+    playbackPosition: 'Posición de reproducción',
+  },
+  clubCard: {
+    tokenRequired: '1 token',
+  },
+  clubDiscussionForm: {
+    phrasePlaceholder: 'Frase #',
+  },
+  accountNav: {
+    title: 'Cuenta',
+    billing: 'Facturación',
+  },
+  authCallback: {
+    signingIn: 'Iniciando sesión…',
+  },
+  socialPage: {
+    title: 'Compartir',
   },
 };

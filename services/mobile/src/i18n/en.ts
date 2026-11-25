@@ -4,7 +4,9 @@ export const en = {
     subtitle: 'You can change this later in settings.',
     es: 'ES Latam',
     en: 'English',
+    'fr-CA': 'Français (Canada)',
     continue: 'Continue',
+    sublabels: { es: 'Latin America', en: 'English', 'fr-CA': 'French (Canada)' },
   },
   common: {
     loading: 'Loading…',
@@ -16,6 +18,14 @@ export const en = {
     continue: 'Continue',
     delete: 'Delete',
     ok: 'OK',
+    errorTitle: 'Error',
+  },
+  nav: {
+    library: 'Library',
+    clubs: 'Clubs',
+    fragments: 'Fragments',
+    account: 'Account',
+    club: 'Club',
   },
   auth: {
     login: {
@@ -51,6 +61,21 @@ export const en = {
         generic: 'Registration failed. Please try again.',
       },
     },
+    social: {
+      divider: 'or continue with',
+      google: 'Continue with Google',
+      facebook: 'Continue with Facebook',
+      errors: {
+        googleConnect: 'Could not connect to Google. Try again.',
+        googleNoToken: 'Google did not return a sign-in token.',
+        googleSignIn: 'Google sign-in failed.',
+        facebookConnect: 'Could not connect to Facebook. Try again.',
+        facebookNoToken: 'Facebook did not return a sign-in token.',
+        facebookSignIn: 'Facebook sign-in failed.',
+        facebookNotConfigured: 'Facebook sign-in is not configured.',
+        appleSignIn: 'Apple sign-in failed.',
+      },
+    },
   },
   library: {
     title: 'Library',
@@ -69,6 +94,7 @@ export const en = {
     audioMode: 'Active listening mode',
     selectionMode: 'Select text',
     selectionModeHint: 'Tap phrases to build a quote, then save it',
+    audioLoadError: 'Could not load the audio.',
   },
   fragments: {
     title: 'Fragments',
@@ -204,6 +230,20 @@ export const en = {
     noClubs: 'You are not a member of any club reading this book.',
     polls: { empty: 'No polls yet.', open: 'Open', closed: 'Closed', vote: 'Vote', close: 'Close', winner: 'Winner' },
     sessions: { empty: 'No sessions scheduled.', upcoming: 'Upcoming', live: 'Live', completed: 'Done', cancelled: 'Cancelled', join: 'Join session' },
+    live: {
+      listening: (n: number) => `${n} listening`,
+      connecting: 'Connecting…',
+      phrases: (from?: number, to?: number) => `Phrases ${from ?? ''}–${to ?? ''}`,
+      syncing: 'Syncing…',
+      paused: 'Paused',
+      you: 'You',
+      chatTitle: 'Live chat',
+      errors: {
+        sessionNotFound: 'Session not found.',
+        notMember: 'You are not a member of this club.',
+        generic: 'Could not connect to the session.',
+      },
+    },
     errors: {
       alreadyMember: 'Already a member.',
       clubFull: 'Club is full.',

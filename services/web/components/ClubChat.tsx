@@ -68,7 +68,7 @@ export default function ClubChat({ clubId, canWrite }: { clubId: string; canWrit
                 <button
                   onClick={() => remove(msg.id)}
                   className="opacity-0 group-hover:opacity-100 text-xs text-gray-300 hover:text-red-400 self-center"
-                  aria-label="Delete"
+                  aria-label={t.common.delete}
                 >
                   ✕
                 </button>

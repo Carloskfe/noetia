@@ -6,7 +6,9 @@ export const es: MobileTranslations = {
     subtitle: 'Puedes cambiarlo después en configuración.',
     es: 'Español',
     en: 'English',
+    'fr-CA': 'Français (Canada)',
     continue: 'Continuar',
+    sublabels: { es: 'Latinoamérica', en: 'Inglés', 'fr-CA': 'Francés (Canadá)' },
   },
   common: {
     loading: 'Cargando…',
@@ -18,6 +20,14 @@ export const es: MobileTranslations = {
     continue: 'Continuar',
     delete: 'Eliminar',
     ok: 'OK',
+    errorTitle: 'Error',
+  },
+  nav: {
+    library: 'Biblioteca',
+    clubs: 'Clubes',
+    fragments: 'Fragmentos',
+    account: 'Cuenta',
+    club: 'Club',
   },
   auth: {
     login: {
@@ -53,6 +63,21 @@ export const es: MobileTranslations = {
         generic: 'Error al crear la cuenta. Inténtalo de nuevo.',
       },
     },
+    social: {
+      divider: 'o continúa con',
+      google: 'Continuar con Google',
+      facebook: 'Continuar con Facebook',
+      errors: {
+        googleConnect: 'Error al conectar con Google. Inténtalo de nuevo.',
+        googleNoToken: 'No se recibió token de Google.',
+        googleSignIn: 'Error al iniciar sesión con Google.',
+        facebookConnect: 'Error al conectar con Facebook. Inténtalo de nuevo.',
+        facebookNoToken: 'No se recibió token de Facebook.',
+        facebookSignIn: 'Error al iniciar sesión con Facebook.',
+        facebookNotConfigured: 'Facebook no está configurado.',
+        appleSignIn: 'Error al iniciar sesión con Apple.',
+      },
+    },
   },
   library: {
     title: 'Biblioteca',
@@ -71,6 +96,7 @@ export const es: MobileTranslations = {
     audioMode: 'Modo escucha activa',
     selectionMode: 'Seleccionar texto',
     selectionModeHint: 'Toca frases para crear una cita y guárdala',
+    audioLoadError: 'No se pudo cargar el audio.',
   },
   fragments: {
     title: 'Fragmentos',
@@ -206,6 +232,20 @@ export const es: MobileTranslations = {
     noClubs: 'No eres miembro de ningún club que esté leyendo este libro.',
     polls: { empty: 'No hay sondeos.', open: 'Abierto', closed: 'Cerrado', vote: 'Votar', close: 'Cerrar', winner: 'Ganador' },
     sessions: { empty: 'No hay sesiones programadas.', upcoming: 'Próxima', live: 'En vivo', completed: 'Completada', cancelled: 'Cancelada', join: 'Unirme a la sesión' },
+    live: {
+      listening: (n: number) => `${n} escuchando`,
+      connecting: 'Conectando…',
+      phrases: (from?: number, to?: number) => `Frases ${from ?? ''}–${to ?? ''}`,
+      syncing: 'Sincronizando…',
+      paused: 'En pausa',
+      you: 'Tú',
+      chatTitle: 'Chat en vivo',
+      errors: {
+        sessionNotFound: 'No se encontró la sesión.',
+        notMember: 'No eres miembro de este club.',
+        generic: 'No se pudo conectar a la sesión.',
+      },
+    },
     errors: {
       alreadyMember: 'Ya eres miembro.',
       clubFull: 'El club está lleno.',

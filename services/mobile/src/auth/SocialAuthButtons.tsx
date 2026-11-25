@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { apiClient } from '../api/client';
+import { useTranslation } from '../i18n';
 import { saveToken, saveRefreshToken, saveUserType } from './token-storage';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -24,6 +25,8 @@ interface Props {
 }
 
 export function SocialAuthButtons({ onSuccess, onError }: Props) {
+  const { t } = useTranslation();
+  const msg = t.auth.social;
   const [loading, setLoading] = useState<'google' | 'facebook' | 'apple' | null>(null);
 
   // ── Google ──────────────────────────────────────────────────────────────────
@@ -44,12 +47,12 @@ export function SocialAuthButtons({ onSuccess, onError }: Props) {
       handleGoogleToken(auth?.idToken ?? (googleResponse as any).params?.id_token);
     } else if (googleResponse?.type === 'error') {
       setLoading(null);
-      onError('Error al conectar con Google. Inténtalo de nuevo.');
+      onError(msg.errors.googleConnect);
     }
   }, [googleResponse]);
 
   async function handleGoogleToken(idToken: string | undefined) {
-    if (!idToken) { setLoading(null); onError('No se recibió token de Google.'); return; }
+    if (!idToken) { setLoading(null); onError(msg.errors.googleNoToken); return; }
     try {
       const data = await apiClient.post<{ accessToken: string; refreshToken?: string; user: { userType?: string } }>(
         '/auth/google/mobile',
@@ -60,7 +63,7 @@ export function SocialAuthButtons({ onSuccess, onError }: Props) {
       if (data.user?.userType) await saveUserType(data.user.userType);
       onSuccess();
     } catch {
-      onError('Error al iniciar sesión con Google.');
+      onError(msg.errors.googleSignIn);
     } finally {
       setLoading(null);
     }
@@ -94,12 +97,12 @@ export function SocialAuthButtons({ onSuccess, onError }: Props) {
       handleFacebookToken(fbToken);
     } else if (fbResponse?.type === 'error') {
       setLoading(null);
-      onError('Error al conectar con Facebook. Inténtalo de nuevo.');
+      onError(msg.errors.facebookConnect);
     }
   }, [fbResponse]);
 
   async function handleFacebookToken(accessToken: string | undefined) {
-    if (!accessToken) { setLoading(null); onError('No se recibió token de Facebook.'); return; }
+    if (!accessToken) { setLoading(null); onError(msg.errors.facebookNoToken); return; }
     try {
       const data = await apiClient.post<{ accessToken: string; refreshToken?: string; user: { userType?: string } }>(
         '/auth/facebook/mobile',
@@ -110,14 +113,14 @@ export function SocialAuthButtons({ onSuccess, onError }: Props) {
       if (data.user?.userType) await saveUserType(data.user.userType);
       onSuccess();
     } catch {
-      onError('Error al iniciar sesión con Facebook.');
+      onError(msg.errors.facebookSignIn);
     } finally {
       setLoading(null);
     }
   }
 
   async function signInWithFacebook() {
-    if (!FACEBOOK_APP_ID) { onError('Facebook no está configurado.'); return; }
+    if (!FACEBOOK_APP_ID) { onError(msg.errors.facebookNotConfigured); return; }
     setLoading('facebook');
     await promptFacebookAsync();
   }
@@ -145,7 +148,7 @@ export function SocialAuthButtons({ onSuccess, onError }: Props) {
       onSuccess();
     } catch (err: any) {
       if (err.code !== 'ERR_REQUEST_CANCELED') {
-        onError('Error al iniciar sesión con Apple.');
+        onError(msg.errors.appleSignIn);
       }
     } finally {
       setLoading(null);
@@ -156,7 +159,7 @@ export function SocialAuthButtons({ onSuccess, onError }: Props) {
     <View style={styles.container}>
       <View style={styles.divider}>
         <View style={styles.line} />
-        <Text style={styles.dividerText}>o continúa con</Text>
+        <Text style={styles.dividerText}>{msg.divider}</Text>
         <View style={styles.line} />
       </View>
 
@@ -165,11 +168,11 @@ export function SocialAuthButtons({ onSuccess, onError }: Props) {
         style={styles.btn}
         onPress={signInWithGoogle}
         disabled={!!loading || !googleRequest}
-        accessibilityLabel="Continuar con Google"
+        accessibilityLabel={msg.google}
       >
         {loading === 'google'
           ? <ActivityIndicator color="#374151" />
-          : <Text style={styles.btnText}>🅶  Continuar con Google</Text>}
+          : <Text style={styles.btnText}>🅶  {msg.google}</Text>}
       </TouchableOpacity>
 
       {/* Facebook */}
@@ -177,11 +180,11 @@ export function SocialAuthButtons({ onSuccess, onError }: Props) {
         style={[styles.btn, styles.fbBtn]}
         onPress={signInWithFacebook}
         disabled={!!loading}
-        accessibilityLabel="Continuar con Facebook"
+        accessibilityLabel={msg.facebook}
       >
         {loading === 'facebook'
           ? <ActivityIndicator color="#fff" />
-          : <Text style={[styles.btnText, styles.fbText]}>f  Continuar con Facebook</Text>}
+          : <Text style={[styles.btnText, styles.fbText]}>f  {msg.facebook}</Text>}
       </TouchableOpacity>
 
       {/* Apple — iOS only */}

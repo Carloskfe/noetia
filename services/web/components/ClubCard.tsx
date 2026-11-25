@@ -22,7 +22,7 @@ export default function ClubCard({ club }: { club: Club }) {
         <p className="text-xs text-gray-500 line-clamp-2 mb-2">{club.description}</p>
       )}
       {club.tokenRequired && (
-        <span className="inline-block text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">1 token</span>
+        <span className="inline-block text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{t.clubCard.tokenRequired}</span>
       )}
     </Link>
   );
