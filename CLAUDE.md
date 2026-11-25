@@ -373,14 +373,20 @@ Internal only (no host ports):
 
 ### Auto-deploy (GitHub Actions)
 
-Every push to `main` triggers `.github/workflows/cd.yml`:
+> **Two procedures exist. Only the first is in force.** DEP-1 (PO approval before deploy, exact commit, server lock) is **NOT ACTIVE** until the PO records it in [`docs/operations/production-deployment.md`](docs/operations/production-deployment.md). Do not use its procedures before then.
+
+**Current (in force).** Every push to `main`, documentation included, triggers `.github/workflows/cd.yml` and deploys at once:
 1. SSHes into server using `DEPLOY_SSH_KEY` secret
 2. `git pull origin main`
 3. `docker compose --env-file .env.production -f docker-compose.server.yml up -d --build`
 4. Runs pending migrations
 5. Prunes unused Docker images
 
+**After DEP-1 activation only.** The run waits for PO approval in the `production` Environment, then deploys exactly that commit; superseded commits, modified tracked files and concurrent runs are refused. "Push after every commit" then always means *push to a branch*.
+
 ### Manual deploy commands
+
+> Current procedure. **After DEP-1 activation** replace the `git pull` + `up --build` lines below with [`docs/operations/production-rollback.md` §6](docs/operations/production-rollback.md) (deploy) or §3–§5 (rollback): a plain `git pull` would skip the exact-SHA check, the lock and the deploy log. On the server never run `git add .`, `git clean`, `git reset --hard` or `git checkout -f`: `.env.production` is untracked there.
 
 ```bash
 # SSH in (port 222 — changed from default 22 for security)
@@ -439,7 +445,7 @@ Credentials are in `.env.production` on the server — never committed.
 | Error tracking | Sentry | SDK installed; activate by setting `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` |
 | Search | Meilisearch | Self-hosted v1.7 — internal Docker only (no external port) |
 | File storage | MinIO | Self-hosted. **`books/` + `audio/` = private; `images/` = public.** Console: SSH tunnel port 9001 |
-| CI/CD | GitHub Actions | Trigger: push to `main`. Auth: `DEPLOY_SSH_KEY` → `/root/.ssh/deploy_key` on server |
+| CI/CD | GitHub Actions | Trigger: push to `main`. Auth: `DEPLOY_SSH_KEY` → `/root/.ssh/deploy_key` on server. After DEP-1 activation: Environment-scoped secret + PO approval |
 
 ---
 
@@ -646,6 +652,8 @@ All docs live in `docs/`. Engineering-relevant docs:
 | [app-store-submission.md](docs/app-store-submission.md) | iOS and Android store submission steps |
 | [grafana-monitoring.md](docs/grafana-monitoring.md) | Monitoring, Tailscale access, password reset |
 | [incident-response.md](docs/incident-response.md) | Playbooks — Traefik 502, container unhealthy, DB, MinIO, SSL |
+| [operations/production-deployment.md](docs/operations/production-deployment.md) | DEP-1 deployment protection: current vs future procedure, activation checklist (**not active**) |
+| [operations/production-rollback.md](docs/operations/production-rollback.md) | DEP-1 rollback and manual-deploy runbook (**not active**, rehearsed offline only) |
 | [secrets-rotation.md](docs/secrets-rotation.md) | Which secrets need rotation and how |
 | [operations/offsite-backups.md](docs/operations/offsite-backups.md) | Encrypted offsite backups (age + restricted SSH, daily systemd timer + post-reboot startup catch-up; operator unlocks SSH key after each VM reboot) — architecture, daily procedure, troubleshooting, restore, known gaps |
 | [business/](docs/business/) | Business plans, PM docs, technical architecture (EN + ES) |

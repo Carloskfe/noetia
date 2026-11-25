@@ -1,0 +1,66 @@
+test_branch_commit_not_main (__main__.DeployTests.test_branch_commit_not_main) ... ok
+test_build_failure (__main__.DeployTests.test_build_failure) ... ok
+test_checkout_moved_during_build (__main__.DeployTests.test_checkout_moved_during_build) ... ok
+test_commit_tracking_env_production (__main__.DeployTests.test_commit_tracking_env_production) ... ok
+test_commit_tracking_env_production_when_ignored (__main__.DeployTests.test_commit_tracking_env_production_when_ignored)
+Git silently overwrites IGNORED files on merge; the guard must come first. ... ok
+test_concurrent_deploy (__main__.DeployTests.test_concurrent_deploy) ... ok
+test_detached_unrecorded (__main__.DeployTests.test_detached_unrecorded) ... ok
+test_dirty_staged (__main__.DeployTests.test_dirty_staged) ... ok
+test_dirty_tracked (__main__.DeployTests.test_dirty_tracked) ... ok
+test_docker_commands_are_the_existing_ones (__main__.DeployTests.test_docker_commands_are_the_existing_ones) ... ok
+test_env_production_missing_or_empty (__main__.DeployTests.test_env_production_missing_or_empty) ... ok
+test_fetch_failure (__main__.DeployTests.test_fetch_failure) ... ok
+test_git_status_failure_is_not_clean (__main__.DeployTests.test_git_status_failure_is_not_clean) ... ok
+test_health_failure (__main__.DeployTests.test_health_failure) ... ok
+test_idempotent_redeploy (__main__.DeployTests.test_idempotent_redeploy) ... ok
+test_local_commit_on_server (__main__.DeployTests.test_local_commit_on_server) ... ok
+test_log_write_failure_fails_the_run (__main__.DeployTests.test_log_write_failure_fails_the_run) ... ok
+test_main_advances_during_build (__main__.DeployTests.test_main_advances_during_build) ... ok
+test_malformed_sha (__main__.DeployTests.test_malformed_sha) ... ok
+test_migration_failure_then_retry (__main__.DeployTests.test_migration_failure_then_retry) ... ok
+test_no_background_git_maintenance (__main__.DeployTests.test_no_background_git_maintenance) ... ok
+test_non_fast_forward_remote_rewritten (__main__.DeployTests.test_non_fast_forward_remote_rewritten) ... ok
+test_prune_failure_does_not_unrecord (__main__.DeployTests.test_prune_failure_does_not_unrecord) ... ok
+test_second_deploy_while_first_builds (__main__.DeployTests.test_second_deploy_while_first_builds)
+The lock is really held during the build. ... ok
+test_server_on_other_branch (__main__.DeployTests.test_server_on_other_branch) ... ok
+test_stale_fetch_head_is_not_used (__main__.DeployTests.test_stale_fetch_head_is_not_used) ... ok
+test_success_records_exact_sha_in_both_shells (__main__.DeployTests.test_success_records_exact_sha_in_both_shells) ... ok
+test_superseded_sha (__main__.DeployTests.test_superseded_sha) ... ok
+test_tracked_file_changed_during_build (__main__.DeployTests.test_tracked_file_changed_during_build) ... ok
+test_unknown_sha (__main__.DeployTests.test_unknown_sha) ... ok
+test_untracked_collision_stops (__main__.DeployTests.test_untracked_collision_stops) ... ok
+test_bad_input (__main__.RollbackTests.test_bad_input) ... ok
+test_check_changes_nothing (__main__.RollbackTests.test_check_changes_nothing) ... ok
+test_checkout_moved_during_build (__main__.RollbackTests.test_checkout_moved_during_build) ... ok
+test_compose_differs (__main__.RollbackTests.test_compose_differs) ... ok
+test_dirty_lock_env (__main__.RollbackTests.test_dirty_lock_env) ... ok
+test_failures_by_stage (__main__.RollbackTests.test_failures_by_stage) ... ok
+test_git_pull_hazard_documented (__main__.RollbackTests.test_git_pull_hazard_documented)
+Why the runbook forbids it: pull moves a detached rollback forward. ... ok
+test_manual_deploy_line_extracts_the_workflow_script (__main__.RollbackTests.test_manual_deploy_line_extracts_the_workflow_script) ... ok
+test_migration_check_uses_main_not_head (__main__.RollbackTests.test_migration_check_uses_main_not_head) ... ok
+test_migrations_differ (__main__.RollbackTests.test_migrations_differ) ... ok
+test_recorded_but_not_in_main_history (__main__.RollbackTests.test_recorded_but_not_in_main_history) ... ok
+test_rollback_and_return (__main__.RollbackTests.test_rollback_and_return) ... ok
+test_runbook_install_line_extracts_the_tested_script (__main__.RollbackTests.test_runbook_install_line_extracts_the_tested_script) ... ok
+test_target_tracking_env_production (__main__.RollbackTests.test_target_tracking_env_production) ... ok
+test_unrecorded_target (__main__.RollbackTests.test_unrecorded_target) ... ok
+test_expected (__main__.RunnerTests.test_expected) ... ok
+test_key_accepted (__main__.RunnerTests.test_key_accepted) ... ok
+test_key_refused (__main__.RunnerTests.test_key_refused) ... ok
+test_malformed_fingerprints (__main__.RunnerTests.test_malformed_fingerprints) ... ok
+test_refused (__main__.RunnerTests.test_refused) ... ok
+test_job (__main__.WorkflowContract.test_job) ... ok
+test_nothing_destructive (__main__.WorkflowContract.test_nothing_destructive) ... ok
+test_only_expression_in_server_script (__main__.WorkflowContract.test_only_expression_in_server_script) ... ok
+test_only_trigger_is_push_to_main (__main__.WorkflowContract.test_only_trigger_is_push_to_main) ... ok
+test_permissions_and_concurrency (__main__.WorkflowContract.test_permissions_and_concurrency) ... ok
+test_ssh_step (__main__.WorkflowContract.test_ssh_step) ... ok
+test_validated_values_are_the_used_values (__main__.WorkflowContract.test_validated_values_are_the_used_values) ... ok
+
+----------------------------------------------------------------------
+Ran 58 tests in 10.274s
+
+OK

@@ -111,13 +111,18 @@ ssh -p 222 root@84.247.140.175 "cat >> /root/.ssh/authorized_keys" < /tmp/deploy
 # 2. Update GitHub secret
 # Repo → Settings → Secrets → DEPLOY_SSH_KEY → update with contents of /tmp/deploy_key_new
 
-# 3. Test CI by pushing a trivial commit
+# 3. Test with the next AUTHORIZED release. Do not push a trivial commit: every push
+#    to main is a production deploy.
 # 4. Only after CI succeeds, remove the old public key from /root/.ssh/authorized_keys
 ssh -p 222 root@84.247.140.175 "nano /root/.ssh/authorized_keys"
 
 # Clean up local temp files
 rm /tmp/deploy_key_new /tmp/deploy_key_new.pub
 ```
+
+---
+
+> **After DEP-1 activation only** (not active; [production-deployment.md](operations/production-deployment.md)): store the key in the **`production` Environment** secret, never at repository scope; update the `DEPLOY_KEY_FINGERPRINT` Environment variable at the same time (`ssh-keygen -lf deploy_key_new.pub`), or every deploy is refused. Keep the old public key on the server until a deploy with the new one succeeds. A matching fingerprint does not prove scope: check `gh secret list` shows no repository-level `DEPLOY_SSH_KEY`. If the **server host key** changes, the PO verifies it from the console and updates `DEPLOY_HOST_FINGERPRINT`.
 
 ---
 

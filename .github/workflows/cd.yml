@@ -1,44 +1,125 @@
 name: CD
 
+# DEP-1. Do not merge this file until the `production` Environment exists, is
+# protected, and has been read back by the PO: GitHub may create a missing
+# Environment WITHOUT protection, and the first run would deploy at once.
+# Activation: docs/operations/production-deployment.md
 on:
   push:
     branches: [main]
+
+permissions:
+  contents: read
 
 concurrency:
   group: deploy-production
   # Queue, don't cancel: killing a deploy mid-script can leave prod half-recreated
   # or with migrations unrun (a cancel after the old `down` step caused a ~4 min
-  # outage on 2026-10-29). A queued run still deploys the latest main.
+  # outage on 2026-10-29). Each run deploys only its own commit; a run whose commit
+  # is no longer the tip of main is refused.
   cancel-in-progress: false
 
 jobs:
   deploy:
     name: Deploy to production (Contabo)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment:
+      name: production
+      url: https://noetia.app
 
+    # No checkout: no repository code runs on the runner next to the deploy key.
     steps:
-      - uses: actions/checkout@v5
+      - name: Refuse unexpected or superseded commit (no production contact)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          [ "$GITHUB_REF" = refs/heads/main ] || { echo "REFUSED: not refs/heads/main"; exit 1; }
+          printf '%s' "$GITHUB_SHA" | grep -Eqx '[0-9a-f]{40}' || { echo "REFUSED: malformed SHA"; exit 1; }
+          tip=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha) || { echo "REFUSED: cannot read the tip of main"; exit 1; }
+          [ "$tip" = "$GITHUB_SHA" ] || { echo "REFUSED: $GITHUB_SHA is not the tip of main ($tip)"; exit 1; }
+
+      # Proves WHICH key is in use, not which scope it came from. Also guarantees the
+      # host fingerprint is set: the SSH action silently skips host verification
+      # when it is empty.
+      - name: Verify deploy credential and host fingerprint (no production contact)
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          WANT_KEY: ${{ vars.DEPLOY_KEY_FINGERPRINT }}
+          WANT_HOST: ${{ vars.DEPLOY_HOST_FINGERPRINT }}
+        run: |
+          set -eu
+          is_fp() { [ "$(printf '%s\n' "$1" | wc -l)" -eq 1 ] && printf '%s\n' "$1" | grep -Eqx 'SHA256:[A-Za-z0-9+/]{43}'; }
+          [ -n "$KEY" ] || { echo "REFUSED: deploy key missing"; exit 1; }
+          is_fp "$WANT_KEY" || { echo "REFUSED: DEPLOY_KEY_FINGERPRINT missing or malformed"; exit 1; }
+          is_fp "$WANT_HOST" || { echo "REFUSED: DEPLOY_HOST_FINGERPRINT missing or malformed"; exit 1; }
+          umask 077
+          f=$(mktemp)
+          trap 'rm -f "$f"' EXIT
+          printf '%s\n' "$KEY" > "$f"
+          pub=$(ssh-keygen -y -P '' -f "$f" 2>/dev/null) || { echo "REFUSED: deploy key unreadable"; exit 1; }
+          got=$(printf '%s\n' "$pub" | ssh-keygen -lf - | awk '{print $2}')
+          [ "$got" = "$WANT_KEY" ] || { echo "REFUSED: not the expected deploy key"; exit 1; }
 
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
         with:
           host: 84.247.140.175
           username: root
           port: 222
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          fingerprint: ${{ vars.DEPLOY_HOST_FINGERPRINT }}
+          timeout: 30s
+          command_timeout: 30m
           script: |
-            set -e
-            cd /opt/noetia
+            # BEGIN SERVER SCRIPT
+            set -eu
+            SHA='${{ github.sha }}'
+            LOG=.git/noetia-deployed.log
+            refuse() { echo "REFUSED: $1"; exit 1; }
+            # No background git maintenance: a detached child would inherit the lock.
+            g() { git -c gc.auto=0 -c maintenance.auto=false "$@"; }
 
-            echo "── Pulling latest code ──────────────────────────"
-            git pull origin main
+            cd /opt/noetia
+            exec 9>/var/lock/noetia-deploy.lock
+            flock -n 9 || refuse "another deploy or rollback is running"
+
+            echo "── Verifying approved commit ────────────────────"
+            printf '%s' "$SHA" | grep -Eqx '[0-9a-f]{40}' || refuse "malformed SHA"
+            [ -s .env.production ] || refuse ".env.production missing or empty"
+            dirty=$(g status --porcelain --untracked-files=no) || refuse "git status failed"
+            [ -z "$dirty" ] || refuse "tracked files are modified on the server"
+            branch=$(g symbolic-ref -q --short HEAD || true)
+            case "$branch" in
+              main) ;;
+              '') here=$(g rev-parse HEAD)
+                  grep -q " $here " "$LOG" || refuse "detached HEAD that is not a recorded deploy or rollback" ;;
+              *) refuse "server checkout is on an unexpected branch" ;;
+            esac
+            g fetch --no-tags origin refs/heads/main || refuse "git fetch failed"
+            [ "$(g rev-parse FETCH_HEAD)" = "$SHA" ] || refuse "not the tip of main (superseded)"
+            g merge-base --is-ancestor refs/heads/main "$SHA" || refuse "not a fast-forward"
+            # A commit that tracked .env.production could replace the server's copy.
+            tracked=$(g ls-tree --name-only "$SHA" -- .env.production) || refuse "cannot read the commit"
+            [ -z "$tracked" ] || refuse "commit tracks .env.production"
+
+            echo "── Updating checkout (fast-forward only) ────────"
+            [ "$branch" = main ] || g checkout -q main
+            g merge --ff-only "$SHA"
+            verify() {
+              [ "$(g rev-parse HEAD)" = "$SHA" ] || refuse "checkout is not the approved commit"
+              dirty=$(g status --porcelain --untracked-files=no) || refuse "git status failed"
+              [ -z "$dirty" ] || refuse "tracked files changed"
+            }
+            verify
 
             # Build while the current containers keep serving. (A full `down` used to
             # run first, which took the whole stack — db included — offline for the
-            # entire build, ~6 min per deploy. The name conflicts it worked around came
-            # from racing deploys, which the concurrency group above now prevents.)
+            # entire build, ~6 min per deploy.)
             echo "── Building images (site stays up) ──────────────"
             docker compose --env-file .env.production -f docker-compose.server.yml build
+            verify
 
             # Recreates only services whose image/config changed; db, cache, storage
             # and search keep running. --wait fails the deploy if a service never
@@ -49,7 +130,12 @@ jobs:
             echo "── Running migrations ───────────────────────────"
             docker compose --env-file .env.production -f docker-compose.server.yml exec -T -e DB_HOST=db api npm run migration:run:prod
 
-            echo "── Cleaning up unused images ────────────────────"
-            docker image prune -f
+            # Only now is the commit "deployed". HEAD alone never means live.
+            verify
+            printf '%s %s deploy\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$SHA" >> "$LOG"
 
-            echo "── Deploy complete ──────────────────────────────"
+            echo "── Cleaning up unused images ────────────────────"
+            docker image prune -f || echo "WARNING: image prune failed (deploy already recorded)"
+
+            echo "── DEPLOYED $SHA ──"
+            # END SERVER SCRIPT

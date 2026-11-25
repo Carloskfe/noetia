@@ -1,0 +1,37 @@
+KILLED    1 RunnerTests: '[ "$GITHUB_REF" = refs/heads/main ] ||'  FAIL: test_refused (__main__.RunnerTests.test_refused) [{'GITHUB_REF':
+KILLED    2 RunnerTests: '[ "$tip" = "$GITHUB_SHA" ] ||'  FAIL: test_refused (__main__.RunnerTests.test_refused) [{'GH_TIP': 'bb
+KILLED    3 RunnerTests: '[ -n "$KEY" ] ||'  FAIL: test_key_refused (__main__.RunnerTests.test_key_refused) [deploy
+KILLED    4 RunnerTests: 'is_fp "$WANT_KEY" ||'  FAIL: test_key_refused (__main__.RunnerTests.test_key_refused) [DEPLOY
+KILLED    5 RunnerTests: 'is_fp "$WANT_HOST" ||'  FAIL: test_key_refused (__main__.RunnerTests.test_key_refused) [DEPLOY
+KILLED    6 RunnerTests: '[ "$got" = "$WANT_KEY" ] ||'  FAIL: test_key_refused (__main__.RunnerTests.test_key_refused) [not th
+KILLED    7 RunnerTests: 'trap \'rm -f "$f"\' EXIT'  FAIL: test_key_accepted (__main__.RunnerTests.test_key_accepted)
+KILLED    8 DeployTests: 'flock -n 9 || refuse'  FAIL: test_concurrent_deploy (__main__.DeployTests.test_concurrent_dep
+KILLED    9 DeployTests: 'grep -Eqx \'[0-9a-f]{40}\' || refuse "malformed SHA"'  FAIL: test_malformed_sha (__main__.DeployTests.test_malformed_sha)
+KILLED   10 DeployTests: '[ -s .env.production ] ||'  FAIL: test_env_production_missing_or_empty (__main__.DeployTests.test_
+KILLED   11 DeployTests: '[ -z "$dirty" ] || refuse "tracked files are modified'  FAIL: test_dirty_staged (__main__.DeployTests.test_dirty_staged)
+KILLED   12 DeployTests: '|| refuse "git status failed"\n            [ -z "$dirty" ] ||'  FAIL: test_git_status_failure_is_not_clean (__main__.DeployTests.test_
+KILLED   13 DeployTests: 'grep -q " $here " "$LOG" ||'  FAIL: test_detached_unrecorded (__main__.DeployTests.test_detached_unr
+KILLED   14 DeployTests: '*) refuse "server checkout is on'  FAIL: test_server_on_other_branch (__main__.DeployTests.test_server_on
+KILLED   15 DeployTests: 'origin refs/heads/main || refuse "git fetch failed"'  FAIL: test_fetch_failure (__main__.DeployTests.test_fetch_failure)
+KILLED   16 DeployTests: '[ "$(g rev-parse FETCH_HEAD)" = "$SHA" ] ||'  FAIL: test_branch_commit_not_main (__main__.DeployTests.test_branch_co
+KILLED   17 DeployTests: 'g merge-base --is-ancestor refs/heads/main "$SHA" ||'  FAIL: test_local_commit_on_server (__main__.DeployTests.test_local_com
+KILLED   18 DeployTests: '[ -z "$tracked" ] ||'  FAIL: test_commit_tracking_env_production (__main__.DeployTests.test_c
+KILLED   19 DeployTests: '[ "$(g rev-parse HEAD)" = "$SHA" ] ||'  FAIL: test_checkout_moved_during_build (__main__.DeployTests.test_chec
+KILLED   20 DeployTests: '[ -z "$dirty" ] || refuse "tracked files changed"'  FAIL: test_tracked_file_changed_during_build (__main__.DeployTests.tes
+KILLED   21 DeployTests: 'server.yml build'  FAIL: test_build_failure (__main__.DeployTests.test_build_failure)
+KILLED   22 DeployTests: '--wait-timeout 300'  FAIL: test_health_failure (__main__.DeployTests.test_health_failure)
+KILLED   23 DeployTests: 'migration:run:prod'  FAIL: test_migration_failure_then_retry (__main__.DeployTests.test_mig
+KILLED   24 WorkflowContract: 'environment:\n      name: production'  FAIL: test_job (__main__.WorkflowContract.test_job)
+KILLED   25 WorkflowContract: 'fingerprint: ${{ vars.DEPLOY_HOST_FINGERPRINT }}'  FAIL: test_ssh_step (__main__.WorkflowContract.test_ssh_step)
+KILLED   26 RollbackTests: 'flock -n 9 || refuse'  FAIL: test_dirty_lock_env (__main__.RollbackTests.test_dirty_lock_env)
+KILLED   27 RollbackTests: '[ -z "$dirty" ] || refuse "tracked files are modified'  FAIL: test_dirty_lock_env (__main__.RollbackTests.test_dirty_lock_env)
+KILLED   28 RollbackTests: '[ -s .env.production ] ||'  FAIL: test_dirty_lock_env (__main__.RollbackTests.test_dirty_lock_env)
+KILLED   29 RollbackTests: 'grep -q " $SHA " "$LOG" ||'  FAIL: test_unrecorded_target (__main__.RollbackTests.test_unrecorded_t
+KILLED   30 RollbackTests: 'g merge-base --is-ancestor "$SHA" refs/heads/main ||'  FAIL: test_recorded_but_not_in_main_history (__main__.RollbackTests.te
+KILLED   31 RollbackTests: '[ -z "$tracked" ] ||'  FAIL: test_target_tracking_env_production (__main__.RollbackTests.test
+KILLED   32 RollbackTests: 'refs/heads/main -- services/api/src/migrations ||'  FAIL: test_migration_check_uses_main_not_head (__main__.RollbackTests.
+KILLED   33 RollbackTests: 'g diff --quiet "$SHA" refs/heads/main -- services/api/src/mi'  FAIL: test_migration_check_uses_main_not_head (__main__.RollbackTests.
+KILLED   34 RollbackTests: 'g diff --quiet "$SHA" refs/heads/main -- docker-compose.serv'  FAIL: test_compose_differs (__main__.RollbackTests.test_compose_differ
+KILLED   35 RollbackTests: '[ "$(g rev-parse HEAD)" = "$SHA" ] ||'  FAIL: test_checkout_moved_during_build (__main__.RollbackTests.test_ch
+KILLED   36 RollbackTests: '[ "$MODE" = apply ] ||'  FAIL: test_check_changes_nothing (__main__.RollbackTests.test_check_ch
+36/36 killed
