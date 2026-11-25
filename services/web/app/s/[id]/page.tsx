@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
+import { pickShareLanguage, shareInviteCopy } from '@/lib/i18n/pages/share-invite';
 
 type ShareData = {
   id: string;
@@ -32,27 +33,11 @@ const getShare = cache(async (id: string): Promise<ShareData | null> => {
   }
 });
 
-function pickLang(): 'es' | 'en' {
-  const al = headers().get('accept-language')?.toLowerCase() ?? '';
-  return al.startsWith('en') ? 'en' : 'es';
+function pickLang() {
+  return pickShareLanguage(headers().get('accept-language'));
 }
 
-const COPY = {
-  es: {
-    invite: 'Alguien quiere compartir esta idea contigo.',
-    readBook: (t: string) => `Lee «${t}» en Noetia`,
-    discover: 'Descubre Noetia',
-    tagline: 'Lee, escucha y comparte lo que te inspira — frase por frase.',
-    metaDesc: (a: string, t: string) => `${a} · ${t} — léelo en Noetia, con audio sincronizado frase por frase.`,
-  },
-  en: {
-    invite: 'Someone wanted to share this idea with you.',
-    readBook: (t: string) => `Read “${t}” on Noetia`,
-    discover: 'Discover Noetia',
-    tagline: 'Read, listen, and share what inspires you — phrase by phrase.',
-    metaDesc: (a: string, t: string) => `${a} · ${t} — read it on Noetia, with phrase-by-phrase synced audio.`,
-  },
-} as const;
+const COPY = shareInviteCopy;
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const share = await getShare(params.id);

@@ -15,6 +15,7 @@ export const frCA: Translations = {
     'fr-CA': 'Français (Canada)',
   },
   common: {
+    tooManyAttempts: 'Trop de tentatives. Attendez une minute, puis réessayez.',
     loading: 'Chargement…',
     error: 'Une erreur est survenue. Réessayez.',
     cancel: 'Annuler',
@@ -47,6 +48,7 @@ export const frCA: Translations = {
         email: 'Courriel invalide',
         passwordRequired: 'Le mot de passe est obligatoire',
         generic: 'La connexion a échoué',
+        invalidCredentials: 'Courriel ou mot de passe incorrect.',
       },
     },
     register: {
@@ -63,6 +65,7 @@ export const frCA: Translations = {
         emailInvalid: 'Courriel invalide',
         passwordShort: 'Le mot de passe doit contenir au moins 8 caractères',
         generic: 'L’inscription a échoué',
+        emailTaken: 'Un compte existe déjà avec ce courriel.',
       },
     },
     forgot: {
@@ -122,6 +125,7 @@ export const frCA: Translations = {
       country: 'Pays',
       countryPlaceholder: 'Sélectionnez votre pays',
       readingLanguages: 'Langues de lecture',
+      otherCountry: 'Autre',
       submit: 'Continuer',
       submitting: 'Enregistrement…',
     },
@@ -129,6 +133,7 @@ export const frCA: Translations = {
       title: 'Qu’aimez-vous lire?',
       subtitle: 'Choisissez jusqu’à 5 catégories pour personnaliser votre bibliothèque.',
       maxSelected: '5 sélectionnées',
+      selectedCount: (n: number, max: number) => `${n}/${max} sélectionnées`,
       submit: 'Aller à ma bibliothèque',
       submitting: 'Enregistrement…',
       categories: {
@@ -279,6 +284,7 @@ export const frCA: Translations = {
     admin: 'Admin',
     userTypes: { personal: 'Lecteur', author: 'Auteur', editorial: 'Maison d’édition' },
     language: 'Langue',
+    accountSection: 'Compte',
     deleteModal: {
       ariaLabel: 'Supprimer le compte',
       title: 'Supprimer le compte',
@@ -572,9 +578,12 @@ export const frCA: Translations = {
       submit: 'Créer le club',
       submitting: 'Création…',
       limitReached: 'Vous avez atteint la limite de 3 clubs créés.',
+      bookRequired: 'Choisissez un livre de départ.',
       subscriptionRequired: 'Un abonnement est nécessaire pour démarrer un club avec un livre payant.',
     },
     page: {
+      leaveConfirm: 'Quitter le club?',
+      linkCopied: 'Lien copié dans le presse-papiers',
       members: 'membres',
       join: 'Se joindre',
       leave: 'Quitter le club',
@@ -628,6 +637,9 @@ export const frCA: Translations = {
       upcoming: 'À venir',
       completed: 'Terminée',
       cancelled: 'Annulée',
+      cancelConfirm: 'Annuler cette séance?',
+      notFound: 'Séance introuvable.',
+      loadError: 'Impossible de charger la séance.',
       cancel: 'Annuler la séance',
       join: 'Rejoindre la séance',
     },
@@ -987,5 +999,42 @@ export const frCA: Translations = {
       'ninez-y-juventud': { name: 'Enfance et jeunesse', description: 'Projets qui élargissent l’accès à l’éducation, à la lecture et aux occasions pour les enfants et les jeunes.' },
       'medio-ambiente': { name: 'Environnement', description: 'Protéger les écosystèmes, la biodiversité et les ressources naturelles de notre région.' },
     },
+  },
+  bookGrid: {
+    inLibrary: 'Dans votre bibliothèque',
+    addToLibrary: 'Ajouter à votre bibliothèque',
+  },
+  emailBanner: {
+    message: 'Confirmez votre courriel pour accéder aux paiements et aux téléchargements.',
+    sent: 'Courriel envoyé!',
+    resend: 'Renvoyer le courriel',
+    sending: 'Envoi…',
+    close: 'Fermer',
+  },
+  collection: {
+    back: 'Retour',
+    label: 'Collection',
+    notFound: 'Collection introuvable',
+    bookCount: (n: number) => n === 1 ? '1 livre' : `${n} livres`,
+  },
+  clubLive: {
+    noAudio: 'Ce livre n’a pas d’audio disponible.',
+    playbackPosition: 'Position de lecture',
+  },
+  clubCard: {
+    tokenRequired: '1 jeton',
+  },
+  clubDiscussionForm: {
+    phrasePlaceholder: 'Phrase n°',
+  },
+  accountNav: {
+    title: 'Compte',
+    billing: 'Facturation',
+  },
+  authCallback: {
+    signingIn: 'Connexion en cours…',
+  },
+  socialPage: {
+    title: 'Partager',
   },
 };
