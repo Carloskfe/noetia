@@ -191,7 +191,9 @@ Check the Actions tab on GitHub for the specific error. Common causes:
 | Migration fails with `relation "X" already exists` | Migration was partially applied — check `migrations` table, remove the stuck row, retry |
 | Container exits immediately after build | Check `docker logs <container>` for startup errors; often a missing env var |
 
-Manual deploy (same steps as CI):
+> **After DEP-1 activation only** ([status](operations/production-deployment.md); not active today): check the approval is not simply *waiting*, read the `REFUSED:` line in the run against the table in that document, and use [production-rollback.md](operations/production-rollback.md) (§6 manual deploy, §3–§5 rollback) instead of the commands below. A timed-out run may still be working on the server: check the lock first. The key then lives in the Environment secret, with its fingerprint variable.
+
+Manual deploy (**current procedure**, same steps as CI; `git pull` deploys whatever `main` is now):
 ```bash
 ssh -p 222 root@84.247.140.175
 cd /opt/noetia

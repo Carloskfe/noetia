@@ -131,6 +131,8 @@ After setting all env vars in `.env.production`:
 ssh -p 222 root@84.247.140.175
 cd /opt/noetia
 
+# CURRENT procedure. After DEP-1 activation use docs/operations/production-rollback.md §6 instead
+# of the pull/build/migrate commands below.
 # Pull latest code (includes migration 041)
 git pull origin main
 

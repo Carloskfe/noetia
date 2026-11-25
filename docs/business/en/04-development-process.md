@@ -48,7 +48,7 @@ main  ────────────────────────�
           ↗ chore/migration-053   ↘
 ```
 
-**Why trunk-based:** At a 4-person team size, long-lived branches create unnecessary merge conflicts and delay integration. Every merge to `main` triggers an auto-deploy, so the codebase is always in a shippable state.
+**Why trunk-based:** At a 4-person team size, long-lived branches create unnecessary merge conflicts and delay integration. Every merge to `main` triggers a deploy (after DEP-1 activation: one that waits for Product Owner approval), so the codebase is always in a shippable state.
 
 ### Commit message format
 
@@ -256,7 +256,11 @@ A PR cannot merge if any step fails.
 
 ### CD — Continuous Deployment
 
-**Trigger:** Push to `main` (after CI passes).
+> **Two procedures. Only "current" is in force** until the PO records DEP-1 activation in [production-deployment.md](../../operations/production-deployment.md).
+
+**Trigger (current):** Push to `main`. It does **not** wait for CI, which runs on pull requests only.
+
+**After DEP-1 activation only:** the run waits for Product Owner approval in the `production` Environment and deploys exactly that commit; superseded commits, modified tracked files and concurrent runs are refused. Step 2 below becomes a verified fast-forward to the approved SHA.
 
 **File:** `.github/workflows/cd.yml`
 
@@ -267,8 +271,8 @@ A PR cannot merge if any step fails.
 2. cd /opt/noetia && git pull origin main
 3. docker compose --env-file .env.production \
      -f docker-compose.server.yml \
-     up -d --build
-4. docker compose exec -T api npm run migration:run:prod
+     build, then up -d --remove-orphans --wait
+4. docker compose exec -T -e DB_HOST=db api npm run migration:run:prod
 5. docker image prune -f
 ```
 
@@ -280,12 +284,7 @@ concurrency:
   cancel-in-progress: false
 ```
 
-**Container cleanup:** After deploy, the workflow runs a dynamic cleanup that removes stopped containers matching the `noetia-*` pattern:
-
-```bash
-docker ps -a --filter "name=noetia-" --filter "status=exited" \
-  -q | xargs --no-run-if-empty docker rm
-```
+**Container cleanup:** `--remove-orphans` removes containers of services no longer in the compose file; `docker image prune -f` removes dangling images.
 
 **Deploy duration:** ~4–6 minutes including image builds.
 
@@ -295,7 +294,7 @@ All secrets are stored in GitHub repo settings (Settings → Secrets → Actions
 
 | Secret | Purpose |
 |--------|---------|
-| `DEPLOY_SSH_KEY` | Private SSH key for deploying to the production server |
+| `DEPLOY_SSH_KEY` | Private SSH key for deploying to the production server. After DEP-1 activation: `production` Environment secret only |
 | `SENTRY_AUTH_TOKEN` | Used during build to upload source maps to Sentry |
 
 Production environment variables (`DATABASE_URL`, `STRIPE_SECRET_KEY`, etc.) are stored in `.env.production` on the server at `/opt/noetia/.env.production` — never in GitHub.
@@ -340,7 +339,7 @@ Before merging any migration:
 
 ### Production migration execution
 
-Migrations run automatically during CD (step 4 of the CD pipeline). If a migration fails, the deploy pipeline fails and the old containers continue running — the failure is visible in the GitHub Actions log.
+Migrations run automatically during CD (step 4 of the CD pipeline). If a migration fails, the deploy pipeline fails, but **the new containers are already live on the old schema** (migrations run after `up`) — the failure is visible in the GitHub Actions log.
 
 To run migrations manually on the server:
 ```bash
@@ -453,12 +452,8 @@ There is no staging server — the single Contabo VPS runs production. Developer
 1. **Confirm** — check Grafana alert, `docker ps`, `docker compose logs -f api`
 2. **Identify** — is it a new deployment? Check `git log` for recent merges
 3. **Rollback if caused by code change:**
-   ```bash
-   cd /opt/noetia
-   git revert HEAD --no-edit
-   git push
-   # Wait for CD to redeploy automatically (~5 min)
-   ```
+   - **Current:** open a revert PR from a workstation and have the PO merge it; CD deploys it (~5–7 min). Do not commit or push from the server.
+   - **After DEP-1 activation only:** the same revert PR, plus PO approval of the run. If the site cannot wait, [production-rollback.md](../../operations/production-rollback.md), PO only.
 4. **Rollback if caused by migration:** Restore from daily backup (02:00 UTC PostgreSQL snapshot)
 5. **Communicate** — post to Slack `#incidents` with status updates every 15 minutes
 6. **Resolve** — once service is stable, write an incident report in Notion
